@@ -7,7 +7,7 @@ import random
 from dataclasses import dataclass
 
 from src.body import ENEMY_TEAM, Body
-from src.materials import ACID, AIR, BLOOD, SPORES
+from src.materials import ACID, AIR, BLOOD, GROWTH, SPORES
 from src.player import GRAVITY, MAX_FALL_SPEED
 from src.projectiles import ProjectileSystem
 from src.wand import Wand, WandSpec
@@ -36,7 +36,7 @@ class CreatureSpec:
     radial: int = 0  # >0: cast every pattern in this many directions at once
     hover_height: float = 0.0  # flyers keep this far above the player
     stationary: bool = False
-    summon: str | None = None  # creature key spawned periodically
+    summon: tuple[str, ...] = ()  # creature keys spawned periodically, in turn
     summon_interval: float = 0.0
     summon_max: int = 0
     boss: bool = False
@@ -70,7 +70,19 @@ HEART = CreatureSpec(
     "herz", "Das Herz", width=40, height=36, hp=1000, flying=True, speed=0, sight=700,
     patterns=(("sekret_feuer", "klumpen"), ("sekret_saeure", "klumpen"), ("funke",)),
     ranged_cooldown=1.9, ranged_range=700, radial=12, stationary=True,
-    summon="made", summon_interval=7.0, summon_max=5, boss=True,
+    summon=("made",), summon_interval=7.0, summon_max=5, boss=True,
+)  # fmt: skip
+BROOD_MOTHER = CreatureSpec(
+    "brutmutter", "Die Brutmutter", width=36, height=26, hp=650, flying=True, speed=34,
+    sight=650, melee_damage=18, melee_cooldown=1.2,
+    patterns=(
+        ("sekret_wucherung", "klumpen"),
+        ("knochensplitter",),
+        ("doppel", "sekret_sporen", "klumpen", "sekret_sporen", "klumpen"),
+    ),
+    ranged_cooldown=1.4, ranged_range=520, hover_height=55,
+    summon=("sporenblase", "schwaermer"), summon_interval=5.0, summon_max=4,
+    boss=True, gore=GROWTH, pearls=220,
 )  # fmt: skip
 BONE_SPITTER = CreatureSpec(
     "knochenspeier", "Knochenspeier", width=8, height=7, hp=30, flying=True, speed=0,
@@ -83,7 +95,7 @@ SPORE_BLOAT = CreatureSpec(
 )  # fmt: skip
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
-    for spec in (MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, HEART)
+    for spec in (MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, BROOD_MOTHER, HEART)
 }
 
 MELEE_REACH = 2  # px around the body that counts as touching
@@ -112,6 +124,7 @@ class Creature(Body):
         self.last_seen = (0.0, 0.0)
         self.pattern = 0
         self.summon_timer = spec.summon_interval
+        self.summon_count = 0
         self.summons: list[str] = []  # creature keys the manager should spawn
         self.attacks = [
             Wand(
@@ -162,7 +175,8 @@ class Creature(Body):
             self.summon_timer -= dt
             if self.summon_timer <= 0:
                 self.summon_timer = self.spec.summon_interval
-                self.summons.append(self.spec.summon)
+                self.summons.append(self.spec.summon[self.summon_count % len(self.spec.summon)])
+                self.summon_count += 1
         self.apply_environment(world, dt)
 
     # -------------------------------------------------------------- movement

@@ -55,6 +55,7 @@ class HudState:
     pearls: int = 0
     perks: tuple[str, ...] = ()
     stats: str = ""
+    notice: str = ""
 
 
 class Hud:
@@ -105,6 +106,9 @@ class Hud:
         if state.prompt:
             text = self.font.render(state.prompt, True, COLOR_TEXT)
             screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.62)))
+        if state.notice:
+            text = self.font.render(state.notice, True, COLOR_ACCENT)
+            screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.38)))
         if state.banner:
             text = self.big_font.render(state.banner, True, COLOR_TEXT)
             screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.3)))

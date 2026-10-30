@@ -16,8 +16,8 @@ from src.materials import (
     OPAQUE,
     VARIANTS,
 )
-from src.texture import make_grain
 from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
+from src.texture import make_grain
 from src.viewport import Viewport
 from src.world import World
 from src.worldgen import generate_world

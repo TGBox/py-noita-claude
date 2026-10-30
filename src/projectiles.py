@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import math
+import random
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from src.body import PLAYER_TEAM, Body
-from src.materials import KIND, LIQUID, STOPS_PROJECTILE
+from src.body import BURN_TIME, PLAYER_TEAM, Body
+from src.materials import BEDROCK, KIND, LIQUID, STOPS_PROJECTILE
 from src.spells import TIMER_DELAY, Block, Category, Trigger
 from src.wand import Shot
 from src.world import World
@@ -16,6 +17,9 @@ MAX_PROJECTILES = 256
 HOMING_TURN_RATE = 7.0  # radians per second
 FLIPPED_GRAVITY = 300.0  # px/s^2 for forms that normally fly straight
 BOUNCE_DAMPING = 0.55
+WALL_BOUNCE_DAMPING = 0.85  # bounces from the "Abprall" modifier keep more speed
+PELLET_SPREAD = 0.22  # radians
+
 
 
 @dataclass(frozen=True)
@@ -45,9 +49,19 @@ class Projectile:
     damage: float = 0.0
     team: str = PLAYER_TEAM
     children: list[Shot] = field(default_factory=list)
+    pierce: bool = False
+    ignites: bool = False
+    digs: int = 0
+    lifesteal: float = 0.0
     age: float = 0.0
     alive: bool = True
     released: bool = False
+    hit_ids: set[int] = field(default_factory=set)
+
+    @property
+    def fused(self) -> bool:
+        """Fused forms (bombs) rest after bouncing and only end when their time is up."""
+        return self.form.bounces > 0
 
 
 def build(
@@ -57,9 +71,15 @@ def build(
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
     material, homing, trigger = form.default_material, False, None
+    lifetime, bounces = form.lifetime, form.bounces
+    pierce = ignites = False
     for block in shot.modifiers:
         speed *= block.speed_factor
         blast += block.blast_bonus
+        lifetime *= block.lifetime_factor
+        bounces += block.bounce_bonus
+        pierce = pierce or block.pierce
+        ignites = ignites or block.ignites
         if block.flip_gravity:
             gravity = -(gravity or FLIPPED_GRAVITY)
         homing = homing or block.homing
@@ -75,16 +95,20 @@ def build(
         vx=math.cos(angle) * speed,
         vy=math.sin(angle) * speed,
         gravity=gravity,
-        lifetime=form.lifetime,
+        lifetime=lifetime,
         blast=blast,
         splash=form.splash,
         material=material,
-        bounces=form.bounces,
+        bounces=bounces,
         homing=homing,
         trigger=trigger,
         damage=form.damage,
         team=team,
         children=list(shot.children),
+        pierce=pierce,
+        ignites=ignites,
+        digs=form.digs,
+        lifesteal=form.lifesteal,
     )
 
 
@@ -95,6 +119,8 @@ class ProjectileSystem:
         self.items: list[Projectile] = []
         self._pending: list[Projectile] = []
         self._blasts: list[Blast] = []
+        self._rng = random.Random()
+        self.healing = 0.0  # life stolen for the player since the last ``take_healing``
 
     def clear(self) -> None:
         self.items.clear()
@@ -103,9 +129,22 @@ class ProjectileSystem:
         self, shots: list[Shot], x: float, y: float, angle: float, team: str = PLAYER_TEAM
     ) -> None:
         for shot in shots:
-            if len(self.items) + len(self._pending) >= MAX_PROJECTILES:
-                return
-            self._pending.append(build(shot, x, y, angle, team))
+            pellets = max(1, shot.form.pellets)
+            for _ in range(pellets):
+                if len(self.items) + len(self._pending) >= MAX_PROJECTILES:
+                    return
+                spread = self._rng.uniform(-PELLET_SPREAD, PELLET_SPREAD) if pellets > 1 else 0.0
+                projectile = build(shot, x, y, angle + spread, team)
+                if pellets > 1:
+                    factor = self._rng.uniform(0.8, 1.1)
+                    projectile.vx *= factor
+                    projectile.vy *= factor
+                self._pending.append(projectile)
+
+    def take_healing(self) -> float:
+        """Life stolen by the player's projectiles since the last call."""
+        amount, self.healing = self.healing, 0.0
+        return amount
 
     def update(
         self,
@@ -150,22 +189,35 @@ class ProjectileSystem:
         steps = int(math.hypot(dx, dy)) + 1
         for _ in range(steps):
             nx, ny = p.x + dx / steps, p.y + dy / steps
-            if p.form.bounces == 0:
-                victim = _body_at(bodies, p.team, nx, ny)
+            if not p.fused:
+                victim = _body_at(bodies, p.team, nx, ny, p.hit_ids)
                 if victim is not None:
-                    victim.hurt(p.damage)
-                    p.x, p.y = nx, ny
-                    self._end(p, world, hit=True, wet=False)
-                    return
+                    self._hit_body(p, victim)
+                    if not p.pierce:
+                        p.x, p.y = nx, ny
+                        self._end(p, world, hit=True, wet=False)
+                        return
             cell = world.get(int(nx), int(ny))
             if not STOPS_PROJECTILE[cell]:
                 p.x, p.y = nx, ny
                 continue
-            if p.form.bounces > 0:  # bouncers never end on impact, only on their fuse
+            if p.digs and KIND[cell] != LIQUID and cell != BEDROCK:
+                world.dig(int(nx), int(ny), p.digs)
+                p.x, p.y = nx, ny
+                continue
+            if p.fused or p.bounces > 0:
                 self._bounce(p, world, nx, ny)
                 return
             self._end(p, world, hit=True, wet=KIND[cell] == LIQUID)
             return
+
+    def _hit_body(self, p: Projectile, victim: Body) -> None:
+        p.hit_ids.add(id(victim))
+        victim.hurt(p.damage)
+        if p.ignites and victim.wet <= 0 and not victim.fire_immune:
+            victim.burning = BURN_TIME
+        if p.lifesteal and p.team == PLAYER_TEAM:
+            self.healing += p.damage * p.lifesteal
 
     def _bounce(self, p: Projectile, world: World, nx: float, ny: float) -> None:
         if p.trigger is Trigger.IMPACT and not p.released:
@@ -174,12 +226,13 @@ class ProjectileSystem:
             p.vx = p.vy = 0.0
             return
         p.bounces -= 1
+        damping = BOUNCE_DAMPING if p.fused else WALL_BOUNCE_DAMPING
         blocked_x = STOPS_PROJECTILE[world.get(int(nx), int(p.y))]
         blocked_y = STOPS_PROJECTILE[world.get(int(p.x), int(ny))]
         if blocked_x or not blocked_y:
-            p.vx = -p.vx * BOUNCE_DAMPING
+            p.vx = -p.vx * damping
         if blocked_y or not blocked_x:
-            p.vy = -p.vy * BOUNCE_DAMPING
+            p.vy = -p.vy * damping
 
     # ---------------------------------------------------------------- effects
 
@@ -187,7 +240,7 @@ class ProjectileSystem:
         p.alive = False
         x, y = int(p.x), int(p.y)
         # Projectiles explode on impact; fused bouncers also when their time runs out.
-        if p.blast > 0 and (hit or p.form.bounces > 0):
+        if p.blast > 0 and (hit or p.fused):
             world.explode(x, y, p.blast)
             self._blasts.append(Blast(x, y, p.blast))
         if p.material is not None and p.splash > 0:
@@ -208,9 +261,11 @@ class ProjectileSystem:
         self.spawn(p.children, p.x, p.y, angle, p.team)
 
 
-def _body_at(bodies: Sequence[Body], team: str, x: float, y: float) -> Body | None:
+def _body_at(
+    bodies: Sequence[Body], team: str, x: float, y: float, skip: set[int]
+) -> Body | None:
     for body in bodies:
-        if body.team != team and not body.dead and body.contains(x, y):
+        if body.team != team and not body.dead and id(body) not in skip and body.contains(x, y):
             return body
     return None
 

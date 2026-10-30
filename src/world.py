@@ -220,6 +220,19 @@ class World:
                 self.set_cell(x, y, FIRE)
         return destroyed + self.crumble_loose(cx, cy, radius + 2)
 
+    def dig(self, cx: int, cy: int, radius: int) -> int:
+        """Bore a hole: solids and powders in the disc vanish (bedrock stays)."""
+        dug = 0
+        for dx, dy in disc_offsets(radius):
+            x, y = cx + dx, cy + dy
+            if not (0 <= x < self.width and 0 <= y < self.height):
+                continue
+            current = self.grid[y * self.width + x]
+            if current != BEDROCK and KIND[current] in (SOLID, POWDER):
+                self.set_cell(x, y, AIR)
+                dug += 1
+        return dug
+
     def crumble_loose(self, cx: int, cy: int, radius: int, passes: int = 12) -> int:
         """Break off loose solid fragments (cells with at most two solid neighbours).
 

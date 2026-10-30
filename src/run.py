@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from typing import Any
 
 from src.body import Body
 from src.depths import DEPTHS, Depth
@@ -24,12 +25,12 @@ from src.loot import (
     scatter_pearls,
     wand_price,
 )
-from src.perks import PERKS
+from src.perks import PERK_BY_KEY, PERKS
 from src.player import MAX_ENERGY, MAX_HP, Player
 from src.projectiles import Blast, ProjectileSystem
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
 from src.spells import CATALOG
-from src.wand import PRESETS, Shot
+from src.wand import PRESETS, Shot, Wand, WandSpec
 from src.world import World
 from src.worldgen import Level, generate_level, generate_sanctum
 
@@ -40,6 +41,7 @@ DROP_CHANCE = 0.3  # chance that a creature drops a block
 EXIT_RANGE = 14.0
 SHOULDER_OFFSET = (2.0, 1.0)  # arm root relative to the body centre (x towards the aim)
 STARTER_WANDS = (PRESETS[0], PRESETS[1])
+SAVE_VERSION = 1
 SANCTUM = Depth("sanktum", "Das Sanktum", walkers=0, flyers=0, wands=0, blocks=0, ambient=0.55)
 PEARL_PILES = 6
 SHOP_BLOCKS = 4
@@ -97,6 +99,8 @@ class Run:
         self.events: list[str] = []  # sound cues of the last update
         self._hurt_cooldown = 0.0
         self._accumulator = 0.0
+        self.discoveries: list[tuple[str, str]] = []  # ("block"|"creature", key), drained by the game
+        self.checkpoint: dict[str, Any] | None = None  # state at the last sanctum entry
         self.new_run()
 
     # ---------------------------------------------------------------- flow
@@ -111,17 +115,24 @@ class Run:
         return self.depth_index + (2 if self.in_sanctum else 1)
 
     def new_run(self) -> None:
+        self._reset()
+        self.enter_depth(0)
+
+    def _reset(self) -> None:
+        """Fresh run state (starter wands, no perks) without generating a level."""
         self.inventory = Inventory(list(STARTER_WANDS), self.rng)
         self.outcome = ""
         self.pearls = 0
         self.perks = set()
         self.revive_used = False
         self.stats = {"kills": 0, "pearls": 0, "time": 0.0}
+        self.checkpoint = None
+        for spec in STARTER_WANDS:
+            self._discover_blocks(spec.blocks)
         player = self.player
         player.max_hp, player.energy_max = MAX_HP, MAX_ENERGY
         player.fire_immune = player.acid_immune = False
         player.place(0, 0)
-        self.enter_depth(0)
 
     def apply_perk(self, key: str) -> None:
         """Gain a perk for the rest of the run."""
@@ -141,6 +152,7 @@ class Run:
 
     def enter_sanctum(self) -> None:
         """The safe chamber after depth ``depth_index``: heal, shop, choose a perk."""
+        self.checkpoint = self.snapshot()  # taken first, so a restore rebuilds the same shop
         self.in_sanctum = True
         layout = generate_sanctum(self.world)
         self.level = Level(layout.spawn, layout.exit, None)
@@ -192,6 +204,84 @@ class Run:
         self._refill_wands()
         self.time_in_depth = 0.0
 
+    # ---------------------------------------------------------- save / load
+
+    def snapshot(self) -> dict[str, Any]:
+        """JSON-compatible state from which ``restore`` rebuilds the next sanctum."""
+        player = self.player
+        version, internal, gauss = self.rng.getstate()
+        return {
+            "version": SAVE_VERSION,
+            "depth_index": self.depth_index,
+            "pearls": self.pearls,
+            "perks": sorted(self.perks),
+            "revive_used": self.revive_used,
+            "stats": dict(self.stats),
+            "player": {
+                "max_hp": player.max_hp,
+                "energy_max": player.energy_max,
+                "fire_immune": player.fire_immune,
+                "acid_immune": player.acid_immune,
+            },
+            "wands": [
+                {"spec": {**asdict(wand.spec), "blocks": list(wand.spec.blocks)}, "slots": list(wand.slots)}
+                for wand in self.inventory.wands
+            ],
+            "active": self.inventory.active,
+            "bag": list(self.inventory.bag),
+            "rng": [version, list(internal), gauss],
+        }
+
+    def restore(self, data: dict[str, Any]) -> None:
+        """Continue a saved run: enters the sanctum the snapshot was taken at.
+
+        Raises ``ValueError`` for data that does not fit this version of the game.
+        """
+        try:
+            if data.get("version") != SAVE_VERSION:
+                raise ValueError("unsupported save version")
+            depth_index = int(data["depth_index"])
+            if not 0 <= depth_index < len(DEPTHS) - 1:
+                raise ValueError("depth out of range")
+            wands = []
+            for entry in data["wands"]:
+                spec = WandSpec(**{**entry["spec"], "blocks": tuple(entry["spec"]["blocks"])})
+                if any(key not in CATALOG for key in spec.blocks):
+                    raise ValueError("unknown block in a saved wand")
+                wands.append((spec, [key if key in CATALOG else None for key in entry["slots"]]))
+            bag = [key if key in CATALOG else None for key in data["bag"]]
+            perks = {key for key in data["perks"] if key in PERK_BY_KEY}
+            version, internal, gauss = data["rng"]
+            rng_state = (version, tuple(internal), gauss)
+            player_data = data["player"]
+        except (KeyError, TypeError) as error:
+            raise ValueError("broken save data") from error
+        self._reset()
+        self.depth_index = depth_index
+        self.pearls = int(data["pearls"])
+        self.perks = perks
+        self.revive_used = bool(data["revive_used"])
+        self.stats = {key: data["stats"].get(key, 0) for key in self.stats}
+        player = self.player
+        player.max_hp = float(player_data["max_hp"])
+        player.energy_max = float(player_data["energy_max"])
+        player.fire_immune = bool(player_data["fire_immune"])
+        player.acid_immune = bool(player_data["acid_immune"])
+        self.inventory.wands = []
+        for spec, slots in wands:
+            wand = Wand(spec, self.rng)
+            count = len(wand.slots)
+            wand.set_slots((slots + [None] * count)[:count])
+            self.inventory.wands.append(wand)
+        self.inventory.bag = (bag + [None] * len(self.inventory.bag))[: len(self.inventory.bag)]
+        self.inventory.select(int(data.get("active", 0)))
+        self.rng.setstate(rng_state)
+        self.discoveries.clear()
+        self.enter_sanctum()
+
+    def _discover_blocks(self, keys) -> None:
+        self.discoveries.extend(("block", key) for key in keys if key)
+
     def _refill_wands(self) -> None:
         for wand in self.inventory.wands:
             wand.mana = wand.spec.mana_max
@@ -232,6 +322,9 @@ class Run:
             self._on_death(creature)
         bodies: list[Body] = [self.player, *self.enemies.creatures]
         blasts = self.projectiles.update(self.world, dt, controls.aim, bodies)
+        healing = self.projectiles.take_healing()
+        if healing and not self.player.dead:
+            self.player.hp = min(self.player.max_hp, self.player.hp + healing)
         for blast in blasts:
             self._apply_blast(blast, bodies)
             self.events.append("blast_big" if blast.radius >= 12 else "blast")
@@ -316,18 +409,21 @@ class Run:
             item.price = 0
             self.events.append("buy")
         if item.wand is not None:
+            self._discover_blocks(item.wand.blocks)
             dropped = self.inventory.add_wand(item.wand)
             self.pickups.remove(item)
             if dropped is not None:
                 self.pickups.append(Pickup(item.x, item.y, wand=dropped))
             self.events.append("pickup")
         elif item.block is not None and self.inventory.add_block(item.block):
+            self._discover_blocks((item.block,))
             self.pickups.remove(item)
             self.events.append("pickup")
 
     def _on_death(self, creature) -> None:
         cx, cy = creature.center
         self.stats["kills"] += 1
+        self.discoveries.append(("creature", creature.spec.key))
         if "blutdurst" in self.perks and not self.player.dead:
             self.player.hp = min(self.player.max_hp, self.player.hp + BLOODLUST_HEAL)
         self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))

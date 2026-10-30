@@ -216,3 +216,23 @@ class TestPopulate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+class TestBroodMother(unittest.TestCase):
+    def test_guards_the_gedaerm_and_summons_in_turn(self) -> None:
+        from src.depths import DEPTHS
+        from src.enemies import BROOD_MOTHER, spawn_boss
+
+        self.assertEqual(DEPTHS[2].boss, "brutmutter")
+        world = World(640, 200, seed=1)
+        mother = spawn_boss("brutmutter", (320, 80), random.Random(1))
+        manager = EnemyManager()
+        manager.creatures.append(mother)
+        player = Player(250, 200 - 2 - PLAYER_HEIGHT)
+        player.hp = player.max_hp = 1e9  # survive the fight
+        projectiles, keys = ProjectileSystem(), set()
+        for _ in range(round((BROOD_MOTHER.summon_interval * 2 + 0.5) / DT)):
+            run(world, manager, player, projectiles, DT)
+            keys |= {c.spec.key for c in manager.creatures if c is not mother}
+        self.assertEqual(keys, {"sporenblase", "schwaermer"})

@@ -36,7 +36,7 @@ DEPTHS: tuple[Depth, ...] = (
     ),
     Depth(
         "gedaerm", "Das Gedärm", blood=1.6, growth=3.0, bridges=1.5,
-        walkers=13, flyers=8, spitters=5, bloats=7, blocks=10, ambient=0.2,
+        walkers=13, flyers=8, spitters=5, bloats=7, blocks=10, boss="brutmutter", ambient=0.2,
     ),
     Depth(
         "herzkammer", "Die Herzkammer", blood=2.4, acid=1.0, growth=1.2,
