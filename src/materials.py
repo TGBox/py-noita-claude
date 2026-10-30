@@ -38,6 +38,9 @@ FLAME = 5
 
 # Number of colour variants per material (grainy look without textures).
 VARIANTS = 4
+# Brightness steps for lighting; palette index = (material * VARIANTS + variant) * levels + level.
+LIGHT_LEVELS = 4
+LIGHT_BRIGHTNESS = (0.16, 0.4, 0.7, 1.0)
 
 
 @dataclass(frozen=True)
@@ -59,6 +62,7 @@ class Material:
     debris: int = AIR  # what an explosion leaves behind ...
     debris_chance: float = 0.0  # ... with this chance (otherwise air)
     grain: int = 8  # brightness spread between the colour variants
+    glow: int = 0  # 0-255, how strongly the material lights its surroundings
 
 
 MATERIALS: tuple[Material, ...] = (
@@ -78,24 +82,25 @@ MATERIALS: tuple[Material, ...] = (
         "Talg", LIQUID, 20, (196, 174, 118),
         flammability=0.5, burn_life=(10, 25), fluidity=3, mobility=0.7,
     ),
-    Material("Magensäure", LIQUID, 40, (140, 196, 40), fluidity=5, hazard_dps=60.0),
+    Material("Magensäure", LIQUID, 40, (140, 196, 40), fluidity=5, hazard_dps=60.0, glow=110),
     Material(
         "Feuer", FLAME, -1, (255, 160, 40),
-        life=(30, 60), decay_into=SMOKE, decay_chance=0.25, hazard_dps=30.0,
+        life=(30, 60), decay_into=SMOKE, decay_chance=0.25, hazard_dps=15.0, glow=255,
     ),
     Material("Rauch", GAS, -2, (54, 44, 46), life=(50, 140)),
-    Material("Ätzdampf", GAS, -3, (98, 132, 52), life=(60, 160), hazard_dps=8.0),
+    Material("Ätzdampf", GAS, -3, (98, 132, 52), life=(60, 160), hazard_dps=8.0, glow=40),
     Material(
         "Wucherung", SOLID, 255, (124, 72, 116),
         flammability=0.08, burn_life=(40, 90), debris=SPORES, debris_chance=0.3, grain=14,
     ),
     Material(
         "Sporen", GAS, -4, (164, 128, 160),
-        flammability=0.6, burn_life=(3, 8), life=(120, 240), hazard_dps=3.0,
+        flammability=0.6, burn_life=(3, 8), life=(120, 240), hazard_dps=3.0, glow=60,
     ),
 )
 
 assert len(MATERIALS) == MATERIAL_COUNT
+assert MATERIAL_COUNT * VARIANTS * LIGHT_LEVELS <= 256, "palette index must fit a byte"
 
 KIND: list[int] = [m.kind for m in MATERIALS]
 FLAMMABILITY: list[float] = [m.flammability for m in MATERIALS]
@@ -104,6 +109,8 @@ LIFE_RANGE: list[tuple[int, int]] = [m.life for m in MATERIALS]
 HAZARD_DPS: list[float] = [m.hazard_dps for m in MATERIALS]
 NAME_DE: list[str] = [m.name_de for m in MATERIALS]
 DEBRIS: list[tuple[int, float]] = [(m.debris, m.debris_chance) for m in MATERIALS]
+GLOW: list[int] = [m.glow for m in MATERIALS]
+OPAQUE: list[int] = [int(k in (SOLID, POWDER)) for k in KIND]
 
 # The player walks on solids and powders but wades through liquids.
 BLOCKS_BODY: list[bool] = [k in (SOLID, POWDER) for k in KIND]
@@ -111,18 +118,32 @@ BLOCKS_BODY: list[bool] = [k in (SOLID, POWDER) for k in KIND]
 STOPS_PROJECTILE: list[bool] = [k in (SOLID, POWDER, LIQUID) for k in KIND]
 
 
-def build_palette() -> list[tuple[int, int, int]]:
-    """Return a palette indexed by ``material_id * VARIANTS + variant``."""
+def variant_color(material: Material, variant: int) -> tuple[int, int, int]:
+    r, g, b = material.color
+    shift = round((variant - (VARIANTS - 1) / 2) * material.grain)
+    return (
+        max(0, min(255, r + shift)),
+        max(0, min(255, g + shift)),
+        max(0, min(255, b + shift)),
+    )
+
+
+def shade(color: tuple[int, int, int], level: int) -> tuple[int, int, int]:
+    factor = LIGHT_BRIGHTNESS[level]
+    return (round(color[0] * factor), round(color[1] * factor), round(color[2] * factor))
+
+
+def build_palette(lit: bool = True) -> list[tuple[int, int, int]]:
+    """Palette indexed by ``(material * VARIANTS + variant) * LIGHT_LEVELS + level``.
+
+    With ``lit=False`` the light level is left out (index ``material * VARIANTS + variant``).
+    """
     palette: list[tuple[int, int, int]] = []
     for material in MATERIALS:
-        r, g, b = material.color
         for variant in range(VARIANTS):
-            shift = round((variant - (VARIANTS - 1) / 2) * material.grain)
-            palette.append(
-                (
-                    max(0, min(255, r + shift)),
-                    max(0, min(255, g + shift)),
-                    max(0, min(255, b + shift)),
-                )
-            )
+            color = variant_color(material, variant)
+            if not lit:
+                palette.append(color)
+                continue
+            palette.extend(shade(color, level) for level in range(LIGHT_LEVELS))
     return palette

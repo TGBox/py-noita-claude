@@ -7,9 +7,13 @@ from src.materials import (
     BLOOD,
     BONE,
     BONE_DUST,
+    FIRE,
     FLESH,
+    GLOW,
     GROWTH,
+    LIGHT_LEVELS,
     MATERIAL_COUNT,
+    OPAQUE,
     VARIANTS,
 )
 from src.texture import make_grain
@@ -106,6 +110,46 @@ class TestRenderCore(unittest.TestCase):
         self.assertEqual(out[index], BLOOD * VARIANTS + grain[12 * 64 + 10])
         self.assertEqual(out[0], world.get(5, 8) * VARIANTS + grain[8 * 64 + 5])
         self.assertLess(max(out), MATERIAL_COUNT * VARIANTS)
+
+    def test_lighting_darkens_the_dark_and_lights_glowing_cells(self) -> None:
+        world = World(64, 48, seed=1)
+        for x in range(10, 14):
+            world.set_cell(x, 30, FIRE)
+        grain = make_grain(64, 48)
+        out = bytearray(64 * 48)
+
+        def level_at(x: int, y: int, lights: list, ambient: float) -> int:
+            native.render_lit(
+                native.byte_view(world.grid), native.byte_view(grain), native.byte_view(out),
+                64, 0, 0, 64, 48, VARIANTS, LIGHT_LEVELS, GLOW, lights, ambient,
+            )  # fmt: skip
+            return out[y * 64 + x] % LIGHT_LEVELS
+
+        self.assertEqual(level_at(12, 30, [], 0.0), LIGHT_LEVELS - 1)  # fire glows
+        self.assertEqual(level_at(50, 10, [], 0.0), 0)  # far from any light: dark
+        self.assertEqual(level_at(50, 10, [], 1.0), LIGHT_LEVELS - 1)  # full ambient
+        self.assertGreater(level_at(50, 10, [(50.0, 10.0, 30.0, 1.0)], 0.0), 0)  # lamp
+        self.assertGreater(level_at(12, 24, [], 0.0), 0)  # near the fire
+
+    def test_walls_block_dynamic_light(self) -> None:
+        world = World(64, 48, seed=1)
+        grain = make_grain(64, 48)
+        out = bytearray(64 * 48)
+        lamp = [(10.0, 20.0, 100.0, 1.0)]
+
+        def light_at(x: int, y: int, opaque: list[int]) -> int:
+            native.render_lit(
+                native.byte_view(world.grid), native.byte_view(grain), native.byte_view(out),
+                64, 0, 0, 64, 48, VARIANTS, LIGHT_LEVELS, GLOW, lamp, 0.0, opaque,
+            )  # fmt: skip
+            return out[y * 64 + x] % LIGHT_LEVELS
+
+        open_air = light_at(40, 20, OPAQUE)
+        for y in range(2, 46):
+            for x in range(20, 32):
+                world.set_cell(x, y, BONE)
+        self.assertLess(light_at(40, 20, OPAQUE), open_air)  # behind the wall
+        self.assertGreater(light_at(20, 20, OPAQUE), 0)  # the lit wall surface
 
     def test_grain_uses_every_variant_and_is_deterministic(self) -> None:
         a = make_grain(256, 128, seed=3)

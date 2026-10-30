@@ -432,7 +432,7 @@ unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Vec<T> {
 /// Version of the C ABI, checked by Python on load.
 #[no_mangle]
 pub extern "C" fn cloita_abi_version() -> u32 {
-    3
+    5
 }
 
 /// Create a simulation for a `w` x `h` world with `n` materials.
@@ -633,6 +633,181 @@ pub unsafe extern "C" fn cloita_grain(out: *mut u8, w: usize, h: usize, seed: u6
             let dither = hash2(x as i64, y as i64, seed ^ 0xD17) - 0.5;
             let v = (coarse * 0.62 + fine * 0.3 + dither * 0.16 + 0.04).clamp(0.0, 0.999);
             out[y * w + x] = (v * levels) as u8;
+        }
+    }
+}
+
+const LIGHT_CELL: usize = 4; // light map resolution in pixels
+const OCCLUSION: f32 = 0.55; // light lost per fully opaque light-map cell
+const EMISSIVE_RADIUS: f32 = 6.0; // light map cells
+const BAYER: [f32; 16] = [
+    0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0,
+];
+
+/// Add a light whose rays are dimmed by opaque light-map cells on the way.
+#[allow(clippy::too_many_arguments)]
+fn splat_occluded(
+    light: &mut [f32],
+    opacity: &[f32],
+    gw: usize,
+    gh: usize,
+    cx: f32,
+    cy: f32,
+    radius: f32,
+    intensity: f32,
+) {
+    let x0 = (cx - radius).floor().max(0.0) as usize;
+    let y0 = (cy - radius).floor().max(0.0) as usize;
+    let x1 = ((cx + radius).ceil().max(0.0) as usize).min(gw.saturating_sub(1));
+    let y1 = ((cy + radius).ceil().max(0.0) as usize).min(gh.saturating_sub(1));
+    if cx + radius < 0.0 || cy + radius < 0.0 || x0 > x1 || y0 > y1 {
+        return;
+    }
+    for gy in y0..=y1 {
+        for gx in x0..=x1 {
+            let dx = gx as f32 + 0.5 - cx;
+            let dy = gy as f32 + 0.5 - cy;
+            let distance = (dx * dx + dy * dy).sqrt();
+            let d = distance / radius;
+            if d >= 1.0 {
+                continue;
+            }
+            let steps = distance.ceil() as usize;
+            let mut transmit = 1.0f32;
+            for k in 1..steps {
+                let t = k as f32 / steps as f32;
+                let sx = cx + dx * t;
+                let sy = cy + dy * t;
+                if sx >= 0.0 && sy >= 0.0 && (sx as usize) < gw && (sy as usize) < gh {
+                    transmit *= 1.0 - OCCLUSION * opacity[sy as usize * gw + sx as usize];
+                    if transmit < 0.02 {
+                        break;
+                    }
+                }
+            }
+            let f = 1.0 - d;
+            light[gy * gw + gx] += intensity * f * f * transmit;
+        }
+    }
+}
+
+fn splat(light: &mut [f32], gw: usize, gh: usize, cx: f32, cy: f32, radius: f32, intensity: f32) {
+    let x0 = (cx - radius).floor().max(0.0) as usize;
+    let y0 = (cy - radius).floor().max(0.0) as usize;
+    let x1 = ((cx + radius).ceil() as usize).min(gw.saturating_sub(1));
+    let y1 = ((cy + radius).ceil() as usize).min(gh.saturating_sub(1));
+    if cx + radius < 0.0 || cy + radius < 0.0 || x0 > x1 || y0 > y1 {
+        return;
+    }
+    for gy in y0..=y1 {
+        for gx in x0..=x1 {
+            let dx = gx as f32 - cx;
+            let dy = gy as f32 - cy;
+            let d = (dx * dx + dy * dy).sqrt() / radius;
+            if d < 1.0 {
+                let f = 1.0 - d;
+                light[gy * gw + gx] += intensity * f * f;
+            }
+        }
+    }
+}
+
+/// Like `cloita_render`, but with lighting: writes
+/// `(material * variants + grain) * levels + light_level` per pixel.
+///
+/// `emissive` holds one glow value (0-255) per material; `lights` holds `n_lights`
+/// quadruples `(x, y, radius, intensity)` in world pixels. Light outside sources
+/// falls back to `ambient` (0..1).
+///
+/// # Safety
+/// Same buffer requirements as `cloita_render`; `emissive` must hold
+/// `n_materials` bytes and `lights` `4 * n_lights` floats.
+#[no_mangle]
+pub unsafe extern "C" fn cloita_render_lit(
+    grid: *const u8,
+    noise: *const u8,
+    out: *mut u8,
+    w: usize,
+    x0: usize,
+    y0: usize,
+    vw: usize,
+    vh: usize,
+    variants: u8,
+    levels: u8,
+    emissive: *const u8,
+    opaque: *const u8,
+    n_materials: usize,
+    lights: *const f32,
+    n_lights: usize,
+    ambient: f32,
+) {
+    let out = slice::from_raw_parts_mut(out, vw * vh);
+    let emissive = slice::from_raw_parts(emissive, n_materials);
+    let opaque = slice::from_raw_parts(opaque, n_materials);
+    let lights = slice::from_raw_parts(lights, n_lights * 4);
+    let levels = levels.max(1);
+    let gw = vw / LIGHT_CELL + 2;
+    let gh = vh / LIGHT_CELL + 2;
+    let mut light = vec![ambient; gw * gh];
+    let mut opacity = vec![0.0f32; gw * gh];
+    let mut glows: Vec<(usize, usize, f32)> = Vec::new();
+    let per_cell = (LIGHT_CELL * LIGHT_CELL) as f32;
+
+    for gy in 0..vh / LIGHT_CELL {
+        for gx in 0..vw / LIGHT_CELL {
+            let mut glow = 0u32;
+            let mut solid = 0u32;
+            for dy in 0..LIGHT_CELL {
+                let row = (y0 + gy * LIGHT_CELL + dy) * w + x0 + gx * LIGHT_CELL;
+                let cells = slice::from_raw_parts(grid.add(row), LIGHT_CELL);
+                for &m in cells {
+                    if (m as usize) < n_materials {
+                        glow += u32::from(emissive[m as usize]);
+                        solid += u32::from(opaque[m as usize]);
+                    }
+                }
+            }
+            opacity[gy * gw + gx] = solid as f32 / per_cell;
+            if glow > 0 {
+                glows.push((gx, gy, glow as f32 / (255.0 * per_cell) * 3.0));
+            }
+        }
+    }
+    for &(gx, gy, intensity) in &glows {
+        splat(&mut light, gw, gh, gx as f32 + 0.5, gy as f32 + 0.5, EMISSIVE_RADIUS, intensity);
+    }
+    let cell = LIGHT_CELL as f32;
+    for l in lights.chunks_exact(4) {
+        let cx = (l[0] - x0 as f32) / cell;
+        let cy = (l[1] - y0 as f32) / cell;
+        splat_occluded(&mut light, &opacity, gw, gh, cx, cy, l[2] / cell, l[3]);
+    }
+
+    let top = f32::from(levels - 1);
+    for r in 0..vh {
+        let src = (y0 + r) * w + x0;
+        let cells = slice::from_raw_parts(grid.add(src), vw);
+        let grain = slice::from_raw_parts(noise.add(src), vw);
+        let fy = r as f32 / cell;
+        let gy = (fy as usize).min(gh - 2);
+        let ty = fy - gy as f32;
+        for c in 0..vw {
+            let m = cells[c];
+            let fx = c as f32 / cell;
+            let gx = (fx as usize).min(gw - 2);
+            let tx = fx - gx as f32;
+            let i = gy * gw + gx;
+            let top_row = light[i] * (1.0 - tx) + light[i + 1] * tx;
+            let bottom_row = light[i + gw] * (1.0 - tx) + light[i + gw + 1] * tx;
+            let value = (top_row * (1.0 - ty) + bottom_row * ty).min(1.0);
+            let level = if (m as usize) < n_materials && emissive[m as usize] > 0 {
+                levels - 1
+            } else {
+                let dither = BAYER[(r & 3) * 4 + (c & 3)] / 16.0 - 0.5;
+                (value * top + dither * 0.9 + 0.5).floor().clamp(0.0, top) as u8
+            };
+            let base = m.wrapping_mul(variants).wrapping_add(grain[c]);
+            out[r * vw + c] = base.wrapping_mul(levels).wrapping_add(level);
         }
     }
 }

@@ -1,0 +1,370 @@
+"""Creatures living in the organism and how they are placed in a level."""
+
+from __future__ import annotations
+
+import math
+import random
+from dataclasses import dataclass
+
+from src.body import ENEMY_TEAM, Body
+from src.materials import ACID, AIR, BLOOD, SPORES
+from src.player import GRAVITY, MAX_FALL_SPEED
+from src.projectiles import ProjectileSystem
+from src.wand import Wand, WandSpec
+from src.world import World
+
+Rect = tuple[int, int, int, int]
+
+
+@dataclass(frozen=True)
+class CreatureSpec:
+    key: str
+    name_de: str
+    width: int
+    height: int
+    hp: float
+    flying: bool
+    speed: float  # px/s
+    sight: float  # px
+    melee_damage: float = 0.0
+    melee_cooldown: float = 1.0
+    jump_speed: float = 0.0
+    # Ranged attacks are small wands (block keys); several patterns are cycled.
+    patterns: tuple[tuple[str, ...], ...] = ()
+    ranged_cooldown: float = 0.0
+    ranged_range: float = 0.0
+    radial: int = 0  # >0: cast every pattern in this many directions at once
+    hover_height: float = 0.0  # flyers keep this far above the player
+    stationary: bool = False
+    summon: str | None = None  # creature key spawned periodically
+    summon_interval: float = 0.0
+    summon_max: int = 0
+    boss: bool = False
+    gore: int = BLOOD
+    burst: int = 4  # radius of the gore splash on death
+    pop_on_touch: bool = False  # bursts when it touches the player
+    hangs: bool = False  # placed under ceilings instead of on floors
+    pearls: int = 10  # blood pearls dropped on death
+
+
+MAGGOT = CreatureSpec(
+    "made", "Fleischmade", width=10, height=6, hp=20, flying=False, speed=45, sight=450,
+    melee_damage=8, melee_cooldown=0.8, jump_speed=170, pearls=8,
+)  # fmt: skip
+SWARMER = CreatureSpec(
+    "schwaermer", "Gallenschwärmer", width=9, height=7, hp=14, flying=True, speed=60,
+    sight=450, patterns=(("sekret_saeure", "klumpen"),), ranged_cooldown=2.6,
+    ranged_range=320, hover_height=60, pearls=12,
+)  # fmt: skip
+STOMACH_WORM = CreatureSpec(
+    "magenwurm", "Der Magenwurm", width=28, height=14, hp=360, flying=True, speed=55,
+    sight=650, melee_damage=15, melee_cooldown=1.0,
+    patterns=(
+        ("doppel", "sekret_saeure", "klumpen", "sekret_saeure", "klumpen"),
+        ("beschleunigung", "nadel"),
+        ("beschleunigung", "nadel"),
+    ),
+    ranged_cooldown=1.1, ranged_range=520, hover_height=70, boss=True, gore=ACID, pearls=150,
+)  # fmt: skip
+HEART = CreatureSpec(
+    "herz", "Das Herz", width=40, height=36, hp=1000, flying=True, speed=0, sight=700,
+    patterns=(("sekret_feuer", "klumpen"), ("sekret_saeure", "klumpen"), ("funke",)),
+    ranged_cooldown=1.9, ranged_range=700, radial=12, stationary=True,
+    summon="made", summon_interval=7.0, summon_max=5, boss=True,
+)  # fmt: skip
+BONE_SPITTER = CreatureSpec(
+    "knochenspeier", "Knochenspeier", width=8, height=7, hp=30, flying=True, speed=0,
+    sight=380, patterns=(("beschleunigung", "nadel"), ("doppel", "nadel", "nadel")),
+    ranged_cooldown=1.8, ranged_range=380, stationary=True, hangs=True, pearls=15,
+)  # fmt: skip
+SPORE_BLOAT = CreatureSpec(
+    "sporenblase", "Sporenblase", width=9, height=9, hp=8, flying=True, speed=28, sight=300,
+    melee_damage=6, pop_on_touch=True, gore=SPORES, burst=11, pearls=10,
+)  # fmt: skip
+SPECIES: dict[str, CreatureSpec] = {
+    spec.key: spec
+    for spec in (MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, HEART)
+}
+
+MELEE_REACH = 2  # px around the body that counts as touching
+WANDER_PAUSE = 0.35  # chance that a new wander leg is a pause
+HURT_FLASH = 0.12  # seconds a creature flashes after taking damage
+MEMORY = 3.0  # seconds a creature keeps hunting the last place it saw the player
+
+
+class Creature(Body):
+    team = ENEMY_TEAM
+
+    def __init__(self, spec: CreatureSpec, x: int, y: int, rng: random.Random) -> None:
+        super().__init__(x, y, spec.width, spec.height, spec.hp)
+        self.spec = spec
+        self.rng = rng
+        self.step_up = 3
+        self.facing = 1
+        self.attack_cooldown = 0.0
+        self.ranged_cooldown = rng.uniform(0.5, spec.ranged_cooldown or 1.0)
+        self.wander_dir = 0
+        self.wander_time = 0.0
+        self.flash = 0.0
+        self.age = rng.uniform(0, 10)
+        self.alerted = False
+        self.memory = 0.0
+        self.last_seen = (0.0, 0.0)
+        self.pattern = 0
+        self.summon_timer = spec.summon_interval
+        self.summons: list[str] = []  # creature keys the manager should spawn
+        self.attacks = [
+            Wand(
+                WandSpec(spec.name_de, blocks, mana_max=1e9, mana_regen=1e9, cast_delay=0, recharge=0),
+                rng,
+            )
+            for blocks in spec.patterns
+        ]
+
+    def hurt(self, amount: float) -> None:
+        if amount > 0:
+            self.flash = HURT_FLASH
+            self.alerted = True
+        super().hurt(amount)
+
+    def update(
+        self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
+    ) -> None:
+        if self.dead:
+            return
+        self.age += dt
+        self.flash = max(0.0, self.flash - dt)
+        self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
+        self.ranged_cooldown = max(0.0, self.ranged_cooldown - dt)
+        self.unstick(world)
+
+        px, py = player.center
+        sees = not player.dead and self.can_see(world, px, py, self.spec.sight)
+        self.alerted = self.alerted or sees
+        if sees:
+            self.memory = MEMORY
+            self.last_seen = (px, py)
+        else:
+            self.memory = max(0.0, self.memory - dt)
+        hunting = self.memory > 0 and not player.dead
+        if self.spec.stationary:
+            self.vx = self.vy = 0.0
+        else:
+            if self.spec.flying:
+                self._fly(world, dt, hunting)
+            else:
+                self._crawl(world, dt, hunting)
+            self.move(world, dt)
+
+        if sees:
+            self._attack(player, projectiles)
+        if self.spec.summon and self.alerted:
+            self.summon_timer -= dt
+            if self.summon_timer <= 0:
+                self.summon_timer = self.spec.summon_interval
+                self.summons.append(self.spec.summon)
+        self.apply_environment(world, dt)
+
+    # -------------------------------------------------------------- movement
+
+    def _wander(self, dt: float) -> int:
+        self.wander_time -= dt
+        if self.wander_time <= 0:
+            self.wander_time = self.rng.uniform(0.8, 2.5)
+            self.wander_dir = 0 if self.rng.random() < WANDER_PAUSE else self.rng.choice((-1, 1))
+        return self.wander_dir
+
+    def _crawl(self, world: World, dt: float, hunting: bool) -> None:
+        cx, _ = self.center
+        px, _ = self.last_seen
+        if hunting:
+            direction = 0 if abs(px - cx) < 2 else (1 if px > cx else -1)
+            speed = self.spec.speed
+        else:
+            direction = self._wander(dt)
+            speed = self.spec.speed * 0.5
+        if direction:
+            self.facing = direction
+        self.vx += (direction * speed - self.vx) * min(1.0, 8.0 * dt)
+        wall_ahead = direction and self.blocked(world, self.x + direction, self.y - self.step_up)
+        if wall_ahead and self.on_ground:
+            if hunting:
+                self.vy = -self.spec.jump_speed
+            else:
+                self.wander_dir = -self.wander_dir
+        self.vy = min(self.vy + GRAVITY * dt, MAX_FALL_SPEED)
+
+    def _fly(self, world: World, dt: float, hunting: bool) -> None:
+        cx, cy = self.center
+        if hunting:
+            px, py = self.last_seen
+            tx, ty = px, py - self.spec.hover_height
+            dx, dy = tx - cx, ty - cy
+            distance = math.hypot(dx, dy) or 1.0
+            if distance < 12:
+                dx = dy = 0.0
+            wanted_vx = dx / distance * self.spec.speed
+            wanted_vy = dy / distance * self.spec.speed
+            self.facing = 1 if px > cx else -1
+        else:
+            direction = self._wander(dt)
+            if direction:
+                self.facing = direction
+            wanted_vx = direction * self.spec.speed * 0.5
+            wanted_vy = 0.0
+        wanted_vy += math.sin(self.age * 5) * 18  # buzzing bob
+        follow = min(1.0, 3.0 * dt)
+        self.vx += (wanted_vx - self.vx) * follow
+        self.vy += (wanted_vy - self.vy) * follow
+
+    # --------------------------------------------------------------- attacks
+
+    def _attack(self, player: Body, projectiles: ProjectileSystem) -> None:
+        spec = self.spec
+        if spec.melee_damage and self.attack_cooldown <= 0 and self._touches(player):
+            player.hurt(spec.melee_damage)
+            self.attack_cooldown = spec.melee_cooldown
+            if spec.pop_on_touch:
+                self.hp = 0.0
+                return
+        if self.attacks and self.ranged_cooldown <= 0:
+            cx, cy = self.center
+            px, py = player.center
+            if math.hypot(px - cx, py - cy) <= spec.ranged_range:
+                wand = self.attacks[self.pattern % len(self.attacks)]
+                self.pattern += 1
+                wand.cooldown = wand.recharge_left = 0.0
+                shots = wand.cast()
+                if spec.radial:
+                    turn = self.rng.uniform(0, math.tau)
+                    for k in range(spec.radial):
+                        angle = turn + math.tau * k / spec.radial
+                        projectiles.spawn(shots, cx, cy, angle, self.team)
+                else:
+                    angle = math.atan2(py - cy, px - cx) - 0.25  # lob slightly upwards
+                    projectiles.spawn(shots, cx, cy, angle, self.team)
+                self.ranged_cooldown = spec.ranged_cooldown * self.rng.uniform(0.8, 1.2)
+
+    def _touches(self, other: Body) -> bool:
+        r = MELEE_REACH
+        return (
+            self.x - r < other.x + other.width
+            and other.x < self.x + self.width + r
+            and self.y - r < other.y + other.height
+            and other.y < self.y + self.height + r
+        )
+
+
+class EnemyManager:
+    """All creatures of a level."""
+
+    def __init__(self) -> None:
+        self.creatures: list[Creature] = []
+
+    def clear(self) -> None:
+        self.creatures.clear()
+
+    def alive(self) -> list[Creature]:
+        return [c for c in self.creatures if not c.dead]
+
+    def update(
+        self,
+        world: World,
+        dt: float,
+        player: Body,
+        projectiles: ProjectileSystem,
+        area: Rect,
+    ) -> list[Creature]:
+        """Update creatures inside ``area``; returns the ones that died this update."""
+        x0, y0, x1, y1 = area
+        for creature in self.creatures:
+            cx, cy = creature.center
+            if x0 <= cx < x1 and y0 <= cy < y1:
+                creature.update(world, dt, player, projectiles)
+        self._spawn_summons(world)
+        died = [c for c in self.creatures if c.dead]
+        for creature in died:
+            cx, cy = creature.center
+            radius = 12 if creature.spec.boss else creature.spec.burst
+            world.splash(int(cx), int(cy), radius, creature.spec.gore)
+        self.creatures = [c for c in self.creatures if not c.dead]
+        return died
+
+    def _spawn_summons(self, world: World) -> None:
+        for parent in list(self.creatures):
+            for key in parent.summons:
+                spec = SPECIES[key]
+                alive = sum(1 for c in self.creatures if c.spec is spec and not c.dead)
+                if alive >= parent.spec.summon_max:
+                    continue
+                cx, cy = parent.center
+                side = parent.rng.choice((-1, 1))
+                x = int(cx + side * (parent.width / 2 + spec.width + 2))
+                y = int(cy)
+                if not world.rect_blocked(x, y, spec.width, spec.height):
+                    child = Creature(spec, x, y, parent.rng)
+                    child.alerted = True
+                    child.memory = MEMORY
+                    child.last_seen = parent.last_seen
+                    self.creatures.append(child)
+            parent.summons.clear()
+
+    def boss(self) -> Creature | None:
+        for creature in self.creatures:
+            if creature.spec.boss and not creature.dead:
+                return creature
+        return None
+
+
+def spawn_boss(key: str, centre: tuple[int, int], rng: random.Random) -> Creature:
+    """Create a boss centred on ``centre``."""
+    spec = SPECIES[key]
+    return Creature(spec, centre[0] - spec.width // 2, centre[1] - spec.height // 2, rng)
+
+
+def populate(
+    world: World,
+    rng: random.Random,
+    avoid: tuple[int, int],
+    walkers: int,
+    flyers: int,
+    spitters: int = 0,
+    bloats: int = 0,
+    safe_radius: float = 170,
+) -> list[Creature]:
+    """Place creatures in open cave space, away from ``avoid`` (the spawn)."""
+    creatures: list[Creature] = []
+    wanted = ((MAGGOT, walkers), (SWARMER, flyers), (BONE_SPITTER, spitters), (SPORE_BLOAT, bloats))
+    for spec, count in wanted:
+        placed = 0
+        for _attempt in range(count * 80):
+            if placed >= count:
+                break
+            x = rng.randint(20, world.width - 20)
+            y = rng.randint(20, world.height - 20)
+            if world.get(x, y) != AIR or math.hypot(x - avoid[0], y - avoid[1]) < safe_radius:
+                continue
+            if spec.hangs:
+                while world.get(x, y - 1) == AIR and y > 3:
+                    y -= 1
+                if not world.rect_blocked(x, y - 1, 1, 1):  # needs a ceiling
+                    continue
+                top = y
+            elif not spec.flying:
+                while world.get(x, y + 1) == AIR and y < world.height - 3:
+                    y += 1
+                if not world.rect_blocked(x, y + 1, 1, 1):  # needs solid ground
+                    continue
+                top = y - spec.height + 1
+            else:
+                top = y
+            left = x - spec.width // 2
+            clearance = 6 if spec.flying and not spec.hangs else 0
+            if world.rect_blocked(
+                left - clearance, top - clearance,
+                spec.width + 2 * clearance, spec.height + 2 * clearance,
+            ):  # fmt: skip
+                continue
+            creatures.append(Creature(spec, left, top, rng))
+            placed += 1
+    return creatures

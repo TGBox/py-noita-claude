@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from src.body import PLAYER_TEAM, Body
 from src.materials import KIND, LIQUID, STOPS_PROJECTILE
 from src.spells import TIMER_DELAY, Block, Category, Trigger
 from src.wand import Shot
@@ -40,13 +42,17 @@ class Projectile:
     bounces: int
     homing: bool
     trigger: Trigger | None
+    damage: float = 0.0
+    team: str = PLAYER_TEAM
     children: list[Shot] = field(default_factory=list)
     age: float = 0.0
     alive: bool = True
     released: bool = False
 
 
-def build(shot: Shot, x: float, y: float, angle: float) -> Projectile:
+def build(
+    shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM
+) -> Projectile:
     """Apply a shot's modifiers to its form and launch it."""
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
@@ -76,6 +82,8 @@ def build(shot: Shot, x: float, y: float, angle: float) -> Projectile:
         bounces=form.bounces,
         homing=homing,
         trigger=trigger,
+        damage=form.damage,
+        team=team,
         children=list(shot.children),
     )
 
@@ -91,26 +99,42 @@ class ProjectileSystem:
     def clear(self) -> None:
         self.items.clear()
 
-    def spawn(self, shots: list[Shot], x: float, y: float, angle: float) -> None:
+    def spawn(
+        self, shots: list[Shot], x: float, y: float, angle: float, team: str = PLAYER_TEAM
+    ) -> None:
         for shot in shots:
             if len(self.items) + len(self._pending) >= MAX_PROJECTILES:
                 return
-            self._pending.append(build(shot, x, y, angle))
+            self._pending.append(build(shot, x, y, angle, team))
 
-    def update(self, world: World, dt: float, target: tuple[float, float]) -> list[Blast]:
-        """Advance every projectile; returns the explosions of this update."""
+    def update(
+        self,
+        world: World,
+        dt: float,
+        target: tuple[float, float],
+        bodies: Sequence[Body] = (),
+    ) -> list[Blast]:
+        """Advance every projectile; returns the explosions of this update.
+
+        Projectiles hit ``bodies`` of other teams and deal their direct damage.
+        """
         self._blasts = []
         self.items.extend(self._pending)
         self._pending = []
         for projectile in self.items:
-            self._update_one(projectile, world, dt, target)
+            self._update_one(projectile, world, dt, target, bodies)
         self.items = [p for p in self.items if p.alive]
         return self._blasts
 
     # ----------------------------------------------------------------- flight
 
     def _update_one(
-        self, p: Projectile, world: World, dt: float, target: tuple[float, float]
+        self,
+        p: Projectile,
+        world: World,
+        dt: float,
+        target: tuple[float, float],
+        bodies: Sequence[Body],
     ) -> None:
         p.age += dt
         if p.age >= p.lifetime:
@@ -126,6 +150,13 @@ class ProjectileSystem:
         steps = int(math.hypot(dx, dy)) + 1
         for _ in range(steps):
             nx, ny = p.x + dx / steps, p.y + dy / steps
+            if p.form.bounces == 0:
+                victim = _body_at(bodies, p.team, nx, ny)
+                if victim is not None:
+                    victim.hurt(p.damage)
+                    p.x, p.y = nx, ny
+                    self._end(p, world, hit=True, wet=False)
+                    return
             cell = world.get(int(nx), int(ny))
             if not STOPS_PROJECTILE[cell]:
                 p.x, p.y = nx, ny
@@ -174,7 +205,14 @@ class ProjectileSystem:
         """Cast the payload group from the projectile's position and heading."""
         p.released = True
         angle = math.atan2(p.vy, p.vx)
-        self.spawn(p.children, p.x, p.y, angle)
+        self.spawn(p.children, p.x, p.y, angle, p.team)
+
+
+def _body_at(bodies: Sequence[Body], team: str, x: float, y: float) -> Body | None:
+    for body in bodies:
+        if body.team != team and not body.dead and body.contains(x, y):
+            return body
+    return None
 
 
 def _steer(p: Projectile, target: tuple[float, float], dt: float) -> None:

@@ -16,7 +16,7 @@ from pathlib import Path
 from src.materials import MATERIALS, MATERIAL_COUNT
 from src.reactions import build_tables, to_fixed
 
-ABI_VERSION = 3
+ABI_VERSION = 5
 NATIVE_DIR = Path(__file__).resolve().parent.parent / "native"
 LIBRARY_NAME = {
     "win32": "cloita_core.dll",
@@ -99,6 +99,10 @@ def load() -> ctypes.CDLL:
         ctypes.c_void_p, _u8p, _u8p, _u8p, _size, _size, _size, _size,
     ]
     library.cloita_grain.argtypes = [_u8p, _size, _size, ctypes.c_uint64, ctypes.c_uint8]
+    library.cloita_render_lit.argtypes = [
+        _u8p, _u8p, _u8p, _size, _size, _size, _size, _size, ctypes.c_uint8, ctypes.c_uint8,
+        _u8p, _u8p, _size, ctypes.POINTER(ctypes.c_float), _size, ctypes.c_float,
+    ]  # fmt: skip
     library.cloita_render.argtypes = [
         _u8p, _u8p, _u8p, _size, _size, _size, _size, _size, ctypes.c_uint8,
     ]
@@ -195,3 +199,32 @@ def render(
 def grain(out: ctypes.Array, width: int, height: int, seed: int, variants: int) -> None:
     """Fill ``out`` with a smooth colour-variant texture (one byte per cell)."""
     load().cloita_grain(out, width, height, seed & 0xFFFF_FFFF_FFFF_FFFF, variants)
+
+
+def render_lit(
+    grid: ctypes.Array,
+    noise: ctypes.Array,
+    out: ctypes.Array,
+    world_width: int,
+    x0: int,
+    y0: int,
+    view_width: int,
+    view_height: int,
+    variants: int,
+    levels: int,
+    glow: list[int],
+    lights: list[tuple[float, float, float, float]],
+    ambient: float,
+    opaque: list[int] | None = None,
+) -> None:
+    """Render with lighting: ``lights`` are (x, y, radius, intensity) in world pixels.
+
+    ``opaque`` marks materials (1 per material) that block dynamic light.
+    """
+    flat = [value for light in lights for value in light]
+    light_array = (ctypes.c_float * max(1, len(flat)))(*flat)
+    load().cloita_render_lit(
+        grid, noise, out, world_width, x0, y0, view_width, view_height, variants, levels,
+        _array(ctypes.c_uint8, glow), _array(ctypes.c_uint8, opaque or [0] * len(glow)),
+        len(glow), light_array, len(lights), ambient,
+    )  # fmt: skip
