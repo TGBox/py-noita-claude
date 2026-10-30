@@ -171,7 +171,7 @@ class TestTriggers(unittest.TestCase):
         world, system = open_world(), ProjectileSystem()
         system.spawn([shot("funke", "nerv_zeit", children=[shot("nadel")])], 10, 48, 0.0)
         run(system, world, TIMER_DELAY + 0.05)  # released payload joins on the next update
-        child = [p for p in system.items if p.form.key == "nadel"][0]
+        child = next(p for p in system.items if p.form.key == "nadel")
         self.assertGreater(child.vx, 0)
         self.assertAlmostEqual(child.vy, 0.0, places=3)
 
@@ -208,7 +208,12 @@ class TestNewBlocks(unittest.TestCase):
         self.assertEqual(len(system.items), CATALOG["knochensplitter"].pellets)
 
     def test_modifiers_extend_lifetime_and_bounces(self) -> None:
-        p = build(shot("funke", "langlebigkeit", "abprall", "durchbohren", "brandbeschleuniger"), 0, 0, 0.0)
+        p = build(
+            shot("funke", "langlebigkeit", "abprall", "durchbohren", "brandbeschleuniger"),
+            0,
+            0,
+            0.0,
+        )
         self.assertAlmostEqual(p.lifetime, CATALOG["funke"].lifetime * 2)
         self.assertEqual(p.bounces, 3)
         self.assertTrue(p.pierce and p.ignites)

@@ -95,7 +95,9 @@ def load(path: Path | None = None) -> Records:
     creatures = raw.get("creatures")
     if isinstance(creatures, dict):
         values["creatures"] = {
-            key: int(count) for key, count in creatures.items() if isinstance(key, str) and _is_number(count)
+            key: int(count)
+            for key, count in creatures.items()
+            if isinstance(key, str) and _is_number(count)
         }
     return Records(**values)
 

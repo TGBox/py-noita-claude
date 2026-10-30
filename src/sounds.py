@@ -78,7 +78,9 @@ def envelope(signal: Signal, attack: float, decay: float, sustain: float = 0.0) 
     out: Signal = []
     for i, value in enumerate(signal):
         t = i / SAMPLE_RATE
-        level = t / attack if t < attack else sustain + (1 - sustain) * math.exp(-(t - attack) * decay)
+        level = (
+            t / attack if t < attack else sustain + (1 - sustain) * math.exp(-(t - attack) * decay)
+        )
         out.append(value * level)
     return out
 
@@ -122,7 +124,9 @@ def finish(signal: Signal, gain: float = 1.0) -> bytes:
 def cast(variant: int) -> bytes:
     """A soft wet whoosh with a small fleshy pop."""
     pitch = (1.0, 0.86, 1.15)[variant % 3]
-    whoosh = envelope(noise(0.14, sweep(2600 * pitch, 500 * pitch, 0.14), seed=10 + variant), 0.012, 28)
+    whoosh = envelope(
+        noise(0.14, sweep(2600 * pitch, 500 * pitch, 0.14), seed=10 + variant), 0.012, 28
+    )
     pop = envelope(sine(sweep(170 * pitch, 90 * pitch, 0.08), 0.08), 0.004, 40)
     return finish(mix((whoosh, 1.0), (pop, 0.6)), gain=0.7)
 
@@ -130,8 +134,14 @@ def cast(variant: int) -> bytes:
 def blast(big: bool) -> bytes:
     """A deep thump with a muffled rumble tail."""
     duration = 1.1 if big else 0.4
-    thump = envelope(sine(sweep(95 if big else 130, 32 if big else 48, duration, 2.0), duration), 0.008, 5 if big else 11)
-    rumble = envelope(noise(duration, sweep(900 if big else 1400, 120, duration), seed=3), 0.01, 3.5 if big else 9)
+    thump = envelope(
+        sine(sweep(95 if big else 130, 32 if big else 48, duration, 2.0), duration),
+        0.008,
+        5 if big else 11,
+    )
+    rumble = envelope(
+        noise(duration, sweep(900 if big else 1400, 120, duration), seed=3), 0.01, 3.5 if big else 9
+    )
     return finish(mix((thump, 1.0), (rumble, 0.9)))
 
 
@@ -168,7 +178,10 @@ def buy() -> bytes:
 
 
 def chord(frequencies: Sequence[float], duration: float, attack: float) -> Signal:
-    voices = [envelope(sine(lambda _t, f=f: f, duration, harmonics=(0.15,)), attack, 2.5) for f in frequencies]
+    voices = [
+        envelope(sine(lambda _t, f=f: f, duration, harmonics=(0.15,)), attack, 2.5)
+        for f in frequencies
+    ]
     return mix(*((voice, 1.0 / len(voices)) for voice in voices))
 
 

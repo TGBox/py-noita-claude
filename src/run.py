@@ -99,7 +99,9 @@ class Run:
         self.events: list[str] = []  # sound cues of the last update
         self._hurt_cooldown = 0.0
         self._accumulator = 0.0
-        self.discoveries: list[tuple[str, str]] = []  # ("block"|"creature", key), drained by the game
+        self.discoveries: list[
+            tuple[str, str]
+        ] = []  # ("block"|"creature", key), drained by the game
         self.checkpoint: dict[str, Any] | None = None  # state at the last sanctum entry
         self.new_run()
 
@@ -166,7 +168,9 @@ class Run:
             offers.append(Pickup(x, y, block=key, price=block_price(key, level), floating=True))
         x, y = layout.shop[SHOP_BLOCKS]
         offers.append(
-            Pickup(x, y, wand=generate_wand(self.rng, level), price=wand_price(level), floating=True)
+            Pickup(
+                x, y, wand=generate_wand(self.rng, level), price=wand_price(level), floating=True
+            )
         )
         available = [perk.key for perk in PERKS if perk.key not in self.perks]
         for (x, y), key in zip(layout.altar, self.rng.sample(available, PERK_CHOICES)):
@@ -224,7 +228,10 @@ class Run:
                 "acid_immune": player.acid_immune,
             },
             "wands": [
-                {"spec": {**asdict(wand.spec), "blocks": list(wand.spec.blocks)}, "slots": list(wand.slots)}
+                {
+                    "spec": {**asdict(wand.spec), "blocks": list(wand.spec.blocks)},
+                    "slots": list(wand.slots),
+                }
                 for wand in self.inventory.wands
             ],
             "active": self.inventory.active,

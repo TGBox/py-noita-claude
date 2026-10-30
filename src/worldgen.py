@@ -93,9 +93,7 @@ def generate_level(world: World, depth: Depth) -> Level:
     def amount(base: float, factor: float) -> int:
         return int(base * scale * factor)
 
-    _scatter(
-        world, BONE_DUST, amount(18, depth.bone_dust), (6, 10), SPAWN_FLOOR + 10, min_width=70
-    )
+    _scatter(world, BONE_DUST, amount(18, depth.bone_dust), (6, 10), SPAWN_FLOOR + 10, min_width=70)
     _scatter(world, BLOOD, amount(16, depth.blood), (9, 15), SPAWN_FLOOR + 10)
     _scatter(world, TALLOW, amount(7, depth.tallow), (7, 11), h // 2)
     _scatter(world, ACID, amount(8, depth.acid), (7, 12), int(h * 0.6))
@@ -177,8 +175,9 @@ def _connections(world: World, nodes: list[tuple[int, int]]) -> list[tuple]:
     while remaining:
         a, b = min(
             ((a, b) for a in connected for b in remaining),
-            key=lambda e: (nodes[e[0]][0] - nodes[e[1]][0]) ** 2
-            + (nodes[e[0]][1] - nodes[e[1]][1]) ** 2,
+            key=lambda e: (
+                (nodes[e[0]][0] - nodes[e[1]][0]) ** 2 + (nodes[e[0]][1] - nodes[e[1]][1]) ** 2
+            ),
         )
         edges.append((nodes[a], nodes[b]))
         connected.append(b)
@@ -230,8 +229,7 @@ def _carve_tunnel(
 def _in_spawn_zone(world: World, x: int, y: int) -> bool:
     centre_x = world.width // 2
     return (
-        abs(x - centre_x) < SPAWN_HALF_WIDTH + SPAWN_CLEARANCE
-        and y < SPAWN_FLOOR + SPAWN_CLEARANCE
+        abs(x - centre_x) < SPAWN_HALF_WIDTH + SPAWN_CLEARANCE and y < SPAWN_FLOOR + SPAWN_CLEARANCE
     )
 
 

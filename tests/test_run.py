@@ -393,7 +393,9 @@ class TestSaveAndContinue(unittest.TestCase):
         self.assertEqual(other.pearls, 77)
         self.assertEqual(other.perks, {"zaehes_fleisch"})
         self.assertEqual(other.player.max_hp, run.player.max_hp)
-        self.assertEqual([w.slots for w in other.inventory.wands], [w.slots for w in run.inventory.wands])
+        self.assertEqual(
+            [w.slots for w in other.inventory.wands], [w.slots for w in run.inventory.wands]
+        )
         self.assertEqual(other.inventory.bag, run.inventory.bag)
         self.assertEqual([(p.block, p.perk, p.price, p.wand) for p in other.pickups], shop)
         # descending continues identically
@@ -406,10 +408,17 @@ class TestSaveAndContinue(unittest.TestCase):
         run = Run(5)
         run.enter_sanctum()
         good = run.checkpoint
-        for broken in ({}, {**good, "version": 0}, {**good, "depth_index": 9}, {**good, "wands": [{"spec": {}}]}):
+        for broken in (
+            {},
+            {**good, "version": 0},
+            {**good, "depth_index": 9},
+            {**good, "wands": [{"spec": {}}]},
+        ):
             with self.assertRaises(ValueError):
                 Run(1).restore(broken)
-        wands = [{**good["wands"][0], "spec": {**good["wands"][0]["spec"], "blocks": ["gibtsnicht"]}}]
+        wands = [
+            {**good["wands"][0], "spec": {**good["wands"][0]["spec"], "blocks": ["gibtsnicht"]}}
+        ]
         with self.assertRaises(ValueError):
             Run(1).restore({**good, "wands": wands})
 

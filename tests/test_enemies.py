@@ -218,7 +218,6 @@ if __name__ == "__main__":
     unittest.main()
 
 
-
 class TestBroodMother(unittest.TestCase):
     def test_guards_the_gedaerm_and_summons_in_turn(self) -> None:
         from src.depths import DEPTHS

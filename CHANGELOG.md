@@ -1,11 +1,17 @@
 # Changelog
 
+## SemVer v0.4.2
+
+- 2026-10-30 (13a8c72): fix: fix ruff errors in Github action
+
 ## SemVer v0.4.1
 
-- 2026-10-30 (45a6f15): feat: add menu, save and pause options
+- 2026-10-30 (cad9a5f): Merge pull request #5 from TGBox/master
+- 2026-10-30 (c21d87d): feat: add menu, save and pause options
 
 ## SemVer v0.4.0
 
+- 2026-10-30 (9d4eb72): Merge pull request #4 from TGBox/develop
 - 2026-10-30 (90ddf1d): Merge pull request #3 from TGBox/master
 - 2026-10-30 (039e1ac): fix: fix terrain leaving single pixels behind, fix harsh sound files
 

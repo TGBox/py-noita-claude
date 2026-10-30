@@ -72,7 +72,9 @@ PRESETS: tuple[WandSpec, ...] = (
 class _Draw:
     """Draws blocks from a deck for one cast and adds up their cost."""
 
-    def __init__(self, blocks: tuple[Block, ...], order: list[int], start: int, mana: float) -> None:
+    def __init__(
+        self, blocks: tuple[Block, ...], order: list[int], start: int, mana: float
+    ) -> None:
         self.blocks = blocks
         self.order = order
         self.index = start

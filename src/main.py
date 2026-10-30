@@ -130,9 +130,7 @@ class Game:
         if self.is_fullscreen:
             self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         else:
-            self.screen = pygame.display.set_mode(
-                (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE
-            )
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
 
     # ----------------------------------------------------------------- events
 
@@ -338,7 +336,9 @@ class Game:
         cam_x = int(min(max(self.camera[0] + jitter_x, 0), WORLD_WIDTH - VIEW_WIDTH))
         cam_y = int(min(max(self.camera[1] + jitter_y, 0), WORLD_HEIGHT - VIEW_HEIGHT))
         if self.lighting:
-            self.renderer.refresh(self.run.world, cam_x, cam_y, self._lights(), self.run.depth.ambient)
+            self.renderer.refresh(
+                self.run.world, cam_x, cam_y, self._lights(), self.run.depth.ambient
+            )
         else:
             self.renderer.refresh(self.run.world, cam_x, cam_y)
         self.canvas.blit(self.renderer.surface, (0, 0))

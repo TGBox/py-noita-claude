@@ -72,7 +72,10 @@ class Hud:
 
         status = [
             label
-            for active, label in ((state.player.burning > 0, "Brennt!"), (state.player.wet > 0, "Nass"))
+            for active, label in (
+                (state.player.burning > 0, "Brennt!"),
+                (state.player.wet > 0, "Nass"),
+            )
             if active
         ]
         if status:
@@ -89,7 +92,12 @@ class Hud:
 
         y = top + 34
         if state.sandbox:
-            self._text(screen, f"Pinsel: {state.paint_name} ({state.paint_slot}) | Größe {state.brush}", left, y)
+            self._text(
+                screen,
+                f"Pinsel: {state.paint_name} ({state.paint_slot}) | Größe {state.brush}",
+                left,
+                y,
+            )
             y += 18
             for line in SANDBOX_LINES:
                 self._text(screen, line, left, y)
@@ -105,13 +113,22 @@ class Hud:
         centre_x = viewport.offset_x + viewport.target_width // 2
         if state.prompt:
             text = self.font.render(state.prompt, True, COLOR_TEXT)
-            screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.62)))
+            screen.blit(
+                text,
+                text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.62)),
+            )
         if state.notice:
             text = self.font.render(state.notice, True, COLOR_ACCENT)
-            screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.38)))
+            screen.blit(
+                text,
+                text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.38)),
+            )
         if state.banner:
             text = self.big_font.render(state.banner, True, COLOR_TEXT)
-            screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.3)))
+            screen.blit(
+                text,
+                text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.3)),
+            )
         if state.outcome:
             message = {
                 "dead": "Du bist gestorben. R: Neuer Lauf",

@@ -191,9 +191,8 @@ class World:
             if material == AIR:
                 if current != AIR:
                     self.set_cell(x, y, AIR)
-            elif KIND[current] in (EMPTY, GAS, FLAME):
-                if not sprinkle or rnd() < 0.4:
-                    self.set_cell(x, y, material)
+            elif KIND[current] in (EMPTY, GAS, FLAME) and (not sprinkle or rnd() < 0.4):
+                self.set_cell(x, y, material)
 
     def explode(self, cx: int, cy: int, radius: int) -> int:
         """Blast a crater. Returns the number of destroyed solid/powder cells."""
