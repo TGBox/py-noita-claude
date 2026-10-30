@@ -1,6 +1,18 @@
 import unittest
 
-from src.materials import AIR, FIRE, LAVA, SAND, STONE, build_palette, MATERIAL_COUNT, VARIANTS
+from src import native
+from src.materials import (
+    ACID,
+    AIR,
+    BLOOD,
+    BONE,
+    BONE_DUST,
+    FLESH,
+    GROWTH,
+    MATERIAL_COUNT,
+    VARIANTS,
+)
+from src.texture import make_grain
 from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
 from src.viewport import Viewport
 from src.wand import BOLT_SPEED, WAND_COOLDOWN, Bolt, Wand
@@ -56,8 +68,8 @@ class TestWand(unittest.TestCase):
         world = World(64, 48, seed=1)
         for y in range(10, 30):
             for x in range(30, 50):
-                world.set_cell(x, y, STONE)
-        before = world.count(STONE)
+                world.set_cell(x, y, BONE)
+        before = world.count(BONE)
         bolt = Bolt(10.0, 20.0, BOLT_SPEED, 0.0)
         exploded = False
         for _ in range(60):
@@ -66,7 +78,7 @@ class TestWand(unittest.TestCase):
                 break
         self.assertTrue(exploded)
         self.assertFalse(bolt.alive)
-        self.assertLess(world.count(STONE), before)
+        self.assertLess(world.count(BONE), before)
 
     def test_bolt_flies_through_air_and_expires(self) -> None:
         world = World(64, 48, seed=1)
@@ -76,48 +88,70 @@ class TestWand(unittest.TestCase):
         self.assertFalse(bolt.alive)
 
 
-class TestMaterials(unittest.TestCase):
-    def test_palette_covers_every_variant(self) -> None:
-        self.assertEqual(len(build_palette()), MATERIAL_COUNT * VARIANTS)
-
-    def test_big_int_render_trick(self) -> None:
-        # The renderer packs material*VARIANTS + noise per byte via big-int arithmetic.
-        grid = bytes([0, 3, 10, 7, 2] * 50)
-        noise = bytes([3, 0, 1, 2, 3] * 50)
-        packed = int.from_bytes(grid, "little") * VARIANTS + int.from_bytes(noise, "little")
-        expected = bytes(g * VARIANTS + n for g, n in zip(grid, noise))
-        self.assertEqual(packed.to_bytes(len(grid), "little"), expected)
-
-
 class TestWorldGen(unittest.TestCase):
     def test_spawn_is_free_and_standing_on_ground(self) -> None:
         for seed in (1, 2, 3, 4, 5):
-            world = World(640, 360, seed=seed)
+            world = World(1280, 720, seed=seed)
             x, y = generate_world(world)
             self.assertFalse(world.rect_blocked(x, y, PLAYER_WIDTH, PLAYER_HEIGHT), seed)
             self.assertTrue(world.rect_blocked(x, y + 1, PLAYER_WIDTH, PLAYER_HEIGHT), seed)
 
     def test_generation_is_deterministic(self) -> None:
-        a, b = World(640, 360, seed=9), World(640, 360, seed=9)
+        a, b = World(1280, 720, seed=9), World(1280, 720, seed=9)
         generate_world(a)
         generate_world(b)
         self.assertEqual(a.grid, b.grid)
 
     def test_level_has_caves_and_materials(self) -> None:
-        world = World(640, 360, seed=7)
+        world = World(1280, 720, seed=7)
         generate_world(world)
         total = world.width * world.height
         self.assertGreater(world.count(AIR), total * 0.1)
-        self.assertGreater(world.count(STONE), total * 0.3)
-        self.assertGreater(world.count(SAND), 0)
-        self.assertGreater(world.count(LAVA) + world.count(FIRE), 0)
+        self.assertGreater(world.count(FLESH), total * 0.3)
+        for material in (BONE, BONE_DUST, BLOOD, ACID, GROWTH):
+            self.assertGreater(world.count(material), 0, material)
 
-    def test_world_is_playable_for_a_while(self) -> None:
-        world = World(640, 360, seed=11)
+    def test_spawn_is_safe_from_acid(self) -> None:
+        for seed in (1, 2, 3):
+            world = World(1280, 720, seed=seed)
+            x, y = generate_world(world)
+            for _ in range(240):
+                world.step((x - 200, y - 150, x + 200, y + 150))
+            for yy in range(y - 60, y + 30):
+                for xx in range(x - 80, x + 80):
+                    self.assertNotEqual(world.get(xx, yy), ACID, (seed, xx, yy))
+
+    def test_settles_quickly_near_the_camera(self) -> None:
+        world = World(1280, 720, seed=11)
         generate_world(world)
-        for _ in range(120):
-            world.step()
-        self.assertLess(world.active_chunks, 23 * 40)
+        area = (320, 0, 960, 360)
+        for _ in range(600):
+            world.step(area)
+        self.assertLess(world.step(area), 600)  # most chunks fell asleep
+
+
+class TestRenderCore(unittest.TestCase):
+    def test_render_writes_palette_indices_for_the_view(self) -> None:
+        world = World(64, 48, seed=1)
+        world.set_cell(10, 12, BLOOD)
+        grain = make_grain(64, 48)
+        out = bytearray(20 * 10)
+        native.render(
+            native.byte_view(world.grid),
+            native.byte_view(grain),
+            native.byte_view(out),
+            64, 5, 8, 20, 10, VARIANTS,
+        )  # fmt: skip
+        index = (12 - 8) * 20 + (10 - 5)
+        self.assertEqual(out[index], BLOOD * VARIANTS + grain[12 * 64 + 10])
+        self.assertEqual(out[0], world.get(5, 8) * VARIANTS + grain[8 * 64 + 5])
+        self.assertLess(max(out), MATERIAL_COUNT * VARIANTS)
+
+    def test_grain_uses_every_variant_and_is_deterministic(self) -> None:
+        a = make_grain(256, 128, seed=3)
+        self.assertEqual(a, make_grain(256, 128, seed=3))
+        self.assertNotEqual(a, make_grain(256, 128, seed=4))
+        self.assertEqual(set(a), set(range(VARIANTS)))
 
 
 if __name__ == "__main__":

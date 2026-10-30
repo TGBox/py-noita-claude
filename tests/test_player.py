@@ -1,6 +1,6 @@
 import unittest
 
-from src.materials import FIRE, SAND, STONE, WATER
+from src.materials import BLOOD, BONE, BONE_DUST, FIRE
 from src.player import (
     ENERGY_RECHARGE,
     MAX_ENERGY,
@@ -11,7 +11,7 @@ from src.player import (
 )
 from src.world import World
 
-W, H = 96, 64
+W, H = 240, 96
 DT = 1 / 60
 
 
@@ -46,20 +46,20 @@ class TestPlayer(unittest.TestCase):
 
     def test_walks_and_stops_at_wall(self) -> None:
         world = make_world()
-        fill(world, 60, 10, 62, H - 2, STONE)
+        fill(world, 60, 10, 62, H - 2, BONE)
         player = Player(40, H - 2 - PLAYER_HEIGHT)
         tick(player, world, 3.0, move=1)
         self.assertEqual(player.x, 60 - PLAYER_WIDTH)
 
     def test_steps_up_small_ledges_but_not_big_ones(self) -> None:
         world = make_world()
-        fill(world, 50, H - 4, 70, H - 2, STONE)  # 2 px ledge
+        fill(world, 50, H - 4, 70, H - 2, BONE)  # 2 px ledge
         player = Player(40, H - 2 - PLAYER_HEIGHT)
         tick(player, world, 2.0, move=1)
         self.assertGreater(player.x, 60)
 
         world = make_world()
-        fill(world, 50, H - 12, 70, H - 2, STONE)  # 10 px wall
+        fill(world, 50, H - 12, 70, H - 2, BONE)  # 10 px wall (higher than STEP_UP)
         player = Player(40, H - 2 - PLAYER_HEIGHT)
         tick(player, world, 2.0, move=1)
         self.assertEqual(player.x, 50 - PLAYER_WIDTH)
@@ -93,11 +93,11 @@ class TestPlayer(unittest.TestCase):
         self.assertEqual(player.energy, 0.0)
         self.assertFalse(player.on_ground)
 
-    def test_buried_player_is_pushed_out_of_sand(self) -> None:
+    def test_buried_player_is_pushed_out_of_bone_dust(self) -> None:
         world = make_world()
         player = Player(40, H - 2 - PLAYER_HEIGHT)
         tick(player, world, 0.1)
-        fill(world, 36, player.y + 4, 50, player.y + 9, SAND)  # buries the lower body
+        fill(world, 36, player.y + 4, 50, player.y + 9, BONE_DUST)  # buries the lower body
         tick(player, world, 0.1)
         self.assertFalse(world.rect_blocked(player.x, player.y, PLAYER_WIDTH, PLAYER_HEIGHT))
 
@@ -113,13 +113,13 @@ class TestPlayer(unittest.TestCase):
             player.update(world, DT, 0, False, False)
         self.assertTrue(player.dead)
 
-    def test_water_slows_walking(self) -> None:
+    def test_blood_slows_walking(self) -> None:
         dry = make_world()
         p_dry = Player(10, H - 2 - PLAYER_HEIGHT)
         tick(p_dry, dry, 1.0, move=1)
 
         wet = make_world()
-        fill(wet, 2, H - 14, W - 2, H - 2, WATER)
+        fill(wet, 2, H - 14, W - 2, H - 2, BLOOD)
         p_wet = Player(10, H - 2 - PLAYER_HEIGHT)
         tick(p_wet, wet, 1.0, move=1)
         self.assertLess(p_wet.x, p_dry.x)

@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from src.materials import STOPS_PROJECTILE
 from src.world import World
 
-BOLT_SPEED = 260.0  # px/s
+BOLT_SPEED = 520.0  # px/s
 BOLT_LIFETIME = 1.5  # seconds
-BOLT_RADIUS = 5  # explosion radius in cells
+BOLT_RADIUS = 9  # explosion radius in cells
 WAND_COOLDOWN = 0.2  # seconds between shots
 
 

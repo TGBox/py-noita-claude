@@ -5,23 +5,24 @@ from __future__ import annotations
 from src.materials import HAZARD_DPS, KIND, LIQUID
 from src.world import World
 
-PLAYER_WIDTH = 5
-PLAYER_HEIGHT = 9
+# Sizes and speeds are in world cells; one cell is one pixel at 640x360.
+PLAYER_WIDTH = 8
+PLAYER_HEIGHT = 18
 MAX_HP = 100.0
 MAX_ENERGY = 2.0  # seconds of levitation
 
-RUN_SPEED = 80.0  # px/s
+RUN_SPEED = 150.0  # px/s
 RUN_ACCEL = 14.0  # how fast velocity follows the target speed (1/s)
-GRAVITY = 520.0  # px/s^2
-JUMP_SPEED = 150.0
-LEVITATE_ACCEL = 900.0  # upward acceleration while levitating (must exceed GRAVITY)
-LEVITATE_MAX_SPEED = 110.0
-MAX_FALL_SPEED = 260.0
-LIQUID_MAX_SPEED = 70.0
+GRAVITY = 1000.0  # px/s^2
+JUMP_SPEED = 290.0
+LEVITATE_ACCEL = 1750.0  # upward acceleration while levitating (must exceed GRAVITY)
+LEVITATE_MAX_SPEED = 210.0
+MAX_FALL_SPEED = 500.0
+LIQUID_MAX_SPEED = 140.0
 LIQUID_RUN_FACTOR = 0.6
 ENERGY_RECHARGE = 1.5  # per second while standing on the ground
-STEP_UP = 3  # max ledge height the player walks up automatically
-UNSTICK_MAX = 14
+STEP_UP = 5  # max ledge height the player walks up automatically
+UNSTICK_MAX = 24
 
 
 class Player:

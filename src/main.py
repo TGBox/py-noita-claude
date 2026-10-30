@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import math
 import random
 import sys
 
 import pygame
 
 from src import materials as mat
-from src.player import MAX_ENERGY, MAX_HP, PLAYER_HEIGHT, PLAYER_WIDTH, Player
-from src.rendering import WorldRenderer
+from src.player import MAX_ENERGY, MAX_HP, Player
+from src.rendering import WorldRenderer, build_player_sprites
 from src.settings import (
     BRUSH_DEFAULT,
     BRUSH_MAX,
@@ -22,6 +23,7 @@ from src.settings import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     SIM_HZ,
+    SIM_MARGIN,
     TITLE,
     VIEW_HEIGHT,
     VIEW_WIDTH,
@@ -35,21 +37,27 @@ from src.worldgen import generate_world
 
 SIM_DT = 1.0 / SIM_HZ
 CAMERA_FOLLOW = 8.0  # 1/s, higher is snappier
-# Keys 1-8 select what the right mouse button paints.
+# Keys 1-9 and 0 select what the right mouse button paints.
 PAINT_MATERIALS = (
-    mat.SAND,
-    mat.WATER,
-    mat.OIL,
-    mat.STONE,
-    mat.WOOD,
-    mat.LAVA,
+    mat.BONE_DUST,
+    mat.BLOOD,
+    mat.TALLOW,
+    mat.ACID,
+    mat.FLESH,
+    mat.BONE,
+    mat.SINEW,
     mat.FIRE,
-    mat.AIR,
+    mat.GROWTH,
+    mat.SPORES,
 )
+PAINT_KEYS = (
+    pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5,
+    pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9, pygame.K_0,
+)  # fmt: skip
 JUMP_KEYS = (pygame.K_w, pygame.K_UP, pygame.K_SPACE)
-BOLT_COLOR = (255, 240, 150)
-ROBE_COLOR = (112, 62, 168)
-SKIN_COLOR = (236, 196, 160)
+BOLT_COLOR = (255, 226, 170)
+WAND_COLOR = (176, 160, 130)
+WAND_LENGTH = 9
 
 
 class Game:
@@ -60,13 +68,14 @@ class Game:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.running = True
-        self.font = pygame.font.SysFont(None, 36)
-        self.info_font = pygame.font.SysFont(None, 24)
+        self.font = pygame.font.SysFont(None, 40)
+        self.info_font = pygame.font.SysFont(None, 22)
 
         self.viewport = Viewport(VIEW_WIDTH, VIEW_HEIGHT)
         self.canvas = pygame.Surface((VIEW_WIDTH, VIEW_HEIGHT))
         self.world = World(WORLD_WIDTH, WORLD_HEIGHT)
-        self.renderer = WorldRenderer(self.world)
+        self.renderer = WorldRenderer(self.world, VIEW_WIDTH, VIEW_HEIGHT)
+        self.sprite_right, self.sprite_left = build_player_sprites()
         self.player = Player(0, 0)
         self.wand = Wand()
         self.bolts: list[Bolt] = []
@@ -74,6 +83,7 @@ class Game:
         self.paint_index = 0
         self.brush = BRUSH_DEFAULT
         self.sim_accumulator = 0.0
+        self.simulated_chunks = 0
         self.jump_queued = False
         self.spawn = (0, 0)
         self.new_world()
@@ -82,7 +92,7 @@ class Game:
 
     def new_world(self) -> None:
         """Generate a fresh level and put the player into it."""
-        self.world.rng.seed(random.randrange(2**31))
+        self.world.reseed(random.randrange(2**31))
         self.world.frame = 0
         self.spawn = generate_world(self.world)
         self.respawn()
@@ -90,7 +100,6 @@ class Game:
     def respawn(self) -> None:
         self.player.reset(*self.spawn)
         self.bolts.clear()
-        self.camera = [0.0, 0.0]
         self._snap_camera()
 
     def _snap_camera(self) -> None:
@@ -133,8 +142,8 @@ class Game:
             self.new_world()
         elif key in JUMP_KEYS:
             self.jump_queued = True
-        elif pygame.K_1 <= key < pygame.K_1 + len(PAINT_MATERIALS):
-            self.paint_index = key - pygame.K_1
+        elif key in PAINT_KEYS:
+            self.paint_index = PAINT_KEYS.index(key)
 
     # ----------------------------------------------------------------- update
 
@@ -153,7 +162,7 @@ class Game:
         self.jump_queued = False
 
         target_x, target_y = self._cursor_in_world()
-        left, _middle, right = pygame.mouse.get_pressed()
+        left, middle, right = pygame.mouse.get_pressed()
         self.wand.update(dt)
         if left and not self.player.dead:
             bolt = self.wand.try_fire(self.player.center, (target_x, target_y))
@@ -161,6 +170,8 @@ class Game:
                 self.bolts.append(bolt)
         if right:
             self.world.paint(target_x, target_y, self.brush, PAINT_MATERIALS[self.paint_index])
+        elif middle:
+            self.world.paint(target_x, target_y, self.brush, mat.AIR)
 
         self._step_simulation(dt)
         for bolt in self.bolts:
@@ -174,11 +185,13 @@ class Game:
         self._clamp_camera()
 
     def _step_simulation(self, dt: float) -> None:
-        """Run the world at a fixed rate, independent of the frame rate."""
+        """Run the world at a fixed rate near the camera, independent of the frame rate."""
+        x0, y0 = int(self.camera[0]) - SIM_MARGIN, int(self.camera[1]) - SIM_MARGIN
+        area = (x0, y0, x0 + VIEW_WIDTH + 2 * SIM_MARGIN, y0 + VIEW_HEIGHT + 2 * SIM_MARGIN)
         self.sim_accumulator += dt
         steps = 0
         while self.sim_accumulator >= SIM_DT and steps < MAX_SIM_STEPS_PER_FRAME:
-            self.world.step()
+            self.simulated_chunks = self.world.step(area)
             self.sim_accumulator -= SIM_DT
             steps += 1
         if steps == MAX_SIM_STEPS_PER_FRAME:
@@ -187,11 +200,9 @@ class Game:
     # ------------------------------------------------------------------- draw
 
     def draw(self) -> None:
-        self.renderer.refresh(self.world)
         cam_x, cam_y = int(self.camera[0]), int(self.camera[1])
-        self.canvas.blit(
-            self.renderer.surface, (0, 0), pygame.Rect(cam_x, cam_y, VIEW_WIDTH, VIEW_HEIGHT)
-        )
+        self.renderer.refresh(self.world, cam_x, cam_y)
+        self.canvas.blit(self.renderer.surface, (0, 0))
         self._draw_entities(cam_x, cam_y)
 
         self.screen = pygame.display.get_surface()
@@ -206,39 +217,52 @@ class Game:
 
     def _draw_entities(self, cam_x: int, cam_y: int) -> None:
         player = self.player
-        body = pygame.Rect(player.x - cam_x, player.y - cam_y, PLAYER_WIDTH, PLAYER_HEIGHT)
-        pygame.draw.rect(self.canvas, ROBE_COLOR, body)
-        pygame.draw.rect(self.canvas, SKIN_COLOR, (body.x + 1, body.y, 3, 3))
-        for bolt in self.bolts:
-            pygame.draw.rect(self.canvas, BOLT_COLOR, (int(bolt.x) - cam_x - 1, int(bolt.y) - cam_y - 1, 2, 2))
         target_x, target_y = self._cursor_in_world()
+        hand_x, hand_y = player.center
+        facing_right = target_x >= hand_x
+        sprite = self.sprite_right if facing_right else self.sprite_left
+        if not player.dead:
+            self.canvas.blit(sprite, (player.x - cam_x, player.y - cam_y))
+            angle = math.atan2(target_y - hand_y, target_x - hand_x)
+            start = (hand_x - cam_x, hand_y - cam_y + 1)
+            tip = (
+                start[0] + math.cos(angle) * WAND_LENGTH,
+                start[1] + math.sin(angle) * WAND_LENGTH,
+            )
+            pygame.draw.line(self.canvas, WAND_COLOR, start, tip)
+        for bolt in self.bolts:
+            x, y = int(bolt.x) - cam_x, int(bolt.y) - cam_y
+            pygame.draw.rect(self.canvas, BOLT_COLOR, (x - 1, y - 1, 3, 3))
         pygame.draw.circle(
-            self.canvas, (255, 255, 255), (target_x - cam_x, target_y - cam_y), self.brush, 1
+            self.canvas, (230, 220, 200), (target_x - cam_x, target_y - cam_y), self.brush, 1
         )
 
     def _draw_hud(self) -> None:
-        left, top = self.viewport.offset_x + 12, self.viewport.offset_y + 10
-        self._draw_bar(left, top, 160, 12, self.player.hp / MAX_HP, COLOR_ACCENT)
-        self._draw_bar(left, top + 18, 160, 8, self.player.energy / MAX_ENERGY, (90, 200, 250))
+        left, top = self.viewport.offset_x + 14, self.viewport.offset_y + 12
+        self._draw_bar(left, top, 180, 12, self.player.hp / MAX_HP, COLOR_ACCENT)
+        self._draw_bar(left, top + 18, 180, 7, self.player.energy / MAX_ENERGY, (176, 160, 130))
         material = mat.NAME_DE[PAINT_MATERIALS[self.paint_index]]
+        slot = (self.paint_index + 1) % 10
         lines = (
-            f"Pinsel: {material} ({self.paint_index + 1}) | Größe {self.brush} | "
-            f"FPS {self.clock.get_fps():.0f}",
-            "A/D: Laufen | W/Leertaste: Springen & Schweben | Linke Maus: Zauberstab",
-            "Rechte Maus: Malen | 1-8: Material | Mausrad: Größe | R: Neustart | "
-            "N: Neue Welt | F11 | ESC",
+            f"Pinsel: {material} ({slot}) | Größe {self.brush} | "
+            f"FPS {self.clock.get_fps():.0f} | aktive Chunks {self.simulated_chunks}",
+            "A/D: Laufen | W/Leertaste: Springen, halten zum Schweben | Linke Maus: Zauberstab",
+            "Rechte Maus: Malen | Mittlere Maus: Radieren | 1-0: Material | Mausrad: Größe",
+            "R: Wiederbeleben | N: Neue Welt | F11: Vollbild | ESC: Beenden",
         )
         for index, text in enumerate(lines):
             surface = self.info_font.render(text, True, COLOR_TEXT)
-            self.screen.blit(surface, (left, top + 36 + index * 18))
+            self.screen.blit(surface, (left, top + 34 + index * 18))
         if self.player.dead:
             text = self.font.render("Du bist gestorben - R zum Wiederbeleben", True, COLOR_ACCENT)
             rect = text.get_rect(center=self.screen.get_rect().center)
             self.screen.blit(text, rect)
 
-    def _draw_bar(self, x: int, y: int, width: int, height: int, fraction: float, color: tuple[int, int, int]) -> None:
+    def _draw_bar(
+        self, x: int, y: int, width: int, height: int, fraction: float, color: tuple[int, int, int]
+    ) -> None:
         fraction = min(max(fraction, 0.0), 1.0)
-        pygame.draw.rect(self.screen, (40, 40, 52), (x, y, width, height))
+        pygame.draw.rect(self.screen, (34, 22, 26), (x, y, width, height))
         pygame.draw.rect(self.screen, color, (x, y, int(width * fraction), height))
 
     # ------------------------------------------------------------------- loop

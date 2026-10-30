@@ -1,7 +1,7 @@
 [project]
 name = "py-noita-claude"
-version = "0.2.1"
-description = "A python game adaptation of Noita, written with claude."
+version = "0.3.0"
+description = "Cloita: a dark falling-sand roguelite inspired by Noita, written with Claude."
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
@@ -13,6 +13,7 @@ py-noita-claude = "src.main:main"
 main = "src.main:main"
 test = "pytest:main"
 build = "src.build:main"
+build-native = "src.tools:build_native"
 format = "src.tools:format_code"
 lint = "src.tools:lint_code"
 

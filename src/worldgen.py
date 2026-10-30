@@ -1,68 +1,170 @@
-"""Procedural cave generation: carves tunnels into stone and scatters materials."""
+"""Procedural level generation: tunnels through the flesh of a living organism."""
 
 from __future__ import annotations
 
 import math
 
-from src.materials import AIR, LAVA, OIL, SAND, STONE, WATER, WOOD
+from src.materials import (
+    ACID,
+    AIR,
+    BLOOD,
+    BONE,
+    BONE_DUST,
+    FLESH,
+    GROWTH,
+    SINEW,
+    TALLOW,
+)
 from src.player import PLAYER_HEIGHT
 from src.world import BORDER, World, disc_offsets
 
-SPAWN_HALF_WIDTH = 26
-SPAWN_TOP = 36
-SPAWN_FLOOR = 66  # first stone row below the spawn cavern
+SPAWN_HALF_WIDTH = 52
+SPAWN_FLOOR = 132  # first solid row below the spawn cavern
+SPAWN_CLEARANCE = 40  # keep hazards this far away from the spawn cavern
+SPAWN_RADIUS_Y = 34
 
 
 def generate_world(world: World) -> tuple[int, int]:
-    """Fill ``world`` with a cave level and return the player's spawn (top-left, in cells)."""
+    """Fill ``world`` with a level and return the player's spawn (top-left, in cells)."""
     rng = world.rng
     w, h = world.width, world.height
-    world.reset(STONE)
+    scale = (w * h) / (1280 * 720)  # feature counts follow the world area
+    world.reset(FLESH)
     centre_x = w // 2
 
-    # Spawn cavern with a flat floor.
-    for y in range(SPAWN_TOP, SPAWN_FLOOR):
-        for x in range(centre_x - SPAWN_HALF_WIDTH, centre_x + SPAWN_HALF_WIDTH):
-            world.grid[y * w + x] = AIR
+    _ribs(world, count=int(34 * scale))
 
-    # Tunnels: the first ones start in the spawn cavern so the level is always reachable.
-    for index in range(16):
-        if index < 3:
-            x, y = float(centre_x + rng.randint(-15, 15)), float(SPAWN_FLOOR)
-            angle = math.pi / 2 + rng.uniform(-0.6, 0.6)
-        else:
-            x, y = float(rng.randint(20, w - 20)), float(rng.randint(40, h - 20))
-            angle = rng.uniform(0, 2 * math.pi)
-        radius = rng.randint(3, 7)
-        for _ in range(rng.randint(70, 160)):
-            world.carve_disc(int(x), int(y), radius)
-            angle += rng.uniform(-0.6, 0.6)
-            x = min(max(x + math.cos(angle) * 2, 12), w - 12)
-            y = min(max(y + math.sin(angle) * 2, 12), h - 12)
-            radius = min(max(radius + rng.choice((-1, 0, 0, 1)), 3), 8)
+    # Organic cavities (organs) connected by winding tunnels into one network.
+    spawn = (centre_x, SPAWN_FLOOR - SPAWN_RADIUS_Y)
+    _carve_oval(world, spawn[0], spawn[1], SPAWN_HALF_WIDTH, SPAWN_RADIUS_Y)
+    nodes = [spawn]
+    for _attempt in range(int(400 * scale)):
+        if len(nodes) > int(56 * scale):
+            break
+        x = rng.randint(60, w - 60)
+        y = rng.randint(SPAWN_FLOOR + 40, h - 50)
+        if all((x - nx) ** 2 + (y - ny) ** 2 > 75**2 for nx, ny in nodes):
+            nodes.append((x, y))
+    for x, y in nodes[1:]:
+        _carve_cavity(world, x, y, rng.randint(16, 40))
+    for a, b in _connections(world, nodes):
+        _carve_tunnel(world, a, b)
 
-    # A few larger chambers.
-    for _ in range(6):
-        world.carve_disc(rng.randint(30, w - 30), rng.randint(90, h - 30), rng.randint(10, 18))
+    # Bone platform under the spawn so tunnels cannot eat the floor.
+    for y in range(SPAWN_FLOOR, SPAWN_FLOOR + 5):
+        row = y * w
+        world.grid[row + centre_x - 16 : row + centre_x + 16] = bytes([BONE]) * 32
 
-    # Tunnels may have eaten the spawn floor: restore a solid platform under the player.
-    for y in range(SPAWN_FLOOR, SPAWN_FLOOR + 3):
-        for x in range(centre_x - 8, centre_x + 8):
-            world.grid[y * w + x] = STONE
+    _scatter(world, BONE_DUST, count=int(18 * scale), radius=(8, 14), min_y=SPAWN_FLOOR + 10)
+    _scatter(world, BLOOD, count=int(16 * scale), radius=(9, 15), min_y=SPAWN_FLOOR + 10)
+    _scatter(world, TALLOW, count=int(7 * scale), radius=(7, 11), min_y=h // 2)
+    _scatter(world, ACID, count=int(8 * scale), radius=(7, 12), min_y=int(h * 0.6))
+    for _ in range(int(6 * scale)):
+        _growth_nest(world)
+    for _ in range(int(10 * scale)):
+        _sinew_bridge(world)
 
-    _scatter(world, SAND, count=10, radius=(4, 8), min_y=70)
-    _scatter(world, WATER, count=8, radius=(5, 8), min_y=70)
-    _scatter(world, OIL, count=4, radius=(4, 6), min_y=h // 2)
-    _scatter(world, LAVA, count=5, radius=(4, 7), min_y=int(h * 0.6))
-    for _ in range(6):
-        _plank(world)
-
-    world.sleep_all()  # only the chunks holding liquids, powders and wood stay awake
-    return centre_x - 2, SPAWN_FLOOR - PLAYER_HEIGHT
+    world.wake_all()  # every chunk settles once the camera comes near
+    return centre_x - 4, SPAWN_FLOOR - PLAYER_HEIGHT
 
 
-def _in_spawn_zone(x: int, y: int, centre_x: int) -> bool:
-    return abs(x - centre_x) < SPAWN_HALF_WIDTH + 20 and y < SPAWN_FLOOR + 20
+def _carve_oval(world: World, cx: int, cy: int, rx: int, ry: int) -> None:
+    w = world.width
+    for dy in range(-ry, ry):
+        half = int(rx * math.sqrt(max(0.0, 1 - (dy / ry) ** 2)))
+        row = (cy + dy) * w
+        world.grid[row + cx - half : row + cx + half] = bytes(2 * half)
+
+
+def _carve_cavity(world: World, x: int, y: int, radius: int) -> None:
+    """A lumpy, organ-like hollow made of overlapping discs."""
+    rng = world.rng
+    world.fill_disc(x, y, radius, AIR)
+    for _ in range(rng.randint(3, 7)):
+        angle = rng.uniform(0, 2 * math.pi)
+        distance = radius * rng.uniform(0.4, 0.9)
+        world.fill_disc(
+            int(x + math.cos(angle) * distance),
+            int(y + math.sin(angle) * distance * 0.8),
+            int(radius * rng.uniform(0.35, 0.7)),
+            AIR,
+        )
+
+
+def _connections(world: World, nodes: list[tuple[int, int]]) -> list[tuple]:
+    """Minimum spanning tree over the cavities plus a few extra loops."""
+    connected = [0]
+    edges: list[tuple] = []
+    remaining = set(range(1, len(nodes)))
+    while remaining:
+        a, b = min(
+            ((a, b) for a in connected for b in remaining),
+            key=lambda e: (nodes[e[0]][0] - nodes[e[1]][0]) ** 2
+            + (nodes[e[0]][1] - nodes[e[1]][1]) ** 2,
+        )
+        edges.append((nodes[a], nodes[b]))
+        connected.append(b)
+        remaining.remove(b)
+    for _ in range(len(nodes) // 4):
+        a, b = world.rng.sample(nodes, 2)
+        if (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 < 320**2:
+            edges.append((a, b))
+    return edges
+
+
+def _carve_tunnel(world: World, start: tuple[int, int], end: tuple[int, int]) -> None:
+    """Winding passage with lumpy walls from ``start`` to ``end``."""
+    rng = world.rng
+    x, y = float(start[0]), float(start[1])
+    radius = rng.randint(5, 9)
+    wobble = 0.0
+    for _ in range(2000):
+        dx, dy = end[0] - x, end[1] - y
+        if dx * dx + dy * dy < 9:
+            break
+        wobble = max(-1.1, min(1.1, wobble + rng.uniform(-0.25, 0.25)))
+        angle = math.atan2(dy, dx) + wobble
+        x += math.cos(angle) * 3
+        y += math.sin(angle) * 3
+        world.fill_disc(int(x), int(y), radius, AIR)
+        if rng.random() < 0.15:
+            side = angle + math.pi / 2 * rng.choice((-1, 1))
+            world.fill_disc(
+                int(x + math.cos(side) * radius),
+                int(y + math.sin(side) * radius),
+                rng.randint(3, 6),
+                AIR,
+            )
+        radius = min(max(radius + rng.choice((-1, 0, 0, 0, 1)), 5), 10)
+
+
+def _in_spawn_zone(world: World, x: int, y: int) -> bool:
+    centre_x = world.width // 2
+    return (
+        abs(x - centre_x) < SPAWN_HALF_WIDTH + SPAWN_CLEARANCE
+        and y < SPAWN_FLOOR + SPAWN_CLEARANCE
+    )
+
+
+def _ribs(world: World, count: int) -> None:
+    """Curved bone ribs running through the flesh (only overwrite flesh)."""
+    rng = world.rng
+    for _ in range(count):
+        x, y = float(rng.randint(30, world.width - 30)), float(rng.randint(30, world.height - 30))
+        angle = rng.uniform(0, 2 * math.pi)
+        bend = rng.uniform(-0.04, 0.04)
+        thickness = rng.randint(2, 4)
+        for _ in range(rng.randint(40, 110)):
+            for dx, dy in disc_offsets(thickness):
+                if world.get(int(x) + dx, int(y) + dy) == FLESH:
+                    world.grid[(int(y) + dy) * world.width + int(x) + dx] = BONE
+            angle += bend
+            x += math.cos(angle) * 2
+            y += math.sin(angle) * 2
+            if not (BORDER + 6 < x < world.width - BORDER - 6) or not (
+                BORDER + 6 < y < world.height - BORDER - 6
+            ):
+                break
 
 
 def _floor_y(world: World, x: int, y: int) -> int:
@@ -71,37 +173,66 @@ def _floor_y(world: World, x: int, y: int) -> int:
     return y
 
 
-def _scatter(
-    world: World, material: int, count: int, radius: tuple[int, int], min_y: int
-) -> None:
-    """Drop ``count`` blobs of ``material`` onto cave floors."""
+def _random_air(world: World, min_y: int) -> tuple[int, int] | None:
     rng = world.rng
+    for _attempt in range(60):
+        x = rng.randint(BORDER + 16, world.width - BORDER - 16)
+        y = rng.randint(min_y, world.height - 30)
+        if world.get(x, y) == AIR and not _in_spawn_zone(world, x, y):
+            return x, y
+    return None
+
+
+def _scatter(world: World, material: int, count: int, radius: tuple[int, int], min_y: int) -> None:
+    """Drop ``count`` blobs of ``material`` onto cave floors (they settle in play)."""
     for _ in range(count):
-        for _attempt in range(40):
-            x = rng.randint(BORDER + 8, world.width - BORDER - 8)
-            y = rng.randint(min_y, world.height - 20)
-            if world.get(x, y) != AIR or _in_spawn_zone(x, y, world.width // 2):
-                continue
-            r = rng.randint(*radius)
-            floor = _floor_y(world, x, y)
-            for dx, dy in disc_offsets(r):
-                if world.get(x + dx, floor - r // 2 + dy) == AIR:
-                    world.set_cell(x + dx, floor - r // 2 + dy, material)
-            break
-
-
-def _plank(world: World) -> None:
-    """Place a wooden platform with a support post in open cave space."""
-    rng = world.rng
-    for _attempt in range(40):
-        x = rng.randint(20, world.width - 50)
-        y = rng.randint(80, world.height - 30)
-        length = rng.randint(12, 24)
-        cells = [(x + i, y + j) for i in range(length) for j in range(2)]
-        post = [(x + length // 2, y + 2 + k) for k in range(5)]
-        if _in_spawn_zone(x, y, world.width // 2):
+        spot = _random_air(world, min_y)
+        if spot is None:
             continue
-        if all(world.get(cx, cy) == AIR for cx, cy in cells + post):
-            for cx, cy in cells + post:
-                world.set_cell(cx, cy, WOOD)
+        x, y = spot
+        r = world.rng.randint(*radius)
+        floor = _floor_y(world, x, y)
+        for dx, dy in disc_offsets(r):
+            if world.get(x + dx, floor - r // 2 + dy) == AIR:
+                world.set_cell(x + dx, floor - r // 2 + dy, material)
+
+
+def _growth_nest(world: World) -> None:
+    """Embed a growth colony into a flesh wall next to open space."""
+    spot = _random_air(world, SPAWN_FLOOR + 20)
+    if spot is None:
+        return
+    x, y = spot
+    floor = _floor_y(world, x, y)
+    r = world.rng.randint(6, 11)
+    for dx, dy in disc_offsets(r):
+        if world.get(x + dx, floor + dy) in (FLESH, BLOOD):
+            world.set_cell(x + dx, floor + dy, GROWTH)
+
+
+def _sinew_bridge(world: World) -> None:
+    """Stretch a band of sinew across open space, anchored on both ends."""
+    rng = world.rng
+    for _attempt in range(60):
+        spot = _random_air(world, SPAWN_FLOOR + 20)
+        if spot is None:
             return
+        x, y = spot
+        left = x
+        while world.get(left - 1, y) == AIR and x - left < 120:
+            left -= 1
+        right = x
+        while world.get(right + 1, y) == AIR and right - x < 120:
+            right += 1
+        span = right - left + 1
+        if not 24 <= span <= 110 or world.get(left - 1, y) == AIR or world.get(right + 1, y) == AIR:
+            continue
+        thickness = rng.randint(2, 3)
+        sag = rng.uniform(2, 8)
+        for xx in range(left, right + 1):
+            t = (xx - left) / max(1, span - 1)
+            yy = y + int(sag * math.sin(math.pi * t))
+            for k in range(thickness):
+                if world.get(xx, yy + k) == AIR:
+                    world.set_cell(xx, yy + k, SINEW)
+        return
