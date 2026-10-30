@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v0.3.1
+
+- 2026-10-30 (8d2ca65): feat: extend core mechanics with wands
+
 ## SemVer v0.3.0
 
-- 2026-10-30 (8addabd): feat: add new theme and interactions
+- 2026-10-30 (6fb8604): feat: add new theme and interactions
 
 ## SemVer v0.2.1
 

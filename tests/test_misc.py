@@ -15,7 +15,6 @@ from src.materials import (
 from src.texture import make_grain
 from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
 from src.viewport import Viewport
-from src.wand import BOLT_SPEED, WAND_COOLDOWN, Bolt, Wand
 from src.world import World
 from src.worldgen import generate_world
 
@@ -47,45 +46,6 @@ class TestViewport(unittest.TestCase):
         view = Viewport(320, 180)
         view.resize(0, 0)
         self.assertGreaterEqual(view.target_width, 1)
-
-
-class TestWand(unittest.TestCase):
-    def test_cooldown_and_direction(self) -> None:
-        wand = Wand()
-        bolt = wand.try_fire((10.0, 10.0), (20.0, 10.0))
-        self.assertIsNotNone(bolt)
-        assert bolt is not None
-        self.assertAlmostEqual(bolt.vx, BOLT_SPEED)
-        self.assertAlmostEqual(bolt.vy, 0.0)
-        self.assertIsNone(wand.try_fire((10.0, 10.0), (20.0, 10.0)))
-        wand.update(WAND_COOLDOWN + 0.01)
-        self.assertIsNotNone(wand.try_fire((10.0, 10.0), (20.0, 10.0)))
-
-    def test_no_shot_at_own_position(self) -> None:
-        self.assertIsNone(Wand().try_fire((5.0, 5.0), (5.0, 5.0)))
-
-    def test_bolt_explodes_in_stone(self) -> None:
-        world = World(64, 48, seed=1)
-        for y in range(10, 30):
-            for x in range(30, 50):
-                world.set_cell(x, y, BONE)
-        before = world.count(BONE)
-        bolt = Bolt(10.0, 20.0, BOLT_SPEED, 0.0)
-        exploded = False
-        for _ in range(60):
-            if bolt.update(world, 1 / 60):
-                exploded = True
-                break
-        self.assertTrue(exploded)
-        self.assertFalse(bolt.alive)
-        self.assertLess(world.count(BONE), before)
-
-    def test_bolt_flies_through_air_and_expires(self) -> None:
-        world = World(64, 48, seed=1)
-        bolt = Bolt(5.0, 5.0, 1.0, 0.0, ttl=0.1)
-        for _ in range(10):
-            bolt.update(world, 1 / 60)
-        self.assertFalse(bolt.alive)
 
 
 class TestWorldGen(unittest.TestCase):

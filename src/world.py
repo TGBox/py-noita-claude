@@ -220,6 +220,30 @@ class World:
                 self.set_cell(x, y, FIRE)
         return destroyed
 
+    def splash(self, cx: int, cy: int, radius: int, material: int) -> int:
+        """Fill free cells in a disc with ``material`` (a spell payload). Returns cells set.
+
+        Liquids and powders fill the disc; gases and fire are sprinkled. Fire also
+        ignites flammable cells it lands on.
+        """
+        rnd = self.rng.random
+        sprinkle = KIND[material] in (GAS, FLAME)
+        placed = 0
+        for dx, dy in disc_offsets(radius):
+            x, y = cx + dx, cy + dy
+            if not (0 <= x < self.width and 0 <= y < self.height):
+                continue
+            current = self.grid[y * self.width + x]
+            if current == BEDROCK:
+                continue
+            if material == FIRE and FLAMMABILITY[current]:
+                self.ignite(x, y)
+                placed += 1
+            elif KIND[current] in (EMPTY, GAS, FLAME) and (not sprinkle or rnd() < 0.6):
+                self.set_cell(x, y, material)
+                placed += 1
+        return placed
+
     def ignite(self, x: int, y: int) -> None:
         """Turn the cell at (x, y) into fire that burns as long as its fuel would."""
         i = y * self.width + x

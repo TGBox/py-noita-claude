@@ -52,6 +52,10 @@ class Player:
     def center(self) -> tuple[float, float]:
         return self.x + PLAYER_WIDTH / 2, self.y + PLAYER_HEIGHT / 2
 
+    def hurt(self, amount: float) -> None:
+        """Take damage (explosions, hazards)."""
+        self.hp = max(0.0, self.hp - amount)
+
     def update(
         self,
         world: World,
