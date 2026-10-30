@@ -16,7 +16,7 @@ from pathlib import Path
 from src.materials import MATERIALS, MATERIAL_COUNT
 from src.reactions import build_tables, to_fixed
 
-ABI_VERSION = 5
+ABI_VERSION = 6
 NATIVE_DIR = Path(__file__).resolve().parent.parent / "native"
 LIBRARY_NAME = {
     "win32": "cloita_core.dll",
@@ -102,6 +102,11 @@ def load() -> ctypes.CDLL:
     library.cloita_render_lit.argtypes = [
         _u8p, _u8p, _u8p, _size, _size, _size, _size, _size, ctypes.c_uint8, ctypes.c_uint8,
         _u8p, _u8p, _size, ctypes.POINTER(ctypes.c_float), _size, ctypes.c_float,
+    ]  # fmt: skip
+    library.cloita_reachable.restype = ctypes.c_uint32
+    library.cloita_reachable.argtypes = [
+        _u8p, _size, _size, _u8p, _size, _size, _size, _size, _size, _size, _size,
+        ctypes.POINTER(_size), ctypes.POINTER(_size),
     ]  # fmt: skip
     library.cloita_render.argtypes = [
         _u8p, _u8p, _u8p, _size, _size, _size, _size, _size, ctypes.c_uint8,
@@ -228,3 +233,25 @@ def render_lit(
         _array(ctypes.c_uint8, glow), _array(ctypes.c_uint8, opaque or [0] * len(glow)),
         len(glow), light_array, len(lights), ambient,
     )  # fmt: skip
+
+
+def reachable(
+    grid: ctypes.Array,
+    width: int,
+    height: int,
+    blocking: list[int],
+    box: tuple[int, int],
+    start: tuple[int, int],
+    goal: tuple[int, int],
+) -> tuple[bool, tuple[int, int]]:
+    """Can a box of size ``box`` move from ``start`` to ``goal`` through free cells?
+
+    Returns (reached, closest reachable top-left position to the goal).
+    """
+    out_x, out_y = ctypes.c_size_t(), ctypes.c_size_t()
+    found = load().cloita_reachable(
+        grid, width, height, _array(ctypes.c_uint8, blocking), len(blocking),
+        box[0], box[1], max(0, start[0]), max(0, start[1]), max(0, goal[0]), max(0, goal[1]),
+        ctypes.byref(out_x), ctypes.byref(out_y),
+    )  # fmt: skip
+    return bool(found), (out_x.value, out_y.value)

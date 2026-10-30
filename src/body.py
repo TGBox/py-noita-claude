@@ -6,6 +6,7 @@ from src.materials import ACID, AIR, BLOCKS_BODY, FIRE, FUME, HAZARD_DPS, KIND, 
 from src.world import World
 
 UNSTICK_MAX = 24
+AIR_STEP_UP = 2  # small ledges a body slides over even while airborne
 BURN_TIME = 3.0  # seconds a body keeps burning after catching fire
 BURN_DPS = 10.0
 WET_TIME = 5.0  # seconds a body stays wet (and fireproof) after touching liquid
@@ -92,8 +93,9 @@ class Body:
             if not self.blocked(world, self.x + sign, self.y):
                 self.x += sign
                 continue
-            for up in range(1, self.step_up + 1):
-                if self.on_ground and not self.blocked(world, self.x + sign, self.y - up):
+            step = self.step_up if self.on_ground else min(self.step_up, AIR_STEP_UP)
+            for up in range(1, step + 1):
+                if not self.blocked(world, self.x + sign, self.y - up):
                     self.x += sign
                     self.y -= up
                     break

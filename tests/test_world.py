@@ -304,6 +304,32 @@ class TestTools(unittest.TestCase):
         world.explode(32, H - 2, 8)
         self.assertEqual(world.get(32, H - 1), BEDROCK)
 
+    def test_explosions_leave_no_loose_pixels(self) -> None:
+        for seed in range(5):
+            world = make_world(seed=seed)
+            fill(world, 5, 5, 60, 44, BONE)
+            for cx in (20, 32, 44):
+                world.explode(cx, 24, 7)
+            for y in range(3, 45):
+                for x in range(3, 61):
+                    if world.get(x, y) != BONE:
+                        continue
+                    neighbours = sum(
+                        world.get(x + dx, y + dy) in (BONE, BEDROCK)
+                        for dx in (-1, 0, 1)
+                        for dy in (-1, 0, 1)
+                        if dx or dy
+                    )
+                    self.assertGreater(neighbours, 2, (seed, x, y))
+
+    def test_crumbling_turns_splinters_into_debris(self) -> None:
+        world = make_world()
+        world.set_cell(30, 20, BONE)  # a lone bone pixel floating in the air
+        world.set_cell(40, 20, FLESH)
+        self.assertEqual(world.crumble_loose(35, 20, 10), 2)
+        self.assertEqual(world.get(30, 20), BONE_DUST)
+        self.assertEqual(world.get(40, 20), BLOOD)
+
     def test_explosion_leaves_debris(self) -> None:
         world = make_world(seed=6)
         fill(world, 5, 5, 60, 44, FLESH)

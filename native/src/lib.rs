@@ -432,7 +432,7 @@ unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Vec<T> {
 /// Version of the C ABI, checked by Python on load.
 #[no_mangle]
 pub extern "C" fn cloita_abi_version() -> u32 {
-    5
+    6
 }
 
 /// Create a simulation for a `w` x `h` world with `n` materials.
@@ -810,4 +810,100 @@ pub unsafe extern "C" fn cloita_render_lit(
             out[r * vw + c] = base.wrapping_mul(levels).wrapping_add(level);
         }
     }
+}
+
+/// Breadth-first search over every position where a `bw` x `bh` box fits into
+/// non-blocking cells, from (sx, sy) towards (gx, gy) (top-left box corners).
+///
+/// Returns 1 if the goal box is reachable. Otherwise returns 0 and writes the
+/// reachable position closest to the goal into `out_x`/`out_y` (the start if
+/// even that is blocked). `blocking` holds one byte per material.
+///
+/// # Safety
+/// `grid` must hold `w * h` bytes, `blocking` `n_materials` bytes, and the out
+/// pointers must be writable.
+#[no_mangle]
+pub unsafe extern "C" fn cloita_reachable(
+    grid: *const u8,
+    w: usize,
+    h: usize,
+    blocking: *const u8,
+    n_materials: usize,
+    bw: usize,
+    bh: usize,
+    sx: usize,
+    sy: usize,
+    gx: usize,
+    gy: usize,
+    out_x: *mut usize,
+    out_y: *mut usize,
+) -> u32 {
+    let grid = slice::from_raw_parts(grid, w * h);
+    let blocking = slice::from_raw_parts(blocking, n_materials);
+    *out_x = sx;
+    *out_y = sy;
+    if bw == 0 || bh == 0 || bw > w || bh > h {
+        return 0;
+    }
+    // Integral image of blocking cells: sums[(y) * (w + 1) + x] over [0, x) x [0, y).
+    let stride = w + 1;
+    let mut sums = vec![0u32; stride * (h + 1)];
+    for y in 0..h {
+        let mut row_sum = 0u32;
+        for x in 0..w {
+            let m = grid[y * w + x] as usize;
+            row_sum += u32::from(m < n_materials && blocking[m] != 0);
+            sums[(y + 1) * stride + x + 1] = sums[y * stride + x + 1] + row_sum;
+        }
+    }
+    let free = |x: usize, y: usize| -> bool {
+        if x + bw > w || y + bh > h {
+            return false;
+        }
+        let total = sums[(y + bh) * stride + x + bw] + sums[y * stride + x]
+            - sums[y * stride + x + bw]
+            - sums[(y + bh) * stride + x];
+        total == 0
+    };
+    if sx >= w || sy >= h || !free(sx, sy) {
+        return 0;
+    }
+    let mut seen = vec![false; w * h];
+    let mut queue = std::collections::VecDeque::new();
+    seen[sy * w + sx] = true;
+    queue.push_back((sx, sy));
+    let mut best = (sx, sy);
+    let distance = |x: usize, y: usize| -> u64 {
+        let dx = x as i64 - gx as i64;
+        let dy = y as i64 - gy as i64;
+        (dx * dx + dy * dy) as u64
+    };
+    let mut best_distance = distance(sx, sy);
+    while let Some((x, y)) = queue.pop_front() {
+        let d = distance(x, y);
+        if d < best_distance {
+            best_distance = d;
+            best = (x, y);
+        }
+        if d <= 4 {
+            *out_x = x;
+            *out_y = y;
+            return 1;
+        }
+        let candidates = [
+            (x.wrapping_sub(1), y),
+            (x + 1, y),
+            (x, y.wrapping_sub(1)),
+            (x, y + 1),
+        ];
+        for (nx, ny) in candidates {
+            if nx < w && ny < h && !seen[ny * w + nx] && free(nx, ny) {
+                seen[ny * w + nx] = true;
+                queue.push_back((nx, ny));
+            }
+        }
+    }
+    *out_x = best.0;
+    *out_y = best.1;
+    0
 }

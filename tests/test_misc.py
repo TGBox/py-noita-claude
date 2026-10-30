@@ -94,6 +94,41 @@ class TestWorldGen(unittest.TestCase):
         self.assertLess(world.step(area), 600)  # most chunks fell asleep
 
 
+class TestPaths(unittest.TestCase):
+    def test_every_depth_can_be_crossed_from_spawn_to_exit(self) -> None:
+        from src.depths import DEPTHS
+        from src.materials import BLOCKS_BODY
+        from src.worldgen import generate_level
+
+        blocking = [int(b) for b in BLOCKS_BODY]
+        for depth in DEPTHS:
+            for seed in (1, 2, 3):
+                world = World(1280, 720, seed=seed)
+                level = generate_level(world, depth)
+                found, _ = native.reachable(
+                    native.byte_view(world.grid), world.width, world.height, blocking,
+                    (PLAYER_WIDTH, PLAYER_HEIGHT), level.spawn,
+                    (level.exit[0] - PLAYER_WIDTH // 2, level.exit[1] - PLAYER_HEIGHT // 2),
+                )  # fmt: skip
+                self.assertTrue(found, (depth.key, seed))
+
+    def test_reachability_search(self) -> None:
+        world = World(96, 64, seed=1)
+        box = (8, 18)
+        found, _ = native.reachable(
+            native.byte_view(world.grid), 96, 64, [0, 1] + [0] * 13, box, (5, 30), (80, 30)
+        )
+        self.assertTrue(found)
+        for y in range(2, 62):  # wall the room in two
+            world.set_cell(48, y, BONE)
+        blocking = [1 if m in (1, BONE) else 0 for m in range(15)]
+        found, closest = native.reachable(
+            native.byte_view(world.grid), 96, 64, blocking, box, (5, 30), (80, 30)
+        )
+        self.assertFalse(found)
+        self.assertEqual(closest[0], 48 - box[0])  # right up against the wall
+
+
 class TestRenderCore(unittest.TestCase):
     def test_render_writes_palette_indices_for_the_view(self) -> None:
         world = World(64, 48, seed=1)
