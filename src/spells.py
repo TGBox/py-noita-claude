@@ -46,6 +46,7 @@ class Block:
     cast_delay: float = 0.0  # seconds added to the wand's cast delay
     description_de: str = ""
     # Drüse (form)
+    damage: float = 0.0  # direct hit damage to creatures
     speed: float = 0.0  # px/s
     gravity: float = 0.0  # px/s^2
     lifetime: float = 0.0  # seconds
@@ -70,12 +71,12 @@ BLOCKS: tuple[Block, ...] = (
     Block(
         "funke", "Funke", Category.FORM, mana=5, cast_delay=0.05,
         description_de="Schneller Funke, kleine Explosion.",
-        speed=520, lifetime=1.0, blast=5, splash=4,
+        damage=6, speed=520, lifetime=1.0, blast=5, splash=4,
     ),
     Block(
         "nadel", "Knochennadel", Category.FORM, mana=3,
         description_de="Sehr schnell, gräbt sich nur wenig ein.",
-        speed=820, lifetime=0.6, blast=2, splash=3,
+        damage=4, speed=820, lifetime=0.6, blast=2, splash=3,
     ),
     Block(
         "gallenblase", "Gallenblase", Category.FORM, mana=25, cast_delay=0.35,
@@ -85,7 +86,7 @@ BLOCKS: tuple[Block, ...] = (
     Block(
         "klumpen", "Klumpen", Category.FORM, mana=6, cast_delay=0.1,
         description_de="Fliegt im Bogen und zerplatzt zu einer Lache.",
-        speed=340, gravity=600, lifetime=2.0, splash=6, default_material=BLOOD,
+        damage=3, speed=340, gravity=600, lifetime=2.0, splash=6, default_material=BLOOD,
     ),
     # Mutationen (modifiers)
     Block(

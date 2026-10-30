@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v0.3.2
+
+- 2026-10-30 (40b6896): feat: implement more mutations as wand spells
+
 ## SemVer v0.3.1
 
-- 2026-10-30 (8d2ca65): feat: extend core mechanics with wands
+- 2026-10-30 (d991861): feat: extend core mechanics with wands
 
 ## SemVer v0.3.0
 

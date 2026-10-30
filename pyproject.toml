@@ -1,6 +1,6 @@
 [project]
 name = "py-noita-claude"
-version = "0.3.1"
+version = "0.3.2"
 description = "Cloita: a dark falling-sand roguelite inspired by Noita, written with Claude."
 requires-python = ">=3.11"
 license = { text = "MIT" }

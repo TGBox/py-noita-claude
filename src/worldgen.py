@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
+from src.depths import DEPTHS, Depth
 from src.materials import (
     ACID,
     AIR,
+    BEDROCK,
     BLOOD,
     BONE,
     BONE_DUST,
@@ -22,10 +25,25 @@ SPAWN_HALF_WIDTH = 52
 SPAWN_FLOOR = 132  # first solid row below the spawn cavern
 SPAWN_CLEARANCE = 40  # keep hazards this far away from the spawn cavern
 SPAWN_RADIUS_Y = 34
+ARENA_RADIUS = 72
+
+
+@dataclass(frozen=True)
+class Level:
+    """Where things are in a generated level."""
+
+    spawn: tuple[int, int]  # player top-left
+    exit: tuple[int, int]  # centre of the way down
+    arena: tuple[int, int] | None  # centre of the boss chamber, if any
 
 
 def generate_world(world: World) -> tuple[int, int]:
-    """Fill ``world`` with a level and return the player's spawn (top-left, in cells)."""
+    """Fill ``world`` with a first-depth level and return the player's spawn."""
+    return generate_level(world, DEPTHS[0]).spawn
+
+
+def generate_level(world: World, depth: Depth) -> Level:
+    """Fill ``world`` with a level of the given depth."""
     rng = world.rng
     w, h = world.width, world.height
     scale = (w * h) / (1280 * 720)  # feature counts follow the world area
@@ -45,8 +63,14 @@ def generate_world(world: World) -> tuple[int, int]:
         y = rng.randint(SPAWN_FLOOR + 40, h - 50)
         if all((x - nx) ** 2 + (y - ny) ** 2 > 75**2 for nx, ny in nodes):
             nodes.append((x, y))
+    arena = None
+    if depth.boss:
+        arena = (centre_x + rng.randint(-200, 200), h - ARENA_RADIUS - 40)
+        nodes = [n for n in nodes if math.dist(n, arena) > ARENA_RADIUS + 50]
+        nodes.append(arena)
     for x, y in nodes[1:]:
-        _carve_cavity(world, x, y, rng.randint(16, 40))
+        if (x, y) != arena:
+            _carve_cavity(world, x, y, rng.randint(16, 40))
     for a, b in _connections(world, nodes):
         _carve_tunnel(world, a, b)
 
@@ -55,17 +79,32 @@ def generate_world(world: World) -> tuple[int, int]:
         row = y * w
         world.grid[row + centre_x - 16 : row + centre_x + 16] = bytes([BONE]) * 32
 
-    _scatter(world, BONE_DUST, count=int(18 * scale), radius=(8, 14), min_y=SPAWN_FLOOR + 10)
-    _scatter(world, BLOOD, count=int(16 * scale), radius=(9, 15), min_y=SPAWN_FLOOR + 10)
-    _scatter(world, TALLOW, count=int(7 * scale), radius=(7, 11), min_y=h // 2)
-    _scatter(world, ACID, count=int(8 * scale), radius=(7, 12), min_y=int(h * 0.6))
-    for _ in range(int(6 * scale)):
+    def amount(base: float, factor: float) -> int:
+        return int(base * scale * factor)
+
+    _scatter(world, BONE_DUST, amount(18, depth.bone_dust), (8, 14), SPAWN_FLOOR + 10)
+    _scatter(world, BLOOD, amount(16, depth.blood), (9, 15), SPAWN_FLOOR + 10)
+    _scatter(world, TALLOW, amount(7, depth.tallow), (7, 11), h // 2)
+    _scatter(world, ACID, amount(8, depth.acid), (7, 12), int(h * 0.6))
+    for _ in range(amount(6, depth.growth)):
         _growth_nest(world)
-    for _ in range(int(10 * scale)):
+    for _ in range(amount(10, depth.bridges)):
         _sinew_bridge(world)
 
+    if arena is not None:
+        # The boss chamber: a big round hall with a bone floor, kept free of hazards.
+        _carve_oval(world, arena[0], arena[1], ARENA_RADIUS + 30, ARENA_RADIUS)
+        for y in range(arena[1] + ARENA_RADIUS - 6, arena[1] + ARENA_RADIUS):
+            row = y * w
+            x0, x1 = arena[0] - ARENA_RADIUS, arena[0] + ARENA_RADIUS
+            world.grid[row + x0 : row + x1] = bytes([BONE]) * (x1 - x0)
+        exit_point = arena
+    else:
+        deepest = max(nodes[1:], key=lambda n: n[1] + 0.3 * math.dist(n, spawn))
+        exit_point = (deepest[0], _floor_y(world, deepest[0], deepest[1]) - 12)
+
     world.wake_all()  # every chunk settles once the camera comes near
-    return centre_x - 4, SPAWN_FLOOR - PLAYER_HEIGHT
+    return Level((centre_x - 4, SPAWN_FLOOR - PLAYER_HEIGHT), exit_point, arena)
 
 
 def _carve_oval(world: World, cx: int, cy: int, rx: int, ry: int) -> None:
@@ -183,7 +222,9 @@ def _random_air(world: World, min_y: int) -> tuple[int, int] | None:
     return None
 
 
-def _scatter(world: World, material: int, count: int, radius: tuple[int, int], min_y: int) -> None:
+def _scatter(
+    world: World, material: int, count: int, radius: tuple[int, int], min_y: int
+) -> None:
     """Drop ``count`` blobs of ``material`` onto cave floors (they settle in play)."""
     for _ in range(count):
         spot = _random_air(world, min_y)
@@ -236,3 +277,59 @@ def _sinew_bridge(world: World) -> None:
                 if world.get(xx, yy + k) == AIR:
                     world.set_cell(xx, yy + k, SINEW)
         return
+
+
+SANCTUM_CENTRE = (640, 300)
+SANCTUM_RX, SANCTUM_RY = 280, 92
+
+
+@dataclass(frozen=True)
+class SanctumLayout:
+    """Where things are in the sanctum between two depths."""
+
+    spawn: tuple[int, int]  # player top-left
+    exit: tuple[int, int]
+    shop: tuple[tuple[int, int], ...]  # item positions on pedestals
+    altar: tuple[tuple[int, int], ...]  # perk orb positions
+
+
+def generate_sanctum(world: World) -> SanctumLayout:
+    """A safe, sealed chamber: bedrock shell, flesh lining, bone floor."""
+    world.reset(BEDROCK)
+    cx, cy = SANCTUM_CENTRE
+    _carve_oval_material(world, cx, cy, SANCTUM_RX + 6, SANCTUM_RY + 6, FLESH)
+    _carve_oval(world, cx, cy, SANCTUM_RX, SANCTUM_RY)
+    floor = cy + 40
+    w = world.width
+    for y in range(floor, cy + SANCTUM_RY):
+        row = y * w
+        for x in range(cx - SANCTUM_RX, cx + SANCTUM_RX):
+            if world.grid[row + x] == AIR:
+                world.grid[row + x] = BONE
+    shop = []
+    for k in range(5):
+        x = cx - 150 + k * 60
+        for py in range(floor - 4, floor):  # pedestal
+            row = py * w
+            world.grid[row + x - 4 : row + x + 4] = bytes([BONE]) * 8
+        shop.append((x, floor - 12))
+    altar_floor = floor - 46
+    for py in range(altar_floor, altar_floor + 4):
+        row = py * w
+        world.grid[row + cx - 50 : row + cx + 50] = bytes([BONE]) * 100
+    altar = tuple((cx + dx, altar_floor - 10) for dx in (-34, 0, 34))
+    world.wake_all()
+    return SanctumLayout(
+        spawn=(cx - SANCTUM_RX + 40, floor - PLAYER_HEIGHT),
+        exit=(cx + SANCTUM_RX - 40, floor - 14),
+        shop=tuple(shop),
+        altar=altar,
+    )
+
+
+def _carve_oval_material(world: World, cx: int, cy: int, rx: int, ry: int, material: int) -> None:
+    w = world.width
+    for dy in range(-ry, ry):
+        half = int(rx * math.sqrt(max(0.0, 1 - (dy / ry) ** 2)))
+        row = (cy + dy) * w
+        world.grid[row + cx - half : row + cx + half] = bytes([material]) * (2 * half)

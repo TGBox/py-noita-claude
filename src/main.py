@@ -1,4 +1,4 @@
-"""Game loop and entry point."""
+"""Game loop and entry point: input, camera and drawing around a ``Run``."""
 
 from __future__ import annotations
 
@@ -9,25 +9,33 @@ import sys
 import pygame
 
 from src import materials as mat
+from src.depths import DEPTHS
+from src.editor import WandEditor
+from src.audio import Audio
 from src.hud import Hud, HudState
-from src.player import Player
-from src.projectiles import Blast, ProjectileSystem
+from src.menus import Menus
+from src.perks import PERK_BY_KEY
+from src.projectiles import Blast
 from src.rendering import (
     WorldRenderer,
+    build_creature_sprites,
     build_player_sprites,
     draw_augmentation,
+    draw_creatures,
+    draw_exit,
+    draw_pickups,
     draw_projectiles,
+    draw_status,
 )
+from src.run import Controls, Run
 from src.settings import (
     BRUSH_DEFAULT,
     BRUSH_MAX,
     BRUSH_MIN,
     COLOR_BACKGROUND,
     FPS,
-    MAX_SIM_STEPS_PER_FRAME,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
-    SIM_HZ,
     SIM_MARGIN,
     TITLE,
     VIEW_HEIGHT,
@@ -36,17 +44,12 @@ from src.settings import (
     WORLD_WIDTH,
 )
 from src.viewport import Viewport
-from src.wand import PRESETS, Wand
-from src.world import World
-from src.worldgen import generate_world
 
-SIM_DT = 1.0 / SIM_HZ
 CAMERA_FOLLOW = 8.0  # 1/s, higher is snappier
 SHAKE_DECAY = 18.0  # 1/s
-BLAST_DAMAGE = 3.0  # damage per blast radius cell at point blank
-BLAST_REACH = 6  # cells beyond the blast radius that still hurt
-SHOULDER_OFFSET = (2.0, 1.0)  # arm root relative to the body centre (x towards the aim)
-# Keys 1-9 and 0 select what the right mouse button paints.
+BANNER_TIME = 3.0  # seconds the depth name is shown
+PLAYER_LIGHT_RADIUS = 150.0
+# Sandbox: keys 1-9 and 0 select what the right mouse button paints.
 PAINT_MATERIALS = (
     mat.BONE_DUST,
     mat.BLOOD,
@@ -59,7 +62,7 @@ PAINT_MATERIALS = (
     mat.GROWTH,
     mat.SPORES,
 )
-PAINT_KEYS = (
+NUMBER_KEYS = (
     pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5,
     pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9, pygame.K_0,
 )  # fmt: skip
@@ -78,45 +81,32 @@ class Game:
         self.viewport = Viewport(VIEW_WIDTH, VIEW_HEIGHT)
         self.canvas = pygame.Surface((VIEW_WIDTH, VIEW_HEIGHT))
         self.hud = Hud()
-        self.world = World(WORLD_WIDTH, WORLD_HEIGHT)
-        self.renderer = WorldRenderer(self.world, VIEW_WIDTH, VIEW_HEIGHT)
+        self.editor = WandEditor()
+        self.menus = Menus()
+        self.audio = Audio()
+        self.state = "title"  # "title", "playing" or "paused"
+        self.clock_time = 0.0
+        self.run = Run(random.randrange(2**31))
+        self.renderer = WorldRenderer(self.run.world, VIEW_WIDTH, VIEW_HEIGHT)
         self.sprite_right, self.sprite_left = build_player_sprites()
-        self.player = Player(0, 0)
-        self.wands = [Wand(spec) for spec in PRESETS]
-        self.wand_index = 0
-        self.projectiles = ProjectileSystem()
+        self.creature_sprites = build_creature_sprites()
         self.camera = [0.0, 0.0]
         self.shake = 0.0
+        self.sandbox = False
         self.paint_index = 0
         self.brush = BRUSH_DEFAULT
         self.show_help = True
-        self.sim_accumulator = 0.0
-        self.simulated_chunks = 0
+        self.lighting = True
+        self.effects_rng = random.Random()
         self.jump_queued = False
-        self.spawn = (0, 0)
-        self.new_world()
+        self.pickup_queued = False
+        self.shown_depth = -1
+        self._snap_camera()
 
     # ------------------------------------------------------------------ state
 
-    def new_world(self) -> None:
-        """Generate a fresh level and put the player into it."""
-        self.world.reseed(random.randrange(2**31))
-        self.world.frame = 0
-        self.spawn = generate_world(self.world)
-        self.respawn()
-
-    def respawn(self) -> None:
-        self.player.reset(*self.spawn)
-        self.projectiles.clear()
-        self.wands = [Wand(spec) for spec in PRESETS]
-        self._snap_camera()
-
-    @property
-    def wand(self) -> Wand:
-        return self.wands[self.wand_index]
-
     def _snap_camera(self) -> None:
-        cx, cy = self.player.center
+        cx, cy = self.run.player.center
         self.camera = [cx - VIEW_WIDTH / 2, cy - VIEW_HEIGHT / 2]
         self._clamp_camera()
 
@@ -139,30 +129,77 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            elif self.state != "playing":
+                if event.type == pygame.KEYDOWN:
+                    self._on_menu_key(event.key)
+            elif self.editor.open:
+                if event.type == pygame.KEYDOWN and event.key in (pygame.K_TAB, pygame.K_ESCAPE):
+                    self.editor.toggle()
+                else:
+                    self.editor.handle_event(event, self.run.inventory)
             elif event.type == pygame.KEYDOWN:
                 self._on_key(event.key)
             elif event.type == pygame.MOUSEWHEEL:
-                self.brush = min(max(self.brush + event.y, BRUSH_MIN), BRUSH_MAX)
+                if self.sandbox:
+                    self.brush = min(max(self.brush + event.y, BRUSH_MIN), BRUSH_MAX)
+                else:
+                    self.run.inventory.cycle(-event.y)
+
+    def _on_menu_key(self, key: int) -> None:
+        if key == pygame.K_F11:
+            self.toggle_fullscreen()
+        elif self.state == "title":
+            if key in (pygame.K_RETURN, pygame.K_SPACE):
+                self._start_run()
+            elif key == pygame.K_ESCAPE:
+                self.running = False
+        elif self.state == "paused":
+            if key == pygame.K_ESCAPE:
+                self.state = "playing"
+            elif key == pygame.K_r:
+                self._start_run()
+            elif key == pygame.K_t:
+                self.state = "title"
+            elif key == pygame.K_q:
+                self.running = False
+
+    def _start_run(self) -> None:
+        self.run.new_run()
+        self._snap_camera()
+        self.sandbox = False
+        self.state = "playing"
 
     def _on_key(self, key: int) -> None:
         if key == pygame.K_ESCAPE:
-            self.running = False
+            self.state = "paused"
         elif key == pygame.K_F11:
             self.toggle_fullscreen()
+        elif key == pygame.K_F1:
+            self.sandbox = not self.sandbox
+        elif key == pygame.K_TAB:
+            self.editor.toggle()
         elif key == pygame.K_r:
-            self.respawn()
-        elif key == pygame.K_n:
-            self.new_world()
+            self.run.new_run()
+            self._snap_camera()
         elif key == pygame.K_h:
             self.show_help = not self.show_help
-        elif key == pygame.K_q:
-            self.wand_index = (self.wand_index - 1) % len(self.wands)
+        elif key == pygame.K_l:
+            self.lighting = not self.lighting
+        elif key == pygame.K_m:
+            self.audio.toggle_mute()
         elif key == pygame.K_e:
-            self.wand_index = (self.wand_index + 1) % len(self.wands)
+            self.pickup_queued = True
         elif key in JUMP_KEYS:
             self.jump_queued = True
-        elif key in PAINT_KEYS:
-            self.paint_index = PAINT_KEYS.index(key)
+        elif key in NUMBER_KEYS:
+            number = NUMBER_KEYS.index(key)
+            if self.sandbox:
+                self.paint_index = number
+            else:
+                self.run.inventory.select(number)
+        elif key == pygame.K_n and self.sandbox:
+            self.run.enter_depth(self.run.depth_index)
+            self._snap_camera()
 
     # ----------------------------------------------------------------- update
 
@@ -171,79 +208,49 @@ class Game:
         view_x, view_y = self.viewport.to_virtual(mouse_x, mouse_y)
         return int(view_x + self.camera[0]), int(view_y + self.camera[1])
 
-    def _shoulder(self) -> tuple[float, float]:
-        cx, cy = self.player.center
-        target_x, _ = self._cursor_in_world()
-        side = 1 if target_x >= cx else -1
-        return cx + SHOULDER_OFFSET[0] * side, cy + SHOULDER_OFFSET[1]
-
-    def _aim_angle(self) -> float:
-        target_x, target_y = self._cursor_in_world()
-        sx, sy = self._shoulder()
-        return math.atan2(target_y - sy, target_x - sx)
+    def _sim_area(self) -> tuple[int, int, int, int]:
+        x0, y0 = int(self.camera[0]) - SIM_MARGIN, int(self.camera[1]) - SIM_MARGIN
+        return (x0, y0, x0 + VIEW_WIDTH + 2 * SIM_MARGIN, y0 + VIEW_HEIGHT + 2 * SIM_MARGIN)
 
     def update(self, dt: float) -> None:
+        self.clock_time += dt
+        if self.editor.open or self.state != "playing":
+            return  # menus and the editor pause the game
         keys = pygame.key.get_pressed()
-        move = int(keys[pygame.K_d] or keys[pygame.K_RIGHT]) - int(
-            keys[pygame.K_a] or keys[pygame.K_LEFT]
-        )
-        levitate = bool(keys[pygame.K_w] or keys[pygame.K_UP] or keys[pygame.K_SPACE])
-        self.player.update(self.world, dt, move, self.jump_queued, levitate)
-        self.jump_queued = False
-
-        target = self._cursor_in_world()
         left, middle, right = pygame.mouse.get_pressed()
-        for wand in self.wands:
-            wand.update(dt)
-        if left and not self.player.dead:
-            self._cast()
-        if right:
-            self.world.paint(*target, self.brush, PAINT_MATERIALS[self.paint_index])
-        elif middle:
-            self.world.paint(*target, self.brush, mat.AIR)
+        target = self._cursor_in_world()
+        controls = Controls(
+            move=int(keys[pygame.K_d] or keys[pygame.K_RIGHT])
+            - int(keys[pygame.K_a] or keys[pygame.K_LEFT]),
+            jump=self.jump_queued,
+            levitate=bool(keys[pygame.K_w] or keys[pygame.K_UP] or keys[pygame.K_SPACE]),
+            cast=bool(left),
+            aim=(float(target[0]), float(target[1])),
+            pickup=self.pickup_queued,
+        )
+        self.jump_queued = self.pickup_queued = False
+        if self.sandbox and right:
+            self.run.world.paint(*target, self.brush, PAINT_MATERIALS[self.paint_index])
+        elif self.sandbox and middle:
+            self.run.world.paint(*target, self.brush, mat.AIR)
 
-        self._step_simulation(dt)
-        for blast in self.projectiles.update(self.world, dt, target):
+        depth_before = self.run.depth_index
+        for blast in self.run.update(dt, controls, self._sim_area()):
             self._on_blast(blast)
+        for event in self.run.events:
+            self.audio.play(event)
+        if self.run.depth_index != depth_before:
+            self._snap_camera()
 
-        cx, cy = self.player.center
+        cx, cy = self.run.player.center
         follow = min(1.0, CAMERA_FOLLOW * dt)
         self.camera[0] += (cx - VIEW_WIDTH / 2 - self.camera[0]) * follow
         self.camera[1] += (cy - VIEW_HEIGHT / 2 - self.camera[1]) * follow
         self._clamp_camera()
         self.shake = max(0.0, self.shake - SHAKE_DECAY * dt)
 
-    def _cast(self) -> None:
-        shots = self.wand.cast()
-        if not shots:
-            return
-        angle = self._aim_angle() + random.uniform(-1, 1) * self.wand.spec.spread
-        sx, sy = self._shoulder()
-        reach = 7 + len(self.wand.blocks) * 1.5  # spawn at the arm's tip
-        self.projectiles.spawn(
-            shots, sx + math.cos(angle) * reach, sy + math.sin(angle) * reach, angle
-        )
-
     def _on_blast(self, blast: Blast) -> None:
         self.shake = min(6.0, self.shake + blast.radius / 3)
-        cx, cy = self.player.center
-        distance = math.hypot(cx - blast.x, cy - blast.y)
-        reach = blast.radius + BLAST_REACH
-        if distance < reach:
-            self.player.hurt(BLAST_DAMAGE * blast.radius * (1 - distance / reach))
-
-    def _step_simulation(self, dt: float) -> None:
-        """Run the world at a fixed rate near the camera, independent of the frame rate."""
-        x0, y0 = int(self.camera[0]) - SIM_MARGIN, int(self.camera[1]) - SIM_MARGIN
-        area = (x0, y0, x0 + VIEW_WIDTH + 2 * SIM_MARGIN, y0 + VIEW_HEIGHT + 2 * SIM_MARGIN)
-        self.sim_accumulator += dt
-        steps = 0
-        while self.sim_accumulator >= SIM_DT and steps < MAX_SIM_STEPS_PER_FRAME:
-            self.simulated_chunks = self.world.step(area)
-            self.sim_accumulator -= SIM_DT
-            steps += 1
-        if steps == MAX_SIM_STEPS_PER_FRAME:
-            self.sim_accumulator = 0.0  # too slow: drop time instead of spiralling
 
     # ------------------------------------------------------------------- draw
 
@@ -252,7 +259,10 @@ class Game:
         jitter_y = random.uniform(-self.shake, self.shake)
         cam_x = int(min(max(self.camera[0] + jitter_x, 0), WORLD_WIDTH - VIEW_WIDTH))
         cam_y = int(min(max(self.camera[1] + jitter_y, 0), WORLD_HEIGHT - VIEW_HEIGHT))
-        self.renderer.refresh(self.world, cam_x, cam_y)
+        if self.lighting:
+            self.renderer.refresh(self.run.world, cam_x, cam_y, self._lights(), self.run.depth.ambient)
+        else:
+            self.renderer.refresh(self.run.world, cam_x, cam_y)
         self.canvas.blit(self.renderer.surface, (0, 0))
         self._draw_entities(cam_x, cam_y)
 
@@ -263,40 +273,114 @@ class Game:
             self.canvas, (self.viewport.target_width, self.viewport.target_height)
         )
         self.screen.blit(scaled, (self.viewport.offset_x, self.viewport.offset_y))
-        self.hud.draw(
-            self.screen,
-            self.viewport,
-            HudState(
-                player=self.player,
-                wands=self.wands,
-                wand_index=self.wand_index,
-                paint_name=mat.NAME_DE[PAINT_MATERIALS[self.paint_index]],
-                paint_slot=(self.paint_index + 1) % 10,
-                brush=self.brush,
-                fps=self.clock.get_fps(),
-                chunks=self.simulated_chunks,
-                show_help=self.show_help,
-            ),
-        )
+        if self.state == "title":
+            pulse = 0.5 + 0.5 * math.sin(self.clock_time * 3) ** 8
+            self.menus.draw_title(self.screen, pulse)
+        else:
+            self.hud.draw(self.screen, self.viewport, self._hud_state())
+            if self.editor.open:
+                self.editor.draw(self.screen, self.run.inventory)
+            if self.state == "paused":
+                self.menus.draw_pause(self.screen)
         pygame.display.flip()
 
+    def _lights(self) -> list[tuple[float, float, float, float]]:
+        """Dynamic light sources: (x, y, radius, intensity) in world pixels."""
+        run = self.run
+        lights: list[tuple[float, float, float, float]] = []
+        if not run.player.dead:
+            lights.append((*run.player.center, PLAYER_LIGHT_RADIUS, 1.0))
+        for projectile in run.projectiles.items:
+            lights.append((projectile.x, projectile.y, 26.0, 0.45))
+        if not run.depth.final:
+            strength = 0.7 if run.exit_open else 0.25
+            lights.append((*run.level.exit, 48.0, strength))
+        for creature in run.enemies.creatures:
+            if creature.spec.boss:
+                beat = 0.35 + 0.25 * math.sin(creature.age * 5) ** 8
+                lights.append((*creature.center, 110.0, beat))
+        for item in run.pickups:
+            if item.wand is not None:
+                lights.append((item.x, item.y - 3, 18.0, 0.35))
+        return lights
+
+    def _hud_state(self) -> HudState:
+        run = self.run
+        banner = run.depth.name_de if run.time_in_depth < BANNER_TIME else ""
+        prompt = ""
+        item = run.nearest_pickup()
+        if item is not None and not run.player.dead:
+            if item.perk is not None:
+                prompt = f"E: Wählen - {item.label_de}"
+            elif item.price and not run.can_afford(item):
+                prompt = f"{item.label_de} - {item.price} Blutperlen (zu wenig)"
+            elif item.price:
+                prompt = f"E: Kaufen - {item.label_de} - {item.price} Blutperlen"
+            else:
+                prompt = f"E: Aufheben - {item.label_de}"
+        elif run.near_exit() and not run.exit_open and run.depth.boss:
+            prompt = "Der Durchgang ist verschlossen. Besiege den Wächter."
+        return HudState(
+            player=run.player,
+            inventory=run.inventory,
+            depth_name=run.depth.name_de,
+            depth_number=run.next_depth_number,
+            depth_total=len(DEPTHS),
+            fps=self.clock.get_fps(),
+            chunks=run.simulated_chunks,
+            show_help=self.show_help,
+            sandbox=self.sandbox,
+            paint_name=mat.NAME_DE[PAINT_MATERIALS[self.paint_index]],
+            paint_slot=(self.paint_index + 1) % 10,
+            brush=self.brush,
+            banner=banner,
+            prompt=prompt,
+            boss=run.enemies.boss() if run.depth.boss else None,
+            outcome=run.outcome,
+            pearls=run.pearls,
+            perks=tuple(PERK_BY_KEY[key].name_de for key in sorted(run.perks)),
+            stats=self._stats_text(),
+        )
+
+    def _stats_text(self) -> str:
+        stats = self.run.stats
+        minutes, seconds = divmod(int(stats["time"]), 60)
+        return (
+            f"Tiefe {self.run.next_depth_number} | Getötet: {stats['kills']} | "
+            f"Blutperlen gesammelt: {stats['pearls']} | Zeit: {minutes}:{seconds:02d}"
+        )
+
     def _draw_entities(self, cam_x: int, cam_y: int) -> None:
-        player = self.player
-        target_x, target_y = self._cursor_in_world()
+        run = self.run
+        player = run.player
+        target = self._cursor_in_world()
+        if not run.depth.final:
+            draw_exit(self.canvas, run.level.exit, run.exit_open, run.time_in_depth, cam_x, cam_y)
+        draw_pickups(self.canvas, run.pickups, cam_x, cam_y)
         if not player.dead:
-            facing_right = target_x >= player.center[0]
+            facing_right = target[0] >= player.center[0]
             sprite = self.sprite_right if facing_right else self.sprite_left
             self.canvas.blit(sprite, (player.x - cam_x, player.y - cam_y))
-            sx, sy = self._shoulder()
-            draw_augmentation(self.canvas, (sx - cam_x, sy - cam_y), self._aim_angle(), self.wand)
-        draw_projectiles(self.canvas, self.projectiles.items, cam_x, cam_y)
-        pygame.draw.circle(
-            self.canvas, (230, 220, 200), (target_x - cam_x, target_y - cam_y), self.brush, 1
-        )
+            sx, sy = run.shoulder((float(target[0]), float(target[1])))
+            angle = math.atan2(target[1] - sy, target[0] - sx)
+            draw_augmentation(self.canvas, (sx - cam_x, sy - cam_y), angle, run.inventory.wand)
+        draw_creatures(self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y)
+        for body in (player, *run.enemies.creatures):
+            if not body.dead:
+                draw_status(self.canvas, body, cam_x, cam_y, self.effects_rng)
+        draw_projectiles(self.canvas, run.projectiles.items, cam_x, cam_y)
+        if self.sandbox:
+            pygame.draw.circle(
+                self.canvas, (230, 220, 200), (target[0] - cam_x, target[1] - cam_y), self.brush, 1
+            )
+        else:
+            x, y = target[0] - cam_x, target[1] - cam_y
+            for dx, dy in ((-3, 0), (3, 0), (0, -3), (0, 3)):
+                self.canvas.fill((230, 220, 200), (x + dx, y + dy, 1, 1))
 
     # ------------------------------------------------------------------- loop
 
-    def run(self) -> None:
+    def run_loop(self) -> None:
         while self.running:
             dt = min(self.clock.tick(FPS) / 1000.0, 0.1)
             self.handle_events()
@@ -309,7 +393,7 @@ class Game:
 
 def main() -> None:
     game = Game()
-    game.run()
+    game.run_loop()
 
 
 if __name__ == "__main__":

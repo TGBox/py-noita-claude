@@ -4,6 +4,7 @@ from src.materials import (
     AIR,
     FIRE,
     KIND,
+    LIGHT_LEVELS,
     MATERIAL_COUNT,
     MATERIALS,
     SOLID,
@@ -14,11 +15,18 @@ from src.reactions import REACTIONS, Reaction, build_tables, to_fixed
 
 
 class TestMaterials(unittest.TestCase):
-    def test_palette_covers_every_variant(self) -> None:
-        self.assertEqual(len(build_palette()), MATERIAL_COUNT * VARIANTS)
+    def test_palette_covers_every_variant_and_light_level(self) -> None:
+        self.assertEqual(len(build_palette()), MATERIAL_COUNT * VARIANTS * LIGHT_LEVELS)
+        self.assertEqual(len(build_palette(lit=False)), MATERIAL_COUNT * VARIANTS)
 
     def test_palette_index_fits_a_byte(self) -> None:
-        self.assertLess(MATERIAL_COUNT * VARIANTS, 256)
+        self.assertLessEqual(MATERIAL_COUNT * VARIANTS * LIGHT_LEVELS, 256)
+
+    def test_darker_light_levels_are_darker(self) -> None:
+        palette = build_palette()
+        for base in range(0, len(palette), LIGHT_LEVELS):
+            levels = [sum(palette[base + level]) for level in range(LIGHT_LEVELS)]
+            self.assertEqual(levels, sorted(levels))
 
     def test_every_material_has_a_german_name(self) -> None:
         names = [m.name_de for m in MATERIALS]

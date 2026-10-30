@@ -124,15 +124,47 @@ class TestDeck(unittest.TestCase):
         w = wand("doppel", "doppel", "funke")
         self.assertEqual(len(w.cast()), 1)
 
+    def test_unaffordable_blocks_are_skipped(self) -> None:
+        cost = CATALOG["gallenblase"].mana
+        w = wand("gallenblase", "funke", mana_max=cost * 1.5, mana_regen=0, cast_delay=0)
+        self.assertEqual(names(w.cast()), ["gallenblase"])
+        w.update(1.0)
+        w.recharge_left = 0
+        w.index = 0
+        self.assertEqual(names(w.cast()), ["funke"])  # bomb too expensive: skipped
+
     def test_mana_limits_casting_and_regenerates(self) -> None:
         cost = CATALOG["gallenblase"].mana
         w = wand("gallenblase", mana_max=cost * 1.5, mana_regen=10, cast_delay=0, recharge=0)
         self.assertTrue(w.cast())
         w.update(0.4)  # cooldown over, but mana still too low
         self.assertEqual(w.cast(), [])
-        self.assertEqual(w.index, 0)  # failed cast does not advance the deck
         w.update(3.0)
         self.assertTrue(w.cast())
+
+    def test_casts_per_round_draw_several_groups(self) -> None:
+        w = wand("funke", "nadel", "klumpen", casts=2)
+        self.assertEqual(names(w.cast()), ["funke", "nadel"])
+
+    def test_shuffling_wand_reorders_its_deck(self) -> None:
+        import random
+
+        orders = set()
+        for seed in range(10):
+            spec = WandSpec("Test", ("funke", "nadel", "klumpen", "gallenblase"), shuffle=True)
+            w = Wand(spec, random.Random(seed))
+            orders.add(tuple(w.order))
+            self.assertEqual(sorted(w.order), [0, 1, 2, 3])
+        self.assertGreater(len(orders), 1)
+
+    def test_next_block_follows_the_deck(self) -> None:
+        w = wand("beschleunigung", "funke", "nadel")
+        self.assertEqual(w.next_block, 0)
+        w.cast()
+        self.assertEqual(w.next_block, 2)
+        w.cooldown = 0
+        w.cast()
+        self.assertIsNone(w.next_block)  # recharging
 
     def test_mana_does_not_exceed_maximum(self) -> None:
         w = wand("funke", mana_max=50)

@@ -124,6 +124,32 @@ class TestPlayer(unittest.TestCase):
         tick(p_wet, wet, 1.0, move=1)
         self.assertLess(p_wet.x, p_dry.x)
 
+    def test_jump_is_a_small_hop_and_levitation_does_the_climbing(self) -> None:
+        world = make_world()
+        hop = Player(40, H - 2 - PLAYER_HEIGHT)
+        tick(hop, world, 0.2)
+        start = hop.y
+        hop.update(world, DT, 0, True, False)
+        best = start
+        for _ in range(60):
+            hop.update(world, DT, 0, False, False)
+            best = min(best, hop.y)
+        self.assertLess(start - best, 30)  # small hop
+
+        flyer = Player(40, H - 2 - PLAYER_HEIGHT)
+        tick(flyer, world, 0.2)
+        flyer.update(world, DT, 0, True, True)
+        tick(flyer, world, 0.4, levitate=True)
+        self.assertLess(flyer.y, best)
+
+    def test_energy_refills_quickly_on_the_ground(self) -> None:
+        world = make_world()
+        player = Player(40, H - 2 - PLAYER_HEIGHT)
+        tick(player, world, 0.2)
+        player.energy = 0.0
+        tick(player, world, 0.6)
+        self.assertEqual(player.energy, MAX_ENERGY)
+
     def test_reset_restores_health(self) -> None:
         player = Player(40, 10)
         player.hp = 0
