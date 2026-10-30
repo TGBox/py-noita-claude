@@ -190,3 +190,68 @@ class TestTriggers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def dummy(x: int, y: int = 40, hp: float = 100.0):
+    from src.body import ENEMY_TEAM, Body
+
+    body = Body(x, y, 6, 10, hp)
+    body.team = ENEMY_TEAM
+    return body
+
+
+class TestNewBlocks(unittest.TestCase):
+    def test_pellets_spawn_several_projectiles(self) -> None:
+        system = ProjectileSystem()
+        system.spawn([shot("knochensplitter")], 10, 40, 0.0)
+        system.update(open_world(), DT, (0.0, 0.0))
+        self.assertEqual(len(system.items), CATALOG["knochensplitter"].pellets)
+
+    def test_modifiers_extend_lifetime_and_bounces(self) -> None:
+        p = build(shot("funke", "langlebigkeit", "abprall", "durchbohren", "brandbeschleuniger"), 0, 0, 0.0)
+        self.assertAlmostEqual(p.lifetime, CATALOG["funke"].lifetime * 2)
+        self.assertEqual(p.bounces, 3)
+        self.assertTrue(p.pierce and p.ignites)
+        self.assertFalse(p.fused)
+
+    def test_bouncy_spark_survives_the_wall(self) -> None:
+        world, system = wall_world(), ProjectileSystem()
+        system.spawn([shot("funke", "abprall")], 100, 40, 0.0)
+        for _ in range(10):
+            system.update(world, DT, (0.0, 0.0))
+        self.assertTrue(system.items)
+        self.assertLess(system.items[0].vx, 0)
+
+    def test_drill_bores_through_bone(self) -> None:
+        world, system = wall_world(), ProjectileSystem()
+        system.spawn([shot("zahnbohrer")], 110, 40, 0.0)
+        run(system, world, 0.3)
+        self.assertEqual(world.get(125, 40), 0)
+
+    def test_pierce_hits_every_creature_once(self) -> None:
+        world, system = open_world(), ProjectileSystem()
+        first, second = dummy(60), dummy(90)
+        system.spawn([shot("nadel", "durchbohren")], 20, 44, 0.0)
+        for _ in range(30):
+            system.update(world, DT, (0.0, 0.0), [first, second])
+        damage = CATALOG["nadel"].damage
+        self.assertAlmostEqual(first.hp, 100 - damage)
+        self.assertAlmostEqual(second.hp, 100 - damage)
+
+    def test_igniting_and_leeching(self) -> None:
+        world, system = open_world(), ProjectileSystem()
+        victim = dummy(60)
+        system.spawn([shot("blutegel", "brandbeschleuniger")], 20, 44, 0.0)
+        for _ in range(60):
+            system.update(world, DT, (0.0, 0.0), [victim])
+        self.assertGreater(victim.burning, 0)
+        self.assertAlmostEqual(system.take_healing(), CATALOG["blutegel"].damage * 0.5)
+        self.assertEqual(system.take_healing(), 0.0)
+
+    def test_building_payloads(self) -> None:
+        for key, material in (("sekret_sehnen", 5), ("sekret_knochen", BONE)):
+            world, system = wall_world(), ProjectileSystem()
+            before = world.grid.count(material)
+            system.spawn([shot("funke", key)], 60, 40, 0.0)
+            run(system, world, 1.0)
+            self.assertGreater(world.grid.count(material), before)

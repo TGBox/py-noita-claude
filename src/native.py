@@ -13,7 +13,7 @@ import sys
 from functools import cache
 from pathlib import Path
 
-from src.materials import MATERIALS, MATERIAL_COUNT
+from src.materials import MATERIAL_COUNT, MATERIALS
 from src.reactions import build_tables, to_fixed
 
 ABI_VERSION = 6

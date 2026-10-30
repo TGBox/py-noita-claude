@@ -14,6 +14,8 @@ import random
 import pygame
 
 from src import native
+from src.enemies import Creature
+from src.loot import Pickup
 from src.materials import (
     ACID,
     BLOOD,
@@ -25,8 +27,6 @@ from src.materials import (
     VARIANTS,
     build_palette,
 )
-from src.enemies import Creature
-from src.loot import Pickup
 from src.perks import PERK_BY_KEY
 from src.projectiles import Projectile
 from src.spells import CATALOG, Block, Category
@@ -147,6 +147,9 @@ FORM_COLORS = {
     "funke": (255, 226, 170),
     "nadel": (236, 226, 204),
     "gallenblase": (150, 172, 60),
+    "knochensplitter": (226, 214, 190),
+    "zahnbohrer": (240, 232, 214),
+    "blutegel": (110, 18, 24),
 }
 
 
@@ -201,6 +204,19 @@ def draw_projectiles(
             pygame.draw.circle(canvas, FORM_COLORS[key], (x, y), 3)
             if int(p.age * 8) % 2:
                 canvas.fill((255, 80, 60), (x, y - 1, 1, 1))
+        elif key == "knochensplitter":
+            canvas.fill(FORM_COLORS[key], (x, y, 2, 1))
+        elif key == "zahnbohrer":
+            speed = math.hypot(p.vx, p.vy) or 1.0
+            ux, uy = p.vx / speed, p.vy / speed
+            pygame.draw.polygon(
+                canvas, FORM_COLORS[key],
+                [(x + ux * 4, y + uy * 4), (x - uy * 2, y + ux * 2), (x + uy * 2, y - ux * 2)],
+            )
+        elif key == "blutegel":
+            wiggle = int(math.sin(p.age * 20) * 1.5)
+            pygame.draw.ellipse(canvas, FORM_COLORS[key], (x - 3, y - 1 + wiggle, 6, 3))
+            canvas.fill((200, 40, 40), (x + 1, y + wiggle, 1, 1))
         elif key == "klumpen":
             material = p.material if p.material is not None else BLOOD
             pygame.draw.circle(canvas, MATERIALS[material].color, (x, y), 2)
@@ -350,6 +366,9 @@ def draw_creatures(
         if key == "herz":
             _draw_heart(canvas, creature, x, y)
             continue
+        if key == "brutmutter":
+            _draw_brood_mother(canvas, creature, x, y)
+            continue
         frame = int(creature.age * FRAME_RATES[key]) % len(CREATURE_SPRITES[key])
         sprite = sprites[(key, frame, creature.facing > 0, creature.flash > 0)]
         canvas.blit(sprite, (x, y))
@@ -407,6 +426,36 @@ def _draw_heart(canvas: pygame.Surface, heart: Creature, x: int, y: int) -> None
         end = (cx - w * 0.15 + k * w * 0.1, cy + h * 0.25)
         pygame.draw.line(canvas, VEIN, start, end)
     pygame.draw.rect(canvas, (90, 70, 80), (cx - 4, y - 8, 8, 10))  # aorta stump
+
+
+BROOD_SKIN = (128, 104, 96)
+BROOD_DARK = (84, 60, 62)
+BROOD_SAC = (170, 150, 92)
+BROOD_EMBRYO = (70, 36, 40)
+BROOD_EYE = (210, 190, 120)
+
+
+def _draw_brood_mother(canvas: pygame.Surface, mother: Creature, x: int, y: int) -> None:
+    """A swollen sac body carrying egg sacs, dangling tendrils below."""
+    flash = mother.flash > 0
+    cx, cy = x + mother.width / 2, y + mother.height / 2
+    breath = 1.0 + 0.05 * math.sin(mother.age * 3)
+    for k in range(5):  # tendrils
+        tx = x + 5 + k * (mother.width - 10) / 4
+        sway = math.sin(mother.age * 4 + k) * 3
+        pygame.draw.line(canvas, BROOD_DARK, (tx, cy + 6), (tx + sway, y + mother.height + 6), 2)
+    body = FLASH_COLOR if flash else BROOD_SKIN
+    w, h = mother.width * breath, mother.height * 0.8 * breath
+    pygame.draw.ellipse(canvas, BROOD_DARK, (cx - w / 2 - 1, cy - h / 2 - 1, w + 2, h + 2))
+    pygame.draw.ellipse(canvas, body, (cx - w / 2, cy - h / 2, w, h))
+    for k, (ox, oy) in enumerate(((-0.28, 0.05), (0.0, 0.18), (0.27, 0.02))):  # egg sacs
+        sx, sy = cx + ox * mother.width, cy + oy * mother.height
+        radius = 4.5 + math.sin(mother.age * 2 + k * 2) * 0.8
+        pygame.draw.circle(canvas, BROOD_SAC, (sx, sy), radius)
+        pygame.draw.circle(canvas, BROOD_EMBRYO, (sx + 0.5, sy + 0.5), radius * 0.45)
+    eye_x = cx + mother.facing * mother.width * 0.3
+    pygame.draw.circle(canvas, BROOD_EYE, (eye_x, cy - h * 0.25), 2.5)
+    canvas.fill((20, 6, 8), (int(eye_x), int(cy - h * 0.25), 1, 1))
 
 
 # ------------------------------------------------------------------- items

@@ -9,11 +9,13 @@ import sys
 import pygame
 
 from src import materials as mat
+from src import records
+from src.audio import Audio
 from src.depths import DEPTHS
 from src.editor import WandEditor
-from src.audio import Audio
+from src.enemies import SPECIES
 from src.hud import Hud, HudState
-from src.menus import Menus
+from src.menus import Menus, title_lines
 from src.perks import PERK_BY_KEY
 from src.projectiles import Blast
 from src.rendering import (
@@ -43,9 +45,11 @@ from src.settings import (
     WORLD_HEIGHT,
     WORLD_WIDTH,
 )
+from src.spells import CATALOG
 from src.viewport import Viewport
 
 CAMERA_FOLLOW = 8.0  # 1/s, higher is snappier
+NOTICE_TIME = 3.0  # seconds a "Neu im Kodex" note stays
 SHAKE_DECAY = 18.0  # 1/s
 BANNER_TIME = 3.0  # seconds the depth name is shown
 PLAYER_LIGHT_RADIUS = 150.0
@@ -85,6 +89,13 @@ class Game:
         self.menus = Menus()
         self.audio = Audio()
         self.state = "title"  # "title", "playing" or "paused"
+        self.records = records.load()
+        self.saved_run = records.load_run()
+        self.saved_checkpoint: object = None  # the checkpoint last written to disk
+        self.notice = ""
+        self.notice_time = 0.0
+        self.run_recorded = False
+        self.cheated = False  # sandbox used this run: it does not count for the records
         self.clock_time = 0.0
         self.run = Run(random.randrange(2**31))
         self.renderer = WorldRenderer(self.run.world, VIEW_WIDTH, VIEW_HEIGHT)
@@ -151,8 +162,15 @@ class Game:
         elif self.state == "title":
             if key in (pygame.K_RETURN, pygame.K_SPACE):
                 self._start_run()
+            elif key == pygame.K_f and self.saved_run is not None:
+                self._continue_run()
+            elif key == pygame.K_k:
+                self.state = "codex"
             elif key == pygame.K_ESCAPE:
                 self.running = False
+        elif self.state == "codex":
+            if key in (pygame.K_ESCAPE, pygame.K_k):
+                self.state = "title"
         elif self.state == "paused":
             if key == pygame.K_ESCAPE:
                 self.state = "playing"
@@ -164,10 +182,65 @@ class Game:
                 self.running = False
 
     def _start_run(self) -> None:
+        records.delete_run()  # a new run replaces the saved one
+        self.saved_run = None
         self.run.new_run()
+        self._begin()
+
+    def _continue_run(self) -> None:
+        try:
+            self.run.restore(self.saved_run)
+        except ValueError:  # from an older, incompatible version: start fresh instead
+            self._start_run()
+            return
+        self.saved_checkpoint = self.run.checkpoint
+        self._begin()
+
+    def _begin(self) -> None:
         self._snap_camera()
         self.sandbox = False
+        self.cheated = False
+        self.run_recorded = False
         self.state = "playing"
+
+    def _record_run(self) -> None:
+        """Store a finished run in the persistent records (once per run)."""
+        if self.run_recorded or not self.run.outcome:
+            return
+        self.run_recorded = True
+        records.delete_run()  # the run is over: nothing to continue
+        self.saved_run = None
+        if self.cheated:
+            return
+        stats = self.run.stats
+        self.records.add_run(
+            won=self.run.outcome == "victory",
+            depth=self.run.depth_index + 1,
+            kills=int(stats["kills"]),
+            pearls=int(stats["pearls"]),
+            time=float(stats["time"]),
+        )
+        records.save(self.records)
+
+    def _note_discoveries(self) -> None:
+        if self.cheated:
+            self.run.discoveries.clear()
+            return
+        for kind, key in self.run.discoveries:
+            if self.records.discover(kind, key):
+                name = CATALOG[key].name_de if kind == "block" else SPECIES[key].name_de
+                self.notice, self.notice_time = f"Neu im Kodex: {name}", NOTICE_TIME
+        self.run.discoveries.clear()
+
+    def _save_checkpoint(self) -> None:
+        """Write the run to disk whenever it reaches a new sanctum."""
+        checkpoint = self.run.checkpoint
+        if checkpoint is None or checkpoint is self.saved_checkpoint or self.cheated:
+            return
+        self.saved_checkpoint = checkpoint
+        self.saved_run = checkpoint
+        records.save_run(checkpoint)
+        records.save(self.records)  # keep Kodex finds even if the game is closed now
 
     def _on_key(self, key: int) -> None:
         if key == pygame.K_ESCAPE:
@@ -176,10 +249,11 @@ class Game:
             self.toggle_fullscreen()
         elif key == pygame.K_F1:
             self.sandbox = not self.sandbox
+            self.cheated = self.cheated or self.sandbox
         elif key == pygame.K_TAB:
             self.editor.toggle()
         elif key == pygame.K_r:
-            self.run.new_run()
+            self._start_run()
             self._snap_camera()
         elif key == pygame.K_h:
             self.show_help = not self.show_help
@@ -239,6 +313,10 @@ class Game:
             self._on_blast(blast)
         for event in self.run.events:
             self.audio.play(event)
+        self._note_discoveries()
+        self._save_checkpoint()
+        self._record_run()
+        self.notice_time = max(0.0, self.notice_time - dt)
         if self.run.depth_index != depth_before:
             self._snap_camera()
 
@@ -275,7 +353,11 @@ class Game:
         self.screen.blit(scaled, (self.viewport.offset_x, self.viewport.offset_y))
         if self.state == "title":
             pulse = 0.5 + 0.5 * math.sin(self.clock_time * 3) ** 8
-            self.menus.draw_title(self.screen, pulse)
+            saved = self.saved_run.get("depth_index") if self.saved_run else None
+            lines = title_lines(saved + 2 if isinstance(saved, int) else None)
+            self.menus.draw_title(self.screen, pulse, self.records.lines_de(), lines)
+        elif self.state == "codex":
+            self.menus.draw_codex(self.screen, self.records)
         else:
             self.hud.draw(self.screen, self.viewport, self._hud_state())
             if self.editor.open:
@@ -340,6 +422,7 @@ class Game:
             pearls=run.pearls,
             perks=tuple(PERK_BY_KEY[key].name_de for key in sorted(run.perks)),
             stats=self._stats_text(),
+            notice=self.notice if self.notice_time > 0 else "",
         )
 
     def _stats_text(self) -> str:
@@ -387,6 +470,7 @@ class Game:
             self.update(dt)
             self.draw()
 
+        records.save(self.records)  # Kodex finds since the last checkpoint
         pygame.quit()
         sys.exit(0)
 

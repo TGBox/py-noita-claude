@@ -37,7 +37,9 @@ uv run build          # Standalone-Version mit PyInstaller bauen
 | **1-4 / Mausrad** | Augmentation wählen |
 | **E** | Gegenstand aufheben (Augmentation oder Baustein) |
 | **Tab** | Augmentationen umbauen (pausiert; Bausteine per Drag & Drop verschieben) |
-| **Enter** | Im Titel: Lauf beginnen |
+| **Enter** | Im Titel: Neuer Lauf |
+| **F** | Im Titel: gespeicherten Lauf fortsetzen |
+| **K** | Im Titel: Kodex öffnen |
 | **R** | Neuer Lauf |
 | **L** | Beleuchtung ein/aus |
 | **M** | Ton ein/aus |
@@ -52,16 +54,30 @@ uv run build          # Standalone-Version mit PyInstaller bauen
 |-------|------|---------|----------|
 | 1 | Der Schlund | - | 9 Maden, 4 Schwärmer |
 | 2 | Der Magen | Der Magenwurm | 11 Maden, 8 Schwärmer, 3 Knochenspeier, 2 Sporenblasen |
-| 3 | Das Gedärm | - | 13 Maden, 8 Schwärmer, 5 Knochenspeier, 7 Sporenblasen |
+| 3 | Das Gedärm | Die Brutmutter | 13 Maden, 8 Schwärmer, 5 Knochenspeier, 7 Sporenblasen |
 | 4 | Die Herzkammer | Das Herz | 9 Maden, 7 Schwärmer, 4 Knochenspeier, 4 Sporenblasen |
 
 Am Ende jeder Tiefe führt ein Schließmuskel weiter. Im Magen öffnet er sich erst, wenn der
-Magenwurm tot ist. In der Herzkammer schlägt das Herz: Es feuert Ringe aus Feuer, Säure und
+Magenwurm tot ist, im Gedärm erst nach der Brutmutter: Sie schwebt schwer durch ihre Halle,
+schleudert Wucherungen, Knochenschrot und Sporen und gebiert abwechselnd Sporenblasen und
+Gallenschwärmer. In der Herzkammer schlägt das Herz: Es feuert Ringe aus Feuer, Säure und
 Funken und gebiert Maden. Die Tiefen werden dunkler, gefährlicher und bringen bessere Beute.
 
 **Das Sanktum:** Zwischen zwei Tiefen liegt eine sichere Kammer. Sie heilt dich und füllt
 deine Augmentationen auf. Dort gibt es einen Laden mit vier Bausteinen und einer Augmentation
 (bezahlt mit Blutperlen) und einen Altar mit drei Perks, von denen du einen wählst.
+
+**Statistik:** Der Titelbildschirm zeigt deine Läufe, Siege, die tiefste erreichte Tiefe und
+den schnellsten Sieg. Sie liegt als `records.json` im Benutzerordner (Windows:
+`%APPDATA%\Cloita`). Läufe, in denen du die Sandbox (F1) benutzt hast, zählen nicht.
+
+**Speichern und Fortsetzen:** Beim Betreten eines Sanktums wird der Lauf gespeichert
+(`lauf.json` im selben Ordner). Nach einem Neustart setzt du ihn im Titel mit **F** fort und
+stehst wieder in diesem Sanktum, mit demselben Laden und denselben Perks. Tod, Sieg oder ein
+neuer Lauf löschen den Spielstand.
+
+**Kodex:** Jeder Baustein, den du aufhebst, und jede Kreatur, die du tötest, wird dauerhaft im
+Kodex eingetragen (Titel, **K**). Neue Einträge meldet das Spiel mit „Neu im Kodex“.
 
 **Blutperlen** liegen in den Höhlen und fallen aus jedem getöteten Gegner. Du sammelst sie
 durch Berührung ein.
@@ -114,11 +130,18 @@ Ebenen stärker. Du trägst bis zu vier Augmentationen und 16 lose Bausteine.
 | Knochennadel | Drüse | 3 | Sehr schnell, gräbt sich nur wenig ein. |
 | Gallenblase | Drüse | 25 | Prallt ab und platzt nach kurzer Zeit mit großer Wucht. |
 | Klumpen | Drüse | 6 | Fliegt im Bogen und zerplatzt zu einer Lache. |
+| Knochensplitter | Drüse | 12 | Schrot aus fünf Splittern auf kurze Distanz. |
+| Zahnbohrer | Drüse | 18 | Frisst sich ein Stück weit durch Fleisch und Knochen. |
+| Blutegel | Drüse | 15 | Langsam; heilt dich um die Hälfte seines Schadens. |
 | Beschleunigung | Mutation | 3 | Nächste Drüse fliegt schneller. |
 | Sprengkraft | Mutation | 12 | Größere Explosion. |
 | Schwerkraftumkehr | Mutation | 4 | Nächste Drüse fällt nach oben. |
 | Zielsuche | Mutation | 8 | Nächste Drüse lenkt zum Mauszeiger. |
 | Doppelzauber | Mutation | 2 | Zieht zwei Gruppen auf einmal. |
+| Durchbohren | Mutation | 10 | Nächste Drüse fliegt durch Kreaturen hindurch. |
+| Abprall | Mutation | 5 | Nächste Drüse prallt dreimal von Wänden ab. |
+| Brandbeschleuniger | Mutation | 8 | Getroffene Kreaturen fangen Feuer. |
+| Langlebigkeit | Mutation | 4 | Doppelte Flugzeit, etwas langsamer. |
 | Aufprall-Nerv | Nerv | 6 | Setzt die nächste Gruppe beim Aufprall frei. |
 | Zeit-Nerv | Nerv | 6 | Setzt die nächste Gruppe nach kurzer Zeit frei. |
 | End-Nerv | Nerv | 6 | Setzt die nächste Gruppe am Ende des Flugs frei. |
@@ -128,6 +151,9 @@ Ebenen stärker. Du trägst bis zu vier Augmentationen und 16 lose Bausteine.
 | Säuresekret | Sekret | 14 | Hinterlässt Magensäure |
 | Feuersekret | Sekret | 10 | Hinterlässt Feuer |
 | Sporensekret | Sekret | 10 | Hinterlässt Sporen |
+| Sehnensekret | Sekret | 12 | Baut Sehnen: eine Plattform zum Draufstehen |
+| Knochensekret | Sekret | 16 | Baut Knochen: Deckung gegen Geschosse |
+| Wucherungssekret | Sekret | 12 | Pflanzt eine Wucherung, die sich durch Fleisch frisst |
 
 Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 
@@ -204,6 +230,7 @@ py-noita-claude/
 │   ├── editor_layout.py # Umbau-Layout (rein geometrisch, testbar)
 │   ├── perks.py         # Perks
 │   ├── menus.py         # Titel und Pause
+│   ├── records.py       # Statistik, Kodex und Spielstand (JSON im Benutzerordner)
 │   ├── sounds.py        # Synthetisierte Soundeffekte (testbar)
 │   ├── audio.py         # Wiedergabe mit stummem Fallback
 │   ├── hud.py           # Anzeige

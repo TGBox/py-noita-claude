@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from src.materials import ACID, BLOOD, FIRE, SPORES, TALLOW
+from src.materials import ACID, BLOOD, BONE, FIRE, GROWTH, SINEW, SPORES, TALLOW
 
 
 class Category(Enum):
@@ -52,14 +52,21 @@ class Block:
     lifetime: float = 0.0  # seconds
     blast: int = 0  # explosion radius at the end of flight
     splash: int = 0  # radius of the material splash at the end of flight
-    bounces: int = 0  # how often it bounces instead of ending on impact
+    bounces: int = 0  # how often it bounces instead of ending on impact (fused forms)
     default_material: int | None = None
+    pellets: int = 0  # >1: the form is cast as this many scattered pellets
+    digs: int = 0  # >0: bores through solids with this radius instead of stopping
+    lifesteal: float = 0.0  # share of direct damage that heals the caster
     # Mutation (modifier)
     speed_factor: float = 1.0
     blast_bonus: int = 0
     flip_gravity: bool = False
     homing: bool = False
     multicast: int = 0
+    pierce: bool = False  # passes through creatures
+    bounce_bonus: int = 0  # extra bounces off walls
+    ignites: bool = False  # sets hit creatures on fire
+    lifetime_factor: float = 1.0
     # Nerv (trigger)
     trigger: Trigger | None = None
     # Sekret (payload)
@@ -88,6 +95,21 @@ BLOCKS: tuple[Block, ...] = (
         description_de="Fliegt im Bogen und zerplatzt zu einer Lache.",
         damage=3, speed=340, gravity=600, lifetime=2.0, splash=6, default_material=BLOOD,
     ),
+    Block(
+        "knochensplitter", "Knochensplitter", Category.FORM, mana=12, cast_delay=0.15,
+        description_de="Ein Schrot aus fünf Splittern auf kurze Distanz.",
+        damage=3, speed=600, lifetime=0.35, splash=2, pellets=5,
+    ),
+    Block(
+        "zahnbohrer", "Zahnbohrer", Category.FORM, mana=18, cast_delay=0.2,
+        description_de="Frisst sich ein Stück weit durch Fleisch und Knochen.",
+        damage=4, speed=300, lifetime=0.5, digs=4,
+    ),
+    Block(
+        "blutegel", "Blutegel", Category.FORM, mana=15, cast_delay=0.1,
+        description_de="Langsam; heilt dich um die Hälfte des Schadens, den er anrichtet.",
+        damage=8, speed=260, lifetime=1.6, splash=3, default_material=BLOOD, lifesteal=0.5,
+    ),
     # Mutationen (modifiers)
     Block(
         "beschleunigung", "Beschleunigung", Category.MODIFIER, mana=3,
@@ -108,6 +130,23 @@ BLOCKS: tuple[Block, ...] = (
     Block(
         "doppel", "Doppelzauber", Category.MODIFIER, mana=2,
         description_de="Zieht zwei Gruppen auf einmal.", multicast=2,
+    ),
+    Block(
+        "durchbohren", "Durchbohren", Category.MODIFIER, mana=10,
+        description_de="Nächste Drüse fliegt durch Kreaturen hindurch.", pierce=True,
+    ),
+    Block(
+        "abprall", "Abprall", Category.MODIFIER, mana=5,
+        description_de="Nächste Drüse prallt dreimal von Wänden ab.", bounce_bonus=3,
+    ),
+    Block(
+        "brandbeschleuniger", "Brandbeschleuniger", Category.MODIFIER, mana=8,
+        description_de="Getroffene Kreaturen fangen Feuer.", ignites=True,
+    ),
+    Block(
+        "langlebigkeit", "Langlebigkeit", Category.MODIFIER, mana=4,
+        description_de="Nächste Drüse fliegt doppelt so lange, aber langsamer.",
+        lifetime_factor=2.0, speed_factor=0.8,
     ),
     # Nerven (triggers)
     Block(
@@ -133,6 +172,18 @@ BLOCKS: tuple[Block, ...] = (
     Block("sekret_saeure", "Säuresekret", Category.PAYLOAD, mana=14, material=ACID),
     Block("sekret_feuer", "Feuersekret", Category.PAYLOAD, mana=10, material=FIRE),
     Block("sekret_sporen", "Sporensekret", Category.PAYLOAD, mana=10, material=SPORES),
+    Block(
+        "sekret_sehnen", "Sehnensekret", Category.PAYLOAD, mana=12, material=SINEW,
+        description_de="Baut einen Klumpen Sehnen - eine Plattform zum Draufstehen.",
+    ),
+    Block(
+        "sekret_knochen", "Knochensekret", Category.PAYLOAD, mana=16, material=BONE,
+        description_de="Baut einen Klumpen Knochen - eine Deckung gegen Geschosse.",
+    ),
+    Block(
+        "sekret_wucherung", "Wucherungssekret", Category.PAYLOAD, mana=12, material=GROWTH,
+        description_de="Pflanzt eine Wucherung, die sich durch Fleisch frisst.",
+    ),
 )  # fmt: skip
 
 CATALOG: dict[str, Block] = {block.key: block for block in BLOCKS}
