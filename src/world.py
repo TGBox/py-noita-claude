@@ -218,7 +218,39 @@ class World:
                     destroyed += 1
             elif current == AIR and dist2 > outer and rnd() < 0.12:
                 self.set_cell(x, y, FIRE)
-        return destroyed
+        return destroyed + self.crumble_loose(cx, cy, radius + 2)
+
+    def crumble_loose(self, cx: int, cy: int, radius: int, passes: int = 12) -> int:
+        """Break off loose solid fragments (cells with at most two solid neighbours).
+
+        Explosions leave single pixels and thin splinters behind; those crumble into
+        their debris (bone into dust, flesh into blood, ...) so they cannot snag bodies.
+        Returns the number of crumbled cells.
+        """
+        w, h, grid = self.width, self.height, self.grid
+        crumbled = 0
+        for _ in range(passes):
+            loose: list[tuple[int, int, int]] = []
+            for y in range(max(1, cy - radius), min(h - 1, cy + radius + 1)):
+                row = y * w
+                for x in range(max(1, cx - radius), min(w - 1, cx + radius + 1)):
+                    material = grid[row + x]
+                    if KIND[material] != SOLID or material == BEDROCK:
+                        continue
+                    neighbours = 0
+                    for ny in (row - w, row, row + w):
+                        for nx in (x - 1, x, x + 1):
+                            if KIND[grid[ny + nx]] == SOLID:
+                                neighbours += 1
+                    if neighbours - 1 <= 2:  # minus the cell itself
+                        loose.append((x, y, material))
+            if not loose:
+                break
+            for x, y, material in loose:
+                debris, _chance = DEBRIS[material]
+                self.set_cell(x, y, debris)
+            crumbled += len(loose)
+        return crumbled
 
     def splash(self, cx: int, cy: int, radius: int, material: int) -> int:
         """Fill free cells in a disc with ``material`` (a spell payload). Returns cells set.

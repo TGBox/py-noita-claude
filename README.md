@@ -168,8 +168,14 @@ Reaktionen stehen als Tabelle in `src/reactions.py`. Eine neue Wechselwirkung is
   gerastert wird.
 - Die gesamte Spiellogik (`src/run.py` und darunter) kommt ohne pygame aus und ist getestet.
 - Licht wird von festen Materialien verdeckt (Strahlen durch das Lichtraster).
-- Alle Soundeffekte werden beim Start synthetisiert (`src/sounds.py`), es gibt keine
-  Audiodateien. Ohne Audiogerät bleibt das Spiel stumm.
+- Alle Soundeffekte werden beim Start synthetisiert (`src/sounds.py`): tiefe, gedämpfte,
+  organische Klänge mit weichen Ein- und Ausblendungen. Ohne Audiogerät bleibt das Spiel stumm.
+- Eigene Sounds: Leg `<ereignis>.wav` oder `.ogg` nach `assets/audio/` (Varianten als
+  `<ereignis>_1.wav`, `<ereignis>_2.wav`, ...). Sie ersetzen dann den synthetisierten Klang.
+  Ereignisse: `cast`, `blast`, `blast_big`, `hurt`, `kill`, `pickup`, `pearl`, `buy`, `perk`,
+  `descend`, `death`, `victory`.
+- Die Weltgenerierung garantiert per Wegsuche, dass jeder Ausgang erreichbar ist (die Figur
+  passt durch jeden Tunnel); lose Bruchstücke zerbröseln nach Explosionen.
 - Das Bewegungsgefühl und die Zauberstab-Regeln orientieren sich an Noita. Code, Grafiken und
   Texte von Noita werden nicht verwendet.
 

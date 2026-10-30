@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v0.4.0
+
+- 2026-10-30 (4d035a0): fix: fix terrain leaving single pixels behind, fix harsh sound files
+
 ## SemVer v0.3.2
 
-- 2026-10-30 (40b6896): feat: implement more mutations as wand spells
+- 2026-10-30 (9332f19): feat: implement more mutations as wand spells
 
 ## SemVer v0.3.1
 

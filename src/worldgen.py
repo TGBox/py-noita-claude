@@ -10,6 +10,7 @@ from src.materials import (
     ACID,
     AIR,
     BEDROCK,
+    BLOCKS_BODY,
     BLOOD,
     BONE,
     BONE_DUST,
@@ -18,13 +19,18 @@ from src.materials import (
     SINEW,
     TALLOW,
 )
-from src.player import PLAYER_HEIGHT
+from src.native import byte_view, reachable
+from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
 from src.world import BORDER, World, disc_offsets
 
 SPAWN_HALF_WIDTH = 52
 SPAWN_FLOOR = 132  # first solid row below the spawn cavern
 SPAWN_CLEARANCE = 40  # keep hazards this far away from the spawn cavern
 SPAWN_RADIUS_Y = 34
+SPAWN_OFFSET_X = -36  # the player starts left of the cavern's centre
+TUNNEL_MIN_RADIUS = 11  # 22 px: comfortably taller than the 18 px player
+BRIDGE_GAP = 20
+PATH_REPAIRS = 6
 ARENA_RADIUS = 72
 
 
@@ -74,15 +80,22 @@ def generate_level(world: World, depth: Depth) -> Level:
     for a, b in _connections(world, nodes):
         _carve_tunnel(world, a, b)
 
-    # Bone platform under the spawn so tunnels cannot eat the floor.
+    # Bone platform under the spawn (left of centre, where tunnels rarely leave the
+    # cavern) so the player never starts above a hole.
+    spawn_x = centre_x + SPAWN_OFFSET_X
+    for y in range(SPAWN_FLOOR - PLAYER_HEIGHT - 8, SPAWN_FLOOR):  # flat alcove
+        row = y * w
+        world.grid[row + spawn_x - 12 : row + spawn_x + 12] = bytes(24)
     for y in range(SPAWN_FLOOR, SPAWN_FLOOR + 5):
         row = y * w
-        world.grid[row + centre_x - 16 : row + centre_x + 16] = bytes([BONE]) * 32
+        world.grid[row + spawn_x - 12 : row + spawn_x + 12] = bytes([BONE]) * 24
 
     def amount(base: float, factor: float) -> int:
         return int(base * scale * factor)
 
-    _scatter(world, BONE_DUST, amount(18, depth.bone_dust), (8, 14), SPAWN_FLOOR + 10)
+    _scatter(
+        world, BONE_DUST, amount(18, depth.bone_dust), (6, 10), SPAWN_FLOOR + 10, min_width=70
+    )
     _scatter(world, BLOOD, amount(16, depth.blood), (9, 15), SPAWN_FLOOR + 10)
     _scatter(world, TALLOW, amount(7, depth.tallow), (7, 11), h // 2)
     _scatter(world, ACID, amount(8, depth.acid), (7, 12), int(h * 0.6))
@@ -103,8 +116,34 @@ def generate_level(world: World, depth: Depth) -> Level:
         deepest = max(nodes[1:], key=lambda n: n[1] + 0.3 * math.dist(n, spawn))
         exit_point = (deepest[0], _floor_y(world, deepest[0], deepest[1]) - 12)
 
+    player_spawn = (spawn_x - PLAYER_WIDTH // 2, SPAWN_FLOOR - PLAYER_HEIGHT)
+    ensure_path(world, player_spawn, exit_point)
     world.wake_all()  # every chunk settles once the camera comes near
-    return Level((centre_x - 4, SPAWN_FLOOR - PLAYER_HEIGHT), exit_point, arena)
+    return Level(player_spawn, exit_point, arena)
+
+
+def ensure_path(world: World, spawn: tuple[int, int], target: tuple[int, int]) -> int:
+    """Make sure the player can get from ``spawn`` to ``target`` (flying allowed).
+
+    Searches all positions where the player's body fits; if the target cannot be
+    reached, a passage is dug from the closest reachable point. Returns the number
+    of passages dug.
+    """
+    goal = (target[0] - PLAYER_WIDTH // 2, target[1] - PLAYER_HEIGHT // 2)
+    box = (PLAYER_WIDTH + 2, PLAYER_HEIGHT + 2)  # a little headroom
+    blocking = [int(b) for b in BLOCKS_BODY]
+    dug = 0
+    for _ in range(PATH_REPAIRS):
+        found, closest = reachable(
+            byte_view(world.grid), world.width, world.height, blocking, box,
+            (spawn[0] - 1, spawn[1] - 2), goal,
+        )  # fmt: skip
+        if found:
+            return dug
+        start = (closest[0] + box[0] // 2, closest[1] + box[1] // 2)
+        _carve_tunnel(world, start, target, radius_range=(12, 14), wobble_limit=0.5)
+        dug += 1
+    return dug
 
 
 def _carve_oval(world: World, cx: int, cy: int, rx: int, ry: int) -> None:
@@ -151,17 +190,28 @@ def _connections(world: World, nodes: list[tuple[int, int]]) -> list[tuple]:
     return edges
 
 
-def _carve_tunnel(world: World, start: tuple[int, int], end: tuple[int, int]) -> None:
-    """Winding passage with lumpy walls from ``start`` to ``end``."""
+def _carve_tunnel(
+    world: World,
+    start: tuple[int, int],
+    end: tuple[int, int],
+    radius_range: tuple[int, int] = (TUNNEL_MIN_RADIUS, TUNNEL_MIN_RADIUS + 3),
+    wobble_limit: float = 1.1,
+) -> None:
+    """Winding passage with lumpy walls from ``start`` to ``end``.
+
+    The radius never drops below ``radius_range[0]`` so the player always fits.
+    """
     rng = world.rng
     x, y = float(start[0]), float(start[1])
-    radius = rng.randint(5, 9)
+    low, high = radius_range
+    radius = rng.randint(low, high)
     wobble = 0.0
     for _ in range(2000):
         dx, dy = end[0] - x, end[1] - y
         if dx * dx + dy * dy < 9:
+            world.fill_disc(int(end[0]), int(end[1]), radius, AIR)
             break
-        wobble = max(-1.1, min(1.1, wobble + rng.uniform(-0.25, 0.25)))
+        wobble = max(-wobble_limit, min(wobble_limit, wobble + rng.uniform(-0.25, 0.25)))
         angle = math.atan2(dy, dx) + wobble
         x += math.cos(angle) * 3
         y += math.sin(angle) * 3
@@ -174,7 +224,7 @@ def _carve_tunnel(world: World, start: tuple[int, int], end: tuple[int, int]) ->
                 rng.randint(3, 6),
                 AIR,
             )
-        radius = min(max(radius + rng.choice((-1, 0, 0, 0, 1)), 5), 10)
+        radius = min(max(radius + rng.choice((-1, 0, 0, 0, 1)), low), high + 2)
 
 
 def _in_spawn_zone(world: World, x: int, y: int) -> bool:
@@ -223,9 +273,18 @@ def _random_air(world: World, min_y: int) -> tuple[int, int] | None:
 
 
 def _scatter(
-    world: World, material: int, count: int, radius: tuple[int, int], min_y: int
+    world: World,
+    material: int,
+    count: int,
+    radius: tuple[int, int],
+    min_y: int,
+    min_width: int = 0,
 ) -> None:
-    """Drop ``count`` blobs of ``material`` onto cave floors (they settle in play)."""
+    """Drop ``count`` blobs of ``material`` onto cave floors (they settle in play).
+
+    With ``min_width`` the blob only lands where the floor is at least that wide,
+    so powders do not plug narrow tunnels.
+    """
     for _ in range(count):
         spot = _random_air(world, min_y)
         if spot is None:
@@ -233,9 +292,21 @@ def _scatter(
         x, y = spot
         r = world.rng.randint(*radius)
         floor = _floor_y(world, x, y)
+        if min_width and _air_span(world, x, floor - 3) < min_width:
+            continue
         for dx, dy in disc_offsets(r):
             if world.get(x + dx, floor - r // 2 + dy) == AIR:
                 world.set_cell(x + dx, floor - r // 2 + dy, material)
+
+
+def _air_span(world: World, x: int, y: int) -> int:
+    """Width of the open run of air through (x, y) on row y (capped at 200)."""
+    left = right = x
+    while world.get(left - 1, y) == AIR and x - left < 100:
+        left -= 1
+    while world.get(right + 1, y) == AIR and right - x < 100:
+        right += 1
+    return right - left + 1
 
 
 def _growth_nest(world: World) -> None:
@@ -270,7 +341,11 @@ def _sinew_bridge(world: World) -> None:
             continue
         thickness = rng.randint(2, 3)
         sag = rng.uniform(2, 8)
+        # A torn gap so the bridge never seals a shaft the player must pass.
+        gap_start = left + rng.randint(span // 5, max(span // 5, span - BRIDGE_GAP - span // 5))
         for xx in range(left, right + 1):
+            if gap_start <= xx < gap_start + BRIDGE_GAP:
+                continue
             t = (xx - left) / max(1, span - 1)
             yy = y + int(sag * math.sin(math.pi * t))
             for k in range(thickness):
