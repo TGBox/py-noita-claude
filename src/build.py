@@ -1,19 +1,28 @@
+import os
 import sys
 
 import PyInstaller.__main__
 
+from src import native
+
 
 def main() -> None:
-    args = sys.argv[1:] if len(sys.argv) > 1 else [
-        "--noconfirm",
-        "--onedir",
-        "--windowed",
-        "--add-data",
-        "assets;assets",
-        "src/main.py",
-        "--name",
-        "py-noita-claude",
-    ]
+    if len(sys.argv) > 1:
+        args = sys.argv[1:]
+    else:
+        native.build()
+        args = [
+            "--noconfirm",
+            "--onedir",
+            "--windowed",
+            "--add-data",
+            f"assets{os.pathsep}assets",
+            "--add-binary",
+            f"{native.library_path()}{os.pathsep}.",
+            "src/main.py",
+            "--name",
+            "Cloita",
+        ]
     PyInstaller.__main__.run(args)
 
 
