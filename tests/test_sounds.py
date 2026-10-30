@@ -53,7 +53,9 @@ class TestSounds(unittest.TestCase):
             directory = Path(folder)
             for file in ("cast.wav", "cast_2.ogg", "castle.wav", "kill.mp3", "pearl.WAV"):
                 (directory / file).write_bytes(b"")
-            self.assertEqual([p.name for p in custom_files(directory, "cast")], ["cast.wav", "cast_2.ogg"])
+            self.assertEqual(
+                [p.name for p in custom_files(directory, "cast")], ["cast.wav", "cast_2.ogg"]
+            )
             self.assertEqual([p.name for p in custom_files(directory, "pearl")], ["pearl.WAV"])
             self.assertEqual(custom_files(directory, "kill"), [])
             self.assertEqual(custom_files(directory / "missing", "cast"), [])

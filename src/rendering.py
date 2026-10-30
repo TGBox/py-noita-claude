@@ -210,7 +210,8 @@ def draw_projectiles(
             speed = math.hypot(p.vx, p.vy) or 1.0
             ux, uy = p.vx / speed, p.vy / speed
             pygame.draw.polygon(
-                canvas, FORM_COLORS[key],
+                canvas,
+                FORM_COLORS[key],
                 [(x + ux * 4, y + uy * 4), (x - uy * 2, y + ux * 2), (x + uy * 2, y - ux * 2)],
             )
         elif key == "blutegel":
@@ -344,7 +345,9 @@ def build_creature_sprites() -> dict[tuple[str, int, bool, bool], pygame.Surface
                 for y, row in enumerate(rows):
                     for x, code in enumerate(row):
                         if code in CREATURE_COLORS:
-                            surface.set_at((x, y), FLASH_COLOR if flashing else CREATURE_COLORS[code])
+                            surface.set_at(
+                                (x, y), FLASH_COLOR if flashing else CREATURE_COLORS[code]
+                            )
                 sprites[(key, index, True, flashing)] = surface
                 sprites[(key, index, False, flashing)] = pygame.transform.flip(surface, True, False)
     return sprites
@@ -418,7 +421,11 @@ def _draw_heart(canvas: pygame.Surface, heart: Creature, x: int, y: int) -> None
     pygame.draw.polygon(
         canvas,
         dark,
-        [(cx - w * 0.5, cy - h * 0.1), (cx + w * 0.5, cy - h * 0.05), (cx + w * 0.05, cy + h * 0.5)],
+        [
+            (cx - w * 0.5, cy - h * 0.1),
+            (cx + w * 0.5, cy - h * 0.05),
+            (cx + w * 0.05, cy + h * 0.5),
+        ],
     )
     pygame.draw.circle(canvas, HEART_LIGHT, (cx + w * 0.12, cy - h * 0.22), w * 0.12)
     for k in range(4):  # veins
@@ -498,7 +505,12 @@ def draw_pickups(canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_
 
 
 def draw_exit(
-    canvas: pygame.Surface, centre: tuple[int, int], is_open: bool, age: float, cam_x: int, cam_y: int
+    canvas: pygame.Surface,
+    centre: tuple[int, int],
+    is_open: bool,
+    age: float,
+    cam_x: int,
+    cam_y: int,
 ) -> None:
     """The way down: a pulsing sphincter that only opens when the depth is cleared."""
     x, y = centre[0] - cam_x, centre[1] - cam_y

@@ -21,7 +21,6 @@ WALL_BOUNCE_DAMPING = 0.85  # bounces from the "Abprall" modifier keep more spee
 PELLET_SPREAD = 0.22  # radians
 
 
-
 @dataclass(frozen=True)
 class Blast:
     """An explosion that happened this frame (for camera shake and damage)."""
@@ -64,9 +63,7 @@ class Projectile:
         return self.form.bounces > 0
 
 
-def build(
-    shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM
-) -> Projectile:
+def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM) -> Projectile:
     """Apply a shot's modifiers to its form and launch it."""
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
@@ -261,9 +258,7 @@ class ProjectileSystem:
         self.spawn(p.children, p.x, p.y, angle, p.team)
 
 
-def _body_at(
-    bodies: Sequence[Body], team: str, x: float, y: float, skip: set[int]
-) -> Body | None:
+def _body_at(bodies: Sequence[Body], team: str, x: float, y: float, skip: set[int]) -> Body | None:
     for body in bodies:
         if body.team != team and not body.dead and id(body) not in skip and body.contains(x, y):
             return body

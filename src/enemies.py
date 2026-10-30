@@ -128,7 +128,9 @@ class Creature(Body):
         self.summons: list[str] = []  # creature keys the manager should spawn
         self.attacks = [
             Wand(
-                WandSpec(spec.name_de, blocks, mana_max=1e9, mana_regen=1e9, cast_delay=0, recharge=0),
+                WandSpec(
+                    spec.name_de, blocks, mana_max=1e9, mana_regen=1e9, cast_delay=0, recharge=0
+                ),
                 rng,
             )
             for blocks in spec.patterns
@@ -140,9 +142,7 @@ class Creature(Body):
             self.alerted = True
         super().hurt(amount)
 
-    def update(
-        self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
-    ) -> None:
+    def update(self, world: World, dt: float, player: Body, projectiles: ProjectileSystem) -> None:
         if self.dead:
             return
         self.age += dt

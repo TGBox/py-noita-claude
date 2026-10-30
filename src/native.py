@@ -7,6 +7,7 @@ writes them in place.
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import subprocess
 import sys
@@ -88,15 +89,37 @@ def load() -> ctypes.CDLL:
         )
     library.cloita_new.restype = ctypes.c_void_p
     library.cloita_new.argtypes = [
-        _size, _size, ctypes.c_uint64, _size,
-        _u8p, _i16p, _u16p, _u8p, _u8p, _u8p, _u8p, _u8p, _u16p, _u8p, _u16p,
-        _u8p, _u8p, _u16p,
+        _size,
+        _size,
+        ctypes.c_uint64,
+        _size,
+        _u8p,
+        _i16p,
+        _u16p,
+        _u8p,
+        _u8p,
+        _u8p,
+        _u8p,
+        _u8p,
+        _u16p,
+        _u8p,
+        _u16p,
+        _u8p,
+        _u8p,
+        _u16p,
     ]
     library.cloita_free.argtypes = [ctypes.c_void_p]
     library.cloita_seed.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
     library.cloita_step.restype = ctypes.c_uint32
     library.cloita_step.argtypes = [
-        ctypes.c_void_p, _u8p, _u8p, _u8p, _size, _size, _size, _size,
+        ctypes.c_void_p,
+        _u8p,
+        _u8p,
+        _u8p,
+        _size,
+        _size,
+        _size,
+        _size,
     ]
     library.cloita_grain.argtypes = [_u8p, _size, _size, ctypes.c_uint64, ctypes.c_uint8]
     library.cloita_render_lit.argtypes = [
@@ -109,7 +132,15 @@ def load() -> ctypes.CDLL:
         ctypes.POINTER(_size), ctypes.POINTER(_size),
     ]  # fmt: skip
     library.cloita_render.argtypes = [
-        _u8p, _u8p, _u8p, _size, _size, _size, _size, _size, ctypes.c_uint8,
+        _u8p,
+        _u8p,
+        _u8p,
+        _size,
+        _size,
+        _size,
+        _size,
+        _size,
+        ctypes.c_uint8,
     ]
     return library
 
@@ -180,10 +211,9 @@ class Core:
             self._handle = ctypes.c_void_p()
 
     def __del__(self) -> None:
-        try:
+        # At interpreter shutdown the library or ctypes globals may already be gone.
+        with contextlib.suppress(AttributeError, TypeError, OSError):
             self.close()
-        except Exception:  # interpreter shutdown: the library may already be gone
-            pass
 
 
 def render(

@@ -45,6 +45,7 @@ def codex_entries(records: Records) -> tuple[list[tuple[str, bool]], list[tuple[
     ]
     return blocks, creatures
 
+
 SHADE = (6, 2, 4, 200)
 CODEX_COLUMNS = 3
 UNKNOWN = "???"
@@ -89,11 +90,17 @@ class Menus:
         subtitle = self.font.render("Ein Abstieg in das lebende Fleisch", True, COLOR_TEXT)
         self._centered(screen, subtitle, height * 0.3 + 70)
         for index, line in enumerate(lines):
-            self._centered(screen, self.big_font.render(line, True, COLOR_TEXT), height * 0.5 + index * 40)
+            self._centered(
+                screen, self.big_font.render(line, True, COLOR_TEXT), height * 0.5 + index * 40
+            )
         for index, line in enumerate(CONTROLS):
-            self._centered(screen, self.font.render(line, True, COLOR_TEXT), height * 0.78 + index * 26)
+            self._centered(
+                screen, self.font.render(line, True, COLOR_TEXT), height * 0.78 + index * 26
+            )
         for index, line in enumerate(records):
-            self._centered(screen, self.font.render(line, True, COLOR_ACCENT), height * 0.3 + 105 + index * 24)
+            self._centered(
+                screen, self.font.render(line, True, COLOR_ACCENT), height * 0.3 + 105 + index * 24
+            )
 
     def draw_codex(self, screen: pygame.Surface, records: Records) -> None:
         self._shade(screen)
@@ -110,14 +117,20 @@ class Menus:
         for index, (text, seen) in enumerate(blocks):
             column, row = divmod(index, rows)
             x = width * 0.25 / (CODEX_COLUMNS + 0.5) * 2 + column * column_width
-            screen.blit(self.font.render(text, True, COLOR_TEXT if seen else DIM), (x, top + row * 24))
+            screen.blit(
+                self.font.render(text, True, COLOR_TEXT if seen else DIM), (x, top + row * 24)
+            )
         top += rows * 24 + 24
         met = sum(1 for _, seen in creatures if seen)
-        self._centered(screen, self.font.render(f"Kreaturen: {met}/{len(creatures)}", True, COLOR_TEXT), top)
+        self._centered(
+            screen, self.font.render(f"Kreaturen: {met}/{len(creatures)}", True, COLOR_TEXT), top
+        )
         for index, (text, seen) in enumerate(creatures):
             column, row = index % CODEX_COLUMNS, index // CODEX_COLUMNS
             x = width * 0.25 / (CODEX_COLUMNS + 0.5) * 2 + column * column_width
-            screen.blit(self.font.render(text, True, COLOR_TEXT if seen else DIM), (x, top + 20 + row * 24))
+            screen.blit(
+                self.font.render(text, True, COLOR_TEXT if seen else DIM), (x, top + 20 + row * 24)
+            )
         self._centered(screen, self.font.render("ESC / K: Zurück", True, COLOR_TEXT), height * 0.95)
 
     def draw_pause(self, screen: pygame.Surface) -> None:
@@ -125,4 +138,6 @@ class Menus:
         height = screen.get_height()
         self._centered(screen, self.big_font.render("Pause", True, COLOR_ACCENT), height * 0.32)
         for index, line in enumerate(PAUSE_LINES):
-            self._centered(screen, self.font.render(line, True, COLOR_TEXT), height * 0.42 + index * 30)
+            self._centered(
+                screen, self.font.render(line, True, COLOR_TEXT), height * 0.42 + index * 30
+            )
