@@ -26,7 +26,10 @@ class TestCatalog(unittest.TestCase):
     def test_category_fields_are_consistent(self) -> None:
         for block in BLOCKS:
             self.assertEqual(block.trigger is not None, block.category is Category.TRIGGER)
-            self.assertEqual(block.material is not None, block.category is Category.PAYLOAD)
+            if block.category is Category.PAYLOAD:
+                self.assertIsNotNone(block.material)
+            elif block.material is not None:  # element "Kerne" carry a material as a mutation
+                self.assertIs(block.category, Category.MODIFIER, block.key)
             self.assertTrue(block.name_de)
 
     def test_every_trigger_kind_is_available(self) -> None:
@@ -174,3 +177,62 @@ class TestDeck(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCharges(unittest.TestCase):
+    def test_limited_blocks_run_out_and_refill(self) -> None:
+        from src.wand import Wand, WandSpec
+
+        uses = CATALOG["knochenbombe"].uses
+        self.assertGreater(uses, 0)
+        wand = Wand(WandSpec("b", ("knochenbombe", "funke"), mana_max=1e6, mana_regen=1e6))
+        forms = []
+        for _ in range(uses * 3):
+            wand.cooldown = wand.recharge_left = 0.0
+            forms += [s.form.key for s in wand.cast()]
+        self.assertEqual(forms.count("knochenbombe"), uses)
+        self.assertGreater(forms.count("funke"), uses)
+        wand.refill_charges()
+        wand.cooldown = wand.recharge_left = 0.0
+        self.assertIn("knochenbombe", [s.form.key for s in wand.cast()] + [s.form.key for s in wand.cast()])
+
+    def test_rearranging_keeps_spent_charges(self) -> None:
+        from src.wand import Wand, WandSpec
+
+        wand = Wand(WandSpec("b", ("knochenbombe", "funke"), mana_max=1e6, mana_regen=1e6))
+        wand.cast()
+        spent = wand.charges[0]
+        wand.set_slots(["funke", "knochenbombe"])
+        self.assertEqual(wand.charges[1], spent)
+
+
+class TestFamilies(unittest.TestCase):
+    def test_noita_sized_pool(self) -> None:
+        self.assertGreaterEqual(len(BLOCKS), 400)
+        names = [b.name_de for b in BLOCKS]
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_family_blocks_are_rarer_in_loot(self) -> None:
+        import random
+
+        from src.loot import random_block
+
+        rng = random.Random(4)
+        picks = [CATALOG[random_block(rng)] for _ in range(4000)]
+        hand_made = sum(1 for b in picks if b.rarity == 1.0)
+        self.assertGreater(hand_made, 1500)
+
+    def test_timed_nerves_release_at_their_delay(self) -> None:
+        from src.projectiles import ProjectileSystem
+        from src.world import World
+
+        slow = Wand(WandSpec("t", ("nerv_zeit_150", "leuchtkugel", "nadel")))
+        system = ProjectileSystem()
+        world = World(1200, 200, seed=1)
+        system.spawn(slow.cast(), 100, 100, 0.0)
+        for _ in range(int(1.2 * 60)):
+            system.update(world, 1 / 60, (0, 0))
+        self.assertFalse(any(p.form.key == "nadel" for p in system.items))
+        for _ in range(int(0.5 * 60)):
+            system.update(world, 1 / 60, (0, 0))
+        self.assertTrue(any(p.form.key == "nadel" for p in system.items))

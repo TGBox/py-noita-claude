@@ -66,7 +66,7 @@ class TestKodex(unittest.TestCase):
             self.skipTest("pygame not installed")
         blocks, creatures = codex_entries(Records(blocks=["funke"], creatures={"made": 4}))
         self.assertEqual(len(blocks), len(BLOCKS))
-        self.assertEqual(len(creatures), len(SPECIES))
+        self.assertEqual(len(creatures), sum(not spec.prop for spec in SPECIES.values()))
         self.assertEqual(sum(seen for _, seen in blocks), 1)
         self.assertIn("Fleischmade: 4 getötet", [text for text, _ in creatures])
 
@@ -83,3 +83,42 @@ class TestSavedRun(unittest.TestCase):
             delete_run(path)
             self.assertIsNone(load_run(path))
             delete_run(path)  # deleting twice is fine
+
+
+class TestUnlocks(unittest.TestCase):
+    def test_kodex_grants_favoured_blocks_and_pearls_per_boss(self) -> None:
+        from src.records import BOSS_PEARLS
+
+        records = Records(blocks=["funke"], creatures={"made": 9, "magenwurm": 1, "herz": 2})
+        favoured, pearls = records.unlocks()
+        self.assertEqual(favoured, {"funke"})
+        self.assertEqual(pearls, 2 * BOSS_PEARLS)
+
+    def test_favoured_blocks_show_up_more_often(self) -> None:
+        import random
+
+        from src.loot import random_block
+
+        rng = random.Random(1)
+        plain = sum(random_block(rng) == "zahnbohrer" for _ in range(4000))
+        favoured = sum(random_block(rng, favoured={"zahnbohrer"}) == "zahnbohrer" for _ in range(4000))
+        self.assertGreater(favoured, plain * 1.8)
+
+    def test_run_starts_with_unlocked_pearls(self) -> None:
+        from src.run import Run
+
+        run = Run(2)
+        run.start_pearls = 60
+        run.new_run()
+        self.assertEqual(run.pearls, 60)
+
+
+class TestEyeRecords(unittest.TestCase):
+    def test_true_wins_and_best_eyes(self) -> None:
+        from src.depths import DEPTHS
+
+        records = Records()
+        records.add_run(won=False, depth=3, kills=1, pearls=1, time=10, eyes=2)
+        records.add_run(won=True, depth=5, kills=1, pearls=1, time=10, eyes=len(DEPTHS))
+        self.assertEqual((records.best_eyes, records.true_wins), (len(DEPTHS), 1))
+        self.assertTrue(any("Wahre Siege: 1" in line for line in records.lines_de()))

@@ -13,7 +13,7 @@ from src.settings import COLOR_ACCENT, COLOR_TEXT
 from src.spells import CATALOG
 from src.wand import Wand
 
-OVERLAY = (10, 4, 6, 225)
+OVERLAY = (8, 3, 5, 238)  # nearly opaque: the HUD must not bleed through
 SLOT_BACK = (40, 26, 30)
 SLOT_ACTIVE = (90, 50, 56)
 HINT = "Bausteine mit der Maus ziehen | Tab oder ESC: Schließen"
@@ -96,6 +96,8 @@ class WandEditor:
     def _tooltip(self, screen: pygame.Surface, key: str, mouse: tuple[int, int]) -> None:
         block = CATALOG[key]
         lines = [f"{block.category.value}: {block.name_de}", f"Mana: {block.mana:g}"]
+        if block.uses:
+            lines.append(f"Ladungen: {block.uses} pro Sanktum")
         if block.description_de:
             lines.append(block.description_de)
         surfaces = [self.font.render(line, True, COLOR_TEXT) for line in lines]

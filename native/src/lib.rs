@@ -432,7 +432,7 @@ unsafe fn copy<T: Copy>(ptr: *const T, len: usize) -> Vec<T> {
 /// Version of the C ABI, checked by Python on load.
 #[no_mangle]
 pub extern "C" fn cloita_abi_version() -> u32 {
-    6
+    7
 }
 
 /// Create a simulation for a `w` x `h` world with `n` materials.
@@ -906,4 +906,113 @@ pub unsafe extern "C" fn cloita_reachable(
     *out_x = best.0;
     *out_y = best.1;
     0
+}
+
+/// Find solid groups that hang free near a blast (for falling chunks).
+///
+/// `rigid` holds one byte per material: 0 = not part of a chunk, 1 = rigid, 2 =
+/// anchor (never moves, anchors everything it touches). Only groups that start
+/// inside the box `[cx - r, cx + r] x [cy - r, cy + r]` are considered; a group is
+/// loose if it never reaches the window `[cx - reach, cx + reach]` edge or an
+/// anchor. Loose cells are written to `out_index` (cell index) and `out_group`
+/// (group number, 1-based) up to `capacity`; groups smaller than `min_cells` or
+/// larger than `max_cells` are skipped. Returns the number of cells written.
+///
+/// # Safety
+/// `grid` must hold `w * h` bytes, `rigid` `n_materials` bytes and the out
+/// buffers `capacity` entries each.
+#[no_mangle]
+pub unsafe extern "C" fn cloita_loose(
+    grid: *const u8,
+    w: usize,
+    h: usize,
+    rigid: *const u8,
+    n_materials: usize,
+    cx: usize,
+    cy: usize,
+    r: usize,
+    reach: usize,
+    min_cells: usize,
+    max_cells: usize,
+    out_index: *mut u32,
+    out_group: *mut u16,
+    capacity: usize,
+) -> usize {
+    let grid = slice::from_raw_parts(grid, w * h);
+    let rigid = slice::from_raw_parts(rigid, n_materials);
+    let out_index = slice::from_raw_parts_mut(out_index, capacity);
+    let out_group = slice::from_raw_parts_mut(out_group, capacity);
+    if w == 0 || h == 0 {
+        return 0;
+    }
+    let x0 = cx.saturating_sub(reach);
+    let y0 = cy.saturating_sub(reach);
+    let x1 = (cx + reach).min(w - 1);
+    let y1 = (cy + reach).min(h - 1);
+    let ww = x1 - x0 + 1;
+    let wh = y1 - y0 + 1;
+    let kind = |x: usize, y: usize| -> u8 {
+        let m = grid[y * w + x] as usize;
+        if m < n_materials { rigid[m] } else { 0 }
+    };
+    let mut seen = vec![false; ww * wh];
+    let mut group_cells: Vec<usize> = Vec::new();
+    let mut queue = std::collections::VecDeque::new();
+    let mut written = 0usize;
+    let mut group_id: u16 = 0;
+    let sx0 = cx.saturating_sub(r).max(x0);
+    let sy0 = cy.saturating_sub(r).max(y0);
+    let sx1 = (cx + r).min(x1);
+    let sy1 = (cy + r).min(y1);
+    for sy in sy0..=sy1 {
+        for sx in sx0..=sx1 {
+            let local = (sy - y0) * ww + (sx - x0);
+            if seen[local] || kind(sx, sy) != 1 {
+                continue;
+            }
+            seen[local] = true;
+            group_cells.clear();
+            queue.clear();
+            queue.push_back((sx, sy));
+            let mut anchored = false;
+            while let Some((x, y)) = queue.pop_front() {
+                group_cells.push(y * w + x);
+                if x == x0 || x == x1 || y == y0 || y == y1 {
+                    anchored = true;
+                }
+                let neighbours = [
+                    (x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1),
+                ];
+                for (nx, ny) in neighbours {
+                    if nx < x0 || nx > x1 || ny < y0 || ny > y1 {
+                        continue;
+                    }
+                    let k = kind(nx, ny);
+                    if k == 2 {
+                        anchored = true;
+                    } else if k == 1 {
+                        let nl = (ny - y0) * ww + (nx - x0);
+                        if !seen[nl] {
+                            seen[nl] = true;
+                            queue.push_back((nx, ny));
+                        }
+                    }
+                }
+            }
+            let size = group_cells.len();
+            if anchored || size < min_cells || size > max_cells {
+                continue;
+            }
+            if written + size > capacity {
+                return written;
+            }
+            group_id = group_id.wrapping_add(1);
+            for &i in &group_cells {
+                out_index[written] = i as u32;
+                out_group[written] = group_id;
+                written += 1;
+            }
+        }
+    }
+    written
 }

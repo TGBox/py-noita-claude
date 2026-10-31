@@ -2,7 +2,21 @@
 
 from __future__ import annotations
 
-from src.materials import ACID, AIR, BLOCKS_BODY, FIRE, FUME, HAZARD_DPS, KIND, LIQUID
+from src.materials import (
+    ACID,
+    AIR,
+    BLOCKS_BODY,
+    BLOOD,
+    FIRE,
+    FUME,
+    GAS,
+    HAZARD_DPS,
+    KIND,
+    LIQUID,
+    MUCUS,
+    PUS,
+    TALLOW,
+)
 from src.world import World
 
 UNSTICK_MAX = 24
@@ -12,6 +26,13 @@ BURN_DPS = 10.0
 WET_TIME = 5.0  # seconds a body stays wet (and fireproof) after touching liquid
 FLAME_INTERVAL = 0.08  # a burning body sheds a flame this often
 IGNITE_GRACE = 0.6  # seconds after burning out before catching fire again
+SLIME_FACTOR = 0.4  # mucus slows every movement to this share
+SLIMED_FACTOR = 0.75  # ... and a little while after leaving it
+SLIMED_TIME = 1.5
+OILY_TIME = 8.0  # seconds a body stays soaked in tallow
+OILY_BURN_FACTOR = 1.6  # oily bodies burn longer and harder
+POISON_TIME = 6.0
+POISON_DPS = 3.0
 PLAYER_TEAM = "player"
 ENEMY_TEAM = "enemy"
 
@@ -20,6 +41,9 @@ class Body:
     """Axis-aligned box in world cells; position is the top-left corner."""
 
     team = "neutral"  # projectiles never hit bodies of their own team
+    blood = BLOOD  # what a wound sprays into the world
+    gas_immune = False  # spores and fumes do no harm
+    mucus_immune = False  # not slowed by mucus
     fire_immune = False
     acid_immune = False
 
@@ -36,9 +60,13 @@ class Body:
         self.vx = 0.0
         self.vy = 0.0
         self.hp = self.max_hp
+        self.damage_taken = 0.0
         self.on_ground = False
         self.burning = 0.0
         self.wet = 0.0
+        self.oily = 0.0  # soaked in tallow: burns longer and hotter
+        self.slimed = 0.0  # covered in mucus: still slowed for a moment
+        self.poisoned = 0.0  # festering after touching pus
         self._flame_timer = 0.0
         self._ignite_grace = 0.0
         self._rx = 0.0
@@ -59,6 +87,18 @@ class Body:
 
     def hurt(self, amount: float) -> None:
         self.hp = max(0.0, self.hp - amount)
+        self.damage_taken += amount  # read and reset by the game for damage numbers
+
+    def bleed(self, world: World, x: float, y: float, amount: float, dx: float = 0.0) -> None:
+        """Spray a few cells of ``blood`` from a wound at (x, y), more for bigger hits."""
+        if self.blood == AIR:
+            return
+        rng = world.rng
+        for _ in range(min(12, 1 + int(amount / 3))):
+            px = int(x + rng.uniform(-2, 2) + dx * rng.uniform(0, 4))
+            py = int(y + rng.uniform(-3, 1))
+            if world.get(px, py) == AIR:
+                world.set_cell(px, py, self.blood)
 
     def in_liquid(self, world: World) -> bool:
         cx, cy = self.center
@@ -78,10 +118,21 @@ class Body:
                 self.y -= up
                 return
 
+    def in_mucus(self, world: World) -> bool:
+        """Centre or feet stuck in mucus."""
+        cx = self.x + self.width // 2
+        return MUCUS in (world.get(cx, self.y + self.height // 2), world.get(cx, self.y + self.height - 1))
+
     def move(self, world: World, dt: float) -> None:
         """Move by the current velocity and update ``on_ground``."""
-        self._move_x(world, self.vx * dt)
-        self._move_y(world, self.vy * dt)
+        factor = 1.0
+        if not self.mucus_immune:
+            if self.in_mucus(world):
+                factor = SLIME_FACTOR
+            elif self.slimed > 0:
+                factor = SLIMED_FACTOR
+        self._move_x(world, self.vx * dt * factor)
+        self._move_y(world, self.vy * dt * factor)
         self.on_ground = self.blocked(world, self.x, self.y + 1)
 
     def _move_x(self, world: World, delta: float) -> None:
@@ -117,33 +168,57 @@ class Body:
             self.y += sign
 
     def apply_environment(self, world: World, dt: float) -> None:
-        """Hazard damage plus status effects: catching fire, burning, getting wet."""
+        """Hazard damage plus status effects: burning, wet, oily (tallow), slimed (mucus)."""
         worst, touches_fire, touches_liquid = 0.0, False, False
+        touches_tallow = touches_mucus = touches_pus = False
         for yy in range(self.y - 1, self.y + self.height + 1):
             for xx in range(self.x - 1, self.x + self.width + 1):
                 material = world.get(xx, yy)
                 if material == FIRE and self.fire_immune:
                     continue
                 if material in (ACID, FUME) and self.acid_immune:
-                    touches_liquid = True
+                    touches_liquid = touches_liquid or material == ACID
+                    continue
+                if KIND[material] == GAS and self.gas_immune:
                     continue
                 worst = max(worst, HAZARD_DPS[material])
                 if material == FIRE:
                     touches_fire = True
+                elif material == TALLOW:
+                    touches_tallow = True  # fat does not douse, it soaks in
+                elif material == MUCUS:
+                    touches_mucus = touches_liquid = True
+                elif material == PUS:
+                    touches_pus = touches_liquid = True
                 elif KIND[material] == LIQUID:
                     touches_liquid = True
 
         self._ignite_grace = max(0.0, self._ignite_grace - dt)
-        if touches_liquid:
+        if touches_tallow:
+            self.oily = OILY_TIME
+            self.wet = 0.0  # fat washes the water off: an oily body burns
+        if touches_mucus:
+            self.slimed = SLIMED_TIME
+        if touches_pus and not self.acid_immune:
+            self.poisoned = POISON_TIME
+        if touches_liquid and not touches_tallow:
             self.wet = WET_TIME
             self.burning = 0.0
+            self.oily = 0.0
         elif touches_fire and self.wet <= 0 and self.burning <= 0 and self._ignite_grace <= 0:
-            self.burning = BURN_TIME
+            self.burning = BURN_TIME * (OILY_BURN_FACTOR if self.oily > 0 else 1.0)
         self.wet = max(0.0, self.wet - dt)
+        self.oily = max(0.0, self.oily - dt)
+        self.slimed = max(0.0, self.slimed - dt)
+        if self.poisoned > 0:
+            worst_poison = POISON_DPS
+            self.poisoned = max(0.0, self.poisoned - dt)
+        else:
+            worst_poison = 0.0
 
-        damage = worst
+        damage = worst + worst_poison
         if self.burning > 0:
-            damage += BURN_DPS
+            damage += BURN_DPS * (OILY_BURN_FACTOR if self.oily > 0 else 1.0)
             self.burning = max(0.0, self.burning - dt)
             if self.burning <= 0:
                 self._ignite_grace = IGNITE_GRACE

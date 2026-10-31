@@ -1,11 +1,17 @@
 # Changelog
 
+## SemVer v1.0.0
+
+- 2026-10-31 (43edc18): feat: complete big auto run with claude, feat: add over 400 spells, add 32 biomes, add boss battles, add rigid body physics, add parallel worlds in the east and west
+
 ## SemVer v0.4.2
 
-- 2026-10-30 (13a8c72): fix: fix ruff errors in Github action
+- 2026-10-30 (3264d89): Merge pull request #7 from TGBox/master
+- 2026-10-30 (158c0a7): fix: fix ruff errors in Github action
 
 ## SemVer v0.4.1
 
+- 2026-10-30 (a94a066): Merge pull request #6 from TGBox/develop
 - 2026-10-30 (cad9a5f): Merge pull request #5 from TGBox/master
 - 2026-10-30 (c21d87d): feat: add menu, save and pause options
 

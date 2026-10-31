@@ -7,7 +7,11 @@ from dataclasses import dataclass
 import pygame
 
 from src.enemies import Creature
+from src.flask import CAPACITY as FLASK_CAPACITY
+from src.flask import Flask
+from src.floaters import Floater
 from src.inventory import Inventory
+from src.materials import MATERIALS
 from src.player import Player
 from src.rendering import block_color
 from src.settings import COLOR_ACCENT, COLOR_TEXT
@@ -15,6 +19,10 @@ from src.spells import CATALOG
 from src.viewport import Viewport
 
 BAR_BACK = (34, 22, 26)
+PLAYER_DAMAGE = (255, 90, 80)
+LOW_HEALTH = 0.3  # share of max health below which the screen pulses red
+VIGNETTE_STEPS = 6
+ENEMY_DAMAGE = (240, 226, 200)
 ENERGY_COLOR = (176, 160, 130)
 MANA_COLOR = (90, 120, 200)
 RECHARGE_COLOR = (200, 170, 70)
@@ -23,7 +31,8 @@ EMPTY_SLOT = (52, 36, 40)
 SLOT_SIZE = 18
 HELP_LINES = (
     "A/D: Laufen | W/Leertaste: Springen, halten zum Schweben | Linke Maus: Zaubern",
-    "1-4 / Mausrad: Augmentation wählen | E: Aufheben | Tab: Umbauen | F1: Sandbox",
+    "1-4 / Mausrad: Augmentation wählen | E: Aufheben | Tab: Umbauen (Sanktum) | F1: Sandbox",
+    "Phiole: Rechte Maus gießen | G aufsaugen | F trinken | T werfen | Q: Treten",
     "R: Neuer Lauf | L: Licht | M: Ton | H: Hilfe | F11: Vollbild | ESC: Pause",
 )
 SANDBOX_LINES = (
@@ -56,6 +65,8 @@ class HudState:
     perks: tuple[str, ...] = ()
     stats: str = ""
     notice: str = ""
+    flask: Flask | None = None
+    pulse: float = 0.0  # 0..1 heartbeat phase for low-health effects
 
 
 class Hud:
@@ -67,14 +78,25 @@ class Hud:
         left, top = viewport.offset_x + 14, viewport.offset_y + 12
         right = viewport.offset_x + viewport.target_width - 14
         player = state.player
+        if 0 < player.hp < player.max_hp * LOW_HEALTH and not state.outcome:
+            self._danger_vignette(screen, viewport, state.pulse)
         self._bar(screen, left, top, 180, 12, player.hp / player.max_hp, COLOR_ACCENT)
         self._bar(screen, left, top + 18, 180, 7, player.energy / player.energy_max, ENERGY_COLOR)
+        if state.flask is not None:
+            flask = state.flask
+            color = MATERIALS[flask.material].color if not flask.empty else BAR_BACK
+            self._bar(screen, left, top + 30, 120, 7, flask.amount / FLASK_CAPACITY, color)
+            self._text(screen, flask.label_de, left + 126, top + 26)
 
         status = [
             label
             for active, label in (
                 (state.player.burning > 0, "Brennt!"),
                 (state.player.wet > 0, "Nass"),
+                (state.player.oily > 0, "Ölig"),
+                (state.player.slimed > 0, "Verschleimt"),
+                (state.player.poisoned > 0, "Vergiftet"),
+                (state.player.polymorphed > 0, "Verwandelt"),
             )
             if active
         ]
@@ -90,14 +112,9 @@ class Hud:
             perk = self.font.render(name, True, COLOR_TEXT)
             screen.blit(perk, (right - perk.get_width(), top + 40 + index * 18))
 
-        y = top + 34
+        y = top + 44
         if state.sandbox:
-            self._text(
-                screen,
-                f"Pinsel: {state.paint_name} ({state.paint_slot}) | Größe {state.brush}",
-                left,
-                y,
-            )
+            self._text(screen, f"Pinsel: {state.paint_name} ({state.paint_slot}) | Größe {state.brush}", left, y)
             y += 18
             for line in SANDBOX_LINES:
                 self._text(screen, line, left, y)
@@ -113,26 +130,18 @@ class Hud:
         centre_x = viewport.offset_x + viewport.target_width // 2
         if state.prompt:
             text = self.font.render(state.prompt, True, COLOR_TEXT)
-            screen.blit(
-                text,
-                text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.62)),
-            )
+            screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.62)))
         if state.notice:
             text = self.font.render(state.notice, True, COLOR_ACCENT)
-            screen.blit(
-                text,
-                text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.38)),
-            )
+            screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.38)))
         if state.banner:
             text = self.big_font.render(state.banner, True, COLOR_TEXT)
-            screen.blit(
-                text,
-                text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.3)),
-            )
+            screen.blit(text, text.get_rect(center=(centre_x, viewport.offset_y + viewport.target_height * 0.3)))
         if state.outcome:
             message = {
                 "dead": "Du bist gestorben. R: Neuer Lauf",
-                "victory": "Das Herz ist zerstört. Du hast Cloita besiegt! R: Neuer Lauf",
+                "victory": "Das Herz ist zerstört. Du hast Cloita besiegt! N: Noch tiefer | R: Neuer Lauf",
+                "true_victory": "Alle Uraugen sehen durch dich. Cloita gehört dir. N: Noch tiefer | R: Neuer Lauf",
             }[state.outcome]
             text = self.big_font.render(message, True, COLOR_ACCENT)
             centre = screen.get_rect().center
@@ -140,6 +149,31 @@ class Hud:
             if state.stats:
                 stats = self.font.render(state.stats, True, COLOR_TEXT)
                 screen.blit(stats, stats.get_rect(center=(centre[0], centre[1] + 36)))
+
+    def _danger_vignette(self, screen: pygame.Surface, viewport: Viewport, pulse: float) -> None:
+        """A red, pulsing frame while you are close to death."""
+        width, height = viewport.target_width, viewport.target_height
+        frame = pygame.Surface((width, height), pygame.SRCALPHA)
+        strength = 0.5 + 0.5 * pulse
+        for k in range(VIGNETTE_STEPS):
+            alpha = int(90 * strength * (1 - k / VIGNETTE_STEPS))
+            inset = k * 4
+            pygame.draw.rect(frame, (140, 0, 10, alpha), (inset, inset, width - 2 * inset, height - 2 * inset), 4)
+        screen.blit(frame, (viewport.offset_x, viewport.offset_y))
+
+    def draw_floaters(
+        self, screen: pygame.Surface, viewport: Viewport, floaters: list[Floater], cam: tuple[int, int]
+    ) -> None:
+        """Damage numbers in screen space (crisp text at any window size)."""
+        for item in floaters:
+            sx = viewport.offset_x + (item.x - cam[0]) * viewport.scale
+            sy = viewport.offset_y + (item.y - cam[1]) * viewport.scale
+            if not (viewport.offset_x <= sx <= viewport.offset_x + viewport.target_width):
+                continue
+            color = PLAYER_DAMAGE if item.player else ENEMY_DAMAGE
+            text = self.font.render(item.text, True, color)
+            text.set_alpha(int(255 * item.alpha))
+            screen.blit(text, text.get_rect(center=(int(sx), int(sy))))
 
     def _boss_bar(self, screen: pygame.Surface, viewport: Viewport, boss: Creature) -> None:
         width = int(viewport.target_width * 0.5)
@@ -179,6 +213,11 @@ class Hud:
             pygame.draw.rect(screen, block_color(block), rect.inflate(-6, -6))
             if block_index == next_key:
                 pygame.draw.rect(screen, COLOR_TEXT, rect, 1)
+            if block.uses:  # charges left until the next sanctum
+                left_charges = wand.charges[block_index]
+                color = COLOR_TEXT if left_charges else COLOR_ACCENT
+                text = self.font.render(str(left_charges), True, color)
+                screen.blit(text, (rect.right - text.get_width() - 1, rect.bottom - text.get_height()))
         self._text(screen, " > ".join(names), left, y + SLOT_SIZE + 6)
 
     def _text(self, screen: pygame.Surface, text: str, x: int, y: int) -> None:

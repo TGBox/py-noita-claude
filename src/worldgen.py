@@ -16,7 +16,13 @@ from src.materials import (
     BONE_DUST,
     FLESH,
     GROWTH,
+    KIND,
+    LIQUID,
+    MAGMA,
+    MUCUS,
+    PUS,
     SINEW,
+    SOLID,
     TALLOW,
 )
 from src.native import byte_view, reachable
@@ -28,6 +34,7 @@ SPAWN_FLOOR = 132  # first solid row below the spawn cavern
 SPAWN_CLEARANCE = 40  # keep hazards this far away from the spawn cavern
 SPAWN_RADIUS_Y = 34
 SPAWN_OFFSET_X = -36  # the player starts left of the cavern's centre
+SETTLE_STEPS = (240, 90, 90)  # simulation ticks before each path check
 TUNNEL_MIN_RADIUS = 11  # 22 px: comfortably taller than the 18 px player
 BRIDGE_GAP = 20
 PATH_REPAIRS = 6
@@ -41,6 +48,8 @@ class Level:
     spawn: tuple[int, int]  # player top-left
     exit: tuple[int, int]  # centre of the way down
     arena: tuple[int, int] | None  # centre of the boss chamber, if any
+    secret: tuple[int, int] | None = None  # centre of the sealed chamber with an Urauge
+    vault: tuple[int, int] | None = None  # centre of the bone-sealed treasure vault
 
 
 def generate_world(world: World) -> tuple[int, int]:
@@ -53,10 +62,14 @@ def generate_level(world: World, depth: Depth) -> Level:
     rng = world.rng
     w, h = world.width, world.height
     scale = (w * h) / (1280 * 720)  # feature counts follow the world area
-    world.reset(FLESH)
+    bone_walls = depth.wall == "knochen"
+    world.reset(BONE if bone_walls else FLESH)
     centre_x = w // 2
 
-    _ribs(world, count=int(34 * scale))
+    if bone_walls:  # inverted: veins of flesh running through solid bone
+        _ribs(world, count=int(46 * scale), base=BONE, vein=FLESH)
+    else:
+        _ribs(world, count=int(34 * scale))
 
     # Organic cavities (organs) connected by winding tunnels into one network.
     spawn = (centre_x, SPAWN_FLOOR - SPAWN_RADIUS_Y)
@@ -76,7 +89,7 @@ def generate_level(world: World, depth: Depth) -> Level:
         nodes.append(arena)
     for x, y in nodes[1:]:
         if (x, y) != arena:
-            _carve_cavity(world, x, y, rng.randint(16, 40))
+            _carve_cavity(world, x, y, int(rng.randint(16, 40) * depth.cavity_scale))
     for a, b in _connections(world, nodes):
         _carve_tunnel(world, a, b)
 
@@ -93,10 +106,23 @@ def generate_level(world: World, depth: Depth) -> Level:
     def amount(base: float, factor: float) -> int:
         return int(base * scale * factor)
 
-    _scatter(world, BONE_DUST, amount(18, depth.bone_dust), (6, 10), SPAWN_FLOOR + 10, min_width=70)
+    for _ in range(amount(26, depth.alveoli)):
+        _alveolus_cluster(world)
+
+    _scatter(
+        world, BONE_DUST, amount(18, depth.bone_dust), (6, 10), SPAWN_FLOOR + 10, min_width=70
+    )
     _scatter(world, BLOOD, amount(16, depth.blood), (9, 15), SPAWN_FLOOR + 10)
     _scatter(world, TALLOW, amount(7, depth.tallow), (7, 11), h // 2)
     _scatter(world, ACID, amount(8, depth.acid), (7, 12), int(h * 0.6))
+    if depth.pus:
+        _scatter(world, PUS, amount(9, depth.pus), (7, 11), SPAWN_FLOOR + 10)
+    if depth.magma:
+        _scatter(world, MAGMA, amount(10, depth.magma), (7, 10), int(h * 0.55))
+    if depth.mucus:
+        _scatter(world, MUCUS, amount(10, depth.mucus), (8, 13), SPAWN_FLOOR + 10)
+        for _ in range(amount(40, depth.mucus)):
+            _mucus_drip(world)
     for _ in range(amount(6, depth.growth)):
         _growth_nest(world)
     for _ in range(amount(10, depth.bridges)):
@@ -114,10 +140,18 @@ def generate_level(world: World, depth: Depth) -> Level:
         deepest = max(nodes[1:], key=lambda n: n[1] + 0.3 * math.dist(n, spawn))
         exit_point = (deepest[0], _floor_y(world, deepest[0], deepest[1]) - 12)
 
+    vault = None if depth.final else _vault(world, arena, exit_point)
     player_spawn = (spawn_x - PLAYER_WIDTH // 2, SPAWN_FLOOR - PLAYER_HEIGHT)
-    ensure_path(world, player_spawn, exit_point)
+    # Let powders and liquids settle first: falling bone dust can plug a tunnel that was
+    # open right after carving. Digging may release more dust, so repeat until stable.
+    for steps in SETTLE_STEPS:
+        for _ in range(steps):
+            world.step()
+        if not ensure_path(world, player_spawn, exit_point):
+            break
+    secret = _secret_chamber(world, player_spawn, exit_point)
     world.wake_all()  # every chunk settles once the camera comes near
-    return Level(player_spawn, exit_point, arena)
+    return Level(player_spawn, exit_point, arena, secret, vault)
 
 
 def ensure_path(world: World, spawn: tuple[int, int], target: tuple[int, int]) -> int:
@@ -129,7 +163,9 @@ def ensure_path(world: World, spawn: tuple[int, int], target: tuple[int, int]) -
     """
     goal = (target[0] - PLAYER_WIDTH // 2, target[1] - PLAYER_HEIGHT // 2)
     box = (PLAYER_WIDTH + 2, PLAYER_HEIGHT + 2)  # a little headroom
-    blocking = [int(b) for b in BLOCKS_BODY]
+    # Liquids count as walls here: blood clots into scab over time and could otherwise
+    # turn a pool that fills a tunnel into a plug later on.
+    blocking = [int(b or k == LIQUID) for b, k in zip(BLOCKS_BODY, KIND)]
     dug = 0
     for _ in range(PATH_REPAIRS):
         found, closest = reachable(
@@ -167,6 +203,100 @@ def _carve_cavity(world: World, x: int, y: int, radius: int) -> None:
         )
 
 
+def _alveolus_cluster(world: World) -> None:
+    """Spongy tissue: a clump of air sacs with thin, torn sinew membranes.
+
+    Membranes are only drawn where there was tissue before, so they never wall off
+    the tunnels and cavities that are already there.
+    """
+    rng = world.rng
+    w, h = world.width, world.height
+    for _attempt in range(12):
+        cx, cy = rng.randint(80, w - 80), rng.randint(SPAWN_FLOOR + 30, h - 60)
+        if world.get(cx, cy) == FLESH and not _in_spawn_zone(world, cx, cy):
+            break
+    else:
+        return
+    before = bytes(world.grid)
+    sacs = []
+    for _ in range(rng.randint(7, 14)):
+        x = cx + rng.randint(-45, 45)
+        y = cy + rng.randint(-32, 32)
+        r = rng.randint(8, 18)
+        world.fill_disc(x, y, r, AIR)
+        sacs.append((x, y, r))
+    for x, y, r in sacs:
+        steps = int(2 * math.pi * r * 1.5)
+        gap_start = rng.uniform(0, 2 * math.pi)
+        for k in range(steps):
+            angle = 2 * math.pi * k / steps
+            if (angle - gap_start) % (2 * math.pi) < 1.1:  # a tear in every membrane
+                continue
+            px, py = int(x + math.cos(angle) * r), int(y + math.sin(angle) * r)
+            if 0 <= px < w and 0 <= py < h and before[py * w + px] == FLESH:
+                world.set_cell(px, py, SINEW)
+
+
+VAULT_RX, VAULT_RY = 46, 26  # the treasure vault's hall
+VAULT_SHELL = 7  # thick bone all around: it has to be blasted open
+
+
+def _vault(
+    world: World, arena: tuple[int, int] | None, exit_point: tuple[int, int]
+) -> tuple[int, int] | None:
+    """A bone-walled hall at the left or right edge, guarded and full of loot."""
+    rng = world.rng
+    w, h = world.width, world.height
+    for _attempt in range(40):
+        side = rng.choice((-1, 1))
+        x = w // 2 + side * (w // 2 - BORDER - VAULT_RX - VAULT_SHELL - 6)
+        y = rng.randint(SPAWN_FLOOR + 80, h - VAULT_RY - VAULT_SHELL - 30)
+        far_from_arena = arena is None or math.dist((x, y), arena) > ARENA_RADIUS + VAULT_RX + 60
+        if far_from_arena and math.dist((x, y), exit_point) > VAULT_RX + VAULT_SHELL + 40:
+            break
+    else:
+        return None
+    _carve_oval_material(world, x, y, VAULT_RX + VAULT_SHELL, VAULT_RY + VAULT_SHELL, BONE)
+    _carve_oval(world, x, y, VAULT_RX, VAULT_RY)
+    for row in range(y + VAULT_RY - 4, y + VAULT_RY):  # a floor to stand on
+        world.grid[row * w + x - VAULT_RX + 4 : row * w + x + VAULT_RX - 4] = bytes([BONE]) * (
+            2 * VAULT_RX - 8
+        )
+    return x, y
+
+
+SECRET_RADIUS = 7  # air inside the chamber
+SECRET_SHELL = 4  # bone wall around it
+SECRET_CLEARANCE = 30  # solid tissue needed around the spot (so it stays hidden)
+
+
+def _secret_chamber(
+    world: World, spawn: tuple[int, int], exit_point: tuple[int, int]
+) -> tuple[int, int] | None:
+    """Seal a small bone-walled chamber deep inside solid tissue. Returns its centre."""
+    rng = world.rng
+    w = world.width
+    grid = world.grid
+    for attempt in range(1200):
+        x = rng.randint(80, w - 80)
+        y = rng.randint(SPAWN_FLOOR + 40, world.height - 50)
+        if math.dist((x, y), spawn) < 200 or math.dist((x, y), exit_point) < 120:
+            continue
+        # be less picky the longer it takes: every depth must hide its Urauge
+        r = SECRET_CLEARANCE - 6 * (attempt // 400)
+        if any(
+            not BLOCKS_BODY[grid[(y + dy) * w + x + dx]]
+            for dy in range(-r, r + 1, 3)
+            for dx in range(-r, r + 1, 3)
+            if dx * dx + dy * dy <= r * r
+        ):
+            continue
+        world.fill_disc(x, y, SECRET_RADIUS + SECRET_SHELL, BONE)
+        world.fill_disc(x, y, SECRET_RADIUS, AIR)
+        return x, y
+    return None
+
+
 def _connections(world: World, nodes: list[tuple[int, int]]) -> list[tuple]:
     """Minimum spanning tree over the cavities plus a few extra loops."""
     connected = [0]
@@ -175,9 +305,8 @@ def _connections(world: World, nodes: list[tuple[int, int]]) -> list[tuple]:
     while remaining:
         a, b = min(
             ((a, b) for a in connected for b in remaining),
-            key=lambda e: (
-                (nodes[e[0]][0] - nodes[e[1]][0]) ** 2 + (nodes[e[0]][1] - nodes[e[1]][1]) ** 2
-            ),
+            key=lambda e: (nodes[e[0]][0] - nodes[e[1]][0]) ** 2
+            + (nodes[e[0]][1] - nodes[e[1]][1]) ** 2,
         )
         edges.append((nodes[a], nodes[b]))
         connected.append(b)
@@ -229,12 +358,13 @@ def _carve_tunnel(
 def _in_spawn_zone(world: World, x: int, y: int) -> bool:
     centre_x = world.width // 2
     return (
-        abs(x - centre_x) < SPAWN_HALF_WIDTH + SPAWN_CLEARANCE and y < SPAWN_FLOOR + SPAWN_CLEARANCE
+        abs(x - centre_x) < SPAWN_HALF_WIDTH + SPAWN_CLEARANCE
+        and y < SPAWN_FLOOR + SPAWN_CLEARANCE
     )
 
 
-def _ribs(world: World, count: int) -> None:
-    """Curved bone ribs running through the flesh (only overwrite flesh)."""
+def _ribs(world: World, count: int, base: int = FLESH, vein: int = BONE) -> None:
+    """Curved ribs of ``vein`` running through the ``base`` tissue (only overwrite base)."""
     rng = world.rng
     for _ in range(count):
         x, y = float(rng.randint(30, world.width - 30)), float(rng.randint(30, world.height - 30))
@@ -243,8 +373,8 @@ def _ribs(world: World, count: int) -> None:
         thickness = rng.randint(2, 4)
         for _ in range(rng.randint(40, 110)):
             for dx, dy in disc_offsets(thickness):
-                if world.get(int(x) + dx, int(y) + dy) == FLESH:
-                    world.grid[(int(y) + dy) * world.width + int(x) + dx] = BONE
+                if world.get(int(x) + dx, int(y) + dy) == base:
+                    world.grid[(int(y) + dy) * world.width + int(x) + dx] = vein
             angle += bend
             x += math.cos(angle) * 2
             y += math.sin(angle) * 2
@@ -305,6 +435,23 @@ def _air_span(world: World, x: int, y: int) -> int:
     while world.get(right + 1, y) == AIR and right - x < 100:
         right += 1
     return right - left + 1
+
+
+def _mucus_drip(world: World) -> None:
+    """A clump of mucus clinging to a ceiling; it oozes down slowly."""
+    spot = _random_air(world, SPAWN_FLOOR + 20)
+    if spot is None:
+        return
+    x, y = spot
+    while y > 0 and world.get(x, y - 1) == AIR:
+        y -= 1
+    if _in_spawn_zone(world, x, y) or KIND[world.get(x, y - 1)] != SOLID:
+        return
+    radius = world.rng.randint(2, 4)
+    for dy in range(radius + 1):
+        for dx in range(-radius + dy, radius - dy + 1):
+            if world.get(x + dx, y + dy) == AIR:
+                world.set_cell(x + dx, y + dy, MUCUS)
 
 
 def _growth_nest(world: World) -> None:

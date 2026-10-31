@@ -14,7 +14,10 @@ import random
 import pygame
 
 from src import native
+from src.chunks import Chunk
 from src.enemies import Creature
+from src.flask import CAPACITY as FLASK_CAPACITY
+from src.flask import Flask, ThrownFlask
 from src.loot import Pickup
 from src.materials import (
     ACID,
@@ -23,12 +26,19 @@ from src.materials import (
     GLOW,
     LIGHT_LEVELS,
     MATERIALS,
+    MUCUS,
     OPAQUE,
+    TALLOW,
     VARIANTS,
     build_palette,
+    shade,
+    variant_color,
 )
 from src.perks import PERK_BY_KEY
+
+PERK_KEYS = tuple(PERK_BY_KEY)
 from src.projectiles import Projectile
+from src.settings import VIEW_HEIGHT, VIEW_WIDTH
 from src.spells import CATALOG, Block, Category
 from src.texture import make_grain
 from src.wand import Wand
@@ -150,6 +160,15 @@ FORM_COLORS = {
     "knochensplitter": (226, 214, 190),
     "zahnbohrer": (240, 232, 214),
     "blutegel": (110, 18, 24),
+    "teleportbolzen": (200, 120, 230),
+    "knochensaege": (226, 220, 200),
+    "sporenmine": (164, 128, 160),
+    "fressgeschwuer": (60, 20, 40),
+    "knochenspeer": (236, 226, 204),
+    "mikrofunke": (255, 240, 200),
+    "knochenbombe": (214, 202, 176),
+    "nadelregen": (236, 226, 204),
+    "grabklaue": (240, 232, 214),
 }
 
 
@@ -210,14 +229,56 @@ def draw_projectiles(
             speed = math.hypot(p.vx, p.vy) or 1.0
             ux, uy = p.vx / speed, p.vy / speed
             pygame.draw.polygon(
-                canvas,
-                FORM_COLORS[key],
+                canvas, FORM_COLORS[key],
                 [(x + ux * 4, y + uy * 4), (x - uy * 2, y + ux * 2), (x + uy * 2, y - ux * 2)],
             )
         elif key == "blutegel":
             wiggle = int(math.sin(p.age * 20) * 1.5)
             pygame.draw.ellipse(canvas, FORM_COLORS[key], (x - 3, y - 1 + wiggle, 6, 3))
             canvas.fill((200, 40, 40), (x + 1, y + wiggle, 1, 1))
+        elif key == "teleportbolzen":
+            pygame.draw.circle(canvas, FORM_COLORS[key], (x, y), 2)
+            canvas.fill((255, 230, 255), (x, y, 1, 1))
+        elif key == "knochensaege":
+            turn = p.age * 30
+            pygame.draw.circle(canvas, (120, 110, 96), (x, y), 3)
+            for k in range(4):
+                a = turn + k * math.pi / 2
+                canvas.fill(FORM_COLORS[key], (x + round(math.cos(a) * 3), y + round(math.sin(a) * 3), 1, 1))
+        elif key == "sporenmine":
+            pygame.draw.circle(canvas, FORM_COLORS[key], (x, y), 2)
+            if int(p.age * 3) % 2:
+                canvas.fill((255, 90, 90), (x, y - 1, 1, 1))
+        elif key == "fressgeschwuer":
+            radius = 4 + math.sin(p.age * 12)
+            pygame.draw.circle(canvas, FORM_COLORS[key], (x, y), radius)
+            pygame.draw.circle(canvas, (150, 40, 70), (x, y), radius, 1)
+        elif key == "knochenspeer":
+            speed = math.hypot(p.vx, p.vy) or 1.0
+            tail = (x - p.vx / speed * 9, y - p.vy / speed * 9)
+            pygame.draw.line(canvas, FORM_COLORS[key], tail, (x, y), 2)
+        elif key == "feuerball":
+            radius = 3 + (int(p.age * 20) % 2)
+            pygame.draw.circle(canvas, (255, 150, 40), (x, y), radius)
+            pygame.draw.circle(canvas, (255, 230, 150), (x, y), radius - 2)
+        elif key == "knochenbombe":
+            pygame.draw.circle(canvas, FORM_COLORS[key], (x, y), 4)
+            pygame.draw.circle(canvas, (120, 110, 96), (x, y), 4, 1)
+            if int(p.age * 10) % 2:
+                canvas.fill((255, 80, 60), (x, y - 4, 1, 1))
+        elif key in ("mikrofunke", "nadelregen"):
+            canvas.fill(FORM_COLORS[key], (x, y, 1, 1))
+        elif key == "leuchtkugel":
+            glow = 2 + (int(p.age * 4) % 2)
+            pygame.draw.circle(canvas, (255, 240, 180), (x, y), glow)
+            canvas.fill((255, 255, 255), (x, y, 1, 1))
+        elif key == "wandlungsdruese":
+            hue = int(p.age * 30) % 3
+            canvas.fill(((200, 80, 220), (80, 200, 220), (220, 200, 80))[hue], (x - 1, y - 1, 3, 3))
+        elif key in ("tauschdruese", "kettenfunke"):
+            color = (150, 200, 255) if key == "kettenfunke" else (220, 160, 255)
+            canvas.fill(color, (x - 1, y, 3, 1))
+            canvas.fill(color, (x, y - 1, 1, 3))
         elif key == "klumpen":
             material = p.material if p.material is not None else BLOOD
             pygame.draw.circle(canvas, MATERIALS[material].color, (x, y), 2)
@@ -316,6 +377,193 @@ CREATURE_SPRITES["sporenblase"] = (
         ".........",
     ),
 )
+CREATURE_SPRITES["brandmade"] = (
+    (
+        "..oooooo..",
+        ".oOoOoOoo.",
+        "oOyOyOyOom",
+        "oOoOoOoOom",
+        ".oOoOoOoo.",
+        "..oooooo..",
+    ),
+    (
+        "..........",
+        "..oooooo..",
+        ".oOyOyOoom",
+        "oOoOoOoOom",
+        "oOoOoOoOo.",
+        ".oooooooo.",
+    ),
+)
+CREATURE_SPRITES["saeurespucker"] = (
+    (
+        "....bbb....",
+        "..bbBBBbb..",
+        ".bBbbbbbBe.",
+        "bbBbbbbbBbg",
+        "bBbbBBBbbBg",
+        ".bbBbbbBbb.",
+        "..bbbbbbb..",
+        ".b.b...b.b.",
+        "b...b.b...b",
+    ),
+    (
+        "...........",
+        "....bbb....",
+        "..bbBBBbbe.",
+        ".bBbbbbbBbg",
+        "bbBbbbbbBbg",
+        "bBbbBBBbbB.",
+        ".bbbbbbbbb.",
+        "..b.b.b.b..",
+        ".b..b.b..b.",
+    ),
+)
+CREATURE_SPRITES["egel"] = (
+    (
+        ".rrrr..",
+        "rRrRrrd",
+        "rrRrRrd",
+        ".rrrr..",
+    ),
+    (
+        "..rrr..",
+        ".rRrRrd",
+        "rrRrRrd",
+        "rrrr...",
+    ),
+)
+CREATURE_SPRITES["augenblase"] = (
+    (
+        "...ppppp...",
+        "..pPPPPPp..",
+        ".pPwwwwwPp.",
+        "pPwwwiiwwPp",
+        "pPwwiddiwPp",
+        "pPwwiddiwPp",
+        "pPwwwiiwwPp",
+        ".pPwwwwwPp.",
+        "..pPPPPPp..",
+        "...p.p.p...",
+        "..p..p..p..",
+    ),
+    (
+        "...ppppp...",
+        "..pPPPPPp..",
+        ".pPwwwwwPp.",
+        "pPwwwwwwwPp",
+        "pPwwwiiwwPp",
+        "pPwwiddiwPp",
+        "pPwwwiiwwPp",
+        ".pPwwwwwPp.",
+        "..pPPPPPp..",
+        "..p..p..p..",
+        "...p.p.p...",
+    ),
+)
+CREATURE_SPRITES["schleimkriecher"] = (
+    (
+        "....yyyyyyyy....",
+        "..yyYyyYyyYyyy..",
+        ".yYyyyyyyyyyyYy.",
+        "yyyyYyyYyyyYyyde",
+        "yYyyyyyyyyyyyyyd",
+        "yyyYyyyYyyyYyyyy",
+        ".yyyyyyyyyyyyyy.",
+        "..YyYyYyYyYyYy..",
+        "................",
+    ),
+    (
+        "................",
+        "...yyyyyyyyyy...",
+        ".yyYyyYyyYyyyyy.",
+        "yYyyyyyyyyyyyYde",
+        "yyyyYyyYyyyYyyyd",
+        "yYyyyyyyyyyyyyyy",
+        "yyyYyyyYyyyYyyyy",
+        ".YyYyYyYyYyYyYy.",
+        "................",
+    ),
+)
+CREATURE_SPRITES["nervenknoten"] = (
+    (
+        "n...n...n",
+        ".n..n..n.",
+        "..nNNNn..",
+        "nnNyeyNnn",
+        "..NeeeN..",
+        "nnNyeyNnn",
+        "..nNNNn..",
+        ".n..n..n.",
+        "n...n...n",
+    ),
+    (
+        "....n....",
+        "n...n...n",
+        ".nnNNNnn.",
+        "..NyeyN..",
+        "nnNeeeNnn",
+        "..NyeyN..",
+        ".nnNNNnn.",
+        "n...n...n",
+        "....n....",
+    ),
+)
+for _key, _skin in (("talgsack", "t"), ("saeuresack", "a"), ("sporensack", "s")):
+    CREATURE_SPRITES[_key] = (
+        (
+            "...vv...",
+            "..vvvv..",
+            ".XxxxxX.",
+            "XxxXxxxX",
+            "XxxxxXxX",
+            "XxXxxxxX",
+            "XxxxXxxX",
+            ".XxxxxX.",
+            "..XXXX..",
+        ),
+        (
+            "...vv...",
+            "..vvvv..",
+            ".XxxxxX.",
+            "XxxxXxxX",
+            "XxXxxxxX",
+            "XxxxxXxX",
+            "XxxXxxxX",
+            ".XxxxxX.",
+            "..XXXX..",
+        ),
+    )
+    CREATURE_SPRITES[_key] = tuple(
+        tuple(row.replace("x", _skin).replace("X", _skin.upper()) for row in frame)
+        for frame in CREATURE_SPRITES[_key]
+    )
+CREATURE_SPRITES["gestaltwandler"] = (
+    (
+        "...nnnn...",
+        "..nyyyyn..",
+        ".nyNyyNyn.",
+        "nyyyeeyyyn",
+        "nyNyeeyNyn",
+        "nyyyyyyyyn",
+        ".nyNyyNyn.",
+        "..nyyyyn..",
+        "...n..n...",
+        "..n....n..",
+    ),
+    (
+        "...nnnn...",
+        "..nyyyyn..",
+        ".nyyNNyyn.",
+        "nyNyeeyNyn",
+        "nyyyeeyyyn",
+        "nyNyyyyNyn",
+        ".nyyNNyyn.",
+        "..nyyyyn..",
+        "..n....n..",
+        "...n..n...",
+    ),
+)
 CREATURE_COLORS = {
     "p": (214, 190, 170),
     "P": (168, 136, 124),
@@ -329,10 +577,30 @@ CREATURE_COLORS = {
     "K": (150, 138, 112),
     "s": (164, 128, 160),
     "S": (124, 90, 130),
+    "o": (196, 110, 60),
+    "O": (150, 64, 30),
+    "y": (180, 174, 118),
+    "Y": (140, 134, 88),
+    "r": (96, 20, 28),
+    "R": (60, 10, 18),
+    "g": (180, 230, 60),
+    "i": (150, 40, 40),
+    "n": (190, 140, 150),
+    "N": (140, 90, 110),
+    "t": (206, 184, 128),
+    "T": (156, 134, 88),
+    "a": (150, 206, 60),
+    "A": (98, 140, 34),
+    "v": (120, 60, 70),
 }
 FLASH_COLOR = (255, 255, 255)
 HEALTH_BAR = (200, 30, 36)
-FRAME_RATES = {"made": 6.0, "schwaermer": 18.0, "knochenspeier": 1.5, "sporenblase": 3.0}
+FRAME_RATES = {
+    "made": 6.0, "schwaermer": 18.0, "knochenspeier": 1.5, "sporenblase": 3.0,
+    "brandmade": 8.0, "saeurespucker": 4.0, "egel": 12.0, "augenblase": 1.2,
+    "schleimkriecher": 2.5, "nervenknoten": 3.0,
+    "talgsack": 1.0, "saeuresack": 1.0, "sporensack": 1.0, "gestaltwandler": 3.0,
+}  # fmt: skip
 
 
 def build_creature_sprites() -> dict[tuple[str, int, bool, bool], pygame.Surface]:
@@ -345,9 +613,7 @@ def build_creature_sprites() -> dict[tuple[str, int, bool, bool], pygame.Surface
                 for y, row in enumerate(rows):
                     for x, code in enumerate(row):
                         if code in CREATURE_COLORS:
-                            surface.set_at(
-                                (x, y), FLASH_COLOR if flashing else CREATURE_COLORS[code]
-                            )
+                            surface.set_at((x, y), FLASH_COLOR if flashing else CREATURE_COLORS[code])
                 sprites[(key, index, True, flashing)] = surface
                 sprites[(key, index, False, flashing)] = pygame.transform.flip(surface, True, False)
     return sprites
@@ -359,8 +625,11 @@ def draw_creatures(
     creatures: list[Creature],
     cam_x: int,
     cam_y: int,
+    visible: set[int] | None = None,
 ) -> None:
     for creature in creatures:
+        if visible is not None and id(creature) not in visible:
+            continue  # hidden behind tissue
         key = creature.spec.key
         x, y = creature.x - cam_x, creature.y - cam_y
         if key == "magenwurm":
@@ -371,6 +640,12 @@ def draw_creatures(
             continue
         if key == "brutmutter":
             _draw_brood_mother(canvas, creature, x, y)
+            continue
+        if key == "knochenfresser":
+            _draw_bone_eater(canvas, creature, x, y)
+            continue
+        if key == "atem":
+            _draw_breath(canvas, creature, x, y)
             continue
         frame = int(creature.age * FRAME_RATES[key]) % len(CREATURE_SPRITES[key])
         sprite = sprites[(key, frame, creature.facing > 0, creature.flash > 0)]
@@ -421,11 +696,7 @@ def _draw_heart(canvas: pygame.Surface, heart: Creature, x: int, y: int) -> None
     pygame.draw.polygon(
         canvas,
         dark,
-        [
-            (cx - w * 0.5, cy - h * 0.1),
-            (cx + w * 0.5, cy - h * 0.05),
-            (cx + w * 0.05, cy + h * 0.5),
-        ],
+        [(cx - w * 0.5, cy - h * 0.1), (cx + w * 0.5, cy - h * 0.05), (cx + w * 0.05, cy + h * 0.5)],
     )
     pygame.draw.circle(canvas, HEART_LIGHT, (cx + w * 0.12, cy - h * 0.22), w * 0.12)
     for k in range(4):  # veins
@@ -433,6 +704,46 @@ def _draw_heart(canvas: pygame.Surface, heart: Creature, x: int, y: int) -> None
         end = (cx - w * 0.15 + k * w * 0.1, cy + h * 0.25)
         pygame.draw.line(canvas, VEIN, start, end)
     pygame.draw.rect(canvas, (90, 70, 80), (cx - 4, y - 8, 8, 10))  # aorta stump
+
+
+def _draw_bone_eater(canvas: pygame.Surface, eater: Creature, x: int, y: int) -> None:
+    """A segmented maw of grinding jaws."""
+    flash = eater.flash > 0
+    cy = y + eater.height / 2
+    head_x = x + (eater.width - 9 if eater.facing > 0 else 9)
+    for index in range(5, -1, -1):
+        sx = head_x - eater.facing * index * 4
+        sy = cy + math.sin(eater.age * 7 - index) * 2
+        radius = 9 - index
+        color = FLASH_COLOR if flash else ((196, 184, 156) if index % 2 else (150, 138, 112))
+        pygame.draw.circle(canvas, color, (sx, sy), radius)
+    grind = math.sin(eater.age * 16) * 2
+    for k in range(-3, 4, 2):
+        tip = (head_x + eater.facing * (10 + abs(k)), cy + k * 2 + grind * (1 if k > 0 else -1))
+        pygame.draw.line(canvas, TEETH, (head_x + eater.facing * 5, cy + k * 2), tip)
+    pygame.draw.circle(canvas, (40, 8, 12), (head_x + eater.facing * 3, cy), 3)
+
+
+def _draw_breath(canvas: pygame.Surface, breath: Creature, x: int, y: int) -> None:
+    """Two lung lobes that swell while inhaling and collapse when breathing out."""
+    flash = breath.flash > 0
+    swell = 1.15 if breath.inhaling else 0.95 + 0.05 * math.sin(breath.age * 3)
+    cx, cy = x + breath.width / 2, y + breath.height / 2
+    w, h = breath.width * 0.5 * swell, breath.height * swell
+    lobe = FLASH_COLOR if flash else (196, 120, 130)
+    dark = (130, 64, 76)
+    for side in (-1, 1):
+        rect = (cx + side * w * 0.55 - w / 2, cy - h / 2, w, h)
+        pygame.draw.ellipse(canvas, dark, (rect[0] - 1, rect[1] - 1, rect[2] + 2, rect[3] + 2))
+        pygame.draw.ellipse(canvas, lobe, rect)
+        for k in range(3):  # bronchi
+            pygame.draw.line(canvas, dark, (cx, cy - h * 0.3), (cx + side * w * (0.3 + k * 0.2), cy + h * (k * 0.15)))
+    pygame.draw.rect(canvas, (160, 140, 150), (cx - 2, y - 8, 4, 12))  # windpipe
+    if breath.inhaling:
+        for k in range(4):  # air rushing in
+            a = breath.age * 5 + k * 1.6
+            r = 30 - (breath.age * 40 + k * 7) % 25
+            canvas.fill((200, 190, 180), (int(cx + math.cos(a) * r), int(cy + math.sin(a) * r), 1, 1))
 
 
 BROOD_SKIN = (128, 104, 96)
@@ -476,8 +787,42 @@ PEARL_COLOR = (190, 20, 36)
 PEARL_GLINT = (255, 200, 200)
 
 
+GLASS = (196, 210, 214)
+COCOON = (170, 150, 120)
+COCOON_DARK = (110, 88, 70)
+
+
+def draw_flask(canvas: pygame.Surface, flask: Flask, x: int, y: int) -> None:
+    """A small bottle; the liquid level shows how full it is."""
+    pygame.draw.rect(canvas, GLASS, (x - 3, y - 6, 7, 7), 1)
+    canvas.fill(GLASS, (x - 1, y - 9, 3, 3))
+    if not flask.empty:
+        level = max(1, round(5 * flask.amount / FLASK_CAPACITY))
+        canvas.fill(MATERIALS[flask.material].color, (x - 2, y - level, 5, level))
+
+
+def draw_chunks(canvas: pygame.Surface, chunks: list[Chunk], cam_x: int, cam_y: int) -> None:
+    """Falling tissue: drawn cell by cell in its material's colour (slightly lit)."""
+    width, height = VIEW_WIDTH, VIEW_HEIGHT
+    for chunk in chunks:
+        for x, y, material in chunk.cells:
+            sx, sy = x - cam_x, y - cam_y
+            if 0 <= sx < width and 0 <= sy < height:
+                canvas.fill(CHUNK_COLORS[material], (sx, sy, 1, 1))
+
+
+CHUNK_COLORS = [shade(variant_color(m, 1), LIGHT_LEVELS - 2) for m in MATERIALS]
+
+
+def draw_thrown_flasks(canvas: pygame.Surface, thrown: list[ThrownFlask], cam_x: int, cam_y: int) -> None:
+    for item in thrown:
+        draw_flask(canvas, item.flask, int(item.x) - cam_x, int(item.y) - cam_y + 4)
+
+
 def draw_pickups(canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_y: int) -> None:
     for item in pickups:
+        if not item.seen:
+            continue
         x, y = int(item.x) - cam_x, int(item.y) - cam_y
         bob = round(math.sin(item.age * 3) * 1.5)
         if item.pearls:
@@ -493,6 +838,44 @@ def draw_pickups(canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_
             pygame.draw.circle(canvas, color, (x, y + bob), radius)
             pygame.draw.circle(canvas, (255, 240, 230), (x - 1, y - 1 + bob), 1)
             continue
+        if item.flask is not None:
+            draw_flask(canvas, item.flask, x, y + bob)
+            continue
+        if item.heart:
+            beat = 1 if math.sin(item.age * 7) > 0.6 else 0
+            pygame.draw.circle(canvas, HEART_DARK, (x - 2, y - 4 + bob), 2 + beat)
+            pygame.draw.circle(canvas, HEART_DARK, (x + 2, y - 4 + bob), 2 + beat)
+            pygame.draw.polygon(
+                canvas, HEART_LIGHT, [(x - 4, y - 3 + bob), (x + 4, y - 3 + bob), (x, y + 1 + bob)]
+            )
+            continue
+        if item.portal:
+            for k in range(3):
+                radius = 9 - k * 3 + math.sin(item.age * 3 + k) * 1.5
+                color = ((120, 200, 230), (190, 120, 230), (240, 240, 255))[k]
+                pygame.draw.circle(canvas, color, (x, y), max(1, radius), 1)
+            continue
+        if item.reroll:
+            spin = item.age * 2
+            for k in range(3):
+                a = spin + k * 2.1
+                color = PERK_BY_KEY[PERK_KEYS[(int(item.age) + k) % len(PERK_KEYS)]].color
+                pygame.draw.circle(canvas, color, (x + math.cos(a) * 4, y + bob + math.sin(a) * 4), 2)
+            pygame.draw.circle(canvas, (90, 30, 40), (x, y + bob), 2)
+            continue
+        if item.eye:
+            look = math.sin(item.age * 0.8) * 1.5
+            pygame.draw.circle(canvas, (232, 222, 206), (x, y + bob), 5)
+            pygame.draw.circle(canvas, (170, 30, 40), (x + look, y + bob), 3)
+            pygame.draw.circle(canvas, (10, 4, 6), (x + look, y + bob), 1)
+            pygame.draw.circle(canvas, (120, 40, 50), (x, y + bob), 5, 1)
+            continue
+        if item.cocoon:
+            sway = math.sin(item.age * 1.5) * 1.5
+            pygame.draw.ellipse(canvas, COCOON, (x - 5 + sway, y - 13, 10, 13))
+            pygame.draw.ellipse(canvas, COCOON_DARK, (x - 5 + sway, y - 13, 10, 13), 1)
+            pygame.draw.line(canvas, COCOON_DARK, (x - 2 + sway, y - 10), (x + 2 + sway, y - 4))
+            continue
         if item.wand is not None:
             pygame.draw.line(canvas, ARM_FLESH, (x - 5, y - 2 + bob), (x + 5, y - 4 + bob), 2)
             for k, key in enumerate(item.wand.blocks[:5]):
@@ -505,12 +888,7 @@ def draw_pickups(canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_
 
 
 def draw_exit(
-    canvas: pygame.Surface,
-    centre: tuple[int, int],
-    is_open: bool,
-    age: float,
-    cam_x: int,
-    cam_y: int,
+    canvas: pygame.Surface, centre: tuple[int, int], is_open: bool, age: float, cam_x: int, cam_y: int
 ) -> None:
     """The way down: a pulsing sphincter that only opens when the depth is cleared."""
     x, y = centre[0] - cam_x, centre[1] - cam_y
@@ -535,3 +913,7 @@ def draw_status(canvas: pygame.Surface, body, cam_x: int, cam_y: int, rng: rando
             canvas.fill(rng.choice(FIRE_TONES), (fx, fy, 1, 1 + rng.randrange(2)))
     elif body.wet > 0 and rng.random() < 0.3:
         canvas.fill(DRIP_COLOR, (x + rng.randrange(body.width), y + body.height, 1, 1))
+    if body.oily > 0 and rng.random() < 0.25:  # a greasy sheen
+        canvas.fill(MATERIALS[TALLOW].color, (x + rng.randrange(body.width), y + rng.randrange(body.height), 1, 1))
+    if body.slimed > 0 and rng.random() < 0.4:
+        canvas.fill(MATERIALS[MUCUS].color, (x + rng.randrange(body.width), y + body.height - 1, 1, 2))

@@ -245,7 +245,7 @@ class TestSanctum(unittest.TestCase):
     def test_sanctum_offers_shop_items_and_three_perks(self) -> None:
         run = self.sanctum()
         perks = [i for i in run.pickups if i.perk]
-        shop = [i for i in run.pickups if i.price]
+        shop = [i for i in run.pickups if i.price and not i.reroll]
         self.assertEqual(len(perks), 3)
         self.assertEqual(len(shop), 5)
         self.assertEqual(sum(i.wand is not None for i in shop), 1)
@@ -393,9 +393,7 @@ class TestSaveAndContinue(unittest.TestCase):
         self.assertEqual(other.pearls, 77)
         self.assertEqual(other.perks, {"zaehes_fleisch"})
         self.assertEqual(other.player.max_hp, run.player.max_hp)
-        self.assertEqual(
-            [w.slots for w in other.inventory.wands], [w.slots for w in run.inventory.wands]
-        )
+        self.assertEqual([w.slots for w in other.inventory.wands], [w.slots for w in run.inventory.wands])
         self.assertEqual(other.inventory.bag, run.inventory.bag)
         self.assertEqual([(p.block, p.perk, p.price, p.wand) for p in other.pickups], shop)
         # descending continues identically
@@ -408,17 +406,10 @@ class TestSaveAndContinue(unittest.TestCase):
         run = Run(5)
         run.enter_sanctum()
         good = run.checkpoint
-        for broken in (
-            {},
-            {**good, "version": 0},
-            {**good, "depth_index": 9},
-            {**good, "wands": [{"spec": {}}]},
-        ):
+        for broken in ({}, {**good, "version": 0}, {**good, "depth_index": 9}, {**good, "wands": [{"spec": {}}]}):
             with self.assertRaises(ValueError):
                 Run(1).restore(broken)
-        wands = [
-            {**good["wands"][0], "spec": {**good["wands"][0]["spec"], "blocks": ["gibtsnicht"]}}
-        ]
+        wands = [{**good["wands"][0], "spec": {**good["wands"][0]["spec"], "blocks": ["gibtsnicht"]}}]
         with self.assertRaises(ValueError):
             Run(1).restore({**good, "wands": wands})
 
@@ -430,3 +421,490 @@ class TestSaveAndContinue(unittest.TestCase):
         run.pickups = [Pickup(run.player.x, run.player.y, block="blutegel")]
         run._pick_up()
         self.assertEqual(run.discoveries, [("block", "blutegel")])
+
+
+class TestBossExit(unittest.TestCase):
+    def test_boss_death_clears_the_exit(self) -> None:
+        from src.materials import GROWTH
+
+        run = Run(4)
+        run.enter_depth(next(i for i, d in enumerate(DEPTHS) if d.boss == "brutmutter"))
+        ex, ey = run.level.exit
+        run.world.fill_disc(ex, ey, 10, GROWTH)
+        run.enemies.boss().hurt(1e9)
+        run.update(DT, Controls(), (0, 0, run.world.width, run.world.height))
+        self.assertTrue(run.exit_open)
+        self.assertNotEqual(run.world.get(ex, ey), GROWTH)
+
+
+class TestTeleport(unittest.TestCase):
+    def test_teleport_bolt_moves_the_player(self) -> None:
+        run = Run(6)
+        run.inventory.wands[0].set_slots(["teleportbolzen"] + [None] * (len(run.inventory.wands[0].slots) - 1))
+        start = run.player.center
+        aim = (start[0] + 80, start[1] - 20)
+        run.update(DT, Controls(cast=True, aim=aim))
+        moved = False
+        for _ in range(90):
+            run.update(DT, Controls(aim=aim))
+            if math.dist(run.player.center, start) > 20:
+                moved = True
+                break
+        self.assertTrue(moved)
+        self.assertFalse(run.player.blocked(run.world, run.player.x, run.player.y))
+
+
+class TestHeartsAndCocoons(unittest.TestCase):
+    def test_heart_raises_max_health(self) -> None:
+        run = Run(8)
+        before = run.player.max_hp
+        run.player.hp = 10
+        run.pickups = [Pickup(run.player.center[0], run.player.center[1], heart=20)]
+        run._pick_up()
+        self.assertEqual(run.player.max_hp, before + 20)
+        self.assertEqual(run.player.hp, run.player.max_hp)
+
+    def test_cocoon_spills_loot(self) -> None:
+        run = Run(8)
+        cx, cy = run.player.center
+        run.pickups = [Pickup(cx, cy, cocoon=True)]
+        run._pick_up()
+        self.assertGreaterEqual(len(run.pickups), 2)
+        self.assertTrue(any(item.pearls for item in run.pickups))
+        self.assertFalse(any(item.cocoon for item in run.pickups))
+
+    def test_depths_contain_hearts_and_cocoons(self) -> None:
+        run = Run(8)
+        self.assertEqual(sum(1 for item in run.pickups if item.heart), 1)
+        self.assertGreaterEqual(sum(1 for item in run.pickups if item.cocoon), 1)
+
+
+class TestNewPerks(unittest.TestCase):
+    def test_editing_needs_a_sanctum_or_quick_hands(self) -> None:
+        run = Run(10)
+        self.assertFalse(run.can_edit_wands)
+        run.enter_sanctum()
+        self.assertTrue(run.can_edit_wands)
+        run._descend()
+        self.assertFalse(run.can_edit_wands)
+        run.apply_perk("flinke_haende")
+        self.assertTrue(run.can_edit_wands)
+
+    def test_flag_perks(self) -> None:
+        run = Run(10)
+        for key in ("gaslunge", "schleimlaeufer", "dauerflug", "wutdruesen"):
+            run.apply_perk(key)
+        self.assertTrue(run.player.gas_immune and run.player.mucus_immune)
+        self.assertGreater(run.player.air_recharge, 1.0)
+        self.assertGreater(run.projectiles.player_damage, 1.0)
+        run.new_run()  # a fresh run drops them
+        self.assertFalse(run.player.gas_immune)
+        self.assertEqual(run.projectiles.player_damage, 1.0)
+
+    def test_flag_perks_survive_a_restore(self) -> None:
+        run = Run(10)
+        run.apply_perk("gaslunge")
+        run.enter_sanctum()
+        other = Run(11)
+        other.restore(run.checkpoint)
+        self.assertTrue(other.player.gas_immune)
+
+    def test_haggling_and_magnet(self) -> None:
+        run = Run(10)
+        item = Pickup(0, 0, block="funke", price=90)
+        self.assertEqual(run.price_of(item), 90)
+        run.apply_perk("feilscher")
+        self.assertEqual(run.price_of(item), 60)
+        run.apply_perk("perlenmagnet")
+        cx, cy = run.player.center
+        run.pickups = [Pickup(cx + 100, cy, pearls=5)]
+        before = run.pearls
+        for _ in range(60):
+            run.update(DT, Controls(aim=(cx, cy)))
+        self.assertEqual(run.pearls, before + 5)
+
+
+class TestSecrets(unittest.TestCase):
+    def test_each_depth_hides_a_sealed_urauge(self) -> None:
+        from src import native
+        from src.materials import BLOCKS_BODY
+        from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
+
+        run = Run(12)
+        found = 0
+        for index in range(len(DEPTHS)):
+            run.enter_depth(index)
+            secret = run.level.secret
+            if secret is None:
+                continue
+            found += 1
+            self.assertTrue(any(item.eye for item in run.pickups))
+            blocking = [int(b) for b in BLOCKS_BODY]
+            goal = (secret[0] - PLAYER_WIDTH // 2, secret[1] - PLAYER_HEIGHT // 2)
+            reached, _closest = native.reachable(
+                native.byte_view(run.world.grid), run.world.width, run.world.height, blocking,
+                (PLAYER_WIDTH, PLAYER_HEIGHT), run.level.spawn, goal,
+            )  # fmt: skip
+            self.assertFalse(reached, "the chamber must be sealed")
+        self.assertEqual(found, len(DEPTHS))
+
+    def test_all_eyes_and_the_heart_give_the_true_ending(self) -> None:
+        run = Run(12)
+        for _ in range(len(DEPTHS)):
+            cx, cy = run.player.center
+            run.pickups = [Pickup(cx, cy, eye=True)]
+            run._pick_up()
+        self.assertEqual(run.eyes, len(DEPTHS))
+        run.outcome = "victory"
+        self.assertTrue(run.true_ending)
+        run.enter_sanctum()
+        other = Run(13)
+        other.restore(run.checkpoint)
+        self.assertEqual(other.eyes, len(DEPTHS))
+
+
+class TestSanctumMachines(unittest.TestCase):
+    def test_reroll_replaces_the_perks_and_gets_dearer(self) -> None:
+        run = Run(14)
+        run.enter_sanctum()
+        reroll = next(item for item in run.pickups if item.reroll)
+        before = {item.perk for item in run.pickups if item.perk}
+        run.pearls = 1000
+        run.player.place(int(reroll.x) - 4, int(reroll.y) - 9)
+        run._pick_up()
+        after = {item.perk for item in run.pickups if item.perk}
+        self.assertEqual(len(after), 3)
+        self.assertNotEqual(before, after)
+        self.assertEqual(run.pearls, 1000 - 100)
+        self.assertEqual(reroll.price, 200)
+        run.pearls = 50  # too poor now
+        run._pick_up()
+        self.assertEqual(run.pearls, 50)
+
+    def test_choosing_a_perk_removes_the_reroll(self) -> None:
+        run = Run(14)
+        run.enter_sanctum()
+        perk = next(item for item in run.pickups if item.perk)
+        run.player.place(int(perk.x) - 4, int(perk.y) - 9)
+        run._pick_up()
+        self.assertFalse(any(item.reroll or item.perk for item in run.pickups))
+
+    def test_death_leaves_a_pool_of_blood(self) -> None:
+        from src.materials import BLOOD
+
+        run = Run(14)
+        before = run.world.count(BLOOD)
+        run.player.hurt(10_000)
+        run.update(DT, Controls())
+        self.assertGreater(run.world.count(BLOOD), before + 20)
+
+
+class TestSacs(unittest.TestCase):
+    def test_tallow_sac_bursts_into_burning_tallow_and_chains(self) -> None:
+        from src.enemies import SPECIES, Creature
+        from src.materials import FIRE, TALLOW
+
+        run = Run(15)
+        run.enemies.creatures = []
+        cx, cy = run.player.center
+        x, y = int(cx) + 60, int(cy) - 4
+        first = Creature(SPECIES["talgsack"], x, y, run.rng)
+        second = Creature(SPECIES["talgsack"], x + 12, y, run.rng)
+        run.enemies.creatures = [first, second]
+        kills = run.stats["kills"]
+        first.hurt(100)
+        blasts = run.update(DT, Controls(aim=(cx, cy)))
+        self.assertEqual(len(blasts), 1)
+        for _ in range(3):
+            run.update(DT, Controls(aim=(cx, cy)))
+        self.assertTrue(second.dead)  # caught in the first blast
+        self.assertEqual(run.stats["kills"], kills)  # sacs are not kills
+        self.assertGreater(run.world.count(TALLOW) + run.world.count(FIRE), 20)
+        self.assertFalse(any(kind == "creature" and key == "talgsack" for kind, key in run.discoveries))
+
+    def test_sacs_are_hit_by_enemy_shots_too(self) -> None:
+        from src.enemies import SPECIES, Creature
+        from src.projectiles import ProjectileSystem
+        from src.wand import Shot
+        from src.world import World
+
+        world = World(200, 80, seed=1)
+        sac = Creature(SPECIES["saeuresack"], 120, 40, random.Random(1))
+        system = ProjectileSystem()
+        system.spawn([Shot(CATALOG["nadel"], (), [])], 60, 44, 0.0, team="enemy")
+        for _ in range(30):
+            system.update(world, DT, (0, 0), [sac])
+        self.assertLess(sac.hp, sac.max_hp)
+
+
+class TestKick(unittest.TestCase):
+    def test_kick_hurts_and_shoves_and_bursts_sacs(self) -> None:
+        from src.enemies import SPECIES, Creature
+
+        run = Run(16)
+        cx, cy = run.player.center
+        maggot = Creature(SPECIES["made"], int(cx) + 6, int(cy) - 3, run.rng)
+        sac = Creature(SPECIES["talgsack"], int(cx) + 8, int(cy) - 4, run.rng)
+        run.enemies.creatures = [maggot, sac]
+        run.update(DT, Controls(aim=(cx + 50, cy), kick=True))
+        self.assertLess(maggot.hp, maggot.max_hp)
+        self.assertGreater(maggot.vx, 0)
+        self.assertTrue(sac.dead or sac not in run.enemies.creatures)
+        hp = maggot.hp
+        run.update(DT, Controls(aim=(cx + 50, cy), kick=True))  # still on cooldown
+        self.assertEqual(maggot.hp, hp)
+
+
+class TestSpecialSpells(unittest.TestCase):
+    def _run_with(self, form: str) -> Run:
+        from src.materials import AIR, BONE
+
+        run = Run(18)
+        wand = run.inventory.wands[0]
+        wand.set_slots([form] + [None] * (len(wand.slots) - 1))
+        run.enemies.creatures = []
+        player = run.player
+        floor = player.y + player.height
+        for y in range(floor - 50, floor + 4):  # an open test hall with a flat floor
+            for x in range(player.x - 20, player.x + 130):
+                run.world.set_cell(x, y, AIR if y < floor else BONE, force=True)
+        return run
+
+    def _target(self, run: Run, key: str = "made"):
+        from src.enemies import SPECIES, Creature
+
+        cx, cy = run.player.center
+        creature = Creature(SPECIES[key], int(cx) + 60, int(cy) - 6, run.rng)
+        run.enemies.creatures = [creature]
+        for _ in range(30):  # let it land first
+            run.update(DT, Controls(aim=(cx, cy)))
+        return creature
+
+    def test_polymorph_turns_a_creature_into_another(self) -> None:
+        run = self._run_with("wandlungsdruese")
+        maggot = self._target(run)
+        aim = maggot.center
+        run.update(DT, Controls(cast=True, aim=aim))
+        for _ in range(30):
+            run.update(DT, Controls(aim=aim))
+        self.assertNotIn(maggot, run.enemies.creatures)
+        self.assertEqual(len(run.enemies.creatures), 1)
+        self.assertNotEqual(run.enemies.creatures[0].spec.key, "made")
+
+    def test_swap_trades_places(self) -> None:
+        run = self._run_with("tauschdruese")
+        maggot = self._target(run)
+        start = run.player.center
+        aim = maggot.center
+        run.update(DT, Controls(cast=True, aim=aim))
+        for _ in range(30):
+            run.update(DT, Controls(aim=aim))
+        self.assertGreater(math.dist(run.player.center, start), 30)
+
+    def test_chain_spark_jumps_between_creatures(self) -> None:
+        from src.enemies import SPECIES, Creature
+        from src.projectiles import ProjectileSystem
+        from src.wand import Shot
+        from src.world import World
+
+        world = World(400, 100, seed=1)
+        a = Creature(SPECIES["made"], 100, 60, random.Random(1))
+        b = Creature(SPECIES["made"], 150, 60, random.Random(2))
+        c = Creature(SPECIES["made"], 200, 60, random.Random(3))
+        system = ProjectileSystem()
+        system.spawn([Shot(CATALOG["kettenfunke"], (), [])], 40, 63, 0.0)
+        for _ in range(60):
+            system.update(world, DT, (0, 0), [a, b, c])
+        self.assertTrue(all(m.hp < m.max_hp for m in (a, b, c)))
+
+
+class TestNewGamePlus(unittest.TestCase):
+    def test_victory_leads_into_a_tougher_loop_keeping_gear(self) -> None:
+        run = Run(19)
+        run.apply_perk("wutdruesen")
+        wands = [w.slots for w in run.inventory.wands]
+        run.new_game_plus()  # not won yet: nothing happens
+        self.assertEqual(run.ng, 0)
+        run.outcome = "victory"
+        run.new_game_plus()
+        self.assertEqual((run.ng, run.outcome, run.depth_index), (1, "", 0))
+        self.assertEqual([w.slots for w in run.inventory.wands], wands)
+        self.assertIn("wutdruesen", run.perks)
+        normal = [c for c in run.enemies.creatures if not c.spec.prop]
+        self.assertTrue(normal)
+        self.assertTrue(all(c.max_hp > c.spec.hp for c in normal))
+        self.assertGreater(run.projectiles.enemy_damage, 1.0)
+        run.enter_sanctum()
+        other = Run(20)
+        other.restore(run.checkpoint)
+        self.assertEqual(other.ng, 1)
+        run.new_run()
+        self.assertEqual((run.ng, run.projectiles.enemy_damage), (0, 1.0))
+
+
+class TestPlayerPolymorph(unittest.TestCase):
+    def test_polymorphed_player_cannot_cast_and_recovers(self) -> None:
+        from src.player import POLYMORPH_SPEED  # noqa: F401  (exists)
+
+        run = Run(21)
+        run.projectiles.polymorphs.append(run.player)
+        run.update(DT, Controls())
+        self.assertGreater(run.player.polymorphed, 0)
+        cx, cy = run.player.center
+        run.update(DT, Controls(cast=True, aim=(cx + 50, cy)))
+        self.assertEqual(run.projectiles.items, [])
+        for _ in range(int(8 / DT)):
+            run.update(DT, Controls(aim=(cx + 50, cy)))
+        self.assertEqual(run.player.polymorphed, 0.0)
+
+
+class TestVaults(unittest.TestCase):
+    def test_every_depth_but_the_last_has_a_guarded_vault(self) -> None:
+        run = Run(22)
+        for index, depth in enumerate(DEPTHS):
+            run.enter_depth(index)
+            vault = run.level.vault
+            if depth.final:
+                self.assertIsNone(vault)
+                continue
+            self.assertIsNotNone(vault)
+            x, y = vault
+            near = [i for i in run.pickups if abs(i.x - x) < 50 and abs(i.y - y) < 40]
+            self.assertTrue(any(i.wand is not None for i in near))
+            guards = [c for c in run.enemies.creatures if c.max_hp > c.spec.hp * 2]
+            self.assertTrue(guards)
+
+
+class TestMirrorWorld(unittest.TestCase):
+    def test_portal_in_the_first_vault_leads_into_a_mirrored_harder_world(self) -> None:
+        run = Run(23)
+        portal = next(item for item in run.pickups if item.portal)
+        normal = [c.max_hp for c in run.enemies.creatures if not c.spec.prop]
+        run.player.place(int(portal.x) - 4, int(portal.y) - 9)
+        run._pick_up()
+        self.assertTrue(run.mirror)
+        self.assertEqual(run.depth_index, 0)
+        self.assertTrue(any(item.portal for item in run.pickups))  # the next portal waits already
+        tough = [c for c in run.enemies.creatures if not c.spec.prop and not c.spec.boss]
+        self.assertTrue(all(c.max_hp > c.spec.hp * 1.5 for c in tough))
+        self.assertTrue(normal)
+        self.assertFalse(run.world.rect_blocked(*run.level.spawn, run.player.width, run.player.height))
+        self.assertGreater(run.projectiles.enemy_damage, 1.0)
+
+    def test_mirrored_level_is_the_flipped_original(self) -> None:
+        from src.world import World
+        from src.worldgen import generate_level
+
+        a = World(1280, 720, seed=9)
+        level = generate_level(a, DEPTHS[0])
+        b = World(1280, 720, seed=9)
+        generate_level(b, DEPTHS[0])
+        b.mirror()
+        y = level.exit[1]
+        row_a = a.grid[y * 1280 : (y + 1) * 1280]
+        row_b = b.grid[y * 1280 : (y + 1) * 1280]
+        self.assertEqual(bytes(row_a), bytes(row_b[::-1]))
+
+
+class TestRoutes(unittest.TestCase):
+    def test_routes_vary_and_keep_the_bosses_in_place(self) -> None:
+        from src.depths import VARIANTS, choose_route
+
+        routes = {tuple(d.key for d in choose_route(random.Random(seed))) for seed in range(40)}
+        self.assertGreater(len(routes), 5)
+        for stage, depth in enumerate(DEPTHS):
+            for variant in VARIANTS.get(depth.key, ()):
+                self.assertEqual(variant.boss, depth.boss, variant.key)
+                self.assertEqual(variant.final, depth.final)
+
+    def test_route_survives_save_and_restore(self) -> None:
+        run = Run(24)
+        run.enter_sanctum()
+        other = Run(25)
+        other.restore(run.checkpoint)
+        self.assertEqual([d.key for d in other.route], [d.key for d in run.route])
+
+
+class TestVisibility(unittest.TestCase):
+    def test_sealed_treasures_stay_hidden_until_seen(self) -> None:
+        run = Run(26)
+        run.update_visibility()
+        eye = next(item for item in run.pickups if item.eye)
+        self.assertFalse(eye.seen)  # sealed in bone, far away
+        run.player.place(int(eye.x) - 4, int(eye.y) - 9)
+        run.update_visibility()
+        self.assertTrue(eye.seen)
+        shop_run = Run(27)
+        shop_run.enter_sanctum()
+        shop_run.update_visibility()
+        self.assertTrue(all(item.seen for item in shop_run.pickups if item.price))
+
+
+class TestBiomeCount(unittest.TestCase):
+    def test_more_than_thirty_biomes_all_reachable_by_routes(self) -> None:
+        from src.depths import VARIANTS, biome_count, choose_route
+
+        self.assertGreater(biome_count(), 30)
+        seen = set()
+        rng = random.Random(1)
+        for _ in range(400):
+            seen |= {d.key for d in choose_route(rng)}
+        every = {d.key for d in DEPTHS} | {d.key for v in VARIANTS.values() for d in v}
+        self.assertEqual(seen, every)
+
+
+class TestParallelWorlds(unittest.TestCase):
+    def test_portals_lead_ever_further(self) -> None:
+        run = Run(28)
+        powers = [run.power]
+        for world in (1, 2, 3):
+            portal = next(item for item in run.pickups if item.portal)
+            run.player.place(int(portal.x) - 4, int(portal.y) - 9)
+            run._pick_up()
+            self.assertEqual(run.parallel, world)
+            self.assertEqual(run.mirror, world % 2 == 1)
+            powers.append(run.power)
+        self.assertEqual(powers, sorted(powers))
+        self.assertEqual(len(set(powers)), 4)
+        run.enter_sanctum()
+        other = Run(29)
+        other.restore(run.checkpoint)
+        self.assertEqual(other.parallel, 3)
+
+
+class TestKnockback(unittest.TestCase):
+    def test_blasts_throw_bodies_away(self) -> None:
+        from src.enemies import SPECIES, Creature
+        from src.projectiles import Blast
+
+        run = Run(30)
+        cx, cy = run.player.center
+        sac = Creature(SPECIES["sporensack"], int(cx) + 30, int(cy) - 4, run.rng)
+        sac.hp = sac.max_hp = 1000
+        run._apply_blast(Blast(int(cx) + 20, int(cy), 12), [sac])
+        self.assertGreater(sac.vx, 20)
+        self.assertLess(sac.vy, 0)
+
+
+class TestWestAndItems(unittest.TestCase):
+    def test_west_portal_leads_into_darker_worlds(self) -> None:
+        run = Run(33)
+        run.level = run.level.__class__(run.level.spawn, run.level.exit, run.level.arena, None, (50, 300))
+        run.enter_mirror()
+        self.assertEqual(run.parallel, -1)
+        self.assertLess(run.darkness, 1.0)
+        self.assertGreater(run.power, 1.0)
+
+    def test_blasts_throw_items(self) -> None:
+        from src.projectiles import Blast
+
+        run = Run(33)
+        cx, cy = run.player.center
+        item = Pickup(cx + 20, cy, block="funke")
+        run.pickups = [item]
+        run._apply_blast(Blast(int(cx) + 10, int(cy) + 2, 12), [])
+        self.assertGreater(item.vx, 0)
+        x0 = item.x
+        for _ in range(30):
+            item.update(run.world, DT)
+        self.assertNotEqual(item.x, x0)

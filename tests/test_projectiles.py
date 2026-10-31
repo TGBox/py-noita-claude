@@ -208,12 +208,7 @@ class TestNewBlocks(unittest.TestCase):
         self.assertEqual(len(system.items), CATALOG["knochensplitter"].pellets)
 
     def test_modifiers_extend_lifetime_and_bounces(self) -> None:
-        p = build(
-            shot("funke", "langlebigkeit", "abprall", "durchbohren", "brandbeschleuniger"),
-            0,
-            0,
-            0.0,
-        )
+        p = build(shot("funke", "langlebigkeit", "abprall", "durchbohren", "brandbeschleuniger"), 0, 0, 0.0)
         self.assertAlmostEqual(p.lifetime, CATALOG["funke"].lifetime * 2)
         self.assertEqual(p.bounces, 3)
         self.assertTrue(p.pierce and p.ignites)
@@ -260,3 +255,101 @@ class TestNewBlocks(unittest.TestCase):
             system.spawn([shot("funke", key)], 60, 40, 0.0)
             run(system, world, 1.0)
             self.assertGreater(world.grid.count(material), before)
+
+
+class TestMoreBlocks(unittest.TestCase):
+    def test_catalogue_has_over_fifty_blocks(self) -> None:
+        self.assertGreater(len(CATALOG), 50)
+
+    def test_teleport_bolt_reports_where_it_ended(self) -> None:
+        world, system = wall_world(), ProjectileSystem()
+        system.spawn([shot("teleportbolzen", "schwerelos")], 60, 40, 0.0)
+        run(system, world, 1.0)
+        self.assertEqual(len(system.teleports), 1)
+        x, _y = system.teleports[0]
+        self.assertLess(x, 120)  # in front of the wall, not inside it
+        self.assertGreater(x, 100)
+
+    def test_saw_ricochets_and_cuts_through(self) -> None:
+        world, system = wall_world(), ProjectileSystem()
+        system.spawn([shot("knochensaege")], 100, 40, 0.0)
+        for _ in range(20):
+            system.update(world, DT, (0.0, 0.0))
+        self.assertTrue(system.items)
+        self.assertLess(system.items[0].vx, 0)
+        self.assertTrue(system.items[0].pierce)
+
+    def test_mine_waits_for_a_creature(self) -> None:
+        world, system = open_world(), ProjectileSystem()
+        system.spawn([shot("sporenmine")], 40, 80, 0.0)
+        for _ in range(120):
+            system.update(world, DT, (0.0, 0.0), [])
+        self.assertEqual(len(system.items), 1)
+        mine = system.items[0]
+        victim = dummy(int(mine.x) - 3, int(mine.y) - 8)
+        blasts = 0
+        for _ in range(10):
+            blasts += len(system.update(world, DT, (0.0, 0.0), [victim]))
+        self.assertEqual(blasts, 1)
+        self.assertFalse(system.items)
+
+    def test_trail_and_gravity_and_damage_modifiers(self) -> None:
+        p = build(shot("klumpen", "schwerelos", "schadenszuwachs", "blutspur"), 0, 0, 0.0)
+        self.assertEqual(p.gravity, 0.0)
+        self.assertEqual(p.damage, CATALOG["klumpen"].damage + 6)
+        self.assertEqual(p.trail, BLOOD)
+        world, system = open_world(), ProjectileSystem()
+        system.spawn([shot("funke", "talgspur")], 20, 40, 0.0)
+        run(system, world, 0.3)
+        self.assertGreater(world.count(TALLOW), 5)
+
+
+class TestWandBlocks(unittest.TestCase):
+    def test_mana_refund_and_haste(self) -> None:
+        from src.wand import Wand, WandSpec
+
+        wand = Wand(WandSpec("t", ("manazuschuss", "hast", "funke"), mana_max=100, cast_delay=0.1))
+        wand.mana = 50
+        self.assertTrue(wand.cast())
+        self.assertGreater(wand.mana, 50)  # refund outweighs the cost
+        self.assertLessEqual(wand.mana, 100)
+        # 0.1 wand + 0.1 refund + 0.05 spark - 0.15 haste
+        self.assertAlmostEqual(wand.cooldown, 0.1)
+
+    def test_fast_recharge(self) -> None:
+        from src.wand import Wand, WandSpec
+
+        plain = Wand(WandSpec("a", ("funke",), recharge=0.5))
+        quick = Wand(WandSpec("b", ("schnellladung", "funke"), recharge=0.5))
+        plain.cast()
+        quick.cast()
+        self.assertAlmostEqual(plain.recharge_left, 0.5)
+        self.assertAlmostEqual(quick.recharge_left, 0.2)
+
+    def test_triple_cast(self) -> None:
+        from src.wand import Wand, WandSpec
+
+        wand = Wand(WandSpec("t", ("dreifach", "funke", "nadel", "klumpen")))
+        self.assertEqual(len(wand.cast()), 3)
+
+
+class TestFormations(unittest.TestCase):
+    def test_circle_and_front_back(self) -> None:
+        from src.wand import Wand, WandSpec
+
+        circle = Wand(WandSpec("k", ("achterkreis",) + ("funke",) * 8))
+        shots = circle.cast()
+        self.assertEqual(len(shots), 8)
+        offsets = sorted(round(s.angle_offset % math.tau, 3) for s in shots)
+        self.assertAlmostEqual(offsets[1] - offsets[0], math.tau / 8, places=2)
+        both = Wand(WandSpec("v", ("vorne_hinten", "funke", "funke"))).cast()
+        self.assertEqual(sorted(round(abs(s.angle_offset), 2) for s in both), [0.0, 3.14])
+
+    def test_fan_is_centred(self) -> None:
+        from src.wand import Wand, WandSpec
+
+        shots = Wand(WandSpec("f", ("faecher",) + ("nadel",) * 5)).cast()
+        self.assertAlmostEqual(sum(s.angle_offset for s in shots), 0.0, places=6)
+
+    def test_catalogue_size(self) -> None:
+        self.assertGreaterEqual(len(CATALOG), 70)

@@ -127,7 +127,7 @@ class TestPowderAndLiquid(unittest.TestCase):
         fill(world, 10, FLOOR_Y - 6, 50, FLOOR_Y + 1, BLOOD)
         world.set_cell(30, FLOOR_Y - 6, BONE_DUST)
         run(world, 200)
-        self.assertEqual(world.get(30, FLOOR_Y), BONE_DUST)
+        self.assertIn(world.get(30, FLOOR_Y), (BONE_DUST, CRUST))  # it may soak into scab
 
     def test_tallow_floats_on_blood(self) -> None:
         world = make_world()
@@ -206,15 +206,14 @@ class TestFireAndReactions(unittest.TestCase):
         self.assertEqual(world.count(FIRE), 0)
         self.assertEqual(world.count(CRUST), 1)
 
-    def test_blood_clots_where_it_touches_air(self) -> None:
+    def test_blood_stays_liquid_in_air_but_soaks_dust_into_scab(self) -> None:
         world = make_world()
         fill(world, 10, FLOOR_Y - 2, 50, FLOOR_Y + 1, BLOOD)
         run(world, 3000)
-        crust = cells(world, CRUST)
-        self.assertGreater(len(crust), 0)
-        # Scab forms where blood touches air; early clots may get covered by later flow.
-        covered = sum(1 for x, y in crust if world.get(x, y - 1) == BLOOD)
-        self.assertLess(covered, len(crust) * 0.2, crust)
+        self.assertEqual(world.count(CRUST), 0)  # no floating specks or lids
+        fill(world, 10, FLOOR_Y - 4, 50, FLOOR_Y - 2, BONE_DUST)  # dust sinks into the pool
+        run(world, 1500)
+        self.assertGreater(world.count(CRUST), 0)
 
     def test_acid_eats_flesh_and_is_used_up(self) -> None:
         world = make_world()
@@ -354,3 +353,35 @@ class TestTools(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMucus(unittest.TestCase):
+    def test_mucus_slows_bodies_and_smothers_fire(self) -> None:
+        from src.body import Body
+        from src.materials import MUCUS
+
+        world = World(80, 64, seed=1)
+        for y in range(2, 62):
+            for x in range(2, 40):
+                world.set_cell(x, y, MUCUS, force=True)
+        stuck, free = Body(10, 20, 4, 4, 10), Body(50, 20, 4, 4, 10)
+        for body in (stuck, free):
+            body.vx = 60.0
+            body.move(world, 0.5)
+        self.assertLess(stuck.x - 10, (free.x - 50) * 0.6)
+
+        world.set_cell(20, 30, FIRE, force=True)  # a flame inside the mucus pool
+        for _ in range(10):
+            world.step()
+        self.assertEqual(world.count(FIRE), 0)
+
+    def test_lung_depth_has_mucus_and_air_sacs(self) -> None:
+        from src.depths import DEPTHS
+        from src.materials import MUCUS, SINEW
+        from src.worldgen import generate_level
+
+        lung = next(d for d in DEPTHS if d.key == "lunge")
+        world = World(1280, 720, seed=3)
+        generate_level(world, lung)
+        self.assertGreater(world.count(MUCUS), 500)
+        self.assertGreater(world.count(SINEW), 2000)

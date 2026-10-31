@@ -26,7 +26,9 @@ from src.materials import (
     LIFE_RANGE,
     LIQUID,
     POWDER,
+    SINEW,
     SOLID,
+    SPARK,
 )
 from src.native import Core
 
@@ -92,6 +94,15 @@ class World:
                 row = y * w
                 self.grid[row : row + BORDER] = bedrock_row[:BORDER]
                 self.grid[row + w - BORDER : row + w] = bedrock_row[:BORDER]
+        self.wake_all()
+
+    def mirror(self) -> None:
+        """Flip the whole world left to right (for the mirror world)."""
+        w = self.width
+        for y in range(self.height):
+            row = slice(y * w, (y + 1) * w)
+            self.grid[row] = self.grid[row][::-1]
+            self.life[row] = self.life[row][::-1]
         self.wake_all()
 
     def wake_all(self) -> None:
@@ -218,6 +229,16 @@ class World:
             elif current == AIR and dist2 > outer and rnd() < 0.12:
                 self.set_cell(x, y, FIRE)
         return destroyed + self.crumble_loose(cx, cy, radius + 2)
+
+    def electrify(self, cx: int, cy: int, radius: int) -> int:
+        """Send a nerve current into the sinew around (cx, cy). Returns cells charged."""
+        charged = 0
+        for dx, dy in disc_offsets(radius):
+            x, y = cx + dx, cy + dy
+            if 0 <= x < self.width and 0 <= y < self.height and self.grid[y * self.width + x] == SINEW:
+                self.set_cell(x, y, SPARK, force=True)
+                charged += 1
+        return charged
 
     def dig(self, cx: int, cy: int, radius: int) -> int:
         """Bore a hole: solids and powders in the disc vanish (bedrock stays)."""

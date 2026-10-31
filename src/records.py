@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 FILE_NAME = "records.json"
+BOSS_PEARLS = 30  # starting blood pearls per boss species in the Kodex
 
 
 def data_dir() -> Path:
@@ -31,6 +32,9 @@ class Records:
     pearls: int = 0
     best_depth: int = 0  # deepest depth reached (1 = Schlund)
     best_time: float = 0.0  # fastest win in seconds, 0 = none yet
+    true_wins: int = 0  # wins with every Urauge
+    best_eyes: int = 0  # most Uraugen found in one run
+    best_ng: int = 0  # highest New Game+ loop won
     blocks: list[str] = field(default_factory=list)  # Kodex: blocks ever found
     creatures: dict[str, int] = field(default_factory=dict)  # Kodex: kills per species
 
@@ -45,9 +49,35 @@ class Records:
         self.creatures[key] = self.creatures.get(key, 0) + 1
         return first
 
-    def add_run(self, *, won: bool, depth: int, kills: int, pearls: int, time: float) -> bool:
+    def unlocks(self) -> tuple[frozenset[str], int]:
+        """What the Kodex grants a new run: favoured shop blocks and starting pearls."""
+        from src.enemies import SPECIES  # local import keeps this module light
+
+        bosses = sum(1 for key in self.creatures if key in SPECIES and SPECIES[key].boss)
+        return frozenset(self.blocks), BOSS_PEARLS * bosses
+
+    def add_run(
+        self,
+        *,
+        won: bool,
+        depth: int,
+        kills: int,
+        pearls: int,
+        time: float,
+        eyes: int = 0,
+        ng: int = 0,
+    ) -> bool:
         """Count a finished run. Returns True if it set a new record."""
+        from src.depths import DEPTHS  # local import keeps this module light
+
         record = depth > self.best_depth or (won and (not self.best_time or time < self.best_time))
+        record = record or eyes > self.best_eyes
+        self.best_eyes = max(self.best_eyes, eyes)
+        if won:
+            record = record or ng > self.best_ng
+            self.best_ng = max(self.best_ng, ng)
+        if won and eyes >= len(DEPTHS):
+            self.true_wins += 1
         self.runs += 1
         self.kills += kills
         self.pearls += pearls
@@ -65,8 +95,17 @@ class Records:
             f"Läufe: {self.runs}   Siege: {self.wins}   Tiefste Tiefe: {self.best_depth}",
             f"Getötet: {self.kills}   Blutperlen: {self.pearls}",
         ]
+        extras = []
         if self.best_time:
-            lines.append(f"Schnellster Sieg: {format_time(self.best_time)}")
+            extras.append(f"Schnellster Sieg: {format_time(self.best_time)}")
+        if self.best_eyes:
+            extras.append(f"Uraugen in einem Lauf: {self.best_eyes}")
+        if self.true_wins:
+            extras.append(f"Wahre Siege: {self.true_wins}")
+        if self.best_ng:
+            extras.append(f"Neues Spiel+ besiegt: {self.best_ng}")
+        if extras:
+            lines.append("   ".join(extras))
         return lines
 
 
@@ -95,9 +134,7 @@ def load(path: Path | None = None) -> Records:
     creatures = raw.get("creatures")
     if isinstance(creatures, dict):
         values["creatures"] = {
-            key: int(count)
-            for key, count in creatures.items()
-            if isinstance(key, str) and _is_number(count)
+            key: int(count) for key, count in creatures.items() if isinstance(key, str) and _is_number(count)
         }
     return Records(**values)
 
