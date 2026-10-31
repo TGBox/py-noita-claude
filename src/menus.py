@@ -36,7 +36,13 @@ def title_items(saved_depth: int | None) -> list[MenuItem]:
     items = [("new", "Neuer Lauf")]
     if saved_depth is not None:
         items.append(("continue", f"Lauf fortsetzen (vor Tiefe {saved_depth})"))
-    items += [("codex", "Kodex"), ("controls", "Steuerung"), ("options", "Optionen"), ("quit", "Beenden")]
+    items += [
+        ("sandbox", "Sandbox"),
+        ("codex", "Kodex"),
+        ("controls", "Steuerung"),
+        ("options", "Optionen"),
+        ("quit", "Beenden"),
+    ]
     return items
 
 
@@ -56,8 +62,20 @@ def controls_rows() -> list[tuple[str, str]]:
     return [(a.key, a.label_de) for a in ACTIONS] + [("reset", "Alle zurücksetzen"), ("back", "Zurück")]
 
 
-def help_lines(bindings: Bindings) -> list[tuple[str, str]]:
-    """(binding, action) pairs for the in-game help panel."""
+def help_lines(bindings: Bindings, pad: bool = False) -> list[tuple[str, str]]:
+    """(binding, action) pairs for the controls overview in the pause menu.
+
+    Only one device is shown: keyboard and mouse, or the gamepad once one is connected.
+    """
+    if pad:
+        lines = [("Linker Stick", "Laufen"), ("Rechter Stick", "Zielen")]
+        lines += [
+            (bindings.describe_pad(a.key), a.label_de)
+            for a in ACTIONS
+            if bindings.pad.get(a.key) and a.key not in ("left", "right")
+        ]
+        lines.append(("Start", "Pause"))
+        return lines
     lines = [(bindings.describe(a.key), a.label_de) for a in ACTIONS if bindings.keys.get(a.key)]
     lines.insert(4, ("1-4 / Mausrad", "Augmentation wählen"))
     lines.insert(12, ("5-8", "Phiole wählen"))
@@ -139,7 +157,7 @@ class Menus:
             pygame.draw.circle(screen, (150, 14, 30), (int(x), int(logo.bottom - 18 * s + length)), max(2, round(3 * s)))
         ui.text(screen, "Ein Abstieg in das lebende Fleisch", (cx, logo.bottom + 4 * s), round(20 * s), ui.DIM,
                 heading=True, anchor="midtop")  # fmt: skip
-        rects = self._list(screen, items, selected, height * 0.42, width=round(360 * s), height=round(40 * s))
+        rects = self._list(screen, items, selected, height * 0.36, width=round(360 * s), height=round(36 * s))
         if records:
             box_h = round((18 + 22 * len(records)) * s)
             box = ui.panel(screen, (cx - round(330 * s), height - box_h - round(54 * s), round(660 * s), box_h),

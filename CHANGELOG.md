@@ -1,8 +1,16 @@
 # Changelog
 
+## SemVer v1.1.2
+
+- 2026-10-31 (de58158): fix: add new row to the bag, allow spells to stack in the inventory, add sorting to the bag, add fast transfer via double or right clicking
+
+## SemVer v1.1.1
+
+- 2026-10-31 (e575e91): feat: update README, create new roadmap for the upcoming implementation
+
 ## SemVer v1.1.0
 
-- 2026-10-31 (80201ca): feat: add mouse on hover indicator for materials, perks, enemies, fluids, etc., feat: add logging mode to allow for better debugging, feat: add controller input, feat: add control schema adjustment option, fix: fix phioles not getting filled with key s, fix: fix bag access getting denied instead of only wand rebuilding during levels, fix: fix not being able to drop items, fix: menus not having real ui elements and only relying on pure text, fix: fix bag having too little slots
+- 2026-10-31 (fb77ee9): feat: add mouse on hover indicator for materials, perks, enemies, fluids, etc., feat: add logging mode to allow for better debugging, feat: add controller input, feat: add control schema adjustment option, fix: fix phioles not getting filled with key s, fix: fix bag access getting denied instead of only wand rebuilding during levels, fix: fix not being able to drop items, fix: menus not having real ui elements and only relying on pure text, fix: fix bag having too little slots
 
 ## SemVer v1.0.0
 

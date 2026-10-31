@@ -31,6 +31,7 @@ from src.rendering import (
     draw_augmentation,
     draw_chunks,
     draw_creatures,
+    draw_droplets,
     draw_exit,
     draw_pickups,
     draw_projectiles,
@@ -54,14 +55,13 @@ from src.settings import (
     WORLD_HEIGHT,
     WORLD_WIDTH,
 )
-from src.spells import CATALOG
+from src.spells import BLOCKS, CATALOG
 from src.viewport import Viewport
 
 CAMERA_FOLLOW = 8.0  # 1/s, higher is snappier
 LOOK_AHEAD = 0.22  # share of the cursor offset the camera leans towards
 HEARTBEAT_RATE = 1.5  # beats per second while close to death
 SIGHT_INTERVAL = 0.1  # seconds between line-of-sight updates
-HELP_TIME = 25.0  # the control hints fade out after this long in a run
 NOTICE_TIME = 3.0  # seconds a "Neu im Kodex" note stays
 FADE_TIME = 0.7  # seconds of the fade-in after descending
 SHAKE_DECAY = 18.0  # 1/s
@@ -90,8 +90,11 @@ NUMBER_KEYS = (
     pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9, pygame.K_0,
 )  # fmt: skip
 SANDBOX_LINES = (
-    "SANDBOX: Rechte Maus malen | Mittlere Maus radieren | 1-0 Material",
-    "Mausrad: Pinselgröße | N: Neue Welt | Sandbox-Taste: beenden",
+    "Rechte Maus: malen | Mittlere Maus: radieren",
+    "Mausrad: Material | +/-: Pinselgröße",
+    "N: Welt neu | Bild auf/ab: Tiefe wechseln",
+    "Rucksack: Zauberbuch mit allen bekannten Zaubern",
+    "ESC: Menü (Zum Titel beendet die Sandbox)",
 )
 MENU_STATES = ("title", "paused", "options", "codex", "controls")
 # Gamepad buttons in menus act like these keys.
@@ -133,7 +136,6 @@ class Game:
         self.floaters = FloatingNumbers()
         self.fade = 0.0
         self.sight_timer = 0.0
-        self.help_pinned = False
         self.visible: set[int] = set()
         self.heartbeat = 0.0
         self.last_cam = (0, 0)
@@ -152,7 +154,6 @@ class Game:
         self.sandbox = False
         self.paint_index = 0
         self.brush = BRUSH_DEFAULT
-        self.show_help = True
         self.lighting = True
         self.effects_rng = random.Random()
         self.queued: set[str] = set()  # press actions waiting for the next update
@@ -234,8 +235,8 @@ class Game:
                 for action in self.bindings.actions_for(f"maus{event.button}"):
                     self._on_action(action)
             elif event.type == pygame.MOUSEWHEEL:
-                if self.sandbox:
-                    self.brush = min(max(self.brush + event.y, BRUSH_MIN), BRUSH_MAX)
+                if self.sandbox:  # the wheel picks the paint material
+                    self.paint_index = (self.paint_index - event.y) % len(PAINT_MATERIALS)
                 else:
                     self.run.inventory.cycle(-event.y)
 
@@ -326,6 +327,8 @@ class Game:
         if self.state == "title":
             if key == "new":
                 self._start_run()
+            elif key == "sandbox":
+                self._start_run(sandbox=True)
             elif key == "continue":
                 self._continue_run()
             elif key == "quit":
@@ -339,7 +342,7 @@ class Game:
                 self.state = "playing"
                 self.editor.toggle()
             elif key == "restart":
-                self._start_run()
+                self._start_run(sandbox=self.sandbox)
             elif key == "title":
                 self._go("title")
             elif key == "quit":
@@ -400,13 +403,14 @@ class Game:
 
     # ------------------------------------------------------------------- runs
 
-    def _start_run(self) -> None:
-        records.delete_run()  # a new run replaces the saved one
-        self.saved_run = None
+    def _start_run(self, sandbox: bool = False) -> None:
+        if not sandbox:
+            records.delete_run()  # a new run replaces the saved one
+            self.saved_run = None
         self.run.favoured_blocks, self.run.start_pearls = self.records.unlocks()
         self.run.log.clear()  # entries from before the run started (title screen)
         self.run.new_run()
-        self._begin(fortgesetzt=False)
+        self._begin(fortgesetzt=False, sandbox=sandbox)
 
     def _continue_run(self) -> None:
         self.run.log.clear()
@@ -418,10 +422,15 @@ class Game:
         self.saved_checkpoint = self.run.checkpoint
         self._begin(fortgesetzt=True)
 
-    def _begin(self, **info: object) -> None:
+    def _begin(self, sandbox: bool = False, **info: object) -> None:
         self._snap_camera()
-        self.sandbox = False
-        self.cheated = False
+        self.sandbox = self.cheated = sandbox
+        self.run.sandbox = sandbox
+        self.run.god_mode = False
+        known = set(self.records.blocks) | {k for w in self.run.inventory.wands for k in w.slots if k}
+        self.editor.palette = [block.key for block in BLOCKS if block.key in known] if sandbox else []
+        self.editor.palette_mode = sandbox
+        self.editor.page = 0
         self.run_recorded = False
         self.state = "playing"
         self.editor.open = False
@@ -430,6 +439,7 @@ class Game:
             seed=self.seed,
             route=[depth.key for depth in self.run.route],
             optionen=asdict(self.options),
+            sandbox=sandbox,
             controller=self.gamepad.state.name or None,
             **info,
         )
@@ -444,8 +454,9 @@ class Game:
         if self.run_recorded or not self.run.outcome:
             return
         self.run_recorded = True
-        records.delete_run()  # the run is over: nothing to continue
-        self.saved_run = None
+        if not self.cheated:  # a sandbox test never touches the saved real run
+            records.delete_run()  # the run is over: nothing to continue
+            self.saved_run = None
         stats = self.run.stats
         self._drain_run_log()
         self.log.flush_frames(self._place)
@@ -503,21 +514,44 @@ class Game:
         if key == pygame.K_ESCAPE:
             self._go("paused")
             return
+        if key == pygame.K_RETURN and self.run.outcome:
+            self._start_run(sandbox=self.sandbox)  # after death or victory: go again
+            return
         if key in NUMBER_KEYS:
             number = NUMBER_KEYS.index(key)
-            if self.sandbox:
-                self.paint_index = number
-            elif number < 4:
+            if number < 4:
                 self.run.inventory.select(number)
             elif number < 8:
                 self.run.select_flask(number - 4)
             return
-        if key == pygame.K_n and self.sandbox:
-            self.run.enter_depth(self.run.depth_index)
-            self._snap_camera()
+        if self.sandbox and self._sandbox_key(key):
             return
         for action in self.bindings.actions_for(key):
             self._on_action(action)
+
+    def _sandbox_key(self, key: int) -> bool:
+        """Fixed keys of the sandbox (test mode from the title menu)."""
+        run = self.run
+        if key == pygame.K_g:
+            run.god_mode = not run.god_mode
+            self.notice = "Gottmodus " + ("an" if run.god_mode else "aus")
+            self.notice_time = NOTICE_TIME
+        elif key == pygame.K_n:
+            run.enter_depth(run.depth_index)
+            self._snap_camera()
+        elif key in (pygame.K_PLUS, pygame.K_KP_PLUS):
+            self.brush = min(self.brush + 1, BRUSH_MAX)
+        elif key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+            self.brush = max(self.brush - 1, BRUSH_MIN)
+        elif key == pygame.K_PAGEDOWN:
+            run.enter_depth(min(run.depth_index + 1, len(run.route) - 1))
+            self._snap_camera()
+        elif key == pygame.K_PAGEUP:
+            run.enter_depth(max(run.depth_index - 1, 0))
+            self._snap_camera()
+        else:
+            return False
+        return True
 
     def _on_action(self, action: str) -> None:
         """A press of an action's key, mouse button or gamepad button."""
@@ -533,22 +567,12 @@ class Game:
         elif action == "inventory":
             self.editor.toggle()
             self.log.write("rucksack", umbauen=run.can_edit_wands)
-        elif action == "help":
-            shown = self._help_visible()
-            self.show_help = not shown
-            self.help_pinned = not shown  # shown on request: keep it until pressed again
         elif action == "light":
             self.lighting = self.options.lighting = not self.lighting
         elif action == "mute":
             self.audio.toggle_mute()
         elif action == "fullscreen":
             self.toggle_fullscreen()
-        elif action == "sandbox":
-            self.sandbox = not self.sandbox
-            self.cheated = self.cheated or self.sandbox
-            self.log.write("sandbox", an=self.sandbox)
-        elif action == "restart":
-            self._start_run()
         elif action == "new_game_plus" and run.outcome == "victory":
             run.new_game_plus()
             self.run_recorded = False  # the next loop is recorded again
@@ -597,6 +621,9 @@ class Game:
         if "start" in pad.pressed:
             self._go("paused")
             return
+        if self.run.outcome and "a" in pad.pressed:
+            self._start_run(sandbox=self.sandbox)
+            return
         for button in pad.pressed:
             for action in self.bindings.pad_actions_for(button):
                 self._on_action(action)
@@ -613,6 +640,10 @@ class Game:
             mx += round(pad.move[0] * PAD_CURSOR_SPEED * dt)
             my += round(pad.move[1] * PAD_CURSOR_SPEED * dt)
             pygame.mouse.set_pos((mx, my))
+        if "x" in pad.pressed:  # like a right click: between the wand in hand and the bag
+            self.editor.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(mx, my)), self.run)
+        if "y" in pad.pressed:
+            self.run.inventory.sort_bag()
         holding = "a" in pad.buttons
         if holding != self.pad_click:
             self.pad_click = holding
@@ -717,7 +748,7 @@ class Game:
             if self.sandbox:
                 for item in self.run.pickups:
                     item.seen = True
-        self.hover = describe(self.run, target[0], target[1], None if self.sandbox else self.visible)
+        self.hover = describe(self.run, target[0], target[1], None)  # creatures are always shown
         self._save_checkpoint()
         self._record_run()
         self.notice_time = max(0.0, self.notice_time - dt)
@@ -791,7 +822,7 @@ class Game:
             if self.editor.open:
                 self.editor.draw(self.screen, self.run)
             if self.state == "paused":
-                controls = help_lines(self.bindings)
+                controls = help_lines(self.bindings, self.gamepad.state.connected)
                 self.menu_rects = menus.draw_pause(self.screen, self._run_summary(), self.menu_index, controls)
         pygame.display.flip()
 
@@ -813,7 +844,7 @@ class Game:
             if creature.spec.boss:
                 beat = 0.35 + 0.25 * math.sin(creature.age * 5) ** 8
                 lights.append((*creature.center, 110.0, beat))
-            elif not creature.spec.prop and (self.sandbox or id(creature) in self.visible):
+            elif not creature.spec.prop:
                 cx, cy = creature.center
                 if x0 <= cx <= x1 and y0 <= cy <= y1:
                     lights.append((cx, cy, *CREATURE_GLOW))
@@ -830,7 +861,7 @@ class Game:
         if banner and run.parallel:
             side = "Ost" if run.parallel > 0 else "West"
             banner = f"{banner} – Parallelwelt {side} {abs(run.parallel)}"
-        key = self.bindings.describe("pickup")
+        key = self._key_name("pickup")
         prompt = ""
         item = run.nearest_pickup()
         if item is not None and not run.player.dead:
@@ -847,10 +878,10 @@ class Game:
         elif run.near_secret():
             prompt = "Hinter der Wand pulsiert etwas."
         outcome = "true_victory" if run.true_ending else run.outcome
-        restart = self.bindings.describe("restart")
-        outcome_keys = f"{restart}: Neuer Lauf"
+        pad = self.gamepad.state.connected
+        outcome_keys = "A: Neuer Lauf | Start: Menü" if pad else "Enter: Neuer Lauf | ESC: Menü"
         if run.outcome == "victory":
-            outcome_keys = f"{self.bindings.describe('new_game_plus')}: Noch tiefer | {outcome_keys}"
+            outcome_keys = f"{self._key_name('new_game_plus')}: Noch tiefer | {outcome_keys}"
         target = self._cursor_in_world()
         return HudState(
             player=run.player,
@@ -859,7 +890,6 @@ class Game:
             depth_number=run.next_depth_number,
             depth_total=len(DEPTHS),
             fps=self.clock.get_fps(),
-            show_help=self._help_visible(),
             sandbox=self.sandbox,
             banner=banner,
             prompt=prompt,
@@ -873,12 +903,9 @@ class Game:
             flask_index=run.flask_index,
             pulse=math.sin(self.clock_time * HEARTBEAT_RATE * math.pi) ** 8,
             notice=self.notice if self.notice_time > 0 else "",
-            help_lines=help_lines(self.bindings),
             sandbox_lines=(
-                (
-                    f"Pinsel: {mat.NAME_DE[PAINT_MATERIALS[self.paint_index]]} "
-                    f"({(self.paint_index + 1) % 10}) | Größe {self.brush}"
-                ),
+                f"Pinsel: {mat.NAME_DE[PAINT_MATERIALS[self.paint_index]]} | Größe {self.brush}",
+                f"Gottmodus: {'an' if run.god_mode else 'aus'} (G)",
                 *SANDBOX_LINES,
             ),
             hover=None if self.editor.open or self.state != "playing" else self.hover,
@@ -888,9 +915,11 @@ class Game:
             eyes=run.eyes,
         )
 
-    def _help_visible(self) -> bool:
-        """Control hints: shown at the start of a run, then out of the way (H brings them back)."""
-        return self.show_help and (self.help_pinned or self.run.stats["time"] < HELP_TIME)
+    def _key_name(self, action: str) -> str:
+        """What triggers ``action`` on the device in use (keyboard or gamepad)."""
+        if self.gamepad.state.connected:
+            return self.bindings.describe_pad(action)
+        return self.bindings.describe(action)
 
     def _run_summary(self) -> list[str]:
         """Lines for the pause screen: where you are and what you carry."""
@@ -903,7 +932,7 @@ class Game:
             f"Uraugen: {run.eyes}/{len(DEPTHS)}   Blutperlen: {run.pearls}",
         ]
         if self.cheated:
-            lines.append("Sandbox benutzt: dieser Lauf zählt nicht für Statistik und Kodex.")
+            lines.append("Sandbox: zählt nicht für Statistik, Kodex und Spielstand.")
         if self.log.path:
             lines.append(f"Protokoll: {self.log.path.name}")
         return lines
@@ -937,10 +966,8 @@ class Game:
                 sx, sy = run.shoulder((float(target[0]), float(target[1])))
                 angle = math.atan2(target[1] - sy, target[0] - sx)
                 draw_augmentation(self.canvas, (sx - cam_x, sy - cam_y), angle, run.inventory.wand)
-        draw_creatures(
-            self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y,
-            None if self.sandbox else self.visible,
-        )  # fmt: skip
+        draw_creatures(self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y)
+        draw_droplets(self.canvas, run.droplets, cam_x, cam_y)
         for body in (player, *run.enemies.creatures):
             if not body.dead:
                 draw_status(self.canvas, body, cam_x, cam_y, self.effects_rng)

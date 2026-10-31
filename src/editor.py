@@ -8,16 +8,19 @@ takes it into your hand.
 
 from __future__ import annotations
 
+import time
+
 import pygame
 
 from src import ui
 from src.editor_layout import Layout, hit_any, layout
 from src.hover import HoverInfo, block_lines, compare, wand_values
 from src.hud import draw_flask_icon
-from src.inventory import spec_of
+from src.inventory import BAG_SIZE, spec_of
 from src.spells import CATALOG
 
 NOTICE_TIME = 2.5
+DOUBLE_CLICK = 0.35  # seconds between two clicks of a double click
 SLOT_BACK = (34, 18, 22)
 SLOT_EDGE = (82, 40, 46)
 LOCKED = (0, 0, 0, 110)
@@ -29,10 +32,53 @@ class WandEditor:
         self.dragging: tuple[str, object] | None = None
         self.notice = ""
         self.notice_time = 0.0
+        # Sandbox: a spell book with every known block that can be dragged into wands.
+        self.palette: list[str] = []
+        self.palette_mode = False
+        self.page = 0
+        self._last_click: tuple[str, object] | None = None
+        self._last_click_time = 0.0
 
     def toggle(self) -> None:
         self.open = not self.open
         self.dragging = None
+
+    def _quick_move(self, run, ref) -> None:
+        """Right click or double click: wand slot -> bag, bag -> the wand in hand."""
+        if self.palette_mode and ref.kind == "bag":
+            return
+        if not run.can_edit_wands:
+            self.notice, self.notice_time = "Augmentationen umbauen geht nur im Sanktum.", NOTICE_TIME
+        elif not run.inventory.quick_move(ref, edit_wands=True):
+            full = "Der Beutel ist voll." if ref.kind == "wand" else "Die Augmentation in der Hand ist voll."
+            self.notice, self.notice_time = full, NOTICE_TIME
+
+    @property
+    def pages(self) -> int:
+        return max(1, -(-len(self.palette) // BAG_SIZE))
+
+    def _tabs(self, current: Layout) -> dict[str, pygame.Rect]:
+        """Clickable tabs above the bag (sandbox only): bag, spell book, page arrows."""
+        if not self.palette:
+            return {}
+        s = current.scale
+        x, y = current.bag_title
+        h = round(20 * s)
+        tabs = {
+            "bag": pygame.Rect(x, y - round(2 * s), round(120 * s), h),
+            "book": pygame.Rect(x + round(128 * s), y - round(2 * s), round(150 * s), h),
+        }
+        if self.palette_mode:
+            right = x + round(12 * (current.slot + 6 * s))
+            tabs["prev"] = pygame.Rect(right - round(70 * s), y - round(2 * s), round(30 * s), h)
+            tabs["next"] = pygame.Rect(right - round(34 * s), y - round(2 * s), round(30 * s), h)
+        return tabs
+
+    def _target(self, current: Layout, pos: tuple[int, int]) -> tuple[str, object] | None:
+        target = hit_any(current, *pos)
+        if self.palette_mode and target is not None and target[0] == "slot" and target[1].kind == "bag":
+            return "palette", self.page * BAG_SIZE + target[1].index
+        return target
 
     def update(self, dt: float) -> None:
         self.notice_time = max(0.0, self.notice_time - dt)
@@ -42,22 +88,66 @@ class WandEditor:
         return layout(width, height, run.inventory)
 
     def handle_event(self, event: pygame.event.Event, run) -> None:
-        if event.type not in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP) or event.button != 1:
+        if event.type == pygame.MOUSEWHEEL and self.palette_mode:
+            self.page = (self.page - event.y) % self.pages
+            return
+        if event.type not in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
             return
         current = self._layout(run)
-        target = hit_any(current, *event.pos)
+        if event.button == 3 and event.type == pygame.MOUSEBUTTONDOWN:
+            target = self._target(current, event.pos)
+            if target is not None and target[0] == "slot":
+                self._quick_move(run, target[1])
+            return
+        if event.button != 1:
+            return
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if not self.palette_mode and hit_any(current, *event.pos) == ("sort", None):
+                run.inventory.sort_bag()
+                self.dragging = None
+                return
+            for name, rect in self._tabs(current).items():
+                if rect.collidepoint(event.pos):
+                    if name in ("bag", "book"):
+                        self.palette_mode = name == "book"
+                    else:
+                        self.page = (self.page + (1 if name == "next" else -1)) % self.pages
+                    self.dragging = None
+                    return
+        target = self._target(current, event.pos)
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.dragging = None
             if target is None:
                 return
             kind, value = target
-            if kind == "slot" and run.inventory.get(value) or kind == "wand" or kind == "flask" and value < len(run.flasks):
+            if (
+                (kind == "slot" and run.inventory.get(value))
+                or kind == "wand"
+                or (kind == "flask" and value < len(run.flasks))
+                or (kind == "palette" and value < len(self.palette))
+            ):
                 self.dragging = target
             return
         source, self.dragging = self.dragging, None
         if source is None:
             return
+        if source[0] == "palette":  # a copy of the spell from the book
+            if target is not None and target[0] == "slot":
+                run.inventory.put(target[1], self.palette[source[1]])
+            return
+        if target is not None and target[0] == "palette":
+            if source[0] == "slot":
+                run.inventory.take(source[1])  # back into the book: just gone
+            return
         if target == source:  # a click: take the wand or flask into your hand
+            if source[0] == "slot":
+                now = time.monotonic()
+                if self._last_click == source and now - self._last_click_time <= DOUBLE_CLICK:
+                    self._last_click = None
+                    self._quick_move(run, source[1])
+                else:
+                    self._last_click, self._last_click_time = source, now
+                return
             if source[0] == "wand":
                 run.inventory.select(source[1])
             elif source[0] == "flask":
@@ -76,7 +166,10 @@ class WandEditor:
         s = current.scale
         ui.shade(screen, 150)
         panel = ui.panel(screen, current.panel, alpha=244)
-        title = "Rucksack" + (" – Sanktum: Augmentationen umbauen" if editable else "")
+        if run.sandbox:
+            title = "Rucksack – Sandbox: alles frei umbauen"
+        else:
+            title = "Rucksack" + (" – Sanktum: Augmentationen umbauen" if editable else "")
         ui.text(screen, title, (panel.x + round(18 * s), panel.y + round(12 * s)), round(26 * s), ui.GOLD,
                 heading=True)  # fmt: skip
         sub = (
@@ -88,6 +181,7 @@ class WandEditor:
 
         mouse = pygame.mouse.get_pos()
         hovered = hit_any(current, *mouse)
+        target = self._target(current, mouse)
         active_spec = spec_of(inventory.wand)
         for index, (x, y) in current.wand_titles:
             wand = inventory.wands[index]
@@ -99,8 +193,28 @@ class WandEditor:
         for index, rect in current.stats:
             other = None if index == inventory.active else active_spec
             self._stats(screen, pygame.Rect(rect), spec_of(inventory.wands[index]), other, s)
-        ui.text(screen, f"Beutel ({sum(1 for k in inventory.bag if k)}/{len(inventory.bag)})",
-                current.bag_title, round(16 * s), heading=True)  # fmt: skip
+        tabs = self._tabs(current)
+        bag_label = f"Beutel ({sum(1 for k in inventory.bag if k)}/{len(inventory.bag)})"
+        if tabs:
+            labels = {"bag": bag_label, "book": f"Zauberbuch ({len(self.palette)})", "prev": "<", "next": ">"}
+            for name, rect in tabs.items():
+                chosen = (name == "book") == self.palette_mode and name in ("bag", "book")
+                pygame.draw.rect(screen, ui.SELECT if chosen else SLOT_BACK, rect)
+                pygame.draw.rect(screen, ui.SELECT_EDGE if chosen else SLOT_EDGE, rect, 1)
+                ui.text(screen, labels[name], rect.center, round(14 * s), ui.GOLD if chosen else ui.TEXT,
+                        anchor="center")  # fmt: skip
+            if self.palette_mode:
+                page = f"Seite {self.page + 1}/{self.pages}"
+                ui.text(screen, page, (tabs["prev"].x - round(8 * s), tabs["prev"].centery), round(13 * s),
+                        ui.DIM, anchor="midright")  # fmt: skip
+        else:
+            ui.text(screen, bag_label, current.bag_title, round(16 * s), heading=True)
+        if not self.palette_mode:
+            sort = pygame.Rect(current.sort)
+            over = hovered == ("sort", None)
+            pygame.draw.rect(screen, ui.SELECT if over else SLOT_BACK, sort)
+            pygame.draw.rect(screen, ui.SELECT_EDGE if over else SLOT_EDGE, sort, 1)
+            ui.text(screen, "Sortieren", sort.center, round(14 * s), ui.GOLD if over else ui.TEXT, anchor="center")
         for ref, rect in current.slots:
             rect = pygame.Rect(rect)
             is_wand = ref.kind == "wand"
@@ -108,8 +222,15 @@ class WandEditor:
             edge = ui.SELECT_EDGE if hovered == ("slot", ref) else SLOT_EDGE
             pygame.draw.rect(screen, edge, rect, 1)
             key = inventory.get(ref)
+            if self.palette_mode and ref.kind == "bag":
+                index = self.page * BAG_SIZE + ref.index
+                key = self.palette[index] if index < len(self.palette) else None
             if key is not None and self.dragging != ("slot", ref):
                 screen.blit(ui.block_icon(key, rect.width - 4), (rect.x + 2, rect.y + 2))
+                amount = inventory.count(ref) if not (self.palette_mode and ref.kind == "bag") else 1
+                if amount > 1:
+                    ui.text(screen, str(amount), (rect.right - 2, rect.bottom), round(13 * s), ui.GOLD,
+                            bold=True, anchor="bottomright")  # fmt: skip
             if is_wand and not editable:
                 veil = pygame.Surface(rect.size, pygame.SRCALPHA)
                 veil.fill(LOCKED)
@@ -128,17 +249,20 @@ class WandEditor:
         pygame.draw.rect(screen, ui.ACCENT if dragging else SLOT_EDGE, drop, 2 if dragging else 1)
         ui.text(screen, "Hierher ziehen: ablegen", drop.center, round(15 * s), ui.TEXT if dragging else ui.DIM,
                 anchor="center")  # fmt: skip
-        hint = "Ziehen: verschieben | Klick auf Griff oder Phiole: in die Hand | Tab / ESC: schließen"
+        hint = (
+            "Ziehen: verschieben | Rechtsklick / Doppelklick: zwischen Hand-Augmentation und Beutel | "
+            "Klick auf Griff oder Phiole: in die Hand | Tab / ESC: schließen"
+        )
         ui.text(screen, hint, (panel.centerx, panel.bottom - round(24 * s)), round(14 * s), ui.DIM,
                 anchor="midtop")  # fmt: skip
         if self.notice_time > 0:
-            ui.text(screen, self.notice, (panel.centerx, panel.y + round(14 * s)), round(17 * s), ui.ACCENT,
-                    bold=True, anchor="midtop")  # fmt: skip
+            ui.text(screen, self.notice, (panel.right - round(18 * s), panel.y + round(40 * s)), round(16 * s),
+                    ui.ACCENT, bold=True, anchor="topright")  # fmt: skip
 
         if self.dragging is not None:
             self._dragged(screen, run, mouse, current.slot)
-        elif hovered is not None:
-            info = self._info(run, hovered)
+        elif target is not None:
+            info = self._info(run, target)
             if info is not None:
                 ui.tooltip(screen, info, mouse, width=round(300 * s))
 
@@ -182,7 +306,9 @@ class WandEditor:
     def _dragged(self, screen: pygame.Surface, run, mouse: tuple[int, int], size: int) -> None:
         kind, value = self.dragging
         rect = pygame.Rect(mouse[0] - size // 2, mouse[1] - size // 2, size, size)
-        if kind == "slot":
+        if kind == "palette":
+            screen.blit(ui.block_icon(self.palette[value], size), rect.topleft)
+        elif kind == "slot":
             key = run.inventory.get(value)
             if key is not None:
                 screen.blit(ui.block_icon(key, size), rect.topleft)
@@ -193,12 +319,20 @@ class WandEditor:
 
     def _info(self, run, hovered: tuple[str, object]) -> HoverInfo | None:
         kind, value = hovered
+        if kind == "palette":
+            if value >= len(self.palette):
+                return None
+            block = CATALOG[self.palette[value]]
+            lines = [*block_lines(block), "In eine Augmentation ziehen: Kopie einsetzen"]
+            return HoverInfo(block.name_de, lines, (232, 214, 180), "pickup", block=block.key)
         if kind == "slot":
             key = run.inventory.get(value)
             if key is None:
                 return None
             block = CATALOG[key]
-            return HoverInfo(block.name_de, block_lines(block), (232, 214, 180), "pickup", block=key)
+            amount = run.inventory.count(value)
+            title = f"{block.name_de} ×{amount}" if amount > 1 else block.name_de
+            return HoverInfo(title, block_lines(block), (232, 214, 180), "pickup", block=key)
         if kind == "wand":
             wand = run.inventory.wands[value]
             names = [CATALOG[k].name_de for k in wand.slots if k]

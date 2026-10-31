@@ -6,10 +6,10 @@ from src.depths import DEPTHS
 from src.editor_layout import hit, hit_any, layout
 from src.inventory import BAG_SIZE, MAX_WANDS, Inventory, SlotRef
 from src.loot import Pickup, generate_wand, nearest_pickup, place_loot, random_block
-from src.materials import BONE, FIRE
+from src.materials import AIR, BONE, FIRE
 from src.perks import PERKS
 from src.run import Controls, Run
-from src.spells import CATALOG, Category
+from src.spells import BLOCKS, CATALOG, Category
 from src.wand import PRESETS, Wand, WandSpec
 from src.world import World
 
@@ -67,9 +67,12 @@ class TestInventory(unittest.TestCase):
 
     def test_blocks_go_into_the_bag_until_it_is_full(self) -> None:
         inventory = self.make()
-        for _ in range(BAG_SIZE):
-            self.assertTrue(inventory.add_block("funke"))
-        self.assertFalse(inventory.add_block("funke"))
+        keys = [b.key for b in BLOCKS[:BAG_SIZE]]
+        for key in keys:
+            self.assertTrue(inventory.add_block(key))
+        self.assertFalse(inventory.add_block(BLOCKS[BAG_SIZE].key))
+        self.assertTrue(inventory.add_block(keys[0]))  # equal blocks still stack
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 2)
 
     def test_wands_are_added_until_full_then_swapped(self) -> None:
         inventory = self.make()
@@ -973,3 +976,173 @@ class TestInventoryScreen(unittest.TestCase):
         run.inventory_drop(("wand", 0), ("wand", 1))
         self.assertEqual(run.inventory.wands, [second, first])
         self.assertIs(run.inventory.wand, first)
+
+
+class TestPlaytestFixes(unittest.TestCase):
+    """Second playtest: pouring, kicking, liquids, traps, sandbox."""
+
+    def _hall(self, seed: int = 41) -> Run:
+        from src.materials import BONE
+
+        run = Run(seed)
+        world = run.world
+        world.reset(AIR)
+        for x in range(world.width):
+            for y in range(400, 410):
+                world.set_cell(x, y, BONE, force=True)
+        run.enemies.creatures = []
+        run.pickups = []
+        run.player.place(300, 400 - run.player.height)
+        return run
+
+    def test_pouring_acid_does_not_hurt_the_pourer(self) -> None:
+        from src.flask import Flask
+        from src.materials import ACID, FUME
+
+        run = self._hall()
+        for x in range(330, 520):  # a basin the acid is poured into
+            for y in range(400, 409):
+                run.world.set_cell(x, y, AIR, force=True)
+        run.flasks = [Flask(ACID, 300)]
+        hp = run.player.hp
+        cx, cy = run.player.center
+        for frame in range(90):  # one second of pouring forwards, then wait
+            run.update(1 / 60, Controls(aim=(cx + 120, cy - 30), pour=frame < 60))
+        self.assertLess(run.flask.amount, 300)
+        poured = [
+            x
+            for y in range(300, 410)
+            for x in range(run.world.width)
+            if run.world.get(x, y) in (ACID, FUME)
+        ]
+        self.assertGreater(len(poured), 20)  # (acid eats into the bone floor and fumes away)
+        player = run.player
+        near = [
+            (x, y)
+            for y in range(player.y - 3, player.y + player.height + 3)
+            for x in range(player.x - 3, player.x + player.width + 3)
+            if run.world.get(x, y) == ACID
+        ]
+        self.assertEqual(near, [])  # nothing landed on the one pouring
+        self.assertEqual(run.player.hp, hp)
+
+    def test_kick_sends_a_creature_flying(self) -> None:
+        from src.enemies import SPECIES, Creature
+
+        run = self._hall()
+        px, py = run.player.center
+        made = Creature(SPECIES["made"], int(px) + 6, 400 - SPECIES["made"].height, run.rng)
+        run.enemies.creatures = [made]
+        start = made.x
+        run.update(1 / 60, Controls(aim=(px + 50, py), kick=True))
+        for _ in range(20):
+            run.update(1 / 60, Controls(aim=(px + 50, py)))
+        self.assertGreater(made.x - start, 15)
+        self.assertLess(made.hp, made.max_hp)
+
+    def test_shots_dive_through_liquid(self) -> None:
+        from src.enemies import SPECIES, Creature
+        from src.materials import BLOOD
+        from src.wand import Shot
+
+        run = self._hall()
+        for x in range(380, 460):
+            for y in range(360, 400):
+                run.world.set_cell(x, y, BLOOD, force=True)
+        made = Creature(SPECIES["made"], 430, 400 - SPECIES["made"].height, run.rng)
+        made.hp = made.max_hp = 1000
+        run.enemies.creatures = [made]
+        cx, cy = run.player.center
+        run.projectiles.spawn([Shot(CATALOG["nadel"], ())], 370, 395, 0.0)
+        for _ in range(30):
+            run.update(1 / 60, Controls(aim=(cx + 100, cy)))
+        self.assertLess(made.hp, 1000)  # hit under the surface
+
+    def test_a_shell_around_the_player_does_not_trap_it(self) -> None:
+        from src.materials import CRUST
+
+        run = self._hall()
+        player = run.player
+        for _ in range(5):
+            run.update(1 / 60, Controls())
+        x0, y0 = player.x - 2, player.y - 2
+        for y in range(y0, player.y + player.height + 2):
+            for x in range(x0, player.x + player.width + 2):
+                if not player.contains(x, y):
+                    run.world.set_cell(x, y, CRUST, force=True)
+        run.world.set_cell(player.x + 2, player.y + 3, CRUST, force=True)  # one inside, too
+        hp = player.hp
+        for _ in range(60):
+            run.update(1 / 60, Controls(move=1))
+        self.assertFalse(player.blocked(run.world, player.x, player.y - 1) and
+                         player.blocked(run.world, player.x + 1, player.y))
+        self.assertGreaterEqual(player.hp, hp - 1)
+
+    def test_sandbox_god_mode_and_editing(self) -> None:
+        run = self._hall()
+        self.assertFalse(run.can_edit_wands)
+        run.sandbox = run.god_mode = True
+        self.assertTrue(run.can_edit_wands)
+        run.player.hurt(10_000)
+        run.update(1 / 60, Controls())
+        self.assertEqual(run.outcome, "")
+        self.assertEqual(run.player.hp, run.player.max_hp)
+
+
+class TestBagStacks(unittest.TestCase):
+    """Equal blocks stack, quick moves, sorting."""
+
+    def test_stacking_moving_and_dropping(self) -> None:
+        run = Run(51)
+        inventory = run.inventory
+        for _ in range(3):
+            inventory.add_block("funke")
+        inventory.add_block("nadel")
+        self.assertEqual(inventory.bag[:2], ["funke", "nadel"])
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 3)
+        # one block of a stack goes into a wand slot, the replaced block into the bag
+        run.enter_sanctum()
+        old = inventory.wands[0].slots[0]
+        inventory.move(SlotRef("bag", 0), SlotRef("wand", 0, 0))
+        self.assertEqual(inventory.wands[0].slots[0], "funke")
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 2)
+        self.assertIn(old, inventory.bag)
+        # dragging a stack onto an equal stack merges them
+        inventory.bag[5], inventory.counts[5] = "funke", 4
+        inventory.move(SlotRef("bag", 5), SlotRef("bag", 0))
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 6)
+        self.assertIsNone(inventory.bag[5])
+        # a whole stack is dropped at once
+        before = len(run.pickups)
+        run.inventory_drop(("slot", SlotRef("bag", 0)), ("drop", None))
+        self.assertEqual(len(run.pickups) - before, 6)
+
+    def test_quick_move_and_sort(self) -> None:
+        run = Run(52)
+        inventory = run.inventory
+        wand = inventory.wand
+        first = wand.slots[0]
+        self.assertFalse(inventory.quick_move(SlotRef("wand", 0, inventory.active), edit_wands=False))
+        self.assertTrue(inventory.quick_move(SlotRef("wand", 0, inventory.active), edit_wands=True))
+        self.assertIsNone(wand.slots[0])
+        self.assertIn(first, inventory.bag)
+        index = inventory.bag.index(first)
+        self.assertTrue(inventory.quick_move(SlotRef("bag", index), edit_wands=True))
+        self.assertEqual(wand.slots[0], first)
+        for key in ("sekret_saeure", "funke", "nerv_zeit", "beschleunigung", "funke"):
+            inventory.add_block(key)
+        inventory.bag[20], inventory.counts[20] = "funke", 2
+        inventory.sort_bag()
+        order = [CATALOG[k].category for k in inventory.bag if k]
+        self.assertEqual(order, sorted(order, key=list(Category).index))
+        self.assertEqual(inventory.count(SlotRef("bag", inventory.bag.index("funke"))), 4)
+        self.assertEqual(inventory.bag.count("funke"), 1)
+
+    def test_stacks_survive_save_and_restore(self) -> None:
+        run = Run(53)
+        run.inventory.add_block("funke", 5)
+        run.enter_sanctum()
+        other = Run(54)
+        other.restore(run.checkpoint)
+        index = other.inventory.bag.index("funke")
+        self.assertEqual(other.inventory.count(SlotRef("bag", index)), 5)

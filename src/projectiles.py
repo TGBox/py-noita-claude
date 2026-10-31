@@ -22,6 +22,7 @@ PELLET_SPREAD = 0.22  # radians
 CHAIN_RANGE = 90.0  # px a chain spark can leap
 MINE_ARM_TIME = 0.8  # seconds before a mine reacts
 MINE_RANGE = 16.0  # px
+LIQUID_DRAG = 0.97  # speed kept per cell flown through liquid (projectiles pass through pools)
 
 
 
@@ -66,6 +67,7 @@ class Projectile:
     alive: bool = True
     released: bool = False
     hit_ids: set[int] = field(default_factory=set)
+    wet: bool = False  # flew through liquid (Nässe-Nerv)
 
     @property
     def fused(self) -> bool:
@@ -231,6 +233,18 @@ class ProjectileSystem:
                         self._end(p, world, hit=True, wet=False)
                         return
             cell = world.get(int(nx), int(ny))
+            if KIND[cell] == LIQUID:  # like in Noita, shots dive through pools, slowed down
+                if not p.wet:
+                    p.wet = True
+                    if p.trigger is Trigger.WET and not p.released:
+                        self._release(p)
+                p.vx *= LIQUID_DRAG
+                p.vy *= LIQUID_DRAG
+                p.x, p.y = nx, ny
+                if math.hypot(p.vx, p.vy) < 25:  # stuck in the pool: end down there
+                    self._end(p, world, hit=True, wet=True)
+                    return
+                continue
             if not STOPS_PROJECTILE[cell]:
                 if p.trail is not None and cell == AIR and (int(nx), int(ny)) != (int(p.x), int(p.y)):
                     world.set_cell(int(p.x), int(p.y), p.trail)  # behind the projectile
