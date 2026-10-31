@@ -31,7 +31,8 @@ MAGMA = 16
 PUS = 17
 SPARK = 18  # nerve current travelling through sinew
 SPENT = 19  # sinew right after a current passed (heals back into sinew)
-MATERIAL_COUNT = 20
+ENAMEL = 20  # tooth enamel: very hard, only strong explosions break it
+MATERIAL_COUNT = 21
 
 # Kinds (behaviour classes), must match native/src/lib.rs.
 EMPTY = 0
@@ -69,53 +70,98 @@ class Material:
     debris_chance: float = 0.0  # ... with this chance (otherwise air)
     grain: int = 8  # brightness spread between the colour variants
     glow: int = 0  # 0-255, how strongly the material lights its surroundings
+    hardness: int = 0  # solids/powders: 1 soft, 2 firm, 3 hard, 4 indestructible
+    description_de: str = ""  # shown when the cursor rests on it
 
 
 MATERIALS: tuple[Material, ...] = (
     Material("Leere", EMPTY, 0, (30, 14, 18), grain=4),
-    Material("Panzerknochen", SOLID, 255, (40, 32, 34), grain=4),
     Material(
-        "Knochen", SOLID, 255, (150, 138, 112), debris=BONE_DUST, debris_chance=0.35, grain=10
+        "Panzerknochen", SOLID, 255, (40, 32, 34), grain=4, hardness=4,
+        description_de="Uralter Panzer. Nichts kann ihn zerstören.",
     ),
-    Material("Knochenstaub", POWDER, 60, (172, 158, 128), grain=10),
-    Material("Fleisch", SOLID, 255, (86, 30, 38), debris=BLOOD, debris_chance=0.25, grain=16),
     Material(
-        "Sehnen", SOLID, 255, (158, 104, 88), flammability=0.03, burn_life=(90, 160), grain=12
+        "Knochen", SOLID, 255, (150, 138, 112), debris=BONE_DUST, debris_chance=0.35, grain=10,
+        hardness=2, description_de="Fest. Kleine Zauber prallen ab, Explosionen sprengen ihn.",
     ),
-    Material("Blut", LIQUID, 30, (150, 12, 24), fluidity=5),
-    Material("Schorf", SOLID, 255, (70, 26, 22)),
+    Material(
+        "Knochenstaub", POWDER, 60, (172, 158, 128), grain=10, hardness=1,
+        description_de="Rieselt. Lässt sich leicht wegsprengen.",
+    ),
+    Material(
+        "Fleisch", SOLID, 255, (86, 30, 38), debris=BLOOD, debris_chance=0.25, grain=16,
+        hardness=1, description_de="Weiches Gewebe. Blutet, wenn man es zerstört.",
+    ),
+    Material(
+        "Sehnen", SOLID, 255, (158, 104, 88), flammability=0.03, burn_life=(90, 160), grain=12,
+        hardness=2, description_de="Zäh und brennbar. Leitet Nervenstrom.",
+    ),
+    Material(
+        "Blut", LIQUID, 30, (150, 12, 24), fluidity=5,
+        description_de="Löscht Feuer. Ein Schluck heilt ein wenig.",
+    ),
+    Material(
+        "Schorf", SOLID, 255, (70, 26, 22), hardness=1,
+        description_de="Verkrustetes Blut. Bröckelt leicht.",
+    ),
     Material(
         "Talg", LIQUID, 20, (196, 174, 118),
         flammability=0.5, burn_life=(10, 25), fluidity=3, mobility=0.7,
+        description_de="Fett. Sehr brennbar, macht dich ölig.",
     ),
-    Material("Magensäure", LIQUID, 40, (140, 196, 40), fluidity=5, hazard_dps=60.0, glow=110),
+    Material(
+        "Magensäure", LIQUID, 40, (140, 196, 40), fluidity=5, hazard_dps=60.0, glow=110,
+        description_de="Ätzt Fleisch und dich. Meiden!",
+    ),
     Material(
         "Feuer", FLAME, -1, (255, 160, 40),
         life=(30, 60), decay_into=SMOKE, decay_chance=0.25, hazard_dps=15.0, glow=255,
+        description_de="Verbrennt dich und alles Brennbare.",
     ),
-    Material("Rauch", GAS, -2, (54, 44, 46), life=(50, 140)),
-    Material("Ätzdampf", GAS, -3, (98, 132, 52), life=(60, 160), hazard_dps=8.0, glow=40),
+    Material(
+        "Rauch", GAS, -2, (54, 44, 46), life=(50, 140),
+        description_de="Harmlos, verzieht sich.",
+    ),
+    Material(
+        "Ätzdampf", GAS, -3, (98, 132, 52), life=(60, 160), hazard_dps=8.0, glow=40,
+        description_de="Giftiger Dampf. Schadet beim Einatmen.",
+    ),
     Material(
         "Wucherung", SOLID, 255, (124, 72, 116),
         flammability=0.08, burn_life=(40, 90), debris=SPORES, debris_chance=0.3, grain=14,
+        hardness=1, description_de="Wächst und frisst Fleisch. Brennt, gibt Sporen ab.",
     ),
     Material(
         "Sporen", GAS, -4, (164, 128, 160),
         flammability=0.6, burn_life=(3, 8), life=(120, 240), hazard_dps=3.0, glow=60,
+        description_de="Leicht giftig und hochentzündlich.",
     ),
-    Material("Schleim", LIQUID, 35, (176, 172, 120), fluidity=1, mobility=0.18, grain=12),
+    Material(
+        "Schleim", LIQUID, 35, (176, 172, 120), fluidity=1, mobility=0.18, grain=12,
+        description_de="Zäh. Bremst jede Bewegung.",
+    ),
     Material(
         "Glutblut", LIQUID, 45, (236, 96, 30), fluidity=2, mobility=0.35, hazard_dps=40.0,
-        glow=230, grain=20,
+        glow=230, grain=20, description_de="Glühend heiß. Setzt alles in Brand. Meiden!",
     ),
-    Material("Eiter", LIQUID, 32, (186, 190, 84), fluidity=3, mobility=0.6, grain=10),
+    Material(
+        "Eiter", LIQUID, 32, (186, 190, 84), fluidity=3, mobility=0.6, grain=10,
+        description_de="Vergiftet dich bei Berührung.",
+    ),
     Material(
         "Nervenstrom", FLAME, 255, (190, 220, 255),
         life=(2, 4), decay_into=SPENT, decay_chance=1.0, hazard_dps=45.0, glow=255, grain=24,
+        description_de="Elektrischer Schlag durch die Sehnen. Schmerzhaft.",
     ),
     Material(
         "Erschöpfte Sehne", SOLID, 255, (110, 72, 64),
-        flammability=0.001, burn_life=(60, 120), grain=10,
+        flammability=0.001, burn_life=(60, 120), grain=10, hardness=1,
+        description_de="Ausgebrannte Sehne. Erholt sich langsam.",
+    ),
+    Material(
+        "Zahnschmelz", SOLID, 255, (206, 214, 222), debris=BONE_DUST, debris_chance=0.5, grain=10,
+        hardness=3, glow=5,
+        description_de="Sehr hart. Nur starke Explosionen brechen ihn.",
     ),
 )
 
@@ -130,6 +176,11 @@ HAZARD_DPS: list[float] = [m.hazard_dps for m in MATERIALS]
 NAME_DE: list[str] = [m.name_de for m in MATERIALS]
 DEBRIS: list[tuple[int, float]] = [(m.debris, m.debris_chance) for m in MATERIALS]
 GLOW: list[int] = [m.glow for m in MATERIALS]
+HARDNESS: list[int] = [m.hardness for m in MATERIALS]
+# How much smaller a blast or bore gets against each hardness (cells): firm tissue
+# shrugs off tiny sparks, enamel only breaks near the centre of a big explosion.
+HARDNESS_SHRINK = (0, 0, 2, 9, 10_000)
+HARDNESS_DE = ("", "weich", "hart", "sehr hart", "unzerstörbar")
 OPAQUE: list[int] = [int(k in (SOLID, POWDER)) for k in KIND]  # currents shine through
 
 # The player walks on solids and powders but wades through liquids. A nerve current is

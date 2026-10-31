@@ -22,6 +22,8 @@ from src.materials import (
     FLAME,
     FLAMMABILITY,
     GAS,
+    HARDNESS,
+    HARDNESS_SHRINK,
     KIND,
     LIFE_RANGE,
     LIQUID,
@@ -206,11 +208,15 @@ class World:
                 self.set_cell(x, y, material)
 
     def explode(self, cx: int, cy: int, radius: int) -> int:
-        """Blast a crater. Returns the number of destroyed solid/powder cells."""
+        """Blast a crater. Returns the number of destroyed solid/powder cells.
+
+        Harder materials only break closer to the centre (see ``HARDNESS_SHRINK``):
+        a small spark chips flesh but bounces off bone, enamel needs a big blast.
+        """
         rnd = self.rng.random
         destroyed = 0
-        inner = (radius * 0.7) ** 2
         outer = max(0, radius - 2) ** 2
+        reach = [radius - shrink for shrink in HARDNESS_SHRINK]
         for dx, dy in disc_offsets(radius):
             x, y = cx + dx, cy + dy
             if not (0 <= x < self.width and 0 <= y < self.height):
@@ -219,10 +225,14 @@ class World:
             if current == BEDROCK:
                 continue
             dist2 = dx * dx + dy * dy
+            if KIND[current] in (SOLID, POWDER):
+                limit = reach[HARDNESS[current]]
+                if limit < 0 or dist2 > limit * limit:
+                    continue  # too hard this far from the centre
             if FLAMMABILITY[current] and rnd() < 0.5:
                 self.ignite(x, y)
             elif KIND[current] in (SOLID, POWDER):
-                if dist2 <= inner or rnd() < 0.6:
+                if dist2 <= (limit * 0.7) ** 2 or rnd() < 0.6:
                     debris, chance = DEBRIS[current]
                     self.set_cell(x, y, debris if rnd() < chance else AIR)
                     destroyed += 1
@@ -240,18 +250,34 @@ class World:
                 charged += 1
         return charged
 
-    def dig(self, cx: int, cy: int, radius: int) -> int:
-        """Bore a hole: solids and powders in the disc vanish (bedrock stays)."""
+    def dig(self, cx: int, cy: int, radius: int, *, force: bool = False) -> int:
+        """Bore a hole: solids and powders in the disc vanish (bedrock stays).
+
+        Like a blast, a bore shrinks against harder materials; ``force`` clears
+        everything but bedrock (used when the game itself opens a passage).
+        """
         dug = 0
         for dx, dy in disc_offsets(radius):
             x, y = cx + dx, cy + dy
             if not (0 <= x < self.width and 0 <= y < self.height):
                 continue
             current = self.grid[y * self.width + x]
-            if current != BEDROCK and KIND[current] in (SOLID, POWDER):
-                self.set_cell(x, y, AIR)
-                dug += 1
+            if current == BEDROCK or KIND[current] not in (SOLID, POWDER):
+                continue
+            if not force:
+                limit = radius - HARDNESS_SHRINK[HARDNESS[current]]
+                if limit < 0 or dx * dx + dy * dy > limit * limit:
+                    continue
+            self.set_cell(x, y, AIR)
+            dug += 1
         return dug
+
+    @staticmethod
+    def diggable(material: int, radius: int) -> bool:
+        """Can a bore of this radius get through ``material`` at all?"""
+        if material == BEDROCK or KIND[material] not in (SOLID, POWDER):
+            return False
+        return radius - HARDNESS_SHRINK[HARDNESS[material]] >= 0
 
     def crumble_loose(self, cx: int, cy: int, radius: int, passes: int = 12) -> int:
         """Break off loose solid fragments (cells with at most two solid neighbours).
@@ -268,8 +294,8 @@ class World:
                 row = y * w
                 for x in range(max(1, cx - radius), min(w - 1, cx + radius + 1)):
                     material = grid[row + x]
-                    if KIND[material] != SOLID or material == BEDROCK:
-                        continue
+                    if KIND[material] != SOLID or HARDNESS[material] >= 3:
+                        continue  # bedrock and enamel do not splinter
                     neighbours = 0
                     for ny in (row - w, row, row + w):
                         for nx in (x - 1, x, x + 1):

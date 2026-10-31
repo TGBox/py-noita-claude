@@ -3,7 +3,7 @@ import random
 import unittest
 
 from src.depths import DEPTHS
-from src.editor_layout import hit, layout
+from src.editor_layout import hit, hit_any, layout
 from src.inventory import BAG_SIZE, MAX_WANDS, Inventory, SlotRef
 from src.loot import Pickup, generate_wand, nearest_pickup, place_loot, random_block
 from src.materials import BONE, FIRE
@@ -115,12 +115,25 @@ class TestInventory(unittest.TestCase):
 
     def test_editor_layout_covers_every_slot_without_overlap(self) -> None:
         inventory = self.make()
-        slots = layout(1280, 720, inventory)
-        expected = sum(w.capacity for w in inventory.wands) + BAG_SIZE
-        self.assertEqual(len(slots), expected)
-        for ref, (x, y, w, h) in slots:
-            self.assertEqual(hit(slots, x + w // 2, y + h // 2), ref)
-        self.assertIsNone(hit(slots, 0, 0))
+        for width, height in ((1280, 720), (1920, 1080), (960, 540)):
+            result = layout(width, height, inventory)
+            slots = result.slots
+            expected = sum(w.capacity for w in inventory.wands) + BAG_SIZE
+            self.assertEqual(len(slots), expected)
+            for ref, (x, y, w, h) in slots:
+                self.assertEqual(hit(slots, x + w // 2, y + h // 2), ref)
+            self.assertIsNone(hit(slots, 0, 0))
+            for index, (x, y, w, h) in result.handles:
+                self.assertEqual(hit_any(result, x + 2, y + 2), ("wand", index))
+            for index, (x, y, w, h) in result.flasks:
+                self.assertEqual(hit_any(result, x + 2, y + 2), ("flask", index))
+            x, y, w, h = result.drop
+            self.assertEqual(hit_any(result, x + 2, y + 2), ("drop", None))
+            self.assertEqual(hit_any(result, 1, 1), ("outside", None))
+            px, py, pw, ph = result.panel  # everything fits into the window
+            self.assertGreaterEqual(px, 0)
+            self.assertLessEqual(px + pw, width)
+            self.assertLessEqual(py + ph, height)
 
 
 class TestRun(unittest.TestCase):
@@ -861,7 +874,7 @@ class TestParallelWorlds(unittest.TestCase):
             portal = next(item for item in run.pickups if item.portal)
             run.player.place(int(portal.x) - 4, int(portal.y) - 9)
             run._pick_up()
-            self.assertEqual(run.parallel, world)
+            self.assertEqual(abs(run.parallel), world)  # east or west, always further out
             self.assertEqual(run.mirror, world % 2 == 1)
             powers.append(run.power)
         self.assertEqual(powers, sorted(powers))
@@ -869,7 +882,7 @@ class TestParallelWorlds(unittest.TestCase):
         run.enter_sanctum()
         other = Run(29)
         other.restore(run.checkpoint)
-        self.assertEqual(other.parallel, 3)
+        self.assertEqual(other.parallel, run.parallel)
 
 
 class TestKnockback(unittest.TestCase):
@@ -908,3 +921,55 @@ class TestWestAndItems(unittest.TestCase):
         for _ in range(30):
             item.update(run.world, DT)
         self.assertNotEqual(item.x, x0)
+
+
+class TestInventoryScreen(unittest.TestCase):
+    """Looking into the bag works anywhere; rebuilding wands only in a sanctum."""
+
+    def test_bag_can_be_sorted_anywhere_but_wands_are_locked(self) -> None:
+        from src.inventory import BAG_SIZE, SlotRef
+
+        run = Run(11)
+        self.assertEqual(len(run.inventory.bag), BAG_SIZE)
+        self.assertGreaterEqual(BAG_SIZE, 30)
+        run.inventory.bag[0] = "funke"
+        note = run.inventory_drop(("slot", SlotRef("bag", 0)), ("slot", SlotRef("bag", 5)))
+        self.assertEqual(note, "")
+        self.assertEqual(run.inventory.bag[5], "funke")
+        target = ("slot", SlotRef("wand", 0, 0))
+        before = list(run.inventory.wands[0].slots)
+        note = run.inventory_drop(("slot", SlotRef("bag", 5)), target)
+        self.assertIn("Sanktum", note)
+        self.assertEqual(run.inventory.wands[0].slots, before)
+        run.enter_sanctum()
+        self.assertEqual(run.inventory_drop(("slot", SlotRef("bag", 5)), target), "")
+        self.assertEqual(run.inventory.wands[0].slots[0], "funke")
+
+    def test_dropping_blocks_wands_and_flasks(self) -> None:
+        from src.inventory import SlotRef
+
+        run = Run(12)
+        run.inventory.bag[3] = "nadel"
+        count = len(run.pickups)
+        run.inventory_drop(("slot", SlotRef("bag", 3)), ("drop", None))
+        self.assertIsNone(run.inventory.bag[3])
+        self.assertTrue(any(p.block == "nadel" and p.seen for p in run.pickups[count:]))
+        # a wand slot cannot be emptied outside a sanctum
+        key = run.inventory.wands[0].slots[0]
+        self.assertIn("Sanktum", run.inventory_drop(("slot", SlotRef("wand", 0, 0)), ("outside", None)))
+        self.assertEqual(run.inventory.wands[0].slots[0], key)
+        wands = len(run.inventory.wands)
+        run.inventory_drop(("wand", 1), ("outside", None))
+        self.assertEqual(len(run.inventory.wands), wands - 1)
+        self.assertTrue(any(p.wand is not None for p in run.pickups))
+        self.assertNotEqual(run.inventory_drop(("wand", 0), ("drop", None)), "")  # keep one
+        run.inventory_drop(("flask", 0), ("drop", None))
+        self.assertEqual(run.flasks, [])
+
+    def test_reorder_wands(self) -> None:
+        run = Run(13)
+        first, second = run.inventory.wands
+        run.inventory.select(0)
+        run.inventory_drop(("wand", 0), ("wand", 1))
+        self.assertEqual(run.inventory.wands, [second, first])
+        self.assertIs(run.inventory.wand, first)

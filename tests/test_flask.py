@@ -3,7 +3,7 @@ import unittest
 
 from src.body import Body
 from src.flask import CAPACITY, SIP, Flask, ThrownFlask
-from src.materials import ACID, AIR, BLOOD, BONE, MUCUS, TALLOW
+from src.materials import ACID, AIR, BLOOD, BONE, MUCUS, PUS, TALLOW
 from src.run import Controls, Run
 from src.world import World
 
@@ -119,11 +119,50 @@ class TestFlaskInRun(unittest.TestCase):
         other = Run(9)
         other.restore(run.checkpoint)
         self.assertEqual((other.flask.material, other.flask.amount), (ACID, 77))
-        broken = dict(run.checkpoint, flask=[AIR, 5])
+        broken = dict(run.checkpoint, flasks=[[AIR, 5]])
         other.restore(broken)
         self.assertIsNone(other.flask)
         self.assertTrue(math.isfinite(other.player.hp))
+        old = {k: v for k, v in run.checkpoint.items() if k not in ("flasks", "flask_active")}
+        other.restore(dict(old, flask=[ACID, 50]))  # a save from before several flasks
+        self.assertEqual((other.flask.material, other.flask.amount), (ACID, 50))
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSeveralFlasks(unittest.TestCase):
+    def test_carry_cycle_and_throw(self) -> None:
+        from src.loot import Pickup
+        from src.run import MAX_FLASKS, Run
+
+        run = Run(5)
+        self.assertEqual(len(run.flasks), 1)
+        for material in (ACID, TALLOW, PUS, MUCUS):
+            cx, cy = run.player.center
+            run.pickups = [Pickup(cx, cy, flask=Flask(material, 100))]
+            run._pick_up()
+        self.assertEqual(len(run.flasks), MAX_FLASKS)
+        # hands full: the mucus flask replaced the pus flask in hand, which now lies there
+        self.assertEqual(run.flask.material, MUCUS)
+        self.assertTrue(any(item.flask and item.flask.material == PUS for item in run.pickups))
+        run.select_flask(0)
+        self.assertEqual(run.flask.material, BLOOD)
+        run.cycle_flask(1)
+        self.assertEqual(run.flask.material, ACID)
+        run.flask = None  # thrown away
+        self.assertEqual(len(run.flasks), MAX_FLASKS - 1)
+        run.enter_sanctum()
+        other = Run(6)
+        other.restore(run.checkpoint)
+        self.assertEqual([f.material for f in other.flasks], [f.material for f in run.flasks])
+        self.assertEqual(other.flask_index, run.flask_index)
+
+    def test_drop_flask(self) -> None:
+        from src.run import Run
+
+        run = Run(5)
+        self.assertTrue(run.drop_flask(0))
+        self.assertIsNone(run.flask)
+        self.assertTrue(any(item.flask is not None and item.seen for item in run.pickups))

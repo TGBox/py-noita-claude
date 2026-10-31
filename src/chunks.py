@@ -272,7 +272,7 @@ class FallingChunks:
                 continue
             if any(body.contains(x + 0.5, y + 1.5) for x, y in bottom.items()):
                 chunk.hit.add(id(body))
-                body.hurt(min(60.0, CRUSH_DAMAGE * chunk.size))
+                body.hurt(min(60.0, CRUSH_DAMAGE * chunk.size), "Herabstürzendes Gewebe")
 
     @staticmethod
     def _settle(world: World, chunk: Chunk) -> None:

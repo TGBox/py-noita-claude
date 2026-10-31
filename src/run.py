@@ -52,6 +52,8 @@ MAGNET_RANGE = 140.0
 MAGNET_SPEED = 260.0  # px/s
 HAGGLE_FACTOR = 2 / 3
 START_FLASK = 150  # cells of blood in the starting flask
+MAX_FLASKS = 4
+DROP_TOSS = 70.0  # px/s an item is tossed forward when dropped from the inventory
 FLASKS_PER_DEPTH = 2
 COCOONS_PER_DEPTH = 2
 EYE_BONUS = 10  # maximum health per Urauge
@@ -142,10 +144,16 @@ class Run:
         # Kodex unlocks, set by the game before a run starts:
         self.favoured_blocks: frozenset[str] = frozenset()  # likelier in the shop
         self.start_pearls = 0  # blood pearls at the start of a run
-        self.flask: Flask | None = None
+        self.flasks: list[Flask] = []
+        self.flask_index = 0
+        self.last_aim = (0.0, 0.0)
         self.thrown: list[ThrownFlask] = []
         self.chunks = FallingChunks()
         self.messages: list[str] = []  # short German notes for the HUD, drained by the game
+        self.log: list[tuple[str, dict[str, Any]]] = []  # run log entries, drained by the game
+        self.cast_counts: dict[str, int] = {}  # casts per wand in the current depth
+        self._damage: dict[str, float] = {}  # player damage by cause since the last flush
+        self._damage_timer = 0.0
         self._flask_budget = 0.0
         self._kick_cooldown = 0.0
         self.new_run()
@@ -170,7 +178,8 @@ class Run:
         self.inventory = Inventory(list(STARTER_WANDS), self.rng)
         self.outcome = ""
         self.pearls = self.start_pearls
-        self.flask = Flask(BLOOD, START_FLASK)
+        self.flasks = [Flask(BLOOD, START_FLASK)]
+        self.flask_index = 0
         self.eyes = 0  # Uraugen found this run
         self.ng = 0  # New Game+ loop (0 = first descent)
         self.route = choose_route(self.rng)  # the biome of every stage in this run
@@ -220,6 +229,135 @@ class Run:
         self.projectiles.player_damage = RAGE_FACTOR if "wutdruesen" in perks else 1.0
 
     @property
+    def flask(self) -> Flask | None:
+        """The flask in hand (pour, drink, throw); None if you carry none."""
+        if not self.flasks:
+            return None
+        self.flask_index = min(self.flask_index, len(self.flasks) - 1)
+        return self.flasks[self.flask_index]
+
+    @flask.setter
+    def flask(self, flask: Flask | None) -> None:
+        if flask is None:
+            if self.flasks:
+                self.flasks.pop(min(self.flask_index, len(self.flasks) - 1))
+                self.flask_index = max(0, min(self.flask_index, len(self.flasks) - 1))
+        elif self.flasks:
+            self.flasks[min(self.flask_index, len(self.flasks) - 1)] = flask
+        else:
+            self.flasks = [flask]
+            self.flask_index = 0
+
+    def cycle_flask(self, step: int = 1) -> None:
+        if self.flasks:
+            self.flask_index = (self.flask_index + step) % len(self.flasks)
+
+    def select_flask(self, index: int) -> None:
+        if 0 <= index < len(self.flasks):
+            self.flask_index = index
+
+    # ------------------------------------------------------------- logging
+
+    def _log(self, event: str, **data: Any) -> None:
+        self.log.append((event, data))
+
+    def _flush_log(self) -> None:
+        """Write the collected casts and damage of this stretch into the log."""
+        if self._damage:
+            damage = {
+                cause or "unbekannt": round(amount, 1)
+                for cause, amount in self._damage.items()
+                if amount >= 0.05
+            }
+            self._log("schaden", ursachen=damage, leben=round(self.player.hp, 1))
+            self._damage = {}
+        if self.cast_counts:
+            self._log("zauber", wuerfe=dict(self.cast_counts))
+            self.cast_counts = {}
+
+    def _log_place(self) -> dict[str, Any]:
+        return {
+            "tiefe": self.depth.key,
+            "nummer": self.next_depth_number,
+            "x": round(self.player.x),
+            "y": round(self.player.y),
+        }
+
+    # ------------------------------------------------------------ dropping
+
+    def _drop(self, item: Pickup) -> None:
+        """Put an item from the inventory into the world in front of the player."""
+        cx, cy = self.player.center
+        side = 1 if self.last_aim[0] >= cx else -1
+        item.x, item.y = cx, cy
+        item.vx, item.vy = side * DROP_TOSS, -DROP_TOSS
+        item.seen = True
+        self.pickups.append(item)
+        self.events.append("kick")
+        self._log("abgelegt", gegenstand=item.label_de)
+
+    def drop_block(self, ref) -> bool:
+        """Drop the block at ``ref``; wand slots only where wands may be rebuilt."""
+        if ref.kind == "wand" and not self.can_edit_wands:
+            return False
+        key = self.inventory.take(ref)
+        if key is None:
+            return False
+        self._drop(Pickup(0, 0, block=key))
+        return True
+
+    def drop_wand(self, index: int) -> bool:
+        spec = self.inventory.remove_wand(index)
+        if spec is None:
+            return False
+        self._drop(Pickup(0, 0, wand=spec))
+        return True
+
+    def drop_flask(self, index: int) -> bool:
+        if not 0 <= index < len(self.flasks):
+            return False
+        flask = self.flasks.pop(index)
+        if self.flask_index >= index and self.flask_index > 0:
+            self.flask_index -= 1
+        self._drop(Pickup(0, 0, flask=flask))
+        return True
+
+    def inventory_drop(self, source: tuple[str, Any], target: tuple[str, Any] | None) -> str:
+        """Finish a drag in the inventory screen. Returns a German note ("" if fine).
+
+        ``source`` / ``target`` are ("slot", SlotRef), ("wand", index), ("flask", index),
+        ("drop", None) or ("outside", None); dropping on "drop"/"outside" throws the
+        thing into the world. Wand slots only change where wands may be rebuilt.
+        """
+        kind, value = source
+        where = target[0] if target is not None else None
+        locked = "Augmentationen umbauen geht nur im Sanktum."
+        if where in ("drop", "outside"):
+            if kind == "slot":
+                return "" if self.drop_block(value) else locked
+            if kind == "wand":
+                return "" if self.drop_wand(value) else "Eine Augmentation musst du behalten."
+            if kind == "flask":
+                self.drop_flask(value)
+            return ""
+        if target is None:
+            return ""
+        if kind == "slot" and where == "slot":
+            edit = self.can_edit_wands
+            if not self.inventory.move(value, target[1], edit_wands=edit):
+                return "" if edit else locked
+            return ""
+        if kind == "wand" and where == "wand":
+            self.inventory.move_wand(value, target[1])
+        elif kind == "flask" and where == "flask" and target[1] < len(self.flasks):
+            a, b = value, target[1]
+            flasks = self.flasks
+            flasks[a], flasks[b] = flasks[b], flasks[a]
+            if self.flask_index in (a, b):
+                self.flask_index = b if self.flask_index == a else a
+        return ""
+
+    @property
     def can_edit_wands(self) -> bool:
         """Like Noita's Holy Mountain: rebuilding augmentations needs a sanctum (or a perk)."""
         return self.in_sanctum or "flinke_haende" in self.perks
@@ -249,6 +387,11 @@ class Run:
         x, y = layout.altar[-1]
         offers.append(Pickup(x + 40, y, reroll=True, price=self.reroll_price, floating=True))
         self.pickups = offers
+        self._flush_log()
+        self._log(
+            "sanktum", nach_tiefe=self.depth_index + 1, angebote=[o.label_de for o in offers],
+            blutperlen=self.pearls,
+        )  # fmt: skip
         self.player.place(*layout.spawn)
         self._refill_wands()
         for wand in self.inventory.wands:  # like Noita's Holy Mountain: spells are restored
@@ -298,6 +441,16 @@ class Run:
         self.chunks.clear()
         self.player.place(*self.level.spawn)
         self.player.polymorphed = 0.0
+        self._flush_log()
+        self._log(
+            "tiefe", schluessel=depth.key, name=depth.name_de, nummer=index + 1,
+            parallelwelt=self.parallel, ng=self.ng, kreaturen=len(self.enemies.creatures),
+            gegenstaende=len(self.pickups), leben=round(self.player.hp, 1),
+            augmentationen=[
+                {"name": w.spec.name_de, "bausteine": [k for k in w.slots if k]}
+                for w in self.inventory.wands
+            ],
+        )  # fmt: skip
         self._refill_wands()
         self.time_in_depth = 0.0
 
@@ -332,7 +485,8 @@ class Run:
             "active": self.inventory.active,
             "favoured": sorted(self.favoured_blocks),
             "bag": list(self.inventory.bag),
-            "flask": None if self.flask is None else [self.flask.material, self.flask.amount],
+            "flasks": [[flask.material, flask.amount] for flask in self.flasks],
+            "flask_active": self.flask_index,
             "rng": [version, list(internal), gauss],
         }
 
@@ -392,7 +546,13 @@ class Run:
         self.inventory.bag = (bag + [None] * len(self.inventory.bag))[: len(self.inventory.bag)]
         self.inventory.select(int(data.get("active", 0)))
         self.favoured_blocks = frozenset(key for key in data.get("favoured", ()) if key in CATALOG)
-        self.flask = _flask_from(data.get("flask"))
+        saved_flasks = data.get("flasks")
+        if not isinstance(saved_flasks, list):
+            saved_flasks = [data.get("flask")]  # saves from before several flasks
+        self.flasks = [f for f in map(_flask_from, saved_flasks) if f is not None][:MAX_FLASKS]
+        flask_active = data.get("flask_active", 0)
+        self.flask_index = flask_active if isinstance(flask_active, int) else 0
+        self.flask_index = max(0, min(self.flask_index, len(self.flasks) - 1))
         self.rng.setstate(rng_state)
         self.discoveries.clear()
         self.enter_sanctum()
@@ -426,6 +586,7 @@ class Run:
     def update(self, dt: float, controls: Controls, area: Rect | None = None) -> list[Blast]:
         """Advance the run by ``dt`` seconds; ``area`` limits simulation (cells)."""
         self.events = []
+        self.last_aim = controls.aim
         self.time_in_depth += dt
         if not self.outcome:
             self.stats["time"] += dt
@@ -481,6 +642,15 @@ class Run:
             self.events.append("blast_big" if blast.radius >= 12 else "blast")
         if self.chunks.update(self.world, dt, bodies):
             self.events.append("kick")  # a dull thud as tissue lands
+        lost = self._last_hp - self.player.hp
+        if lost > 0:
+            cause = self.player.last_cause
+            self._damage[cause] = self._damage.get(cause, 0.0) + lost
+        self._damage_timer += dt
+        if self._damage_timer >= 5.0:
+            self._damage_timer = 0.0
+            if self._damage:
+                self._flush_log()
         self._hurt_cooldown = max(0.0, self._hurt_cooldown - dt)
         if self.player.hp < self._last_hp - 1.0 and self._hurt_cooldown <= 0:
             self.events.append("hurt")
@@ -488,12 +658,18 @@ class Run:
         self._perk_reactions(dt)
 
         if self.player.dead and not self.outcome:
+            self._flush_log()
             if "zweiter_puls" in self.perks and not self.revive_used:
+                self._log("wiederbelebt", ursache=self.player.last_cause, **self._log_place())
                 self.revive_used = True
                 self.player.hp = self.player.max_hp * 0.5
                 self.player.burning = 0.0
             else:
                 self.outcome = "dead"
+                self._log(
+                    "tod", ursache=self.player.last_cause, zeit=round(self.stats["time"], 1),
+                    getoetet=self.stats["kills"], **self._log_place(),
+                )  # fmt: skip
                 self.events.append("death")
                 cx, cy = self.player.center
                 self.world.splash(int(cx), int(cy), DEATH_SPLASH, BLOOD)
@@ -575,6 +751,8 @@ class Run:
         tip = (sx + math.cos(angle) * reach, sy + math.sin(angle) * reach)
         self.projectiles.spawn(shots, tip[0], tip[1], angle)
         self.events.append("cast")
+        name = wand.spec.name_de
+        self.cast_counts[name] = self.cast_counts.get(name, 0) + 1
         if "schnelle_druesen" in self.perks:
             wand.cooldown *= FAST_GLANDS
             wand.recharge_left *= FAST_GLANDS
@@ -713,7 +891,7 @@ class Run:
         for creature in self.enemies.creatures:
             ox, oy = creature.center
             if abs(ox - reach_x) <= KICK_REACH / 2 + creature.width / 2 and abs(oy - cy) <= creature.height / 2 + 6:
-                creature.hurt(KICK_DAMAGE)
+                creature.hurt(KICK_DAMAGE, "Tritt")
                 if not creature.spec.boss:
                     creature.vx = side * KICK_PUSH
                     creature.vy = -KICK_PUSH * 0.6
@@ -741,6 +919,7 @@ class Run:
         sx, sy = self.shoulder(controls.aim)
         angle = math.atan2(controls.aim[1] - sy, controls.aim[0] - sx)
         if controls.throw:
+            self._log("werfen", phiole=flask.label_de)
             self.thrown.append(ThrownFlask.throw(flask, sx, sy, angle))
             self.flask = None
             self.events.append("cast")
@@ -748,6 +927,7 @@ class Run:
         if controls.drink:
             message = flask.drink(self.player)
             if message:
+                self._log("trinken", phiole=flask.label_de)
                 self.messages.append(message)
                 self.events.append("drink")
         if controls.pour or controls.absorb:
@@ -785,6 +965,7 @@ class Run:
         item = self.nearest_pickup()
         if item is None:
             return
+        self._log("aufheben", gegenstand=item.label_de, preis=self.price_of(item), perlen=self.pearls)
         if item.perk is not None:
             self.apply_perk(item.perk)
             self.pickups = [i for i in self.pickups if i.perk is None and not i.reroll]
@@ -833,9 +1014,12 @@ class Run:
             return
         if item.flask is not None:
             self.pickups.remove(item)
-            if self.flask is not None:  # swap: put the old flask down
-                self.pickups.append(Pickup(item.x, item.y, flask=self.flask))
-            self.flask = item.flask
+            if len(self.flasks) < MAX_FLASKS:
+                self.flasks.append(item.flask)
+                self.flask_index = len(self.flasks) - 1
+            else:  # hands full: swap with the flask in hand
+                self.pickups.append(Pickup(item.x, item.y, flask=self.flask, seen=True))
+                self.flask = item.flask
             self.events.append("pickup")
             return
         if item.wand is not None:
@@ -859,6 +1043,7 @@ class Run:
             self.events.append("shatter")
             return
         self.stats["kills"] += 1
+        self._log("getoetet", kreatur=creature.spec.key, durch=creature.last_cause)
         self.discoveries.append(("creature", creature.spec.key))
         if not creature.spec.boss and creature.spec.gore == BLOOD:
             width = max(3, creature.width - 2)
@@ -871,13 +1056,16 @@ class Run:
         self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
         self.events.append("blast_big" if creature.spec.boss else "kill")
         if creature.spec.boss:
+            self._log("waechter_besiegt", kreatur=creature.spec.key, zeit=round(self.stats["time"], 1))
             if self.depth.final:
                 self.outcome = "victory"
                 self.events.append("victory")
             else:
                 self.exit_open = True
                 # Whatever the fight left at the exit (growth, scab, bone) is cleared away.
-                self.world.dig(int(self.level.exit[0]), int(self.level.exit[1]), EXIT_CLEAR_RADIUS)
+                self.world.dig(
+                    int(self.level.exit[0]), int(self.level.exit[1]), EXIT_CLEAR_RADIUS, force=True
+                )
                 for _ in range(2):  # bosses always drop loot
                     self.pickups.append(Pickup(cx, cy, block=random_block(self.rng)))
         elif self.rng.random() < DROP_CHANCE:
@@ -891,7 +1079,7 @@ class Run:
                 damage = BLAST_DAMAGE * blast.radius * (1 - distance / reach)
                 if body is self.player and "panzerplatten" in self.perks:
                     damage *= ARMOUR_FACTOR
-                body.hurt(damage)
+                body.hurt(damage, "Explosion")
                 # knockback: lighter bodies fly further, bosses barely move
                 strength = BLAST_KNOCKBACK * blast.radius * (1 - distance / reach)
                 mass = max(1.0, (body.width * body.height) ** 0.5 / 4)

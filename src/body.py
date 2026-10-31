@@ -14,6 +14,7 @@ from src.materials import (
     KIND,
     LIQUID,
     MUCUS,
+    NAME_DE,
     PUS,
     TALLOW,
 )
@@ -71,6 +72,7 @@ class Body:
         self._ignite_grace = 0.0
         self._rx = 0.0
         self._ry = 0.0
+        self.last_cause = ""
 
     # ----------------------------------------------------------------- state
 
@@ -85,9 +87,11 @@ class Body:
     def contains(self, px: float, py: float) -> bool:
         return self.x <= px < self.x + self.width and self.y <= py < self.y + self.height
 
-    def hurt(self, amount: float) -> None:
+    def hurt(self, amount: float, cause: str = "") -> None:
         self.hp = max(0.0, self.hp - amount)
         self.damage_taken += amount  # read and reset by the game for damage numbers
+        if amount > 0 and cause:
+            self.last_cause = cause  # for the run log: what hurt (or killed) this body
 
     def bleed(self, world: World, x: float, y: float, amount: float, dx: float = 0.0) -> None:
         """Spray a few cells of ``blood`` from a wound at (x, y), more for bigger hits."""
@@ -170,6 +174,7 @@ class Body:
     def apply_environment(self, world: World, dt: float) -> None:
         """Hazard damage plus status effects: burning, wet, oily (tallow), slimed (mucus)."""
         worst, touches_fire, touches_liquid = 0.0, False, False
+        worst_material = AIR
         touches_tallow = touches_mucus = touches_pus = False
         for yy in range(self.y - 1, self.y + self.height + 1):
             for xx in range(self.x - 1, self.x + self.width + 1):
@@ -181,7 +186,8 @@ class Body:
                     continue
                 if KIND[material] == GAS and self.gas_immune:
                     continue
-                worst = max(worst, HAZARD_DPS[material])
+                if HAZARD_DPS[material] > worst:
+                    worst, worst_material = HAZARD_DPS[material], material
                 if material == FIRE:
                     touches_fire = True
                 elif material == TALLOW:
@@ -217,7 +223,9 @@ class Body:
             worst_poison = 0.0
 
         damage = worst + worst_poison
+        cause = NAME_DE[worst_material] if worst else ("Gift" if worst_poison else "")
         if self.burning > 0:
+            cause = "Feuer (brennend)" if not worst else cause
             damage += BURN_DPS * (OILY_BURN_FACTOR if self.oily > 0 else 1.0)
             self.burning = max(0.0, self.burning - dt)
             if self.burning <= 0:
@@ -226,7 +234,7 @@ class Body:
             if self._flame_timer <= 0:
                 self._flame_timer = FLAME_INTERVAL
                 self._shed_flame(world)
-        self.hurt(damage * dt)
+        self.hurt(damage * dt, cause)
 
     def _shed_flame(self, world: World) -> None:
         """Burning bodies set fire to the air just above them (and what is there)."""

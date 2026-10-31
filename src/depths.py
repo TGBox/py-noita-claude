@@ -21,6 +21,7 @@ class Depth:
     pus: float = 0.0  # pools of Eiter
     cavity_scale: float = 1.0  # size of the organ cavities
     alveoli: float = 0.0  # clusters of thin-walled air sacs (spongy lung tissue)
+    enamel: float = 0.4  # veins of tooth enamel (only strong explosions break it)
     wall: str = "fleisch"  # "fleisch": flesh with bone ribs, "knochen": bone with flesh veins
     # population and loot
     walkers: int = 10
@@ -46,7 +47,7 @@ DEPTHS: tuple[Depth, ...] = (
         extra=(("saeurespucker", 4), ("egel", 3), ("saeuresack", 4), ("talgsack", 3)),
     ),
     Depth(
-        "knochenmark", "Das Knochenmark", wall="knochen", boss="knochenfresser", bone_dust=2.6, blood=2.0, tallow=1.8,
+        "knochenmark", "Das Knochenmark", wall="knochen", enamel=1.2, boss="knochenfresser", bone_dust=2.6, blood=2.0, tallow=1.8,
         acid=0.6, growth=0.4, bridges=0.6, walkers=10, flyers=6, spitters=8, bloats=3, blocks=10,
         ambient=0.27,
         extra=(
@@ -100,7 +101,7 @@ VARIANTS: dict[str, tuple[Depth, ...]] = {
             extra=(("egel", 4), ("talgsack", 2)),
         ),
         Depth(
-            "zahnhoehle", "Die Zahnhöhle", wall="knochen", bone_dust=2.0, acid=0.3,
+            "zahnhoehle", "Die Zahnhöhle", wall="knochen", bone_dust=2.0, acid=0.3, enamel=3.5,
             growth=0.3, walkers=10, flyers=3, spitters=2, ambient=0.32,
             extra=(("egel", 2), ("talgsack", 3)),
         ),
@@ -185,7 +186,7 @@ MORE_VARIANTS: dict[str, tuple[Depth, ...]] = {
             boss="knochenfresser", ambient=0.27, extra=(("saeurespucker", 3), ("talgsack", 4)),
         ),
         Depth(
-            "schaedel", "Der Schädel", wall="knochen", bone_dust=3.0, pus=0.6, bridges=1.0,
+            "schaedel", "Der Schädel", wall="knochen", enamel=2.5, bone_dust=3.0, pus=0.6, bridges=1.0,
             walkers=9, flyers=8, spitters=7, bloats=3, blocks=10, boss="knochenfresser",
             ambient=0.25, extra=(("nervenknoten", 3), ("augenblase", 2), ("egel", 3)),
         ),
