@@ -640,6 +640,10 @@ class Game:
             mx += round(pad.move[0] * PAD_CURSOR_SPEED * dt)
             my += round(pad.move[1] * PAD_CURSOR_SPEED * dt)
             pygame.mouse.set_pos((mx, my))
+        if "x" in pad.pressed:  # like a right click: between the wand in hand and the bag
+            self.editor.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(mx, my)), self.run)
+        if "y" in pad.pressed:
+            self.run.inventory.sort_bag()
         holding = "a" in pad.buttons
         if holding != self.pad_click:
             self.pad_click = holding

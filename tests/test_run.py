@@ -9,7 +9,7 @@ from src.loot import Pickup, generate_wand, nearest_pickup, place_loot, random_b
 from src.materials import AIR, BONE, FIRE
 from src.perks import PERKS
 from src.run import Controls, Run
-from src.spells import CATALOG, Category
+from src.spells import BLOCKS, CATALOG, Category
 from src.wand import PRESETS, Wand, WandSpec
 from src.world import World
 
@@ -67,9 +67,12 @@ class TestInventory(unittest.TestCase):
 
     def test_blocks_go_into_the_bag_until_it_is_full(self) -> None:
         inventory = self.make()
-        for _ in range(BAG_SIZE):
-            self.assertTrue(inventory.add_block("funke"))
-        self.assertFalse(inventory.add_block("funke"))
+        keys = [b.key for b in BLOCKS[:BAG_SIZE]]
+        for key in keys:
+            self.assertTrue(inventory.add_block(key))
+        self.assertFalse(inventory.add_block(BLOCKS[BAG_SIZE].key))
+        self.assertTrue(inventory.add_block(keys[0]))  # equal blocks still stack
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 2)
 
     def test_wands_are_added_until_full_then_swapped(self) -> None:
         inventory = self.make()
@@ -1084,3 +1087,62 @@ class TestPlaytestFixes(unittest.TestCase):
         run.update(1 / 60, Controls())
         self.assertEqual(run.outcome, "")
         self.assertEqual(run.player.hp, run.player.max_hp)
+
+
+class TestBagStacks(unittest.TestCase):
+    """Equal blocks stack, quick moves, sorting."""
+
+    def test_stacking_moving_and_dropping(self) -> None:
+        run = Run(51)
+        inventory = run.inventory
+        for _ in range(3):
+            inventory.add_block("funke")
+        inventory.add_block("nadel")
+        self.assertEqual(inventory.bag[:2], ["funke", "nadel"])
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 3)
+        # one block of a stack goes into a wand slot, the replaced block into the bag
+        run.enter_sanctum()
+        old = inventory.wands[0].slots[0]
+        inventory.move(SlotRef("bag", 0), SlotRef("wand", 0, 0))
+        self.assertEqual(inventory.wands[0].slots[0], "funke")
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 2)
+        self.assertIn(old, inventory.bag)
+        # dragging a stack onto an equal stack merges them
+        inventory.bag[5], inventory.counts[5] = "funke", 4
+        inventory.move(SlotRef("bag", 5), SlotRef("bag", 0))
+        self.assertEqual(inventory.count(SlotRef("bag", 0)), 6)
+        self.assertIsNone(inventory.bag[5])
+        # a whole stack is dropped at once
+        before = len(run.pickups)
+        run.inventory_drop(("slot", SlotRef("bag", 0)), ("drop", None))
+        self.assertEqual(len(run.pickups) - before, 6)
+
+    def test_quick_move_and_sort(self) -> None:
+        run = Run(52)
+        inventory = run.inventory
+        wand = inventory.wand
+        first = wand.slots[0]
+        self.assertFalse(inventory.quick_move(SlotRef("wand", 0, inventory.active), edit_wands=False))
+        self.assertTrue(inventory.quick_move(SlotRef("wand", 0, inventory.active), edit_wands=True))
+        self.assertIsNone(wand.slots[0])
+        self.assertIn(first, inventory.bag)
+        index = inventory.bag.index(first)
+        self.assertTrue(inventory.quick_move(SlotRef("bag", index), edit_wands=True))
+        self.assertEqual(wand.slots[0], first)
+        for key in ("sekret_saeure", "funke", "nerv_zeit", "beschleunigung", "funke"):
+            inventory.add_block(key)
+        inventory.bag[20], inventory.counts[20] = "funke", 2
+        inventory.sort_bag()
+        order = [CATALOG[k].category for k in inventory.bag if k]
+        self.assertEqual(order, sorted(order, key=list(Category).index))
+        self.assertEqual(inventory.count(SlotRef("bag", inventory.bag.index("funke"))), 4)
+        self.assertEqual(inventory.bag.count("funke"), 1)
+
+    def test_stacks_survive_save_and_restore(self) -> None:
+        run = Run(53)
+        run.inventory.add_block("funke", 5)
+        run.enter_sanctum()
+        other = Run(54)
+        other.restore(run.checkpoint)
+        index = other.inventory.bag.index("funke")
+        self.assertEqual(other.inventory.count(SlotRef("bag", index)), 5)

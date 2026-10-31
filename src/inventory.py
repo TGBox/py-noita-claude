@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from src.wand import Wand, WandSpec
 
 MAX_WANDS = 4
-BAG_SIZE = 36  # 3 rows of 12 in the inventory screen
+BAG_SIZE = 48  # 4 rows of 12 in the inventory screen; equal blocks stack in one slot
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,7 @@ class Inventory:
         self.rng = rng or random.Random()
         self.wands: list[Wand] = [Wand(spec, self.rng) for spec in wands[:MAX_WANDS]]
         self.bag: list[str | None] = [None] * BAG_SIZE
+        self.counts: list[int] = [0] * BAG_SIZE  # stack size per bag slot (0 = empty)
         self.active = 0
 
     @property
@@ -41,13 +42,73 @@ class Inventory:
 
     # ---------------------------------------------------------------- pickup
 
-    def add_block(self, key: str) -> bool:
-        """Put a block into the first free bag slot. False if the bag is full."""
-        for index, slot in enumerate(self.bag):
-            if slot is None:
-                self.bag[index] = key
-                return True
-        return False
+    def add_block(self, key: str, count: int = 1) -> bool:
+        """Put blocks into the bag: onto a stack of the same block, else into a free slot."""
+        index = self._slot_for(key)
+        if index is None:
+            return False
+        self.counts[index] = (self.count(SlotRef("bag", index)) if self.bag[index] else 0) + count
+        self.bag[index] = key
+        return True
+
+    def can_add(self, key: str) -> bool:
+        return self._slot_for(key) is not None
+
+    def _slot_for(self, key: str) -> int | None:
+        if key in self.bag:
+            return self.bag.index(key)
+        return self.bag.index(None) if None in self.bag else None
+
+    def count(self, ref: SlotRef) -> int:
+        """How many blocks sit in a slot (bag slots stack)."""
+        if not self._valid(ref) or self.get(ref) is None:
+            return 0
+        return max(1, self.counts[ref.index]) if ref.kind == "bag" else 1
+
+    def set_bag(self, keys: list[str | None], counts: list[int] | None = None) -> None:
+        """Fill the bag (from a save); stacks of equal blocks are merged."""
+        self.bag = [None] * BAG_SIZE
+        self.counts = [0] * BAG_SIZE
+        for index, key in enumerate(keys):
+            if key is None:
+                continue
+            amount = counts[index] if counts and index < len(counts) else 1
+            self.add_block(key, max(1, int(amount)))
+
+    def sort_bag(self) -> None:
+        """Merge stacks and order the bag: forms, mutations, nerves, secretions, by name."""
+        from src.spells import CATALOG, Category
+
+        order = list(Category)
+        totals: dict[str, int] = {}
+        for key, amount in zip(self.bag, self.counts):
+            if key is not None:
+                totals[key] = totals.get(key, 0) + max(1, amount)
+        keys = sorted(totals, key=lambda k: (order.index(CATALOG[k].category), CATALOG[k].name_de))
+        self.bag = [None] * BAG_SIZE
+        self.counts = [0] * BAG_SIZE
+        for index, key in enumerate(keys):
+            self.bag[index], self.counts[index] = key, totals[key]
+
+    def quick_move(self, ref: SlotRef, *, edit_wands: bool) -> bool:
+        """Right click / double click: wand slot -> bag, bag -> the wand in hand."""
+        if not edit_wands or not self._valid(ref):
+            return False
+        key = self.get(ref)
+        if key is None:
+            return False
+        if ref.kind == "wand":
+            if not self.add_block(key):
+                return False
+            self._put(ref, None)
+            return True
+        wand = self.wand
+        if None not in wand.slots:
+            return False
+        target = SlotRef("wand", list(wand.slots).index(None), self.active)
+        self.take(ref)
+        self._put(target, key)
+        return True
 
     def add_wand(self, spec: WandSpec) -> WandSpec | None:
         """Take a wand. With all slots full, the active wand is swapped out and returned."""
@@ -79,6 +140,34 @@ class Inventory:
         moving, other = self.get(source), self.get(target)
         if moving is None:
             return False
+        if source.kind == "bag" and target.kind == "bag":
+            if moving == other:  # merge two stacks
+                self.counts[target.index] = self.count(target) + self.count(source)
+                self.bag[source.index], self.counts[source.index] = None, 0
+            else:  # swap whole stacks
+                a, b = source.index, target.index
+                self.bag[a], self.bag[b] = self.bag[b], self.bag[a]
+                self.counts[a], self.counts[b] = self.counts[b], self.counts[a]
+            return True
+        if source.kind == "bag":  # one block from a stack into a wand
+            stacked = self.count(source) > 1
+            if other is not None and stacked and not self.can_add(other):
+                return False  # no room in the bag for the block it would replace
+            self.take(source)
+            self._put(target, moving)
+            if other is not None:
+                if self.bag[source.index] is None:
+                    self._put(source, other)
+                else:
+                    self.add_block(other)
+            return True
+        if target.kind == "bag" and other is not None and (other == moving or self.count(target) > 1):
+            self._put(source, None)  # onto a stack: it joins (or finds its own stack)
+            if other == moving:
+                self.counts[target.index] = self.count(target) + 1
+            else:
+                self.add_block(moving)
+            return True
         self._put(target, moving)
         self._put(source, other)
         return True
@@ -91,11 +180,15 @@ class Inventory:
         return True
 
     def take(self, ref: SlotRef) -> str | None:
-        """Remove and return the block at ``ref`` (to drop it into the world)."""
+        """Remove one block from ``ref`` and return it (a stack shrinks by one)."""
         if not self._valid(ref):
             return None
         key = self.get(ref)
-        if key is not None:
+        if key is None:
+            return None
+        if ref.kind == "bag" and self.count(ref) > 1:
+            self.counts[ref.index] -= 1
+        else:
             self._put(ref, None)
         return key
 
@@ -129,6 +222,7 @@ class Inventory:
     def _put(self, ref: SlotRef, key: str | None) -> None:
         if ref.kind == "bag":
             self.bag[ref.index] = key
+            self.counts[ref.index] = 0 if key is None else 1
             return
         wand = self.wands[ref.wand]
         slots = list(wand.slots)

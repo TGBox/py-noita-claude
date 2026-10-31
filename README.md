@@ -86,10 +86,13 @@ sofort aus ihr gedrückt. Ist die Figur trotzdem von allen Seiten eingeschlossen
 in einer kleinen versiegelten Höhle fest, reißt sie sich nach kurzer Zeit ohne Schaden frei.
 
 **Rucksack (Tab):** Zeigt alle Augmentationen mit ihren Werten als Balken, den Beutel mit
-36 Plätzen und bis zu vier Phiolen. Alles wird per Drag & Drop bewegt: Bausteine zwischen
+48 Plätzen (gleiche Zauber stapeln sich in einem Platz, die Zahl zeigt den Stapel) und bis zu vier Phiolen. Alles wird per Drag & Drop bewegt: Bausteine zwischen
 Plätzen, eine Augmentation an ihrem Griff (umsortieren oder ablegen), Phiolen untereinander.
 Was auf das Feld „Ablegen“ oder aus dem Fenster gezogen wird, fällt vor dir auf den Boden.
-Ein Klick auf Griff oder Phiole nimmt sie in die Hand. Außerhalb des Sanktums kannst du
+Ein Klick auf Griff oder Phiole nimmt sie in die Hand. **Rechtsklick oder Doppelklick** auf einen Zauber setzt ihn aus dem
+Beutel in die Augmentation in der Hand oder legt ihn aus der Augmentation in den Beutel.
+**Sortieren** fasst Stapel zusammen und ordnet den Beutel nach Drüsen, Mutationen, Nerven und
+Sekreten. Mit Controller: X wie Rechtsklick, Y sortiert. Außerhalb des Sanktums kannst du
 ansehen, den Beutel ordnen und ablegen; Augmentationen umbauen geht nur im Sanktum (oder mit
 dem Perk „Flinke Hände“).
 
@@ -273,7 +276,7 @@ Sanktum (wie an Noitas Heiligem Berg). Leere Bausteine werden beim Zaubern über
 Jede Augmentation hat eigene Werte: Slots, Mana und Aufladung, Zauberverzögerung, Nachladezeit,
 Streuung, Zauber pro Wurf und ob sie ihr Deck mischt. Bausteine, für die das Mana nicht reicht,
 werden übersprungen. Gefundene Augmentationen werden prozedural erzeugt und sind in tieferen
-Ebenen stärker. Du trägst bis zu vier Augmentationen und 36 lose Bausteine.
+Ebenen stärker. Du trägst bis zu vier Augmentationen und 48 Stapel loser Bausteine.
 
 | Baustein | Typ | Mana | Wirkung |
 | ---------- | ----- | ------ | --------- |

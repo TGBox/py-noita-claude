@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.1.2
+
+- 2026-10-31 (de58158): fix: add new row to the bag, allow spells to stack in the inventory, add sorting to the bag, add fast transfer via double or right clicking
+
 ## SemVer v1.1.1
 
-- 2026-10-31 (6c030ee): feat: update README, create new roadmap for the upcoming implementation
+- 2026-10-31 (e575e91): feat: update README, create new roadmap for the upcoming implementation
 
 ## SemVer v1.1.0
 

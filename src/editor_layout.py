@@ -30,10 +30,24 @@ class Layout:
     drop: Rect = (0, 0, 0, 0)
     bag_title: tuple[int, int] = (0, 0)
     flask_title: tuple[int, int] = (0, 0)
+    sort: Rect = (0, 0, 0, 0)  # the "Sortieren" button above the bag
 
 
 def layout(width: int, height: int, inventory: Inventory) -> Layout:
-    s = max(0.7, min(1.6, height / 720))
+    """Everything is scaled down until it fits into the window."""
+    s = max(0.6, min(1.6, height / 720))
+    result = _layout(width, inventory, s)
+    for _ in range(8):
+        _px, py, pw, ph = result.panel
+        factor = min((width - 20) / pw, (height - 10) / (py + ph), 1.0)
+        if factor >= 0.999:
+            break
+        s *= factor * 0.99
+        result = _layout(width, inventory, s)
+    return result
+
+
+def _layout(width: int, inventory: Inventory, s: float) -> Layout:
     slot = round(34 * s)
     gap = round(6 * s)
     step = slot + gap
@@ -41,12 +55,6 @@ def layout(width: int, height: int, inventory: Inventory) -> Layout:
     row_h = slot + title_h + round(14 * s)
     stats_w = round(320 * s)
     content_w = slot + 2 * gap + WAND_COLUMNS * step + round(16 * s) + stats_w
-    if content_w > width - 20:  # narrow window: shrink everything a little
-        s *= (width - 20) / content_w
-        slot, gap = round(34 * s), round(6 * s)
-        step, title_h = slot + gap, round(22 * s)
-        row_h, stats_w = slot + title_h + round(14 * s), round(320 * s)
-        content_w = slot + 2 * gap + WAND_COLUMNS * step + round(16 * s) + stats_w
     left = max(round(16 * s), (width - content_w) // 2)
     top = round(78 * s)
     panel_x, panel_y = left - round(16 * s), top - round(60 * s)
@@ -64,6 +72,8 @@ def layout(width: int, height: int, inventory: Inventory) -> Layout:
         result.stats.append((index, (stats_x, y + round(2 * s), stats_w, row_h - round(10 * s))))
     y = top + MAX_WANDS * row_h + round(4 * s)
     result.bag_title = (left, y)
+    sort_w = round(110 * s)
+    result.sort = (left + BAG_COLUMNS * step - gap - sort_w, y - round(2 * s), sort_w, round(20 * s))
     y += title_h
     bag = min(len(inventory.bag), BAG_SIZE)
     for index in range(bag):
@@ -98,12 +108,14 @@ def hit(slots: list[tuple[SlotRef, Rect]], x: int, y: int) -> SlotRef | None:
 def hit_any(result: Layout, x: int, y: int) -> tuple[str, object] | None:
     """What is under (x, y).
 
-    ("slot", SlotRef), ("wand", index), ("flask", index), ("drop", None),
+    ("slot", SlotRef), ("wand", index), ("flask", index), ("drop", None), ("sort", None),
     ("outside", None) beyond the panel, or None for empty space inside it.
     """
     ref = hit(result.slots, x, y)
     if ref is not None:
         return "slot", ref
+    if _inside(result.sort, x, y):
+        return "sort", None
     for index, rect in result.handles:
         if _inside(rect, x, y):
             return "wand", index

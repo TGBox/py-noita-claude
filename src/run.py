@@ -315,7 +315,8 @@ class Run:
         cx, cy = self.player.center
         side = 1 if self.last_aim[0] >= cx else -1
         item.x, item.y = cx, cy
-        item.vx, item.vy = side * DROP_TOSS, -DROP_TOSS
+        spread = self.rng.uniform(0.7, 1.3)  # a dropped stack scatters a little
+        item.vx, item.vy = side * DROP_TOSS * spread, -DROP_TOSS * spread
         item.seen = True
         self.pickups.append(item)
         self.events.append("kick")
@@ -325,11 +326,13 @@ class Run:
         """Drop the block at ``ref``; wand slots only where wands may be rebuilt."""
         if ref.kind == "wand" and not self.can_edit_wands:
             return False
-        key = self.inventory.take(ref)
-        if key is None:
-            return False
-        self._drop(Pickup(0, 0, block=key))
-        return True
+        count = self.inventory.count(ref)  # a stack is dropped as a whole
+        for _ in range(count):
+            key = self.inventory.take(ref)
+            if key is None:
+                break
+            self._drop(Pickup(0, 0, block=key))
+        return count > 0
 
     def drop_wand(self, index: int) -> bool:
         spec = self.inventory.remove_wand(index)
@@ -512,6 +515,7 @@ class Run:
             "active": self.inventory.active,
             "favoured": sorted(self.favoured_blocks),
             "bag": list(self.inventory.bag),
+            "bag_counts": list(self.inventory.counts),
             "flasks": [[flask.material, flask.amount] for flask in self.flasks],
             "flask_active": self.flask_index,
             "rng": [version, list(internal), gauss],
@@ -570,7 +574,8 @@ class Run:
             count = len(wand.slots)
             wand.set_slots((slots + [None] * count)[:count])
             self.inventory.wands.append(wand)
-        self.inventory.bag = (bag + [None] * len(self.inventory.bag))[: len(self.inventory.bag)]
+        counts = data.get("bag_counts")
+        self.inventory.set_bag(bag, counts if isinstance(counts, list) else None)
         self.inventory.select(int(data.get("active", 0)))
         self.favoured_blocks = frozenset(key for key in data.get("favoured", ()) if key in CATALOG)
         saved_flasks = data.get("flasks")
@@ -1107,7 +1112,7 @@ class Run:
         if item.price:
             if not self.can_afford(item):
                 return
-            if item.block is not None and None not in self.inventory.bag:
+            if item.block is not None and not self.inventory.can_add(item.block):
                 return
             self.pearls -= self.price_of(item)
             item.price = 0
