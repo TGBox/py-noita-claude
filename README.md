@@ -6,7 +6,7 @@ gerinnt, Säure ätzt, Wucherungen kriechen durch Fleisch, Sporen entzünden sic
 Waffen sind Augmentationen, also Zauberstäbe aus Bausteinen, die als Arm aus deinem Körper
 wachsen.
 
-**Ziel:** Kämpf dich durch vier Tiefen und zerstöre das Herz. Der Tod beendet den Lauf. Zwischen
+**Ziel:** Kämpf dich durch sieben Tiefen und zerstöre das Herz. Der Tod beendet den Lauf. Zwischen
 den Tiefen wartet ein Sanktum mit Laden und Perks.
 
 ## Voraussetzungen
@@ -35,11 +35,17 @@ uv run build          # Standalone-Version mit PyInstaller bauen
 | **W / Leertaste** | Kleiner Sprung; gedrückt halten zum Schweben (3 s, am Boden schnell wieder voll) |
 | **Linke Maus** | Zaubern mit der aktiven Augmentation |
 | **1-4 / Mausrad** | Augmentation wählen |
-| **E** | Gegenstand aufheben (Augmentation oder Baustein) |
-| **Tab** | Augmentationen umbauen (pausiert; Bausteine per Drag & Drop verschieben) |
+| **E** | Gegenstand aufheben (Augmentation, Baustein, Phiole) |
+| **Rechte Maus** | Phiole ausgießen (Richtung Mauszeiger) |
+| **G** (halten) | Flüssigkeit am Mauszeiger in die Phiole saugen |
+| **F** | Aus der Phiole trinken (im Titel: Lauf fortsetzen) |
+| **T** | Phiole werfen; sie zerplatzt beim Aufprall |
+| **Q** | Treten: stößt Gegner weg, schleudert Gegenstände, bringt Säcke zum Platzen |
+| **Tab** | Augmentationen umbauen, nur im Sanktum (wie Noitas Heiliger Berg; der Perk „Flinke Hände“ erlaubt es überall). Pausiert; Bausteine per Drag & Drop verschieben |
 | **Enter** | Im Titel: Neuer Lauf |
 | **F** | Im Titel: gespeicherten Lauf fortsetzen |
 | **K** | Im Titel: Kodex öffnen |
+| **O** | Im Titel und in der Pause: Optionen (Lautstärke Effekte/Musik, Vollbild, Licht, Wackeln, Schadenszahlen) |
 | **R** | Neuer Lauf |
 | **L** | Beleuchtung ein/aus |
 | **M** | Ton ein/aus |
@@ -54,8 +60,18 @@ uv run build          # Standalone-Version mit PyInstaller bauen
 |-------|------|---------|----------|
 | 1 | Der Schlund | - | 9 Maden, 4 Schwärmer |
 | 2 | Der Magen | Der Magenwurm | 11 Maden, 8 Schwärmer, 3 Knochenspeier, 2 Sporenblasen |
-| 3 | Das Gedärm | Die Brutmutter | 13 Maden, 8 Schwärmer, 5 Knochenspeier, 7 Sporenblasen |
-| 4 | Die Herzkammer | Das Herz | 9 Maden, 7 Schwärmer, 4 Knochenspeier, 4 Sporenblasen |
+| 3 | Das Knochenmark | Der Knochenfresser | 10 Maden, 6 Schwärmer, 8 Knochenspeier, 3 Sporenblasen, Säurespucker, Nervenknoten, Egel |
+| 4 | Das Gedärm | Die Brutmutter | 13 Maden, 8 Schwärmer, 5 Knochenspeier, 7 Sporenblasen |
+| 5 | Die Leber | - | 12 Maden, 7 Schwärmer, 4 Knochenspeier, 4 Sporenblasen, Säurespucker, Egel, Schleimkriecher |
+| 6 | Die Lunge | Der Atem | 8 Maden, 10 Schwärmer, 5 Knochenspeier, 9 Sporenblasen |
+| 7 | Die Herzkammer | Das Herz | 9 Maden, 7 Schwärmer, 4 Knochenspeier, 4 Sporenblasen |
+
+**Wechselnde Wege:** Jede Stufe hat Varianten, und jeder Lauf wählt pro Stufe zufällig eine
+(insgesamt 32 Biome). Statt des Schlunds geht es etwa durch die Speiseröhre (viele Sehnenbrücken)
+oder die Zahnhöhle (Knochenwände), statt des Magens durch den Pansen, statt des Knochenmarks durch
+das Rückenmark (Sehnen voller Nervenstrom), statt des Gedärms durch den Blinddarm (Eiter), statt
+der Leber durch die Niere oder die Milz, statt der Lunge durch die Bronchien. Wächter und Ziel
+bleiben pro Stufe gleich.
 
 Am Ende jeder Tiefe führt ein Schließmuskel weiter. Im Magen öffnet er sich erst, wenn der
 Magenwurm tot ist, im Gedärm erst nach der Brutmutter: Sie schwebt schwer durch ihre Halle,
@@ -63,9 +79,25 @@ schleudert Wucherungen, Knochenschrot und Sporen und gebiert abwechselnd Sporenb
 Gallenschwärmer. In der Herzkammer schlägt das Herz: Es feuert Ringe aus Feuer, Säure und
 Funken und gebiert Maden. Die Tiefen werden dunkler, gefährlicher und bringen bessere Beute.
 
+**Der Knochenfresser** frisst sich quer durch den Knochen auf dich zu und spürt dich auch durch
+Wände; er wirft Knochensägen und Speere. **Der Atem** in der Lunge saugt dich immer wieder zu sich
+heran, atmet dann einen Kranz aus Sporen aus und gebiert Blutegel.
+
+**Das Knochenmark** ist umgekehrt gebaut: massiver Knochen, durchzogen von Fleischadern, mit
+viel Knochenstaub, Blut und Talg. Knochen bricht bei Explosionen zu Staub, der nachrutscht.
+
+**Die Leber** ist eng und giftig: Gallengänge voller Säure, Eiterlachen, wuchernde Nester
+und Säcke, die bei jedem Fehlschuss platzen.
+
+**Die Lunge** besteht aus großen Hohlräumen und schwammigem Gewebe: Trauben aus Luftbläschen
+mit dünnen, eingerissenen Sehnenhäutchen. Von den Decken tropft zäher Schleim. Darin bewegst du
+dich (und jede Kreatur) nur sehr langsam, dafür erstickt er Feuer und bindet Sporen.
+
 **Das Sanktum:** Zwischen zwei Tiefen liegt eine sichere Kammer. Sie heilt dich und füllt
 deine Augmentationen auf. Dort gibt es einen Laden mit vier Bausteinen und einer Augmentation
 (bezahlt mit Blutperlen) und einen Altar mit drei Perks, von denen du einen wählst.
+Neben dem Altar wuchert ein Würfelgewächs: Für Blutperlen würfelt es die drei Perks neu
+(100 Perlen, jedes weitere Mal doppelt so teuer). Nur hier darfst du Augmentationen umbauen.
 
 **Statistik:** Der Titelbildschirm zeigt deine Läufe, Siege, die tiefste erreichte Tiefe und
 den schnellsten Sieg. Sie liegt als `records.json` im Benutzerordner (Windows:
@@ -78,6 +110,24 @@ neuer Lauf löschen den Spielstand.
 
 **Kodex:** Jeder Baustein, den du aufhebst, und jede Kreatur, die du tötest, wird dauerhaft im
 Kodex eingetragen (Titel, **K**). Neue Einträge meldet das Spiel mit „Neu im Kodex“.
+Der Kodex schaltet auch etwas frei: Bausteine, die du kennst, tauchen deutlich häufiger im
+Laden auf, und für jeden Wächter, den du je bezwungen hast, startest du einen neuen Lauf mit
+30 Blutperlen mehr.
+
+**Treffer:** Wunden bluten echtes Material in die Welt: Maden und Schwärmer Blut, der
+Magenwurm Säure, Sporenblasen und die Brutmutter Sporen. Über getroffenen Körpern steigen
+Schadenszahlen auf (abschaltbar in den Optionen).
+
+**Musik:** Jede Tiefe hat einen eigenen, prozedural erzeugten Klangteppich aus Drones, Atem und
+einem fernen Herzschlag, der in der Herzkammer schneller wird. Die Schleifen werden beim ersten
+Start im Hintergrund erzeugt und unter `%APPDATA%\Cloita\musik` zwischengespeichert. Eigene
+Dateien `assets/audio/musik_<tiefe>.wav/.ogg` (z. B. `musik_lunge.ogg`) ersetzen sie.
+
+**Phiolen:** Du startest mit einer halb vollen Phiole Blut, und in jeder Tiefe liegen weitere,
+mal gefüllt (Blut, Säure, Talg, Schleim), mal leer. Eine Phiole fasst 300 Zellen einer einzigen
+Flüssigkeit. Ausgegossenes ist echtes Material in der Welt: Blut löscht Brände, Säure frisst
+Wände, Talg wird zur Brandfalle. Trinken wirkt je nach Inhalt (Blut heilt ein wenig, Säure ätzt
+dich, jeder Schluck löscht Feuer). Geworfen zerplatzt die Phiole und verteilt alles auf einmal.
 
 **Blutperlen** liegen in den Höhlen und fallen aus jedem getöteten Gegner. Du sammelst sie
 durch Berührung ein.
@@ -87,13 +137,59 @@ durch Berührung ein.
 - Gallenschwärmer fliegen und spucken Säureklumpen.
 - Knochenspeier hängen unter Decken und schießen Nadelsalven.
 - Sporenblasen treiben auf dich zu und platzen zu einer entzündlichen Sporenwolke.
+- Blutegel schwirren schnell heran und saugen (ab dem Schlund).
+- Säurespucker kriechen und werfen Säure im Bogen; Säure macht ihnen nichts (ab dem Magen).
+- Brandmaden sind feuerfest und zerplatzen zu Flammen (ab dem Gedärm).
+- Schleimkriecher sind zäh und langsam, beißen hart und hinterlassen Schleim (Lunge).
+- Augenblasen schweben hoch oben und schießen Knochenspeere über große Distanz (ab der Lunge).
+- Nervenknoten hängen an Decken und feuern Funkenkränze in alle Richtungen (Herzkammer).
+- Gestaltwandler schweben auf Abstand und verwandeln dich mit einer Wandlungsdrüse für einige
+  Sekunden in eine Made: kein Zaubern, keine Phiole, langsam (Leber und Herzkammer).
+
+**Parallelwelten:** In der Schatzkammer des Schlunds wartet ein Weltenportal. Wer hindurchgeht,
+beginnt den Lauf in der nächsten Parallelwelt von vorn (wie Noitas Parallelwelten), und auch dort
+liegt wieder ein Portal: Die Welten sind durchnummeriert und reichen beliebig weit. Jede Welt hat
+einen neuen Weg durch die Biome, ungerade Welten sind seitenverkehrt, und mit jeder Welt werden
+Kreaturen deutlich zäher und die Beute reicher. Ausrüstung und Perks nimmst du mit.
+
+**Wucht:** Explosionen schleudern Körper weg: Gegner, Säcke und auch dich (Raketensprünge wie in
+Noita sind möglich, kosten aber Leben). Leichte Körper fliegen weiter, Wächter bewegen sich kaum.
+
+**Neues Spiel+:** Nach dem Sieg führt **N** noch tiefer: Du behältst Augmentationen, Beutel,
+Perks und Phiole und steigst erneut durch alle Tiefen hinab. Mit jeder Runde haben Kreaturen
+60 % mehr Leben und mehr Schaden. Die Statistik merkt sich die höchste bezwungene Runde.
+
+**Schatzkammern:** Am linken oder rechten Rand jeder Tiefe (außer der Herzkammer) liegt eine
+Halle hinter dicken Knochenwänden. Wer sie aufsprengt, findet eine starke Augmentation, Bausteine
+und Blutperlen, aber auch einen dreifach gestärkten Hüter.
+
+**Uraugen (Geheimnis):** Jede Tiefe verbirgt ein Urauge in einer versiegelten Knochenkammer
+tief im Gewebe. Wer nah genug ist, spürt es („Hinter der Wand pulsiert etwas“), freilegen musst du
+es selbst. Jedes Urauge gibt +10 maximales Leben. Wer alle sieben trägt und das Herz zerstört,
+erlebt das wahre Ende. Der Titel zählt Uraugen und wahre Siege.
+
+**Einstürze (Starrkörper):** Sprengst du einen Brocken frei, sodass er nirgends mehr anhängt,
+wird er wie in Noita zum Starrkörper: mit Schwerpunkt, Geschwindigkeit, Winkel und Drehung. Die
+Explosion schleudert ihn weg und versetzt ihn in Drehung, er prallt ab, kippt über Kanten, rollt
+aus, zerquetscht, was darunter steht, und wird wieder zu festem Gewebe, sobald er still liegt.
+Die Suche nach losen Brocken läuft im Rust-Kern.
+
+**Säcke:** Überall liegen prall gefüllte Säcke wie Fässer in Noita. Ein Treffer genügt:
+Talgsäcke explodieren in brennendes Fett, Säuresäcke platzen ätzend, Sporensäcke entlassen eine
+entzündliche Wolke. Explosionen reißen benachbarte Säcke mit, und auch Gegnerschüsse bringen
+sie zum Platzen.
+
+**Fundstücke:** In jeder Tiefe liegt ein **Herzklumpen** (+20 maximales Leben, heilt voll) und
+zwei **Brutkokons**, die beim Öffnen (E) Blutperlen und zufällige Beute ausspucken.
 
 Gegner erinnern sich drei Sekunden lang daran, wo sie dich zuletzt gesehen haben. Deine
 eigenen Explosionen verletzen auch dich.
 
 **Statuseffekte:** Wer Feuer berührt, fängt an zu brennen, nimmt Schaden und setzt die Umgebung
-in Brand. Flüssigkeit löscht und macht nass, und nasse Körper fangen kein Feuer. Das gilt für
-dich und für alle Gegner.
+in Brand. Flüssigkeit löscht und macht nass, und nasse Körper fangen kein Feuer. Talg dagegen
+löscht nicht: Er macht **ölig**, und ölige Körper brennen länger und heißer, bis Wasser, Blut
+oder Schleim das Fett abwaschen. Schleim macht **verschleimt** und bremst noch kurz nach. Eiter **vergiftet** (Schaden über Zeit); ein Schluck Blut aus der Phiole spült das Gift aus. Das
+gilt für dich und für alle Gegner.
 
 **Perks** (je Lauf jeder höchstens einmal):
 
@@ -108,10 +204,22 @@ dich und für alle Gegner.
 | Schnelle Drüsen | Augmentationen zaubern und laden 25 % schneller. |
 | Säureblut | Wenn du verletzt wirst, spritzt ätzendes Blut um dich. |
 | Zweiter Puls | Einmal pro Lauf stehst du nach dem Tod wieder auf. |
+| Flinke Hände | Du kannst Augmentationen überall umbauen, nicht nur im Sanktum. |
+| Wutdrüsen | Deine Geschosse richten 30 % mehr Schaden an. |
+| Perlenmagnet | Blutperlen fliegen dir aus großer Entfernung zu. |
+| Ausdauernde Flughäute | Deine Schwebekraft lädt sich auch in der Luft schnell auf. |
+| Gaslunge | Sporen und Ätzdampf schaden dir nicht. |
+| Schleimläufer | Schleim bremst dich nicht mehr. |
+| Feilscher | Im Laden zahlst du ein Drittel weniger. |
 
 ## Augmentationen (Zauberstäbe)
 
 Eine Augmentation ist ein Deck aus Bausteinen, das beim Zaubern der Reihe nach gezogen wird.
+
+**Ladungen:** Besonders starke Bausteine (Sprungdrüse, Fressgeschwür, Knochenbombe, Wandlungs-
+und Tauschdrüse, Glutkugel, Achterkreis, Zehnfachzauber, Glutsekret) haben nur wenige Ladungen.
+Die Zahl unten rechts am Baustein zeigt, wie viele noch übrig sind; aufgefüllt wird nur im
+Sanktum (wie an Noitas Heiligem Berg). Leere Bausteine werden beim Zaubern übersprungen.
 
 - **Drüse** (Form): das Projektil. Sie beendet einen Zug.
 - **Mutation**: verändert die nächste Drüse. Der Doppelzauber zieht zwei Gruppen auf einmal.
@@ -130,9 +238,36 @@ Ebenen stärker. Du trägst bis zu vier Augmentationen und 16 lose Bausteine.
 | Knochennadel | Drüse | 3 | Sehr schnell, gräbt sich nur wenig ein. |
 | Gallenblase | Drüse | 25 | Prallt ab und platzt nach kurzer Zeit mit großer Wucht. |
 | Klumpen | Drüse | 6 | Fliegt im Bogen und zerplatzt zu einer Lache. |
-| Knochensplitter | Drüse | 12 | Schrot aus fünf Splittern auf kurze Distanz. |
+| Knochensplitter | Drüse | 12 | Ein Schrot aus fünf Splittern auf kurze Distanz. |
 | Zahnbohrer | Drüse | 18 | Frisst sich ein Stück weit durch Fleisch und Knochen. |
-| Blutegel | Drüse | 15 | Langsam; heilt dich um die Hälfte seines Schadens. |
+| Blutegel | Drüse | 15 | Langsam; heilt dich um die Hälfte des Schadens, den er anrichtet. |
+| Sprungdrüse | Drüse | 40 | Wo sie aufschlägt, reißt sie dich hin. |
+| Knochensäge | Drüse | 20 | Eine kreisende Klinge: prallt oft ab und schneidet durch alles Lebende. |
+| Sporenmine | Drüse | 25 | Bleibt liegen und platzt, sobald etwas Lebendes nahe kommt. |
+| Fressgeschwür | Drüse | 60 | Eine träge Kugel, die einen breiten Gang durch das Gewebe frisst. |
+| Knochenspeer | Drüse | 22 | Schwer und durchschlagend: spießt alles in seiner Bahn auf. |
+| Gallenregen | Drüse | 18 | Sechs Gallentropfen im hohen Bogen. |
+| Talgblase | Drüse | 14 | Eine schwerfällige Blase, die zu einer großen Lache zerplatzt. |
+| Mikrofunke | Drüse | 1 | Winzig, billig und sehr schnell. |
+| Brandgeschwulst | Drüse | 45 | Ein glühender Klumpen, der in einer brennenden Explosion aufgeht. |
+| Knochenbombe | Drüse | 55 | Prallt einmal ab und sprengt dann einen gewaltigen Krater. |
+| Nadelregen | Drüse | 16 | Acht Nadeln auf einmal. |
+| Sporenball | Drüse | 12 | Eine weiche Kugel, die zu einer Sporenwolke zerplatzt. |
+| Schleimkugel | Drüse | 10 | Klebt Gegner fest und löscht Brände. |
+| Grabklaue | Drüse | 8 | Kratzt einen schmalen, langen Gang ins Gewebe. |
+| Nervenstrom | Drüse | 20 | Ein Stromstoß: Trifft er Sehnen, jagt ein Strom durch das ganze Geflecht. |
+| Wandlungsdrüse | Drüse | 60 | Wen sie trifft, der wird zu etwas anderem. Wächter widerstehen. |
+| Tauschdrüse | Drüse | 25 | Trifft sie eine Kreatur, tauschst du mit ihr den Platz. |
+| Kettenfunke | Drüse | 22 | Springt nach einem Treffer auf bis zu drei weitere Kreaturen über. |
+| Leuchtkugel | Drüse | 10 | Schwebt lange und leuchtet die Dunkelheit weit aus. |
+| Säurepfeil | Drüse | 9 | Schnell und ätzend. |
+| Blutstrahl | Drüse | 3 | Ein dünner Strahl Blut: löscht Brände, schadet kaum. |
+| Talgbombe | Drüse | 30 | Prallt ab und platzt dann zu einer brennenden Fettlache. |
+| Dornenhagel | Drüse | 26 | Zwölf Knochendornen in alle Richtungen nach vorne. |
+| Kauleiste | Drüse | 35 | Eine Reihe Zähne, die lange durch Wände und Gegner mahlt. |
+| Gelenkkugel | Drüse | 12 | Prallt immer wieder von Wänden ab. |
+| Giftblase | Drüse | 14 | Zerplatzt zu einer Lache vergiftenden Eiters. |
+| Glutkugel | Drüse | 50 | Ein Tropfen Glutblut, der alles in Brand setzt, was er berührt. |
 | Beschleunigung | Mutation | 3 | Nächste Drüse fliegt schneller. |
 | Sprengkraft | Mutation | 12 | Größere Explosion. |
 | Schwerkraftumkehr | Mutation | 4 | Nächste Drüse fällt nach oben. |
@@ -141,7 +276,40 @@ Ebenen stärker. Du trägst bis zu vier Augmentationen und 16 lose Bausteine.
 | Durchbohren | Mutation | 10 | Nächste Drüse fliegt durch Kreaturen hindurch. |
 | Abprall | Mutation | 5 | Nächste Drüse prallt dreimal von Wänden ab. |
 | Brandbeschleuniger | Mutation | 8 | Getroffene Kreaturen fangen Feuer. |
-| Langlebigkeit | Mutation | 4 | Doppelte Flugzeit, etwas langsamer. |
+| Langlebigkeit | Mutation | 4 | Nächste Drüse fliegt doppelt so lange, aber langsamer. |
+| Dreifachzauber | Mutation | 3 | Zieht drei Gruppen auf einmal. |
+| Vierfachzauber | Mutation | 5 | Zieht vier Gruppen auf einmal. |
+| Achterkreis | Mutation | 12 | Zieht acht Gruppen und verschießt sie im Kreis um dich. |
+| Fächer | Mutation | 6 | Zieht fünf Gruppen und fächert sie weit auf. |
+| Vorne und hinten | Mutation | 4 | Zieht zwei Gruppen: eine nach vorne, eine nach hinten. |
+| Rasende Drüse | Mutation | 10 | Nächste Drüse fliegt zweieinhalbmal so schnell. |
+| Sprengkern | Mutation | 25 | Viel größere Explosion. |
+| Kurzlebigkeit | Mutation | 1 | Nächste Drüse vergeht nach halber Zeit, dafür zauberst du schneller. |
+| Giftzahn | Mutation | 9 | Nächste Drüse trifft deutlich härter und brennt sich ein. |
+| Blutpreis | Mutation | -60 | Gibt 60 Mana, kostet aber eine längere Pause. |
+| Dauerladung | Mutation | 20 | Die Augmentation lädt nach diesem Durchgang fast sofort nach. |
+| Schleimspur | Mutation | 6 | Nächste Drüse zieht eine zähe Schleimspur. |
+| Sporenspur | Mutation | 6 | Nächste Drüse zieht eine Sporenwolke hinter sich her. |
+| Bluthunger | Mutation | 14 | Nächste Drüse sucht den Mauszeiger und fliegt schneller. |
+| Glutspur | Mutation | 18 | Nächste Drüse tropft Glutblut. |
+| Eiterspur | Mutation | 6 | Nächste Drüse tropft vergiftenden Eiter. |
+| Zündfunke | Mutation | 4 | Kleine Explosion am Ende des Flugs. |
+| Gleitfähigkeit | Mutation | 3 | Nächste Drüse fällt nur halb so stark und fliegt länger. |
+| Bleischwere | Mutation | 2 | Nächste Drüse fällt dreimal so stark. |
+| Glühende Spitze | Mutation | 16 | Nächste Drüse fliegt durch Kreaturen und setzt sie in Brand. |
+| Gummisehne | Mutation | 8 | Nächste Drüse prallt sechsmal ab. |
+| Zehnfachzauber | Mutation | 20 | Zieht zehn Gruppen und fächert sie breit. |
+| Schwerelosigkeit | Mutation | 2 | Nächste Drüse fällt nicht. |
+| Schwere Ladung | Mutation | 7 | Mehr Schaden, aber langsamer. |
+| Schadenszuwachs | Mutation | 5 | Nächste Drüse trifft härter. |
+| Blutspur | Mutation | 4 | Nächste Drüse zieht eine Blutspur hinter sich her. |
+| Säurespur | Mutation | 10 | Nächste Drüse tropft Magensäure. |
+| Feuerspur | Mutation | 8 | Nächste Drüse zieht eine Flammenspur. |
+| Talgspur | Mutation | 4 | Nächste Drüse tropft Talg. |
+| Streuung | Mutation | 1 | Nächste Drüse fliegt ungenau. |
+| Mana-Zuschuss | Mutation | -30 | Gibt beim Zaubern 30 Mana zurück. |
+| Hast | Mutation | 4 | Verkürzt die Pause bis zum nächsten Zauber. |
+| Schnellladung | Mutation | 8 | Die Augmentation lädt nach diesem Durchgang schneller nach. |
 | Aufprall-Nerv | Nerv | 6 | Setzt die nächste Gruppe beim Aufprall frei. |
 | Zeit-Nerv | Nerv | 6 | Setzt die nächste Gruppe nach kurzer Zeit frei. |
 | End-Nerv | Nerv | 6 | Setzt die nächste Gruppe am Ende des Flugs frei. |
@@ -151,9 +319,23 @@ Ebenen stärker. Du trägst bis zu vier Augmentationen und 16 lose Bausteine.
 | Säuresekret | Sekret | 14 | Hinterlässt Magensäure |
 | Feuersekret | Sekret | 10 | Hinterlässt Feuer |
 | Sporensekret | Sekret | 10 | Hinterlässt Sporen |
-| Sehnensekret | Sekret | 12 | Baut Sehnen: eine Plattform zum Draufstehen |
-| Knochensekret | Sekret | 16 | Baut Knochen: Deckung gegen Geschosse |
-| Wucherungssekret | Sekret | 12 | Pflanzt eine Wucherung, die sich durch Fleisch frisst |
+| Schleimsekret | Sekret | 8 | Hinterlässt Schleim |
+| Rauchsekret | Sekret | 3 | Hinterlässt Rauch |
+| Glutsekret | Sekret | 30 | Hinterlässt Glutblut, das alles Brennbare entzündet. |
+| Eitersekret | Sekret | 8 | Hinterlässt vergiftenden Eiter. |
+| Ätzdampfsekret | Sekret | 12 | Hinterlässt Ätzdampf |
+| Staubsekret | Sekret | 5 | Hinterlässt Knochenstaub |
+| Sehnensekret | Sekret | 12 | Baut einen Klumpen Sehnen - eine Plattform zum Draufstehen. |
+| Knochensekret | Sekret | 16 | Baut einen Klumpen Knochen - eine Deckung gegen Geschosse. |
+| Wucherungssekret | Sekret | 12 | Pflanzt eine Wucherung, die sich durch Fleisch frisst. |
+
+**Zauberfamilien:** Neben den 94 handgemachten Bausteinen oben gibt es 310 Familienbausteine
+(insgesamt 404, so viele wie Noita Zauber hat). Jede Grundform gibt es in jedem Element:
+Formen Tropfen, Kugel, Bombe, Regen, Strahl, Bohrer, Sucher, Splitter, Mine, Säge, Welle, Geschoss, Blase, Nadel, Kette, Schauer, Klinge, Leuchte; Elemente Blut, Säure, Talg, Sporen, Schleim, Eiter, Glut, Staub, Dampf, Rauch, Feuer, Wucher, Sehnen, Knochen (z. B. Glutbombe, Sporenregen, Eiternadel, Knochenwelle).
+Dazu Element-Kerne und -Spuren als Mutationen, Stufen I–IV für Tempo, Wucht, Sprengsatz, Dauer,
+Schwere, Federung, Zittern, Eile, Nachwuchs und Blutopfer, Ringformationen mit 3 bis 12 Gruppen,
+Zange, Bündel, Weiter Fächer sowie Zeit-Nerven mit 0,15 s, 0,8 s und 1,5 s. Familienbausteine sind
+seltener als die handgemachten.
 
 Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 
@@ -172,11 +354,15 @@ Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 | Knochen | Hart; zerfällt bei Explosionen teils zu Knochenstaub |
 | Knochenstaub | Pulver, rutscht und häuft sich |
 | Sehnen | Brücken; brennen langsam ab |
-| Blut | Flüssigkeit; löscht Feuer (wird dabei zu Schorf), gerinnt an der Luft |
+| Blut | Flüssigkeit; löscht Feuer (wird dabei zu Schorf), weicht Knochenstaub zu Schorf auf |
 | Talg | Leicht, schwimmt auf Blut, brennt heftig |
 | Magensäure | Ätzt Fleisch, Sehnen, Schorf, Wucherung und (langsam) Knochen; verbraucht sich dabei und gibt Ätzdampf ab; leuchtet |
 | Wucherung | Wächst in Fleisch, frisst Blut, setzt Sporen frei; brennt |
 | Sporen | Gas; infizieren Fleisch und Sehnen, entzünden sich explosionsartig |
+| Schleim | Sehr zähe Flüssigkeit; bremst alles, was darin steckt, erstickt Feuer, bindet Sporen; Säure zersetzt ihn langsam |
+| Glutblut | Geschmolzenes Blut (Herzkammer); verbrennt, entzündet Talg, Sehnen, Sporen; erstarrt in Blut, Schleim und Eiter zu Schorf; leuchtet |
+| Eiter | Flüssigkeit (Gedärm); vergiftet, wer hineingerät, und lässt Fleisch langsam wuchern; Säure zersetzt ihn |
+| Nervenstrom | Strom, der als Welle durch Sehnen läuft (Brücken, Lungenhäutchen); verletzt jeden, der die Sehne berührt, entzündet Sporen und Talg. Die Sehne ist danach kurz erschöpft und wächst wieder zusammen |
 | Feuer, Rauch, Ätzdampf | Steigen auf und vergehen; Feuer leuchtet |
 
 Reaktionen stehen als Tabelle in `src/reactions.py`. Eine neue Wechselwirkung ist eine Zeile.
@@ -213,7 +399,7 @@ py-noita-claude/
 ├── src/
 │   ├── main.py          # Fenster, Eingabe, Kamera, Zeichnen
 │   ├── run.py           # Ein Lauf: Tiefen, Kampf, Beute, Ausgang, Sieg/Tod
-│   ├── depths.py        # Die vier Tiefen und ihre Eigenschaften
+│   ├── depths.py        # Die sieben Tiefen und ihre Eigenschaften
 │   ├── worldgen.py      # Prozedurale Level mit Ausgang und Bossarena
 │   ├── world.py         # Weltpuffer, Malen, Explosionen, Kollision
 │   ├── materials.py     # Materialien, Palette, Leuchtkraft
@@ -224,6 +410,8 @@ py-noita-claude/
 │   ├── spells.py        # Baustein-Katalog
 │   ├── wand.py          # Augmentationen: Deck-Logik und Vorlagen
 │   ├── projectiles.py   # Projektile, Auslöser, Explosionen, Treffer
+│   ├── chunks.py        # Herabfallende, losgesprengte Gewebebrocken
+│   ├── flask.py         # Phiolen: gießen, aufsaugen, trinken, werfen
 │   ├── loot.py          # Prozedurale Augmentationen, Gegenstände in der Welt
 │   ├── inventory.py     # Augmentationen und Beutel, Umbau-Logik
 │   ├── editor.py        # Umbau-Bildschirm (pygame)
@@ -231,6 +419,9 @@ py-noita-claude/
 │   ├── perks.py         # Perks
 │   ├── menus.py         # Titel und Pause
 │   ├── records.py       # Statistik, Kodex und Spielstand (JSON im Benutzerordner)
+│   ├── music.py         # Prozedurale Ambient-Musik pro Tiefe (testbar)
+│   ├── options.py       # Einstellungen (JSON im Benutzerordner)
+│   ├── floaters.py      # Aufsteigende Schadenszahlen
 │   ├── sounds.py        # Synthetisierte Soundeffekte (testbar)
 │   ├── audio.py         # Wiedergabe mit stummem Fallback
 │   ├── hud.py           # Anzeige

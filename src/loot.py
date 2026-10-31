@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Collection
 from dataclasses import dataclass
 
-from src.materials import AIR, STOPS_PROJECTILE
+from src.flask import CAPACITY, Flask
+from src.materials import ACID, AIR, BLOOD, MAGMA, MUCUS, PUS, STOPS_PROJECTILE, TALLOW
 from src.perks import PERK_BY_KEY
 from src.spells import BLOCKS, CATALOG, Block, Category
 from src.wand import WandSpec
 from src.world import World
 
 ITEM_GRAVITY = 400.0
+ITEM_BOUNCE = 0.35
+ITEM_DRAG = 0.8  # per second in the air
+ITEM_FRICTION = 0.6  # sideways speed kept per touch of the ground
 PICKUP_RANGE = 14.0  # px between player centre and item
 
 ADJECTIVES = ("Pulsierende", "Eitrige", "Vernarbte", "Zuckende", "Blasse", "Schwärende", "Hohle")
@@ -27,10 +32,18 @@ CATEGORY_WEIGHTS = {
 }
 
 
-def random_block(rng: random.Random, category: Category | None = None) -> str:
-    """Pick a block key, weighted by category."""
+KNOWN_BONUS = 2.5  # blocks from the Kodex are this much likelier in the shop
+
+
+def random_block(
+    rng: random.Random, category: Category | None = None, favoured: Collection[str] = ()
+) -> str:
+    """Pick a block key, weighted by category; ``favoured`` blocks come up more often."""
     pool = [b for b in BLOCKS if category is None or b.category is category]
-    weights = [CATEGORY_WEIGHTS[b.category] for b in pool]
+    weights = [
+        CATEGORY_WEIGHTS[b.category] * b.rarity * (KNOWN_BONUS if b.key in favoured else 1.0)
+        for b in pool
+    ]
     return rng.choices(pool, weights)[0].key
 
 
@@ -83,9 +96,17 @@ class Pickup:
     block: str | None = None
     pearls: int = 0  # blood pearls (currency), collected on touch
     perk: str | None = None  # a perk offered at the sanctum altar
+    flask: Flask | None = None
+    heart: int = 0  # >0: a "Herzklumpen" that raises maximum health by this much
+    cocoon: bool = False  # a brood cocoon: opening it spills loot
+    eye: bool = False  # an Urauge, the hidden treasure of a depth
+    reroll: bool = False  # the sanctum's "Neuwürfeln" growth: new perk choices for pearls
+    portal: bool = False  # the mirror portal: leads into the mirror world
+    seen: bool = False  # the player has had it in sight (hidden items are not drawn)
     price: int = 0  # >0: shop item that must be bought
     floating: bool = False  # shop items and perks hover in place
     vy: float = 0.0
+    vx: float = 0.0  # thrown about by blasts and kicks
     age: float = 0.0
 
     @property
@@ -97,6 +118,18 @@ class Pickup:
             return f"{self.pearls} Blutperlen"
         if self.wand is not None:
             return f"Augmentation: {self.wand.name_de}"
+        if self.flask is not None:
+            return self.flask.label_de
+        if self.heart:
+            return f"Herzklumpen (+{self.heart} max. Leben)"
+        if self.cocoon:
+            return "Brutkokon (öffnen)"
+        if self.eye:
+            return "Urauge"
+        if self.reroll:
+            return "Neue Perks würfeln"
+        if self.portal:
+            return "Weltenportal: in die nächste Parallelwelt (härter, reichere Beute)"
         block: Block = CATALOG[self.block or ""]
         return f"{block.category.value}: {block.name_de}"
 
@@ -105,12 +138,27 @@ class Pickup:
         self.age += dt
         if self.floating:
             return
+        if self.vx:
+            steps = int(abs(self.vx * dt)) + 1
+            for _ in range(steps):
+                nx = self.x + self.vx * dt / steps
+                if STOPS_PROJECTILE[world.get(int(nx), int(self.y) - 1)]:
+                    self.vx = -self.vx * ITEM_BOUNCE  # off the wall
+                    break
+                self.x = nx
+            self.vx *= max(0.0, 1.0 - ITEM_DRAG * dt)
+            if abs(self.vx) < 3:
+                self.vx = 0.0
         self.vy = min(self.vy + ITEM_GRAVITY * dt, 300.0)
         steps = int(abs(self.vy * dt)) + 1
         for _ in range(steps):
             ny = self.y + self.vy * dt / steps
             if STOPS_PROJECTILE[world.get(int(self.x), int(ny))]:
-                self.vy = 0.0
+                if self.vy > 80:  # a little bounce, then it lies still
+                    self.vy = -self.vy * ITEM_BOUNCE
+                else:
+                    self.vy = 0.0
+                    self.vx *= ITEM_FRICTION
                 return
             self.y = ny
 
@@ -127,6 +175,39 @@ def nearest_pickup(pickups: list[Pickup], x: float, y: float) -> Pickup | None:
     return best
 
 
+HEART_BONUS = 20
+
+
+def cocoon_loot(rng: random.Random, x: float, y: float, level: int) -> list[Pickup]:
+    """What spills out of an opened brood cocoon."""
+    items = [Pickup(x, y, pearls=rng.randint(15, 40) * level)]
+    for _ in range(rng.randint(1, 3)):
+        roll = rng.random()
+        if roll < 0.15:
+            items.append(Pickup(x, y, wand=generate_wand(rng, level + 1)))
+        elif roll < 0.35:
+            items.append(Pickup(x, y, flask=random_flask(rng)))
+        elif roll < 0.45:
+            items.append(Pickup(x, y, heart=HEART_BONUS))
+        else:
+            items.append(Pickup(x, y, block=random_block(rng)))
+    for item in items:
+        item.vy = -rng.uniform(80, 160)  # spills upwards a little
+        item.x += rng.uniform(-8, 8)
+    return items
+
+
+FLASK_CONTENTS = ((BLOOD, 4), (ACID, 2), (TALLOW, 2), (MUCUS, 1), (PUS, 1), (MAGMA, 1), (None, 2))
+
+
+def random_flask(rng: random.Random) -> Flask:
+    """A flask found in the caves: usually filled, sometimes empty."""
+    material = rng.choices([m for m, _ in FLASK_CONTENTS], [w for _, w in FLASK_CONTENTS])[0]
+    if material is None:
+        return Flask()
+    return Flask(material, rng.randint(CAPACITY // 2, CAPACITY))
+
+
 def place_loot(
     world: World,
     rng: random.Random,
@@ -135,10 +216,16 @@ def place_loot(
     blocks: int,
     level: int = 1,
     safe_radius: float = 60,
+    flasks: int = 0,
+    hearts: int = 0,
+    cocoons: int = 0,
 ) -> list[Pickup]:
     """Scatter loot on cave floors. One block always lies next to the spawn."""
     items: list[Pickup] = [Pickup(avoid[0] + 18, avoid[1], block=random_block(rng, Category.FORM))]
-    wanted = [("wand", wands), ("block", blocks)]
+    wanted = [
+        ("wand", wands), ("block", blocks), ("flask", flasks), ("heart", hearts),
+        ("cocoon", cocoons),
+    ]  # fmt: skip
     for kind, count in wanted:
         placed = 0
         for _attempt in range(count * 60):
@@ -152,6 +239,12 @@ def place_loot(
                 y += 1
             if kind == "wand":
                 items.append(Pickup(x, y, wand=generate_wand(rng, level)))
+            elif kind == "flask":
+                items.append(Pickup(x, y, flask=random_flask(rng)))
+            elif kind == "heart":
+                items.append(Pickup(x, y, heart=HEART_BONUS))
+            elif kind == "cocoon":
+                items.append(Pickup(x, y, cocoon=True))
             else:
                 items.append(Pickup(x, y, block=random_block(rng)))
             placed += 1

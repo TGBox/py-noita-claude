@@ -23,10 +23,16 @@ from src.materials import (
     FLESH,
     FUME,
     GROWTH,
+    MAGMA,
     MATERIAL_COUNT,
+    MUCUS,
+    PUS,
     SINEW,
     SMOKE,
+    SPARK,
+    SPENT,
     SPORES,
+    TALLOW,
 )
 
 
@@ -45,8 +51,9 @@ REACTIONS: tuple[Reaction, ...] = (
     # Fire
     Reaction(FIRE, BLOOD, SMOKE, CRUST, 0.5),  # blood douses fire and cooks into scab
     Reaction(FIRE, FLESH, FIRE, CRUST, 0.02),  # flesh chars instead of burning away
-    # Blood
-    Reaction(BLOOD, AIR, CRUST, AIR, 0.0004),  # clots slowly where it touches air
+    # Blood soaks bone dust into scab. (It no longer clots in open air: falling drops
+    # used to freeze into floating specks and pool surfaces into lids that plugged tunnels.)
+    Reaction(BLOOD, BONE_DUST, BLOOD, CRUST, 0.002),
     # Acid dissolves organic matter into fumes (and is used up doing so)
     Reaction(ACID, FLESH, FUME, AIR, 0.03),
     Reaction(ACID, SINEW, FUME, AIR, 0.03),
@@ -58,6 +65,32 @@ REACTIONS: tuple[Reaction, ...] = (
     Reaction(GROWTH, FLESH, GROWTH, GROWTH, 0.003),
     Reaction(GROWTH, BLOOD, GROWTH, GROWTH, 0.01),
     Reaction(GROWTH, AIR, GROWTH, SPORES, 0.0005),
+    # Mucus smothers fire, binds spores and is slowly eaten by acid
+    Reaction(FIRE, MUCUS, SMOKE, MUCUS, 0.6),
+    Reaction(MUCUS, SPORES, MUCUS, AIR, 0.2),
+    Reaction(ACID, MUCUS, FUME, AIR, 0.01),
+    # Glutblut (molten blood) sets fuel alight, chars flesh and cools in liquids into scab
+    Reaction(MAGMA, TALLOW, MAGMA, FIRE, 0.2),
+    Reaction(MAGMA, SINEW, MAGMA, FIRE, 0.05),
+    Reaction(MAGMA, GROWTH, MAGMA, FIRE, 0.05),
+    Reaction(MAGMA, SPORES, MAGMA, FIRE, 0.5),
+    Reaction(MAGMA, FLESH, MAGMA, CRUST, 0.004),
+    Reaction(MAGMA, BLOOD, CRUST, SMOKE, 0.3),
+    Reaction(MAGMA, MUCUS, CRUST, SMOKE, 0.3),
+    Reaction(MAGMA, PUS, CRUST, SMOKE, 0.3),
+    Reaction(MAGMA, AIR, MAGMA, SMOKE, 0.0008),
+    # Eiter (pus) festers: it slowly rots flesh into growth; acid burns it away
+    Reaction(PUS, FLESH, PUS, GROWTH, 0.0015),
+    Reaction(ACID, PUS, FUME, AIR, 0.05),
+    # Nerve current runs along sinew as a one-way wave: the current moves on, the sinew it
+    # leaves behind is spent for a moment and then heals (so currents never loop forever)
+    Reaction(SPARK, SINEW, SPENT, SPARK, 1.0),
+    Reaction(SPARK, SPORES, SPARK, FIRE, 0.5),
+    Reaction(SPARK, TALLOW, SPARK, FIRE, 0.2),
+    Reaction(SPENT, SINEW, SINEW, SINEW, 0.008),
+    Reaction(SPENT, SPENT, SINEW, SPENT, 0.004),
+    Reaction(SPENT, AIR, SINEW, AIR, 0.004),
+    Reaction(SPENT, FLESH, SINEW, FLESH, 0.004),
     # Spores infect what they land on
     Reaction(SPORES, FLESH, AIR, GROWTH, 0.05),
     Reaction(SPORES, SINEW, AIR, GROWTH, 0.05),

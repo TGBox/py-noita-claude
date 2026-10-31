@@ -17,7 +17,7 @@ from pathlib import Path
 from src.materials import MATERIAL_COUNT, MATERIALS
 from src.reactions import build_tables, to_fixed
 
-ABI_VERSION = 6
+ABI_VERSION = 7
 NATIVE_DIR = Path(__file__).resolve().parent.parent / "native"
 LIBRARY_NAME = {
     "win32": "cloita_core.dll",
@@ -89,37 +89,15 @@ def load() -> ctypes.CDLL:
         )
     library.cloita_new.restype = ctypes.c_void_p
     library.cloita_new.argtypes = [
-        _size,
-        _size,
-        ctypes.c_uint64,
-        _size,
-        _u8p,
-        _i16p,
-        _u16p,
-        _u8p,
-        _u8p,
-        _u8p,
-        _u8p,
-        _u8p,
-        _u16p,
-        _u8p,
-        _u16p,
-        _u8p,
-        _u8p,
-        _u16p,
+        _size, _size, ctypes.c_uint64, _size,
+        _u8p, _i16p, _u16p, _u8p, _u8p, _u8p, _u8p, _u8p, _u16p, _u8p, _u16p,
+        _u8p, _u8p, _u16p,
     ]
     library.cloita_free.argtypes = [ctypes.c_void_p]
     library.cloita_seed.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
     library.cloita_step.restype = ctypes.c_uint32
     library.cloita_step.argtypes = [
-        ctypes.c_void_p,
-        _u8p,
-        _u8p,
-        _u8p,
-        _size,
-        _size,
-        _size,
-        _size,
+        ctypes.c_void_p, _u8p, _u8p, _u8p, _size, _size, _size, _size,
     ]
     library.cloita_grain.argtypes = [_u8p, _size, _size, ctypes.c_uint64, ctypes.c_uint8]
     library.cloita_render_lit.argtypes = [
@@ -131,16 +109,13 @@ def load() -> ctypes.CDLL:
         _u8p, _size, _size, _u8p, _size, _size, _size, _size, _size, _size, _size,
         ctypes.POINTER(_size), ctypes.POINTER(_size),
     ]  # fmt: skip
+    library.cloita_loose.restype = ctypes.c_size_t
+    library.cloita_loose.argtypes = [
+        _u8p, _size, _size, _u8p, _size, _size, _size, _size, _size, _size, _size,
+        ctypes.POINTER(ctypes.c_uint32), _u16p, _size,
+    ]  # fmt: skip
     library.cloita_render.argtypes = [
-        _u8p,
-        _u8p,
-        _u8p,
-        _size,
-        _size,
-        _size,
-        _size,
-        _size,
-        ctypes.c_uint8,
+        _u8p, _u8p, _u8p, _size, _size, _size, _size, _size, ctypes.c_uint8,
     ]
     return library
 
@@ -285,3 +260,29 @@ def reachable(
         ctypes.byref(out_x), ctypes.byref(out_y),
     )  # fmt: skip
     return bool(found), (out_x.value, out_y.value)
+
+
+def loose_groups(
+    grid: ctypes.Array,
+    width: int,
+    height: int,
+    rigid: list[int],
+    centre: tuple[int, int],
+    radius: int,
+    reach: int,
+    min_cells: int,
+    max_cells: int,
+    capacity: int = 8192,
+) -> list[list[int]]:
+    """Cell indices of free-hanging solid groups around ``centre`` (see ``cloita_loose``)."""
+    out_index = (ctypes.c_uint32 * capacity)()
+    out_group = (ctypes.c_uint16 * capacity)()
+    count = load().cloita_loose(
+        grid, width, height, _array(ctypes.c_uint8, rigid), len(rigid),
+        max(0, centre[0]), max(0, centre[1]), radius, reach, min_cells, max_cells,
+        out_index, out_group, capacity,
+    )  # fmt: skip
+    groups: dict[int, list[int]] = {}
+    for k in range(count):
+        groups.setdefault(out_group[k], []).append(out_index[k])
+    return list(groups.values())

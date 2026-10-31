@@ -78,9 +78,7 @@ def envelope(signal: Signal, attack: float, decay: float, sustain: float = 0.0) 
     out: Signal = []
     for i, value in enumerate(signal):
         t = i / SAMPLE_RATE
-        level = (
-            t / attack if t < attack else sustain + (1 - sustain) * math.exp(-(t - attack) * decay)
-        )
+        level = t / attack if t < attack else sustain + (1 - sustain) * math.exp(-(t - attack) * decay)
         out.append(value * level)
     return out
 
@@ -124,9 +122,7 @@ def finish(signal: Signal, gain: float = 1.0) -> bytes:
 def cast(variant: int) -> bytes:
     """A soft wet whoosh with a small fleshy pop."""
     pitch = (1.0, 0.86, 1.15)[variant % 3]
-    whoosh = envelope(
-        noise(0.14, sweep(2600 * pitch, 500 * pitch, 0.14), seed=10 + variant), 0.012, 28
-    )
+    whoosh = envelope(noise(0.14, sweep(2600 * pitch, 500 * pitch, 0.14), seed=10 + variant), 0.012, 28)
     pop = envelope(sine(sweep(170 * pitch, 90 * pitch, 0.08), 0.08), 0.004, 40)
     return finish(mix((whoosh, 1.0), (pop, 0.6)), gain=0.7)
 
@@ -134,14 +130,8 @@ def cast(variant: int) -> bytes:
 def blast(big: bool) -> bytes:
     """A deep thump with a muffled rumble tail."""
     duration = 1.1 if big else 0.4
-    thump = envelope(
-        sine(sweep(95 if big else 130, 32 if big else 48, duration, 2.0), duration),
-        0.008,
-        5 if big else 11,
-    )
-    rumble = envelope(
-        noise(duration, sweep(900 if big else 1400, 120, duration), seed=3), 0.01, 3.5 if big else 9
-    )
+    thump = envelope(sine(sweep(95 if big else 130, 32 if big else 48, duration, 2.0), duration), 0.008, 5 if big else 11)
+    rumble = envelope(noise(duration, sweep(900 if big else 1400, 120, duration), seed=3), 0.01, 3.5 if big else 9)
     return finish(mix((thump, 1.0), (rumble, 0.9)))
 
 
@@ -178,10 +168,7 @@ def buy() -> bytes:
 
 
 def chord(frequencies: Sequence[float], duration: float, attack: float) -> Signal:
-    voices = [
-        envelope(sine(lambda _t, f=f: f, duration, harmonics=(0.15,)), attack, 2.5)
-        for f in frequencies
-    ]
+    voices = [envelope(sine(lambda _t, f=f: f, duration, harmonics=(0.15,)), attack, 2.5) for f in frequencies]
     return mix(*((voice, 1.0 / len(voices)) for voice in voices))
 
 
@@ -214,6 +201,42 @@ def victory() -> bytes:
     return finish(concat(*chords), gain=0.8)
 
 
+def drink() -> bytes:
+    """Three wet gulps."""
+    gulps = [
+        envelope(sine(sweep(f, f * 0.6, 0.12), 0.12, harmonics=(0.2,)), 0.01, 22) for f in (220, 200, 180)
+    ]
+    return finish(concat(*gulps, gap=0.06), gain=0.7)
+
+
+def shatter() -> bytes:
+    """A flask breaking: bright clinks over a splash."""
+    clinks = mix(*((envelope(sine(lambda _t, f=f: f, 0.25), 0.002, 30), 0.3) for f in (1250, 1650, 2150)))
+    splash = envelope(noise(0.35, sweep(1600, 400, 0.35), seed=12), 0.003, 9)
+    return finish(mix((clinks, 0.8), (splash, 1.0)), gain=0.8)
+
+
+def heartbeat() -> bytes:
+    """Lub-dub, low and close."""
+    lub = envelope(sine(sweep(70, 45, 0.16), 0.16), 0.005, 18)
+    dub = envelope(sine(sweep(60, 40, 0.14), 0.14), 0.005, 22)
+    return finish(concat(lub, dub, gap=0.09), gain=0.8)
+
+
+def kick() -> bytes:
+    """A dull, fleshy thwack."""
+    thwack = envelope(noise(0.09, sweep(900, 200, 0.09), seed=31), 0.002, 40)
+    body = envelope(sine(sweep(140, 70, 0.09), 0.09), 0.002, 35)
+    return finish(mix((thwack, 0.8), (body, 1.0)), gain=0.6)
+
+
+def teleport() -> bytes:
+    """A wet, rising suck followed by a soft pop."""
+    suck = envelope(noise(0.22, sweep(300, 1500, 0.22), seed=21), 0.15, 6)
+    pop = envelope(sine(sweep(260, 120, 0.1), 0.1), 0.003, 30)
+    return finish(concat(suck, pop), gain=0.7)
+
+
 def synthesize_all() -> dict[str, list[bytes]]:
     """Every sound effect of the game by event name (several variants where useful)."""
     return {
@@ -229,6 +252,11 @@ def synthesize_all() -> dict[str, list[bytes]]:
         "descend": [descend()],
         "death": [death()],
         "victory": [victory()],
+        "drink": [drink()],
+        "shatter": [shatter()],
+        "teleport": [teleport()],
+        "kick": [kick()],
+        "heartbeat": [heartbeat()],
     }
 
 

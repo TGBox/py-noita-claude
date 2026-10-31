@@ -7,11 +7,12 @@ import random
 from dataclasses import dataclass
 
 from src.body import ENEMY_TEAM, Body
-from src.materials import ACID, AIR, BLOOD, GROWTH, SPORES
+from src.materials import ACID, AIR, BLOOD, BONE_DUST, FIRE, MUCUS, SPORES, TALLOW
 from src.player import GRAVITY, MAX_FALL_SPEED
 from src.projectiles import ProjectileSystem
-from src.wand import Wand, WandSpec
-from src.world import World
+from src.spells import CATALOG
+from src.wand import Shot, Wand, WandSpec
+from src.world import World, disc_offsets
 
 Rect = tuple[int, int, int, int]
 
@@ -45,6 +46,13 @@ class CreatureSpec:
     pop_on_touch: bool = False  # bursts when it touches the player
     hangs: bool = False  # placed under ceilings instead of on floors
     pearls: int = 10  # blood pearls dropped on death
+    fire_immune: bool = False
+    acid_immune: bool = False
+    prop: bool = False  # a lifeless object (no AI, hit by everyone, not counted as a kill)
+    blast: int = 0  # explosion radius when it is destroyed
+    ignites: bool = False  # sets its splash on fire when destroyed
+    burrows: int = 0  # >0: digs through solid tissue with this radius as it moves
+    inhale: float = 0.0  # >0: periodically sucks the player in (px/s) and breathes out spores
 
 
 MAGGOT = CreatureSpec(
@@ -82,7 +90,7 @@ BROOD_MOTHER = CreatureSpec(
     ),
     ranged_cooldown=1.4, ranged_range=520, hover_height=55,
     summon=("sporenblase", "schwaermer"), summon_interval=5.0, summon_max=4,
-    boss=True, gore=GROWTH, pearls=220,
+    boss=True, gore=SPORES, pearls=220,  # solid gore would plug the exit
 )  # fmt: skip
 BONE_SPITTER = CreatureSpec(
     "knochenspeier", "Knochenspeier", width=8, height=7, hp=30, flying=True, speed=0,
@@ -93,14 +101,83 @@ SPORE_BLOAT = CreatureSpec(
     "sporenblase", "Sporenblase", width=9, height=9, hp=8, flying=True, speed=28, sight=300,
     melee_damage=6, pop_on_touch=True, gore=SPORES, burst=11, pearls=10,
 )  # fmt: skip
+EMBER_MAGGOT = CreatureSpec(
+    "brandmade", "Brandmade", width=10, height=6, hp=26, flying=False, speed=58, sight=450,
+    melee_damage=10, melee_cooldown=0.8, jump_speed=190, gore=FIRE, burst=6,
+    fire_immune=True, pearls=14,
+)  # fmt: skip
+ACID_SPITTER = CreatureSpec(
+    "saeurespucker", "Säurespucker", width=11, height=9, hp=34, flying=False, speed=30,
+    sight=420, melee_damage=6, jump_speed=120,
+    patterns=(("sekret_saeure", "klumpen"), ("gallenregen",)), ranged_cooldown=2.2,
+    ranged_range=300, gore=ACID, acid_immune=True, pearls=16,
+)  # fmt: skip
+LEECH = CreatureSpec(
+    "egel", "Blutegel", width=7, height=4, hp=8, flying=True, speed=95, sight=380,
+    melee_damage=4, melee_cooldown=0.4, hover_height=0, pearls=6,
+)  # fmt: skip
+EYE_BLOAT = CreatureSpec(
+    "augenblase", "Augenblase", width=11, height=11, hp=30, flying=True, speed=22, sight=600,
+    patterns=(("beschleunigung", "knochenspeer"),), ranged_cooldown=3.2, ranged_range=560,
+    hover_height=110, pearls=20,
+)  # fmt: skip
+MUCUS_CRAWLER = CreatureSpec(
+    "schleimkriecher", "Schleimkriecher", width=16, height=9, hp=90, flying=False, speed=24,
+    sight=360, melee_damage=18, melee_cooldown=1.3, jump_speed=0, gore=MUCUS, burst=8,
+    acid_immune=True, pearls=24,
+)  # fmt: skip
+NERVE_KNOT = CreatureSpec(
+    "nervenknoten", "Nervenknoten", width=9, height=9, hp=45, flying=True, speed=0, sight=420,
+    patterns=(("funke",), ("nervenstrom",)), ranged_cooldown=2.6, ranged_range=420,
+    radial=6, stationary=True, hangs=True, pearls=22,
+)  # fmt: skip
+BONE_EATER = CreatureSpec(
+    "knochenfresser", "Der Knochenfresser", width=30, height=18, hp=520, flying=True, speed=46,
+    sight=700, melee_damage=14, melee_cooldown=1.3,
+    patterns=(("knochensaege",), ("beschleunigung", "knochenspeer"), ("doppel", "knochenspeer", "knochenspeer")),
+    ranged_cooldown=1.5, ranged_range=520, hover_height=0, burrows=17, boss=True,
+    gore=BONE_DUST, pearls=200,
+)  # fmt: skip
+BREATH = CreatureSpec(
+    "atem", "Der Atem", width=40, height=30, hp=520, flying=True, speed=26, sight=700,
+    melee_damage=12, melee_cooldown=1.3,
+    patterns=(("sekret_sporen", "klumpen"), ("sekret_schleim", "klumpen")), radial=6,
+    ranged_cooldown=3.0, ranged_range=600, hover_height=40, inhale=55.0,
+    summon=("egel",), summon_interval=6.0, summon_max=6, boss=True, gore=MUCUS, pearls=240,
+)  # fmt: skip
+INHALE_TIME = 2.2  # seconds of each breath cycle spent sucking in
+BREATH_CYCLE = 6.0
+EXHALE_SHOTS = 12
+SHAPESHIFTER = CreatureSpec(
+    "gestaltwandler", "Gestaltwandler", width=10, height=10, hp=35, flying=True, speed=30,
+    sight=420, patterns=(("wandlungsdruese",), ("funke",), ("funke",)), ranged_cooldown=3.0,
+    ranged_range=320, hover_height=70, pearls=30,
+)  # fmt: skip
+TALLOW_SAC = CreatureSpec(
+    "talgsack", "Talgsack", width=8, height=9, hp=3, flying=False, speed=0, sight=0,
+    gore=TALLOW, burst=7, blast=12, ignites=True, prop=True, pearls=0,
+)  # fmt: skip
+ACID_SAC = CreatureSpec(
+    "saeuresack", "Säuresack", width=8, height=9, hp=3, flying=False, speed=0, sight=0,
+    gore=ACID, burst=8, blast=6, prop=True, acid_immune=True, pearls=0,
+)  # fmt: skip
+SPORE_SAC = CreatureSpec(
+    "sporensack", "Sporensack", width=8, height=9, hp=2, flying=False, speed=0, sight=0,
+    gore=SPORES, burst=12, prop=True, pearls=0,
+)  # fmt: skip
+PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
-    for spec in (MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, BROOD_MOTHER, HEART)
-}
+    for spec in (
+        MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, BROOD_MOTHER, HEART,
+        EMBER_MAGGOT, ACID_SPITTER, LEECH, EYE_BLOAT, MUCUS_CRAWLER, NERVE_KNOT,
+        TALLOW_SAC, ACID_SAC, SPORE_SAC, BONE_EATER, BREATH, SHAPESHIFTER,
+    )
+}  # fmt: skip
 
 MELEE_REACH = 2  # px around the body that counts as touching
 WANDER_PAUSE = 0.35  # chance that a new wander leg is a pause
-HURT_FLASH = 0.12  # seconds a creature flashes after taking damage
+HURT_FLASH = 0.08  # seconds a creature flashes after taking damage
 MEMORY = 3.0  # seconds a creature keeps hunting the last place it saw the player
 
 
@@ -110,6 +187,11 @@ class Creature(Body):
     def __init__(self, spec: CreatureSpec, x: int, y: int, rng: random.Random) -> None:
         super().__init__(x, y, spec.width, spec.height, spec.hp)
         self.spec = spec
+        self.blood = spec.gore
+        self.fire_immune = spec.fire_immune
+        self.acid_immune = spec.acid_immune
+        if spec.prop:
+            self.team = "neutral"  # everyone's shots and blasts can burst it
         self.rng = rng
         self.step_up = 3
         self.facing = 1
@@ -126,33 +208,50 @@ class Creature(Body):
         self.summon_timer = spec.summon_interval
         self.summon_count = 0
         self.summons: list[str] = []  # creature keys the manager should spawn
+        self.breath = 0.0  # position in the breathing cycle (inhaling bosses)
+        self.power = 1.0  # damage factor (New Game+)
+        self.flash_cooldown = 0.0
+        self.inhaling = False
         self.attacks = [
             Wand(
-                WandSpec(
-                    spec.name_de, blocks, mana_max=1e9, mana_regen=1e9, cast_delay=0, recharge=0
-                ),
+                WandSpec(spec.name_de, blocks, mana_max=1e9, mana_regen=1e9, cast_delay=0, recharge=0),
                 rng,
             )
             for blocks in spec.patterns
         ]
 
+    def empower(self, power: float) -> None:
+        """Scale health and damage (New Game+)."""
+        self.power = power
+        self.max_hp = self.hp = self.spec.hp * power
+
     def hurt(self, amount: float) -> None:
         if amount > 0:
-            self.flash = HURT_FLASH
+            if self.flash_cooldown <= 0:  # under constant fire it blinks instead of glowing white
+                self.flash = HURT_FLASH
+                self.flash_cooldown = HURT_FLASH * 3
             self.alerted = True
         super().hurt(amount)
 
-    def update(self, world: World, dt: float, player: Body, projectiles: ProjectileSystem) -> None:
+    def update(
+        self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
+    ) -> None:
         if self.dead:
             return
         self.age += dt
         self.flash = max(0.0, self.flash - dt)
+        self.flash_cooldown = max(0.0, self.flash_cooldown - dt)
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.ranged_cooldown = max(0.0, self.ranged_cooldown - dt)
         self.unstick(world)
 
         px, py = player.center
-        sees = not player.dead and self.can_see(world, px, py, self.spec.sight)
+        if self.spec.burrows:  # it eats its way through and feels the player through bone
+            cx, cy = self.center
+            world.dig(int(cx), int(cy), self.spec.burrows)
+            sees = not player.dead and math.hypot(px - cx, py - cy) <= self.spec.sight
+        else:
+            sees = not player.dead and self.can_see(world, px, py, self.spec.sight)
         self.alerted = self.alerted or sees
         if sees:
             self.memory = MEMORY
@@ -171,6 +270,8 @@ class Creature(Body):
 
         if sees:
             self._attack(player, projectiles)
+        if self.spec.inhale and self.alerted and not player.dead:
+            self._breathe(world, dt, player, projectiles)
         if self.spec.summon and self.alerted:
             self.summon_timer -= dt
             if self.summon_timer <= 0:
@@ -236,7 +337,7 @@ class Creature(Body):
     def _attack(self, player: Body, projectiles: ProjectileSystem) -> None:
         spec = self.spec
         if spec.melee_damage and self.attack_cooldown <= 0 and self._touches(player):
-            player.hurt(spec.melee_damage)
+            player.hurt(spec.melee_damage * self.power)
             self.attack_cooldown = spec.melee_cooldown
             if spec.pop_on_touch:
                 self.hp = 0.0
@@ -258,6 +359,26 @@ class Creature(Body):
                     angle = math.atan2(py - cy, px - cx) - 0.25  # lob slightly upwards
                     projectiles.spawn(shots, cx, cy, angle, self.team)
                 self.ranged_cooldown = spec.ranged_cooldown * self.rng.uniform(0.8, 1.2)
+
+    def _breathe(
+        self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
+    ) -> None:
+        """Suck the player in for a while, then breathe out a ring of spores."""
+        was_inhaling = self.inhaling
+        self.breath = (self.breath + dt) % BREATH_CYCLE
+        self.inhaling = self.breath < INHALE_TIME
+        cx, cy = self.center
+        px, py = player.center
+        distance = math.hypot(cx - px, cy - py) or 1.0
+        if self.inhaling and distance <= self.spec.sight:
+            pull = self.spec.inhale * dt
+            player._move_x(world, (cx - px) / distance * pull)
+            player._move_y(world, (cy - py) / distance * pull * 0.6)
+        elif was_inhaling:  # the breath turns: exhale
+            spores = [Shot(CATALOG["klumpen"], (CATALOG["sekret_sporen"],), [])]
+            for k in range(EXHALE_SHOTS):
+                angle = math.tau * k / EXHALE_SHOTS
+                projectiles.spawn(spores, cx, cy, angle, self.team)
 
     def _touches(self, other: Body) -> bool:
         r = MELEE_REACH
@@ -301,6 +422,11 @@ class EnemyManager:
             cx, cy = creature.center
             radius = 12 if creature.spec.boss else creature.spec.burst
             world.splash(int(cx), int(cy), radius, creature.spec.gore)
+            if creature.spec.ignites:
+                for dx, dy in disc_offsets(radius):
+                    x, y = int(cx) + dx, int(cy) + dy
+                    if world.get(x, y) == creature.spec.gore and world.rng.random() < 0.3:
+                        world.ignite(x, y)
         self.creatures = [c for c in self.creatures if not c.dead]
         return died
 
@@ -317,6 +443,7 @@ class EnemyManager:
                 y = int(cy)
                 if not world.rect_blocked(x, y, spec.width, spec.height):
                     child = Creature(spec, x, y, parent.rng)
+                    child.empower(parent.power)
                     child.alerted = True
                     child.memory = MEMORY
                     child.last_seen = parent.last_seen
@@ -345,10 +472,17 @@ def populate(
     spitters: int = 0,
     bloats: int = 0,
     safe_radius: float = 170,
+    extra: tuple[tuple[str, int], ...] = (),
 ) -> list[Creature]:
-    """Place creatures in open cave space, away from ``avoid`` (the spawn)."""
+    """Place creatures in open cave space, away from ``avoid`` (the spawn).
+
+    ``extra`` adds further species as (creature key, count).
+    """
     creatures: list[Creature] = []
-    wanted = ((MAGGOT, walkers), (SWARMER, flyers), (BONE_SPITTER, spitters), (SPORE_BLOAT, bloats))
+    wanted = (
+        (MAGGOT, walkers), (SWARMER, flyers), (BONE_SPITTER, spitters), (SPORE_BLOAT, bloats),
+        *((SPECIES[key], count) for key, count in extra),
+    )  # fmt: skip
     for spec, count in wanted:
         placed = 0
         for _attempt in range(count * 80):

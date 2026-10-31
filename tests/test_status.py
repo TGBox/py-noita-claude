@@ -84,3 +84,45 @@ class TestBurning(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestStains(unittest.TestCase):
+    def test_tallow_makes_oily_and_oily_bodies_burn_longer(self) -> None:
+        from src.body import BURN_TIME, Body
+        from src.materials import FIRE, TALLOW
+        from src.world import World
+
+        world = World(60, 40, seed=1)
+        body = Body(20, 10, 4, 4, 100)
+        world.set_cell(19, 12, TALLOW, force=True)
+        body.apply_environment(world, 0.01)
+        self.assertGreater(body.oily, 0)
+        self.assertEqual(body.wet, 0.0)  # tallow is no water
+        world.set_cell(19, 12, FIRE, force=True)
+        body.apply_environment(world, 0.01)
+        self.assertGreater(body.burning, BURN_TIME)
+
+    def test_water_like_liquids_wash_the_fat_off(self) -> None:
+        from src.body import Body
+        from src.materials import BLOOD
+        from src.world import World
+
+        world = World(60, 40, seed=1)
+        body = Body(20, 10, 4, 4, 100)
+        body.oily = 5.0
+        world.set_cell(19, 12, BLOOD, force=True)
+        body.apply_environment(world, 0.01)
+        self.assertEqual(body.oily, 0.0)
+        self.assertGreater(body.wet, 0)
+
+    def test_mucus_keeps_slowing_for_a_moment(self) -> None:
+        from src.body import Body
+        from src.world import World
+
+        world = World(200, 40, seed=1)
+        slimed, clean = Body(20, 10, 4, 4, 100), Body(120, 10, 4, 4, 100)
+        slimed.slimed = 1.0
+        for body in (slimed, clean):
+            body.vx = 60.0
+            body.move(world, 0.5)
+        self.assertLess(slimed.x - 20, clean.x - 120)

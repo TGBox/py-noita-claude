@@ -121,7 +121,7 @@ class TestPaths(unittest.TestCase):
         self.assertTrue(found)
         for y in range(2, 62):  # wall the room in two
             world.set_cell(48, y, BONE)
-        blocking = [1 if m in (1, BONE) else 0 for m in range(15)]
+        blocking = [1 if m in (1, BONE) else 0 for m in range(MATERIAL_COUNT)]
         found, closest = native.reachable(
             native.byte_view(world.grid), 96, 64, blocking, box, (5, 30), (80, 30)
         )

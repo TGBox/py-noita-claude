@@ -73,15 +73,23 @@ class _Draw:
     """Draws blocks from a deck for one cast and adds up their cost."""
 
     def __init__(
-        self, blocks: tuple[Block, ...], order: list[int], start: int, mana: float
+        self,
+        blocks: tuple[Block, ...],
+        order: list[int],
+        start: int,
+        mana: float,
+        charges: list[int] | None = None,
     ) -> None:
         self.blocks = blocks
+        self.charges = charges or [0] * len(blocks)
+        self.used: list[int] = []  # indices of drawn blocks with limited charges
         self.order = order
         self.index = start
         self.available = mana
         self.drawn = 0
         self.mana = 0.0
         self.delay = 0.0
+        self.recharge = 0.0  # recharge time added by blocks (negative = faster)
         self.wrapped = False
 
     def next(self) -> Block | None:
@@ -90,13 +98,20 @@ class _Draw:
             if self.index >= len(self.blocks):
                 self.wrapped = True
                 self.index = 0
-            block = self.blocks[self.order[self.index]]
+            position = self.order[self.index]
+            block = self.blocks[position]
             self.index += 1
             self.drawn += 1
             if self.mana + block.mana > self.available:
                 continue
+            if block.uses:
+                if self.charges[position] <= 0:
+                    continue  # used up until the next sanctum
+                self.charges[position] -= 1
+                self.used.append(position)
             self.mana += block.mana
             self.delay += block.cast_delay
+            self.recharge += block.recharge_bonus
             return block
         return None
 
@@ -110,8 +125,13 @@ class _Draw:
                 return [Shot(block, tuple(modifiers), children)]
             if block.multicast:
                 shots: list[Shot] = []
+                spread = block.formation or MULTICAST_SPREAD
+                # wide formations (circle, front and back) start straight ahead; narrow ones
+                # are centred on the aim
+                centred = spread * block.multicast < 3.0
                 for index in range(block.multicast):
-                    offset = (index - (block.multicast - 1) / 2) * MULTICAST_SPREAD
+                    shift = (block.multicast - 1) / 2 if centred else 0.0
+                    offset = (index - shift) * spread
                     for shot in self.group(tuple(modifiers)):
                         shot.angle_offset += offset
                         shots.append(shot)
@@ -131,7 +151,12 @@ class Wand:
         self.mana = spec.mana_max
         self.cooldown = 0.0
         self.recharge_left = 0.0
+        self._recharge_bonus = 0.0
         self.set_slots(self.slots)
+
+    def refill_charges(self) -> None:
+        """Restore every limited block (happens in a sanctum)."""
+        self.charges = [block.uses for block in self.blocks]
 
     @property
     def capacity(self) -> int:
@@ -144,8 +169,15 @@ class Wand:
             raise ValueError(f"unknown blocks in {self.spec.name_de}: {unknown}")
         if len(slots) != len(self.slots):
             raise ValueError("slot count must not change")
+        # charges follow their block when the deck is rearranged
+        left: dict[str, list[int]] = {}
+        for block, charge in zip(getattr(self, "blocks", ()), getattr(self, "charges", ())):
+            left.setdefault(block.key, []).append(charge)
         self.slots = list(slots)
         self.blocks: tuple[Block, ...] = tuple(CATALOG[k] for k in self.slots if k is not None)
+        self.charges = [
+            left[b.key].pop(0) if left.get(b.key) else b.uses for b in self.blocks
+        ]
         self.order = list(range(len(self.blocks)))
         if self.spec.shuffle:
             self.rng.shuffle(self.order)
@@ -175,22 +207,25 @@ class Wand:
         """Draw the next group. Returns no shots if the wand is busy or lacks mana."""
         if not self.ready or not self.blocks:
             return []
-        draw = _Draw(self.blocks, self.order, self.index, self.mana)
+        draw = _Draw(self.blocks, self.order, self.index, self.mana, list(self.charges))
         shots: list[Shot] = []
         for _ in range(max(1, self.spec.casts)):
             shots += draw.group()
         if not shots:  # nothing castable (or affordable) left in the deck
             self._start_recharge()
             return []
-        self.mana -= draw.mana
+        self.mana = min(self.spec.mana_max, self.mana - draw.mana)  # mana blocks can refund
+        self.charges = draw.charges
         self.index = draw.index
-        self.cooldown = self.spec.cast_delay + draw.delay
+        self.cooldown = max(0.0, self.spec.cast_delay + draw.delay)
+        self._recharge_bonus += draw.recharge
         if draw.wrapped or self.index >= len(self.blocks):
             self._start_recharge()
         return shots
 
     def _start_recharge(self) -> None:
         self.index = 0
-        self.recharge_left = self.spec.recharge
+        self.recharge_left = max(0.0, self.spec.recharge + self._recharge_bonus)
+        self._recharge_bonus = 0.0
         if self.spec.shuffle:
             self.rng.shuffle(self.order)

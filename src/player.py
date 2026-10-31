@@ -16,6 +16,7 @@ MAX_HP = 100.0
 MAX_ENERGY = 3.0  # seconds of levitation
 
 RUN_SPEED = 57.0 * SCREEN_SCALE  # px/s
+POLYMORPH_SPEED = 0.6  # movement while turned into a maggot
 LEVITATE_RUN_SPEED = 52.0 * SCREEN_SCALE  # horizontal speed while levitating
 RUN_RESPONSE = 9.75  # 1/s, how fast horizontal speed follows the input
 GRAVITY = 350.0 * SCREEN_SCALE  # px/s^2
@@ -49,6 +50,9 @@ class Player(Body):
         """Respawn at (x, y) with full health and energy."""
         self.place(x, y)
 
+    polymorphed = 0.0  # seconds left as a maggot (no casting, no flask)
+    air_recharge = ENERGY_RECHARGE_AIR  # per second in the air (the "dauerflug" perk raises it)
+
     def update(
         self,
         world: World,
@@ -77,6 +81,9 @@ class Player(Body):
             self.vy = max(-LIQUID_MAX_SPEED, min(LIQUID_MAX_SPEED, self.vy))
 
         speed = LEVITATE_RUN_SPEED if self.levitating else RUN_SPEED
+        if self.polymorphed > 0:  # a maggot crawls
+            speed *= POLYMORPH_SPEED
+            self.polymorphed = max(0.0, self.polymorphed - dt)
         target = move_dir * speed * (LIQUID_RUN_FACTOR if in_liquid else 1.0)
         self.vx += (target - self.vx) * min(1.0, RUN_RESPONSE * dt)
 
@@ -84,6 +91,6 @@ class Player(Body):
         if self.on_ground and not self.levitating:
             self.energy = min(self.energy_max, self.energy + ENERGY_RECHARGE * dt)
         elif not levitate_held:
-            self.energy = min(self.energy_max, self.energy + ENERGY_RECHARGE_AIR * dt)
+            self.energy = min(self.energy_max, self.energy + self.air_recharge * dt)
 
         self.apply_environment(world, dt)

@@ -26,7 +26,12 @@ SMOKE = 11
 FUME = 12
 GROWTH = 13
 SPORES = 14
-MATERIAL_COUNT = 15
+MUCUS = 15
+MAGMA = 16
+PUS = 17
+SPARK = 18  # nerve current travelling through sinew
+SPENT = 19  # sinew right after a current passed (heals back into sinew)
+MATERIAL_COUNT = 20
 
 # Kinds (behaviour classes), must match native/src/lib.rs.
 EMPTY = 0
@@ -36,8 +41,9 @@ LIQUID = 3
 GAS = 4
 FLAME = 5
 
-# Number of colour variants per material (grainy look without textures).
-VARIANTS = 4
+# Number of colour variants per material (grainy look without textures). Three variants
+# leave room in the 8-bit palette for up to 21 materials.
+VARIANTS = 3
 # Brightness steps for lighting; palette index = (material * VARIANTS + variant) * levels + level.
 LIGHT_LEVELS = 4
 LIGHT_BRIGHTNESS = (0.16, 0.4, 0.7, 1.0)
@@ -79,50 +85,37 @@ MATERIALS: tuple[Material, ...] = (
     Material("Blut", LIQUID, 30, (150, 12, 24), fluidity=5),
     Material("Schorf", SOLID, 255, (70, 26, 22)),
     Material(
-        "Talg",
-        LIQUID,
-        20,
-        (196, 174, 118),
-        flammability=0.5,
-        burn_life=(10, 25),
-        fluidity=3,
-        mobility=0.7,
+        "Talg", LIQUID, 20, (196, 174, 118),
+        flammability=0.5, burn_life=(10, 25), fluidity=3, mobility=0.7,
     ),
     Material("Magensäure", LIQUID, 40, (140, 196, 40), fluidity=5, hazard_dps=60.0, glow=110),
     Material(
-        "Feuer",
-        FLAME,
-        -1,
-        (255, 160, 40),
-        life=(30, 60),
-        decay_into=SMOKE,
-        decay_chance=0.25,
-        hazard_dps=15.0,
-        glow=255,
+        "Feuer", FLAME, -1, (255, 160, 40),
+        life=(30, 60), decay_into=SMOKE, decay_chance=0.25, hazard_dps=15.0, glow=255,
     ),
     Material("Rauch", GAS, -2, (54, 44, 46), life=(50, 140)),
     Material("Ätzdampf", GAS, -3, (98, 132, 52), life=(60, 160), hazard_dps=8.0, glow=40),
     Material(
-        "Wucherung",
-        SOLID,
-        255,
-        (124, 72, 116),
-        flammability=0.08,
-        burn_life=(40, 90),
-        debris=SPORES,
-        debris_chance=0.3,
-        grain=14,
+        "Wucherung", SOLID, 255, (124, 72, 116),
+        flammability=0.08, burn_life=(40, 90), debris=SPORES, debris_chance=0.3, grain=14,
     ),
     Material(
-        "Sporen",
-        GAS,
-        -4,
-        (164, 128, 160),
-        flammability=0.6,
-        burn_life=(3, 8),
-        life=(120, 240),
-        hazard_dps=3.0,
-        glow=60,
+        "Sporen", GAS, -4, (164, 128, 160),
+        flammability=0.6, burn_life=(3, 8), life=(120, 240), hazard_dps=3.0, glow=60,
+    ),
+    Material("Schleim", LIQUID, 35, (176, 172, 120), fluidity=1, mobility=0.18, grain=12),
+    Material(
+        "Glutblut", LIQUID, 45, (236, 96, 30), fluidity=2, mobility=0.35, hazard_dps=40.0,
+        glow=230, grain=20,
+    ),
+    Material("Eiter", LIQUID, 32, (186, 190, 84), fluidity=3, mobility=0.6, grain=10),
+    Material(
+        "Nervenstrom", FLAME, 255, (190, 220, 255),
+        life=(2, 4), decay_into=SPENT, decay_chance=1.0, hazard_dps=45.0, glow=255, grain=24,
+    ),
+    Material(
+        "Erschöpfte Sehne", SOLID, 255, (110, 72, 64),
+        flammability=0.001, burn_life=(60, 120), grain=10,
     ),
 )
 
@@ -137,12 +130,13 @@ HAZARD_DPS: list[float] = [m.hazard_dps for m in MATERIALS]
 NAME_DE: list[str] = [m.name_de for m in MATERIALS]
 DEBRIS: list[tuple[int, float]] = [(m.debris, m.debris_chance) for m in MATERIALS]
 GLOW: list[int] = [m.glow for m in MATERIALS]
-OPAQUE: list[int] = [int(k in (SOLID, POWDER)) for k in KIND]
+OPAQUE: list[int] = [int(k in (SOLID, POWDER)) for k in KIND]  # currents shine through
 
-# The player walks on solids and powders but wades through liquids.
-BLOCKS_BODY: list[bool] = [k in (SOLID, POWDER) for k in KIND]
+# The player walks on solids and powders but wades through liquids. A nerve current is
+# a flame-like cell inside sinew; the sinew it runs through stays solid.
+BLOCKS_BODY: list[bool] = [k in (SOLID, POWDER) or i == SPARK for i, k in enumerate(KIND)]
 # Projectiles stop at everything that is not empty, gas or flame.
-STOPS_PROJECTILE: list[bool] = [k in (SOLID, POWDER, LIQUID) for k in KIND]
+STOPS_PROJECTILE: list[bool] = [k in (SOLID, POWDER, LIQUID) or i == SPARK for i, k in enumerate(KIND)]
 
 
 def variant_color(material: Material, variant: int) -> tuple[int, int, int]:

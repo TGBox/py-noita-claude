@@ -218,12 +218,13 @@ if __name__ == "__main__":
     unittest.main()
 
 
+
 class TestBroodMother(unittest.TestCase):
     def test_guards_the_gedaerm_and_summons_in_turn(self) -> None:
         from src.depths import DEPTHS
         from src.enemies import BROOD_MOTHER, spawn_boss
 
-        self.assertEqual(DEPTHS[2].boss, "brutmutter")
+        self.assertIn("brutmutter", [d.boss for d in DEPTHS if d.key == "gedaerm"])
         world = World(640, 200, seed=1)
         mother = spawn_boss("brutmutter", (320, 80), random.Random(1))
         manager = EnemyManager()
@@ -235,3 +236,94 @@ class TestBroodMother(unittest.TestCase):
             run(world, manager, player, projectiles, DT)
             keys |= {c.spec.key for c in manager.creatures if c is not mother}
         self.assertEqual(keys, {"sporenblase", "schwaermer"})
+
+
+class TestNewSpecies(unittest.TestCase):
+    def test_every_depth_spawns_its_extra_species(self) -> None:
+        from src.depths import DEPTHS
+        from src.enemies import SPECIES
+
+        for depth in DEPTHS:
+            for key, count in depth.extra:
+                self.assertIn(key, SPECIES)
+                self.assertGreater(count, 0)
+
+    def test_immunities_and_gore(self) -> None:
+        from src.enemies import SPECIES
+
+        ember = Creature(SPECIES["brandmade"], 10, 10, random.Random(1))
+        self.assertTrue(ember.fire_immune)
+        self.assertEqual(ember.blood, SPECIES["brandmade"].gore)
+        self.assertTrue(Creature(SPECIES["schleimkriecher"], 10, 10, random.Random(1)).acid_immune)
+
+    def test_populate_places_extra_species(self) -> None:
+        world = generate_world_and_return()
+        creatures = populate(world, random.Random(2), (640, 100), 0, 0, extra=(("egel", 3), ("augenblase", 2)))
+        keys = [c.spec.key for c in creatures]
+        self.assertEqual(keys.count("egel"), 3)
+        self.assertEqual(keys.count("augenblase"), 2)
+
+    def test_sprites_match_the_creature_sizes(self) -> None:
+        try:
+            from src.rendering import CREATURE_COLORS, CREATURE_SPRITES, FRAME_RATES
+        except ImportError:
+            self.skipTest("pygame not installed")
+        from src.enemies import SPECIES
+
+        for key, frames in CREATURE_SPRITES.items():
+            spec = SPECIES[key]
+            self.assertIn(key, FRAME_RATES)
+            for rows in frames:
+                self.assertEqual((len(rows[0]), len(rows)), (spec.width, spec.height), key)
+                self.assertTrue(all(c == "." or c in CREATURE_COLORS for r in rows for c in r))
+
+
+def generate_world_and_return() -> World:
+    world = World(1280, 720, seed=4)
+    generate_world(world)
+    return world
+
+
+class TestNewBosses(unittest.TestCase):
+    def test_every_boss_depth_has_a_known_boss(self) -> None:
+        from src.depths import DEPTHS
+        from src.enemies import SPECIES
+
+        bosses = [d.boss for d in DEPTHS if d.boss]
+        self.assertEqual(len(bosses), 5)
+        self.assertTrue(all(SPECIES[b].boss for b in bosses))
+
+    def test_bone_eater_burrows_through_bone(self) -> None:
+        from src.enemies import spawn_boss
+
+        world = World(400, 200, seed=1)
+        for y in range(2, 198):
+            for x in range(150, 250):
+                world.set_cell(x, y, BONE)
+        eater = spawn_boss("knochenfresser", (100, 100), random.Random(1))
+        manager = EnemyManager()
+        manager.creatures.append(eater)
+        player = Player(320, 200 - 2 - PLAYER_HEIGHT)
+        player.hp = player.max_hp = 1e9
+        start = eater.x
+        run(world, manager, player, ProjectileSystem(), 4.0)
+        self.assertGreater(eater.x, start + 60)  # into or through the bone wall
+        self.assertGreater(sum(1 for y in range(60, 140) for x in range(150, 250) if world.get(x, y) != BONE), 300)
+
+    def test_breath_sucks_the_player_in_and_exhales_spores(self) -> None:
+        from src.enemies import INHALE_TIME, spawn_boss
+
+        world = World(500, 200, seed=1)
+        breath = spawn_boss("atem", (100, 100), random.Random(1))
+        breath.alerted = True
+        manager = EnemyManager()
+        manager.creatures.append(breath)
+        player = Player(300, 200 - 2 - PLAYER_HEIGHT)
+        player.hp = player.max_hp = 1e9
+        projectiles = ProjectileSystem()
+        start = player.x
+        run(world, manager, player, projectiles, INHALE_TIME * 0.9)
+        self.assertLess(player.x, start - 40)
+        before = len(projectiles.items)
+        run(world, manager, player, projectiles, INHALE_TIME * 0.1 + 0.1)  # the breath turns
+        self.assertGreaterEqual(len(projectiles.items) - before, 6)
