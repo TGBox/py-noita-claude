@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
+from src.keybinds import Bindings
 from src.records import data_dir, write_json
 
 FILE_NAME = "optionen.json"
@@ -67,3 +68,22 @@ def load(path: Path | None = None) -> Options:
 
 def save(options: Options, path: Path | None = None) -> bool:
     return write_json(asdict(options), path or data_dir() / FILE_NAME)
+
+
+# --------------------------------------------------------------- key bindings
+
+BINDINGS_NAME = "steuerung.json"
+
+
+def load_bindings(path: Path | None = None) -> Bindings:
+    """The player's key bindings (defaults if none were saved or the file is broken)."""
+    path = path or data_dir() / BINDINGS_NAME
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return Bindings()
+    return Bindings.from_json(raw)
+
+
+def save_bindings(bindings: Bindings, path: Path | None = None) -> bool:
+    return write_json(bindings.to_json(), path or data_dir() / BINDINGS_NAME)

@@ -595,6 +595,8 @@ CREATURE_COLORS = {
 }
 FLASH_COLOR = (255, 255, 255)
 HEALTH_BAR = (200, 30, 36)
+RIM_COLOR = (255, 226, 214, 120)  # a thin light outline: creatures stay visible in the dark
+EYE_GLOW = (255, 120, 90)
 FRAME_RATES = {
     "made": 6.0, "schwaermer": 18.0, "knochenspeier": 1.5, "sporenblase": 3.0,
     "brandmade": 8.0, "saeurespucker": 4.0, "egel": 12.0, "augenblase": 1.2,
@@ -603,9 +605,27 @@ FRAME_RATES = {
 }  # fmt: skip
 
 
-def build_creature_sprites() -> dict[tuple[str, int, bool, bool], pygame.Surface]:
-    """Pre-render every (species, frame, facing right, flashing) combination."""
-    sprites: dict[tuple[str, int, bool, bool], pygame.Surface] = {}
+def outline_cells(rows: tuple[str, ...]) -> list[tuple[int, int]]:
+    """Empty cells next to a sprite's pixels (in a frame one pixel larger on every side)."""
+    height, width = len(rows), len(rows[0])
+    filled = {(x, y) for y, row in enumerate(rows) for x, code in enumerate(row) if code in CREATURE_COLORS}
+    cells = []
+    for y in range(-1, height + 1):
+        for x in range(-1, width + 1):
+            if (x, y) in filled:
+                continue
+            if any((x + dx, y + dy) in filled for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                cells.append((x + 1, y + 1))
+    return cells
+
+
+def build_creature_sprites() -> dict[tuple, pygame.Surface]:
+    """Pre-render every (species, frame, facing right, flashing) combination.
+
+    ``(species, frame, facing right, "rim")`` holds the light outline drawn behind the
+    sprite, so dark creatures stand out against dark tissue (like in Noita).
+    """
+    sprites: dict[tuple, pygame.Surface] = {}
     for key, frames in CREATURE_SPRITES.items():
         for index, rows in enumerate(frames):
             for flashing in (False, True):
@@ -616,6 +636,11 @@ def build_creature_sprites() -> dict[tuple[str, int, bool, bool], pygame.Surface
                             surface.set_at((x, y), FLASH_COLOR if flashing else CREATURE_COLORS[code])
                 sprites[(key, index, True, flashing)] = surface
                 sprites[(key, index, False, flashing)] = pygame.transform.flip(surface, True, False)
+            rim = pygame.Surface((len(rows[0]) + 2, len(rows) + 2), pygame.SRCALPHA)
+            for x, y in outline_cells(rows):
+                rim.set_at((x, y), RIM_COLOR)
+            sprites[(key, index, True, "rim")] = rim
+            sprites[(key, index, False, "rim")] = pygame.transform.flip(rim, True, False)
     return sprites
 
 
@@ -648,7 +673,11 @@ def draw_creatures(
             _draw_breath(canvas, creature, x, y)
             continue
         frame = int(creature.age * FRAME_RATES[key]) % len(CREATURE_SPRITES[key])
-        sprite = sprites[(key, frame, creature.facing > 0, creature.flash > 0)]
+        facing = creature.facing > 0
+        rim = sprites.get((key, frame, facing, "rim"))
+        if rim is not None:
+            canvas.blit(rim, (x - 1, y - 1))
+        sprite = sprites[(key, frame, facing, creature.flash > 0)]
         canvas.blit(sprite, (x, y))
         if creature.hp < creature.max_hp:
             width = max(1, round(creature.width * creature.hp / creature.max_hp))

@@ -385,3 +385,32 @@ class TestMucus(unittest.TestCase):
         generate_level(world, lung)
         self.assertGreater(world.count(MUCUS), 500)
         self.assertGreater(world.count(SINEW), 2000)
+
+
+class TestHardness(unittest.TestCase):
+    """Harder tissue needs stronger spells, like Noita's dense rock."""
+
+    def _wall(self, material: int) -> World:
+        world = World(80, 80, seed=1)
+        world.reset(material)
+        return world
+
+    def test_small_blast_chips_flesh_but_not_bone(self) -> None:
+        from src.materials import BONE, ENAMEL, FLESH
+
+        flesh, bone, enamel = self._wall(FLESH), self._wall(BONE), self._wall(ENAMEL)
+        self.assertGreater(flesh.explode(40, 40, 2), 0)
+        self.assertEqual(bone.explode(40, 40, 1), 0)
+        self.assertEqual(enamel.explode(40, 40, 8), 0)
+        self.assertGreater(enamel.explode(40, 40, 16), 0)
+        # a big blast still breaks less enamel than bone
+        self.assertLess(self._wall(ENAMEL).explode(40, 40, 16), self._wall(BONE).explode(40, 40, 16))
+
+    def test_bores_stop_at_enamel(self) -> None:
+        from src.materials import BONE, ENAMEL
+
+        self.assertTrue(World.diggable(BONE, 3))
+        self.assertFalse(World.diggable(ENAMEL, 4))
+        world = self._wall(ENAMEL)
+        self.assertEqual(world.dig(40, 40, 4), 0)
+        self.assertGreater(world.dig(40, 40, 4, force=True), 0)

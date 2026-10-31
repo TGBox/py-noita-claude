@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from src.wand import Wand, WandSpec
 
 MAX_WANDS = 4
-BAG_SIZE = 16
+BAG_SIZE = 36  # 3 rows of 12 in the inventory screen
 
 
 @dataclass(frozen=True)
@@ -67,15 +67,49 @@ class Inventory:
             return self.bag[ref.index]
         return self.wands[ref.wand].slots[ref.index]
 
-    def move(self, source: SlotRef, target: SlotRef) -> bool:
-        """Move (or swap) the block at ``source`` to ``target``. False if invalid."""
+    def move(self, source: SlotRef, target: SlotRef, *, edit_wands: bool = True) -> bool:
+        """Move (or swap) the block at ``source`` to ``target``. False if invalid.
+
+        Without ``edit_wands`` (outside a sanctum) only the bag can be rearranged.
+        """
         if source == target or not self._valid(source) or not self._valid(target):
+            return False
+        if not edit_wands and "wand" in (source.kind, target.kind):
             return False
         moving, other = self.get(source), self.get(target)
         if moving is None:
             return False
         self._put(target, moving)
         self._put(source, other)
+        return True
+
+    def take(self, ref: SlotRef) -> str | None:
+        """Remove and return the block at ``ref`` (to drop it into the world)."""
+        if not self._valid(ref):
+            return None
+        key = self.get(ref)
+        if key is not None:
+            self._put(ref, None)
+        return key
+
+    def remove_wand(self, index: int) -> WandSpec | None:
+        """Take a wand out of the inventory (one always stays). Returns its contents."""
+        if len(self.wands) <= 1 or not 0 <= index < len(self.wands):
+            return None
+        wand = self.wands.pop(index)
+        if self.active >= len(self.wands) or self.active > index:
+            self.active = max(0, self.active - 1)
+        return _spec_of(wand)
+
+    def move_wand(self, source: int, target: int) -> bool:
+        """Swap two wands' places in the inventory (the active wand follows)."""
+        count = len(self.wands)
+        if source == target or not (0 <= source < count and 0 <= target < count):
+            return False
+        wands = self.wands
+        wands[source], wands[target] = wands[target], wands[source]
+        if self.active in (source, target):
+            self.active = target if self.active == source else source
         return True
 
     def _valid(self, ref: SlotRef) -> bool:
@@ -93,6 +127,10 @@ class Inventory:
         slots = list(wand.slots)
         slots[ref.index] = key
         wand.set_slots(slots)
+
+
+def spec_of(wand: Wand) -> WandSpec:
+    return _spec_of(wand)
 
 
 def _spec_of(wand: Wand) -> WandSpec:

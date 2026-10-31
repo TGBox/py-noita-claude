@@ -29,30 +29,53 @@ uv run build          # Standalone-Version mit PyInstaller bauen
 
 ## Steuerung
 
-| Taste | Aktion |
-|-------|--------|
-| **A / D** (oder Pfeile) | Laufen |
-| **W / Leertaste** | Kleiner Sprung; gedrückt halten zum Schweben (3 s, am Boden schnell wieder voll) |
-| **Linke Maus** | Zaubern mit der aktiven Augmentation |
-| **1-4 / Mausrad** | Augmentation wählen |
-| **E** | Gegenstand aufheben (Augmentation, Baustein, Phiole) |
-| **Rechte Maus** | Phiole ausgießen (Richtung Mauszeiger) |
-| **G** (halten) | Flüssigkeit am Mauszeiger in die Phiole saugen |
-| **F** | Aus der Phiole trinken (im Titel: Lauf fortsetzen) |
-| **T** | Phiole werfen; sie zerplatzt beim Aufprall |
-| **Q** | Treten: stößt Gegner weg, schleudert Gegenstände, bringt Säcke zum Platzen |
-| **Tab** | Augmentationen umbauen, nur im Sanktum (wie Noitas Heiliger Berg; der Perk „Flinke Hände“ erlaubt es überall). Pausiert; Bausteine per Drag & Drop verschieben |
-| **Enter** | Im Titel: Neuer Lauf |
-| **F** | Im Titel: gespeicherten Lauf fortsetzen |
-| **K** | Im Titel: Kodex öffnen |
-| **O** | Im Titel und in der Pause: Optionen (Lautstärke Effekte/Musik, Vollbild, Licht, Wackeln, Schadenszahlen) |
-| **R** | Neuer Lauf |
-| **L** | Beleuchtung ein/aus |
-| **M** | Ton ein/aus |
-| **H** | Hilfe ein/aus |
-| **F1** | Sandbox: Rechte Maus malt, mittlere radiert, 1-0 Material, Mausrad Pinselgröße, N neue Welt |
-| **F11** | Vollbild |
-| **ESC** | Pause (Weiter, neuer Lauf, Titel, Beenden); im Umbau-Bildschirm: schließen |
+Alle Tasten lassen sich unter **Steuerung** (Titel oder Pause) neu belegen: Eintrag wählen,
+Enter oder Klick, dann die neue Taste, Maustaste oder den Controller-Knopf drücken. Eine
+Taste gehört immer nur einer Aktion; Entf stellt den Standard wieder her. Die Belegung wird in
+`steuerung.json` neben den Statistiken gespeichert. Die aktuelle Belegung steht jederzeit im
+Pausenmenü und im Hilfefenster (H).
+
+| Standard | Controller | Aktion |
+|----------|-----------|--------|
+| **A / D** (oder Pfeile) | Linker Stick | Laufen |
+| **W / Leertaste** | A | Kleiner Sprung; gedrückt halten zum Schweben |
+| **Linke Maus** | RT (zielen mit rechtem Stick) | Zaubern mit der aktiven Augmentation |
+| **1-4 / Mausrad** | RB / Steuerkreuz links | Augmentation wählen |
+| **Q** | B | Treten: stößt Gegner weg, schleudert Gegenstände, bringt Säcke zum Platzen |
+| **Rechte Maus** (halten) | LT | Phiole ausgießen (Richtung Mauszeiger) |
+| **S** (halten) | LB | Phiole füllen: Flüssigkeit am Mauszeiger aufsaugen |
+| **F** | Y | Aus der Phiole trinken |
+| **T** | Steuerkreuz hoch | Phiole werfen; sie zerplatzt beim Aufprall |
+| **C / 5-8** | Steuerkreuz rechts | Nächste Phiole / Phiole 1-4 wählen |
+| **E** | X | Aufheben, kaufen, Perk wählen |
+| **Tab / I** | Back | Rucksack: jederzeit ansehen, im Sanktum umbauen |
+| **H** | Steuerkreuz runter | Steuerungshilfe ein/aus |
+| **L / M** | | Beleuchtung / Ton ein/aus |
+| **F11** | | Vollbild |
+| **F1** | | Sandbox: Rechte Maus malt, mittlere radiert, 1-0 Material, Mausrad Pinselgröße, N neue Welt |
+| **R** | | Neuer Lauf |
+| **N** | | Nach dem Sieg: Neues Spiel+ |
+| **ESC** (fest) | Start | Pause; in Menüs: zurück |
+
+**Menüs** lassen sich mit Pfeiltasten und Enter, mit der Maus oder mit dem Controller
+(Steuerkreuz oder Stick, A wählt, B zurück) bedienen. **Controller:** Jeder Pad mit
+Xbox-Belegung wird erkannt, auch wenn er während des Spiels eingesteckt wird. Im Rucksack
+bewegt der linke Stick den Mauszeiger, A greift und lässt los.
+
+**Was ist das?** Wie in Noita erklärt das Spiel, was unter dem Mauszeiger (oder dem
+Controller-Fadenkreuz) liegt: Materialien (fest, flüssig, Gas, Härte, Schaden pro Sekunde,
+brennbar), Kreaturen (Leben, Verhalten, Beute) und Gegenstände. Zauber im Laden zeigen Kosten,
+Werte und Preis; Augmentationen am Boden zeigen ihre Werte als Balken, grün oder rot im
+Vergleich zur Augmentation in der Hand. Verborgene Kammern und Kreaturen hinter Wänden
+verrät der Mauszeiger nicht.
+
+**Rucksack (Tab):** Zeigt alle Augmentationen mit ihren Werten als Balken, den Beutel mit
+36 Plätzen und bis zu vier Phiolen. Alles wird per Drag & Drop bewegt: Bausteine zwischen
+Plätzen, eine Augmentation an ihrem Griff (umsortieren oder ablegen), Phiolen untereinander.
+Was auf das Feld „Ablegen“ oder aus dem Fenster gezogen wird, fällt vor dir auf den Boden.
+Ein Klick auf Griff oder Phiole nimmt sie in die Hand. Außerhalb des Sanktums kannst du
+ansehen, den Beutel ordnen und ablegen; Augmentationen umbauen geht nur im Sanktum (oder mit
+dem Perk „Flinke Hände“).
 
 ## Der Lauf
 
@@ -123,7 +146,7 @@ einem fernen Herzschlag, der in der Herzkammer schneller wird. Die Schleifen wer
 Start im Hintergrund erzeugt und unter `%APPDATA%\Cloita\musik` zwischengespeichert. Eigene
 Dateien `assets/audio/musik_<tiefe>.wav/.ogg` (z. B. `musik_lunge.ogg`) ersetzen sie.
 
-**Phiolen:** Du startest mit einer halb vollen Phiole Blut, und in jeder Tiefe liegen weitere,
+**Phiolen:** Du trägst bis zu vier Phiolen und wechselst mit C (oder 5-8) zwischen ihnen. Du startest mit einer halb vollen Phiole Blut, und in jeder Tiefe liegen weitere,
 mal gefüllt (Blut, Säure, Talg, Schleim), mal leer. Eine Phiole fasst 300 Zellen einer einzigen
 Flüssigkeit. Ausgegossenes ist echtes Material in der Welt: Blut löscht Brände, Säure frisst
 Wände, Talg wird zur Brandfalle. Trinken wirkt je nach Inhalt (Blut heilt ein wenig, Säure ätzt
@@ -148,12 +171,15 @@ durch Berührung ein.
 
 **Parallelwelten:** In der Schatzkammer des Schlunds wartet ein Weltenportal. Wer hindurchgeht,
 beginnt den Lauf in der nächsten Parallelwelt von vorn (wie Noitas Parallelwelten), und auch dort
-liegt wieder ein Portal: Die Welten sind durchnummeriert und reichen beliebig weit. Jede Welt hat
+liegt wieder ein Portal: Wie in Noita zählt die Richtung: Liegt die Schatzkammer am Ostrand, führt das Portal nach
+Osten, am Westrand nach Westen. Westliche Welten sind zusätzlich finsterer. Die Welten sind
+durchnummeriert und reichen in beide Richtungen beliebig weit. Jede Welt hat
 einen neuen Weg durch die Biome, ungerade Welten sind seitenverkehrt, und mit jeder Welt werden
 Kreaturen deutlich zäher und die Beute reicher. Ausrüstung und Perks nimmst du mit.
 
 **Wucht:** Explosionen schleudern Körper weg: Gegner, Säcke und auch dich (Raketensprünge wie in
-Noita sind möglich, kosten aber Leben). Leichte Körper fliegen weiter, Wächter bewegen sich kaum.
+Noita sind möglich, kosten aber Leben). Leichte Körper fliegen weiter, Wächter bewegen sich kaum. Auch lose Gegenstände (Augmentationen, Phiolen, Bausteine, Blutperlen) fliegen davon, prallen ab
+und rutschen aus; ein Tritt (Q) schleudert sie weg.
 
 **Neues Spiel+:** Nach dem Sieg führt **N** noch tiefer: Du behältst Augmentationen, Beutel,
 Perks und Phiole und steigst erneut durch alle Tiefen hinab. Mit jeder Runde haben Kreaturen
@@ -230,7 +256,7 @@ Sanktum (wie an Noitas Heiligem Berg). Leere Bausteine werden beim Zaubern über
 Jede Augmentation hat eigene Werte: Slots, Mana und Aufladung, Zauberverzögerung, Nachladezeit,
 Streuung, Zauber pro Wurf und ob sie ihr Deck mischt. Bausteine, für die das Mana nicht reicht,
 werden übersprungen. Gefundene Augmentationen werden prozedural erzeugt und sind in tieferen
-Ebenen stärker. Du trägst bis zu vier Augmentationen und 16 lose Bausteine.
+Ebenen stärker. Du trägst bis zu vier Augmentationen und 36 lose Bausteine.
 
 | Baustein | Typ | Mana | Wirkung |
 |----------|-----|------|---------|
@@ -351,7 +377,9 @@ Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 | Material | Verhalten |
 |----------|-----------|
 | Fleisch | Feste Wand; verkohlt im Feuer zu Schorf, blutet bei Explosionen |
-| Knochen | Hart; zerfällt bei Explosionen teils zu Knochenstaub |
+| Knochen | Fest; kleine Zauber prallen ab, Explosionen sprengen ihn (teils zu Knochenstaub) |
+| Zahnschmelz | Sehr hart: nur große Explosionen brechen ihn, Bohrer kommen nicht durch. Adern davon ziehen sich durch die Wände, besonders in Zahnhöhle, Schädel und Knochenmark |
+| Panzerknochen | Unzerstörbar (Weltrand, Sanktum) |
 | Knochenstaub | Pulver, rutscht und häuft sich |
 | Sehnen | Brücken; brennen langsam ab |
 | Blut | Flüssigkeit; löscht Feuer (wird dabei zu Schorf), weicht Knochenstaub zu Schorf auf |
@@ -364,6 +392,12 @@ Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 | Eiter | Flüssigkeit (Gedärm); vergiftet, wer hineingerät, und lässt Fleisch langsam wuchern; Säure zersetzt ihn |
 | Nervenstrom | Strom, der als Welle durch Sehnen läuft (Brücken, Lungenhäutchen); verletzt jeden, der die Sehne berührt, entzündet Sporen und Talg. Die Sehne ist danach kurz erschöpft und wächst wieder zusammen |
 | Feuer, Rauch, Ätzdampf | Steigen auf und vergehen; Feuer leuchtet |
+
+**Härte:** Wie Noitas dichter Fels hält nicht jedes Gewebe gleich viel aus. Weiches Gewebe
+(Fleisch, Schorf, Wucherung, Knochenstaub) gibt jedem Zauber nach. Festes Gewebe (Knochen,
+Sehnen) ist für Explosionen um 2 Zellen kleiner: Eine Knochennadel kratzt es kaum an, ein
+Funke schlägt ein kleines Loch. Zahnschmelz ist für Explosionen um 9 Zellen kleiner und
+widersteht Bohrern ganz; nur Gallenblasen, Bomben und verstärkte Explosionen brechen ihn.
 
 Reaktionen stehen als Tabelle in `src/reactions.py`. Eine neue Wechselwirkung ist eine Zeile.
 
@@ -388,6 +422,20 @@ Reaktionen stehen als Tabelle in `src/reactions.py`. Eine neue Wechselwirkung is
   `descend`, `death`, `victory`.
 - Die Weltgenerierung garantiert per Wegsuche, dass jeder Ausgang erreichbar ist (die Figur
   passt durch jeden Tunnel); lose Bruchstücke zerbröseln nach Explosionen.
+- **Protokoll für Spieltests:** Jeder Lauf schreibt eine Datei `protokolle/lauf-<Zeit>.jsonl`
+  in den Datenordner (Windows: `%APPDATA%\Cloita`, Linux: `~/.local/share/cloita`, macOS:
+  `~/Library/Application Support/Cloita`). Jede Zeile ist ein JSON-Objekt mit Zeitpunkt und
+  Ereignis: Start (Seed, Route, Optionen, Controller), jede Tiefe und jedes Sanktum mit
+  Angeboten, Aufheben und Kaufen, Ablegen, Trinken, Werfen, Schaden nach Ursache, getötete
+  Kreaturen, Wächter, Tod mit Ursache und Ort, alle 10 Sekunden Position und Leben,
+  Bildraten pro Tiefe (Mittel, 99. Perzentil, Maximum), geänderte Tasten und Fehler mit
+  vollständigem Traceback. Die 30 neuesten Protokolle bleiben erhalten; der Pfad steht im
+  Pausenmenü und nach dem Tod.
+- Zauber-Icons werden aus den Eigenschaften jedes Bausteins gezeichnet (`src/icons.py`):
+  Rahmen in der Farbe der Kategorie, ein Symbol für die Wirkung (Bombe, Bohrer, Ring,
+  Auge für Zielsuche, Nerv mit Auslöser, ...), eingefärbt mit dem Material.
+- Kreaturen haben einen schwachen hellen Rand und leuchten ein wenig: Auch in finsteren
+  Tiefen sieht man sie, sobald sie in Sichtlinie sind.
 - Das Bewegungsgefühl und die Zauberstab-Regeln orientieren sich an Noita. Code, Grafiken und
   Texte von Noita werden nicht verwendet.
 
@@ -414,10 +462,16 @@ py-noita-claude/
 │   ├── flask.py         # Phiolen: gießen, aufsaugen, trinken, werfen
 │   ├── loot.py          # Prozedurale Augmentationen, Gegenstände in der Welt
 │   ├── inventory.py     # Augmentationen und Beutel, Umbau-Logik
-│   ├── editor.py        # Umbau-Bildschirm (pygame)
-│   ├── editor_layout.py # Umbau-Layout (rein geometrisch, testbar)
+│   ├── editor.py        # Rucksack: ansehen, umbauen, ablegen (pygame)
+│   ├── editor_layout.py # Rucksack-Layout (rein geometrisch, testbar)
 │   ├── perks.py         # Perks
-│   ├── menus.py         # Titel und Pause
+│   ├── menus.py         # Titel, Pause, Optionen, Steuerung, Kodex
+│   ├── ui.py            # Gemeinsame UI-Bausteine: Paneele, Balken, Icons, Tooltips
+│   ├── hover.py         # Was unter dem Mauszeiger liegt (testbar)
+│   ├── icons.py         # Pixel-Icons für alle Bausteine (testbar)
+│   ├── keybinds.py      # Frei belegbare Steuerung (testbar)
+│   ├── gamepad.py       # Controller-Eingabe
+│   ├── runlog.py        # Lauf-Protokoll für Spieltests
 │   ├── records.py       # Statistik, Kodex und Spielstand (JSON im Benutzerordner)
 │   ├── music.py         # Prozedurale Ambient-Musik pro Tiefe (testbar)
 │   ├── options.py       # Einstellungen (JSON im Benutzerordner)

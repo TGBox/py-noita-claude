@@ -14,6 +14,7 @@ from src.materials import (
     BLOOD,
     BONE,
     BONE_DUST,
+    ENAMEL,
     FLESH,
     GROWTH,
     KIND,
@@ -125,6 +126,8 @@ def generate_level(world: World, depth: Depth) -> Level:
             _mucus_drip(world)
     for _ in range(amount(6, depth.growth)):
         _growth_nest(world)
+    for _ in range(amount(14, depth.enamel)):
+        _enamel_vein(world)
     for _ in range(amount(10, depth.bridges)):
         _sinew_bridge(world)
 
@@ -465,6 +468,27 @@ def _growth_nest(world: World) -> None:
     for dx, dy in disc_offsets(r):
         if world.get(x + dx, floor + dy) in (FLESH, BLOOD):
             world.set_cell(x + dx, floor + dy, GROWTH)
+
+
+def _enamel_vein(world: World) -> None:
+    """A winding vein of tooth enamel through solid wall (never into open space)."""
+    rng = world.rng
+    for _attempt in range(30):
+        x = rng.randint(30, world.width - 30)
+        y = rng.randint(SPAWN_FLOOR + 30, world.height - 30)
+        if world.get(x, y) in (FLESH, BONE) and not _in_spawn_zone(world, x, y):
+            break
+    else:
+        return
+    angle = rng.uniform(0, 2 * math.pi)
+    for _step in range(rng.randint(8, 26)):
+        r = rng.randint(2, 4)
+        for dx, dy in disc_offsets(r):
+            if world.get(x + dx, y + dy) in (FLESH, BONE, SINEW):
+                world.set_cell(x + dx, y + dy, ENAMEL)
+        angle += rng.uniform(-0.6, 0.6)
+        x += round(math.cos(angle) * 3)
+        y += round(math.sin(angle) * 3)
 
 
 def _sinew_bridge(world: World) -> None:

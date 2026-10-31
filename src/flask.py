@@ -117,7 +117,7 @@ class Flask:
         share = min(1.0, self.amount / SIP)
         body.hp = min(body.max_hp, body.hp + heal * share)
         if damage:
-            body.hurt(damage * share)
+            body.hurt(damage * share, f"Getrunken: {NAME_DE[self.material]}")
         if self.material == MAGMA:
             body.burning = 3.0
         else:

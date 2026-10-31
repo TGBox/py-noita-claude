@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 from src.body import BURN_TIME, PLAYER_TEAM, Body
-from src.materials import AIR, BEDROCK, KIND, LIQUID, STOPS_PROJECTILE
+from src.materials import AIR, KIND, LIQUID, STOPS_PROJECTILE
 from src.spells import TIMER_DELAY, Block, Category, Trigger
 from src.wand import Shot
 from src.world import World
@@ -236,7 +236,7 @@ class ProjectileSystem:
                     world.set_cell(int(p.x), int(p.y), p.trail)  # behind the projectile
                 p.x, p.y = nx, ny
                 continue
-            if p.digs and KIND[cell] != LIQUID and cell != BEDROCK:
+            if p.digs and world.diggable(cell, p.digs):
                 world.dig(int(nx), int(ny), p.digs)
                 p.x, p.y = nx, ny
                 continue
@@ -270,7 +270,8 @@ class ProjectileSystem:
     def _hit_body(self, p: Projectile, victim: Body, world: World, bodies: Sequence[Body] = ()) -> None:
         p.hit_ids.add(id(victim))
         damage = p.damage * (self.player_damage if p.team == PLAYER_TEAM else self.enemy_damage)
-        victim.hurt(damage)
+        owner = "Eigener Zauber" if p.team == PLAYER_TEAM else "Geschoss"
+        victim.hurt(damage, f"{owner}: {p.form.name_de}")
         speed = math.hypot(p.vx, p.vy) or 1.0
         victim.bleed(world, p.x, p.y, p.damage, p.vx / speed)
         if p.form.polymorph:

@@ -225,13 +225,13 @@ class Creature(Body):
         self.power = power
         self.max_hp = self.hp = self.spec.hp * power
 
-    def hurt(self, amount: float) -> None:
+    def hurt(self, amount: float, cause: str = "") -> None:
         if amount > 0:
             if self.flash_cooldown <= 0:  # under constant fire it blinks instead of glowing white
                 self.flash = HURT_FLASH
                 self.flash_cooldown = HURT_FLASH * 3
             self.alerted = True
-        super().hurt(amount)
+        super().hurt(amount, cause)
 
     def update(
         self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
@@ -248,7 +248,7 @@ class Creature(Body):
         px, py = player.center
         if self.spec.burrows:  # it eats its way through and feels the player through bone
             cx, cy = self.center
-            world.dig(int(cx), int(cy), self.spec.burrows)
+            world.dig(int(cx), int(cy), self.spec.burrows, force=True)
             sees = not player.dead and math.hypot(px - cx, py - cy) <= self.spec.sight
         else:
             sees = not player.dead and self.can_see(world, px, py, self.spec.sight)
@@ -337,7 +337,7 @@ class Creature(Body):
     def _attack(self, player: Body, projectiles: ProjectileSystem) -> None:
         spec = self.spec
         if spec.melee_damage and self.attack_cooldown <= 0 and self._touches(player):
-            player.hurt(spec.melee_damage * self.power)
+            player.hurt(spec.melee_damage * self.power, f"Biss: {spec.name_de}")
             self.attack_cooldown = spec.melee_cooldown
             if spec.pop_on_touch:
                 self.hp = 0.0
