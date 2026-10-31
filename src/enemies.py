@@ -211,6 +211,7 @@ class Creature(Body):
         self.breath = 0.0  # position in the breathing cycle (inhaling bosses)
         self.power = 1.0  # damage factor (New Game+)
         self.flash_cooldown = 0.0
+        self.stagger = 0.0  # seconds it tumbles helplessly after a kick or blast
         self.inhaling = False
         self.attacks = [
             Wand(
@@ -259,8 +260,15 @@ class Creature(Body):
         else:
             self.memory = max(0.0, self.memory - dt)
         hunting = self.memory > 0 and not player.dead
+        self.stagger = max(0.0, self.stagger - dt)
         if self.spec.stationary:
             self.vx = self.vy = 0.0
+        elif self.stagger > 0:  # knocked about: no steering, it just flies and falls
+            if not self.spec.flying:
+                self.vy = min(self.vy + GRAVITY * dt, MAX_FALL_SPEED)
+            self.vx *= max(0.0, 1.0 - 1.5 * dt)
+            self.vy *= max(0.0, 1.0 - (1.5 if self.spec.flying else 0.0) * dt)
+            self.move(world, dt)
         else:
             if self.spec.flying:
                 self._fly(world, dt, hunting)

@@ -23,7 +23,7 @@ def _scancode(code: int) -> int:
 
 K_TAB, K_RETURN, K_ESCAPE, K_SPACE, K_BACKSPACE, K_DELETE = 9, 13, 27, 32, 8, 127
 K_RIGHT, K_LEFT, K_DOWN, K_UP = (_scancode(c) for c in (79, 80, 81, 82))
-K_F1, K_F11 = _scancode(58), _scancode(68)
+K_F11 = _scancode(68)
 K_LSHIFT, K_LCTRL = _scancode(225), _scancode(224)
 
 MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT = "maus1", "maus2", "maus3"
@@ -66,13 +66,10 @@ ACTIONS: tuple[Action, ...] = (
     Action("next_flask", "Nächste Phiole", (_key("c"),), "rechts", "Phiolen"),
     Action("pickup", "Aufheben / Kaufen / Wählen", (_key("e"),), "x", "Gegenstände"),
     Action("inventory", "Rucksack (im Sanktum: umbauen)", (K_TAB, _key("i")), "back", "Gegenstände"),
-    Action("help", "Steuerungshilfe", (_key("h"),), "runter", "Anzeige"),
     Action("light", "Licht an/aus", (_key("l"),), None, "Anzeige"),
     Action("mute", "Ton an/aus", (_key("m"),), None, "Anzeige"),
     Action("fullscreen", "Vollbild", (K_F11,), None, "Anzeige"),
-    Action("sandbox", "Sandbox", (K_F1,), None, "Sonstiges"),
-    Action("restart", "Neuer Lauf", (_key("r"),), None, "Sonstiges"),
-    Action("new_game_plus", "Neues Spiel+ (nach dem Sieg)", (_key("n"),), None, "Sonstiges"),
+    Action("new_game_plus", "Neues Spiel+ (nach dem Sieg)", (_key("n"),), "runter", "Sonstiges"),
 )  # fmt: skip
 ACTION_BY_KEY = {action.key: action for action in ACTIONS}
 # Fixed keys that cannot be rebound (so the menus always stay reachable).

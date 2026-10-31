@@ -95,7 +95,7 @@ class TestFlaskInRun(unittest.TestCase):
     def test_pouring_and_absorbing_in_a_run(self) -> None:
         run = Run(3)
         before = run.flask.amount
-        aim = (run.player.center[0] + 30, run.player.center[1])
+        aim = (run.player.center[0] + 30, run.player.center[1] + 40)  # pour onto the ground nearby
         for _ in range(30):
             run.update(DT, Controls(aim=aim, pour=True))
         self.assertLess(run.flask.amount, before)
@@ -104,7 +104,7 @@ class TestFlaskInRun(unittest.TestCase):
             run.update(DT, Controls(aim=aim))  # let it settle
         cx, cy = run.player.center
         spot = min(
-            ((x, y) for y in range(int(cy) - 40, int(cy) + 40) for x in range(int(cx) - 40, int(cx) + 40)
+            ((x, y) for y in range(int(cy) - 60, int(cy) + 60) for x in range(int(cx) - 60, int(cx) + 60)
              if run.world.get(x, y) == BLOOD),
             key=lambda p: math.dist(p, (cx, cy)),
         )  # fmt: skip

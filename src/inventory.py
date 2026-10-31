@@ -83,6 +83,13 @@ class Inventory:
         self._put(source, other)
         return True
 
+    def put(self, ref: SlotRef, key: str) -> bool:
+        """Place ``key`` into a slot, replacing what was there (sandbox spell book)."""
+        if not self._valid(ref):
+            return False
+        self._put(ref, key)
+        return True
+
     def take(self, ref: SlotRef) -> str | None:
         """Remove and return the block at ``ref`` (to drop it into the world)."""
         if not self._valid(ref):

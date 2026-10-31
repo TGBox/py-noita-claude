@@ -34,6 +34,10 @@ ABSORB_RADIUS = 7
 REACH = 60.0  # how far from the player a flask can pour or suck (px)
 SIP = 30  # cells used up by one drink
 THROW_SPEED = 260.0
+SPRAY_SPEED = (150.0, 230.0)  # px/s: poured liquid squirts away from the body
+SPRAY_SPREAD = 0.16  # radians
+SPRAY_GRAVITY = 420.0
+SPRAY_LIFETIME = 3.0
 THROW_GRAVITY = 420.0
 SHATTER_RADIUS_PER_CELL = 0.06  # splash radius grows with the content
 
@@ -67,6 +71,23 @@ class Flask:
         self.amount = max(0, self.amount - cells)
         if self.amount == 0:
             self.material = None
+
+    def spray(self, x: float, y: float, angle: float, budget: float, rng) -> list[Droplet]:
+        """Squirt up to ``budget`` cells out as flying droplets from (x, y) towards ``angle``.
+
+        The droplets fly away from the body and only turn into liquid where they land,
+        so pouring never drowns the one holding the flask.
+        """
+        if self.empty:
+            return []
+        count = min(self.amount, int(budget))
+        drops = []
+        for _ in range(count):
+            a = angle + rng.uniform(-SPRAY_SPREAD, SPRAY_SPREAD)
+            speed = rng.uniform(*SPRAY_SPEED)
+            drops.append(Droplet(self.material, x, y, math.cos(a) * speed, math.sin(a) * speed))
+        self._drain(count)
+        return drops
 
     def pour(self, world: World, x: float, y: float, angle: float, budget: float) -> int:
         """Spill up to ``budget`` cells in a short arc towards ``angle``. Returns cells placed."""
@@ -129,6 +150,38 @@ class Flask:
             body.poisoned = 0.0  # fresh blood flushes the poison out
         self._drain(SIP)
         return message
+
+
+@dataclass
+class Droplet:
+    """One squirted cell of liquid in flight; it becomes a world cell where it lands."""
+
+    material: int
+    x: float
+    y: float
+    vx: float
+    vy: float
+    age: float = 0.0
+    alive: bool = True
+
+    def update(self, world: World, dt: float, avoid: Body | None = None) -> None:
+        """Fly; on landing put the liquid into the world (never inside ``avoid``)."""
+        self.age += dt
+        self.vy += SPRAY_GRAVITY * dt
+        steps = max(1, int(math.hypot(self.vx, self.vy) * dt) + 1)
+        for _ in range(steps):
+            nx, ny = self.x + self.vx * dt / steps, self.y + self.vy * dt / steps
+            if world.get(int(nx), int(ny)) != AIR or self.age >= SPRAY_LIFETIME:
+                self.alive = False
+                x, y = int(self.x), int(self.y)
+                for up in range(6):  # pile up on what is already lying there
+                    if avoid is not None and avoid.contains(x, y - up):
+                        break  # never into the body that poured it
+                    if world.get(x, y - up) == AIR:
+                        world.set_cell(x, y - up, self.material)
+                        break
+                return
+            self.x, self.y = nx, ny
 
 
 @dataclass

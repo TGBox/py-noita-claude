@@ -843,6 +843,14 @@ def draw_chunks(canvas: pygame.Surface, chunks: list[Chunk], cam_x: int, cam_y: 
 CHUNK_COLORS = [shade(variant_color(m, 1), LIGHT_LEVELS - 2) for m in MATERIALS]
 
 
+def draw_droplets(canvas: pygame.Surface, droplets: list, cam_x: int, cam_y: int) -> None:
+    """Squirted liquid in flight."""
+    for drop in droplets:
+        x, y = int(drop.x) - cam_x, int(drop.y) - cam_y
+        if 0 <= x < VIEW_WIDTH and 0 <= y < VIEW_HEIGHT:
+            canvas.fill(MATERIALS[drop.material].color, (x, y, 1, 1))
+
+
 def draw_thrown_flasks(canvas: pygame.Surface, thrown: list[ThrownFlask], cam_x: int, cam_y: int) -> None:
     for item in thrown:
         draw_flask(canvas, item.flask, int(item.x) - cam_x, int(item.y) - cam_y + 4)

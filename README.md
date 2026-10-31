@@ -32,30 +32,39 @@ uv run build          # Standalone-Version mit PyInstaller bauen
 Alle Tasten lassen sich unter **Steuerung** (Titel oder Pause) neu belegen: Eintrag wählen,
 Enter oder Klick, dann die neue Taste, Maustaste oder den Controller-Knopf drücken. Eine
 Taste gehört immer nur einer Aktion; Entf stellt den Standard wieder her. Die Belegung wird in
-`steuerung.json` neben den Statistiken gespeichert. Die aktuelle Belegung steht jederzeit im
-Pausenmenü und im Hilfefenster (H).
+`steuerung.json` neben den Statistiken gespeichert. Die aktuelle Belegung steht im
+Pausenmenü: nur Tastatur und Maus, oder nur die Controller-Knöpfe, sobald ein Controller
+angeschlossen ist. Eingeblendete Hinweise (Aufheben, Neuer Lauf) folgen ebenso dem Gerät.
 
 | Standard | Controller | Aktion |
-|----------|-----------|--------|
+| ---------- | ----------- | -------- |
 | **A / D** (oder Pfeile) | Linker Stick | Laufen |
 | **W / Leertaste** | A | Kleiner Sprung; gedrückt halten zum Schweben |
 | **Linke Maus** | RT (zielen mit rechtem Stick) | Zaubern mit der aktiven Augmentation |
 | **1-4 / Mausrad** | RB / Steuerkreuz links | Augmentation wählen |
 | **Q** | B | Treten: stößt Gegner weg, schleudert Gegenstände, bringt Säcke zum Platzen |
-| **Rechte Maus** (halten) | LT | Phiole ausgießen (Richtung Mauszeiger) |
+| **Rechte Maus** (halten) | LT | Phiole ausgießen: die Flüssigkeit spritzt im Bogen Richtung Mauszeiger, weg von der Figur |
 | **S** (halten) | LB | Phiole füllen: Flüssigkeit am Mauszeiger aufsaugen |
 | **F** | Y | Aus der Phiole trinken |
 | **T** | Steuerkreuz hoch | Phiole werfen; sie zerplatzt beim Aufprall |
 | **C / 5-8** | Steuerkreuz rechts | Nächste Phiole / Phiole 1-4 wählen |
 | **E** | X | Aufheben, kaufen, Perk wählen |
 | **Tab / I** | Back | Rucksack: jederzeit ansehen, im Sanktum umbauen |
-| **H** | Steuerkreuz runter | Steuerungshilfe ein/aus |
 | **L / M** | | Beleuchtung / Ton ein/aus |
 | **F11** | | Vollbild |
-| **F1** | | Sandbox: Rechte Maus malt, mittlere radiert, 1-0 Material, Mausrad Pinselgröße, N neue Welt |
-| **R** | | Neuer Lauf |
-| **N** | | Nach dem Sieg: Neues Spiel+ |
-| **ESC** (fest) | Start | Pause; in Menüs: zurück |
+| **N** | Steuerkreuz runter | Nach dem Sieg: Neues Spiel+ |
+| **Enter** (fest) | A | Nach Tod oder Sieg: neuer Lauf |
+| **ESC** (fest) | Start | Pause (dort auch „Neuer Lauf“); in Menüs: zurück |
+
+Einen Lauf versehentlich neu starten geht nicht mehr: „Neuer Lauf“ gibt es nur im Pausenmenü
+und nach dem Tod.
+
+**Sandbox** (nur aus dem Hauptmenü): ein Testlauf, der nicht für Statistik, Kodex und
+Spielstand zählt. Rechte Maus malt, mittlere radiert, Mausrad wählt das Material, +/- die
+Pinselgröße, **G** schaltet den Gottmodus (kein Schaden, kein Tod), **N** erzeugt die Tiefe
+neu, Bild auf/ab wechselt die Tiefe. Augmentationen lassen sich überall umbauen, und der
+Rucksack hat ein **Zauberbuch** mit allen Zaubern aus dem Kodex: Hineinziehen setzt eine Kopie
+ein, ein Baustein zurück ins Buch verschwindet.
 
 **Menüs** lassen sich mit Pfeiltasten und Enter, mit der Maus oder mit dem Controller
 (Steuerkreuz oder Stick, A wählt, B zurück) bedienen. **Controller:** Jeder Pad mit
@@ -66,8 +75,15 @@ bewegt der linke Stick den Mauszeiger, A greift und lässt los.
 Controller-Fadenkreuz) liegt: Materialien (fest, flüssig, Gas, Härte, Schaden pro Sekunde,
 brennbar), Kreaturen (Leben, Verhalten, Beute) und Gegenstände. Zauber im Laden zeigen Kosten,
 Werte und Preis; Augmentationen am Boden zeigen ihre Werte als Balken, grün oder rot im
-Vergleich zur Augmentation in der Hand. Verborgene Kammern und Kreaturen hinter Wänden
-verrät der Mauszeiger nicht.
+Vergleich zur Augmentation in der Hand. Verborgene Kammern und Gegenstände verrät der Mauszeiger nicht;
+Kreaturen sieht und erkennt man dagegen überall, auch in unerkundeten, dunklen Bereichen.
+
+**Treten (Q):** Stößt Kreaturen weg, die dann kurz hilflos durch die Luft taumeln, schleudert
+Gegenstände und tritt Pulver und Flüssigkeit vor den Füßen beiseite.
+
+**Nie eingemauert:** Material, das in der Figur entsteht (Schorf, Wucherung, Staub), wird
+sofort aus ihr gedrückt. Ist die Figur trotzdem von allen Seiten eingeschlossen oder sitzt sie
+in einer kleinen versiegelten Höhle fest, reißt sie sich nach kurzer Zeit ohne Schaden frei.
 
 **Rucksack (Tab):** Zeigt alle Augmentationen mit ihren Werten als Balken, den Beutel mit
 36 Plätzen und bis zu vier Phiolen. Alles wird per Drag & Drop bewegt: Bausteine zwischen
@@ -80,7 +96,7 @@ dem Perk „Flinke Hände“).
 ## Der Lauf
 
 | Tiefe | Name | Wächter | Bewohner |
-|-------|------|---------|----------|
+| ------- | ------ | --------- | ---------- |
 | 1 | Der Schlund | - | 9 Maden, 4 Schwärmer |
 | 2 | Der Magen | Der Magenwurm | 11 Maden, 8 Schwärmer, 3 Knochenspeier, 2 Sporenblasen |
 | 3 | Das Knochenmark | Der Knochenfresser | 10 Maden, 6 Schwärmer, 8 Knochenspeier, 3 Sporenblasen, Säurespucker, Nervenknoten, Egel |
@@ -156,6 +172,7 @@ dich, jeder Schluck löscht Feuer). Geworfen zerplatzt die Phiole und verteilt a
 durch Berührung ein.
 
 **Gegner:**
+
 - Fleischmaden kriechen, springen über Kanten und beißen.
 - Gallenschwärmer fliegen und spucken Säureklumpen.
 - Knochenspeier hängen unter Decken und schießen Nadelsalven.
@@ -220,7 +237,7 @@ gilt für dich und für alle Gegner.
 **Perks** (je Lauf jeder höchstens einmal):
 
 | Perk | Wirkung |
-|------|---------|
+| ------ | --------- |
 | Feuerfeste Haut | Feuer kann dir nichts mehr anhaben. |
 | Säurehaut | Magensäure und Ätzdampf verletzen dich nicht. |
 | Zähes Fleisch | +50 maximale Lebenspunkte. |
@@ -259,7 +276,7 @@ werden übersprungen. Gefundene Augmentationen werden prozedural erzeugt und sin
 Ebenen stärker. Du trägst bis zu vier Augmentationen und 36 lose Bausteine.
 
 | Baustein | Typ | Mana | Wirkung |
-|----------|-----|------|---------|
+| ---------- | ----- | ------ | --------- |
 | Funke | Drüse | 5 | Schneller Funke, kleine Explosion. |
 | Knochennadel | Drüse | 3 | Sehr schnell, gräbt sich nur wenig ein. |
 | Gallenblase | Drüse | 25 | Prallt ab und platzt nach kurzer Zeit mit großer Wucht. |
@@ -366,7 +383,7 @@ seltener als die handgemachten.
 Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 
 | Augmentation | Bausteine |
-|--------------|-----------|
+| -------------- | ----------- |
 | Funkendrüse | Beschleunigung > Funke > Funke > Funke |
 | Gallenwerfer | Talgsekret > Gallenblase > Feuersekret > Klumpen |
 | Nervennadel | Aufprall-Nerv > Knochennadel > Doppelzauber > Säuresekret > Klumpen > Säuresekret > Klumpen |
@@ -375,7 +392,7 @@ Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 ## Materialien und Reaktionen
 
 | Material | Verhalten |
-|----------|-----------|
+| ---------- | ----------- |
 | Fleisch | Feste Wand; verkohlt im Feuer zu Schorf, blutet bei Explosionen |
 | Knochen | Fest; kleine Zauber prallen ab, Explosionen sprengen ihn (teils zu Knochenstaub) |
 | Zahnschmelz | Sehr hart: nur große Explosionen brechen ihn, Bohrer kommen nicht durch. Adern davon ziehen sich durch die Wände, besonders in Zahnhöhle, Schädel und Knochenmark |
@@ -398,6 +415,10 @@ Vorlagen (in `src/wand.py`). Du startest mit den ersten beiden:
 Sehnen) ist für Explosionen um 2 Zellen kleiner: Eine Knochennadel kratzt es kaum an, ein
 Funke schlägt ein kleines Loch. Zahnschmelz ist für Explosionen um 9 Zellen kleiner und
 widersteht Bohrern ganz; nur Gallenblasen, Bomben und verstärkte Explosionen brechen ihn.
+
+**Geschosse und Flüssigkeiten:** Wie in Noita tauchen Geschosse durch Blut, Säure und andere
+Flüssigkeiten hindurch, nur gebremst, und treffen auch Kreaturen unter der Oberfläche. Der
+Nässe-Nerv löst beim Eintauchen aus.
 
 Reaktionen stehen als Tabelle in `src/reactions.py`. Eine neue Wechselwirkung ist eine Zeile.
 
@@ -435,13 +456,13 @@ Reaktionen stehen als Tabelle in `src/reactions.py`. Eine neue Wechselwirkung is
   Rahmen in der Farbe der Kategorie, ein Symbol für die Wirkung (Bombe, Bohrer, Ring,
   Auge für Zielsuche, Nerv mit Auslöser, ...), eingefärbt mit dem Material.
 - Kreaturen haben einen schwachen hellen Rand und leuchten ein wenig: Auch in finsteren
-  Tiefen sieht man sie, sobald sie in Sichtlinie sind.
+  Tiefen und hinter Wänden sieht man sie.
 - Das Bewegungsgefühl und die Zauberstab-Regeln orientieren sich an Noita. Code, Grafiken und
   Texte von Noita werden nicht verwendet.
 
 ## Projektstruktur
 
-```
+```text
 py-noita-claude/
 ├── native/              # Rust-Kern: Simulation, Rendern, Licht (keine Abhängigkeiten)
 ├── src/

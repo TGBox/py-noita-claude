@@ -14,7 +14,7 @@ from src.body import Body
 from src.chunks import CORPSE_HEIGHT, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
 from src.enemies import SPECIES, Creature, EnemyManager, populate, spawn_boss
-from src.flask import ABSORB_RATE, CAPACITY, POUR_RATE, REACH, Flask, ThrownFlask
+from src.flask import ABSORB_RATE, CAPACITY, POUR_RATE, REACH, Droplet, Flask, ThrownFlask
 from src.inventory import Inventory
 from src.loot import (
     PICKUP_RANGE,
@@ -28,7 +28,17 @@ from src.loot import (
     scatter_pearls,
     wand_price,
 )
-from src.materials import BLOOD, FLESH, KIND, LIQUID, MATERIAL_COUNT
+from src.materials import (
+    AIR,
+    BEDROCK,
+    BLOCKS_BODY,
+    BLOOD,
+    FLESH,
+    KIND,
+    LIQUID,
+    MATERIAL_COUNT,
+    POWDER,
+)
 from src.perks import PERK_BY_KEY, PERKS
 from src.player import ENERGY_RECHARGE_AIR, MAX_ENERGY, MAX_HP, Player
 from src.projectiles import Blast, ProjectileSystem
@@ -53,6 +63,7 @@ MAGNET_SPEED = 260.0  # px/s
 HAGGLE_FACTOR = 2 / 3
 START_FLASK = 150  # cells of blood in the starting flask
 MAX_FLASKS = 4
+SPRAY_START = 9.0  # px from the shoulder where poured liquid leaves the flask
 DROP_TOSS = 70.0  # px/s an item is tossed forward when dropped from the inventory
 FLASKS_PER_DEPTH = 2
 COCOONS_PER_DEPTH = 2
@@ -74,8 +85,15 @@ NG_POWER = 0.6  # creature health per New Game+ loop
 NG_DAMAGE = 0.4  # creature projectile damage per loop
 KICK_COOLDOWN = 0.45
 KICK_REACH = 12.0  # px in front of the player
-KICK_DAMAGE = 5.0
-KICK_PUSH = 220.0  # px/s
+KICK_DAMAGE = 8.0
+KICK_PUSH = 260.0  # px/s
+KICK_STAGGER = 0.6  # seconds a kicked creature tumbles without control
+BLAST_STAGGER = 0.35
+TRAPPED_TIME = 0.4  # seconds walled in on every side before the player tears free
+FREE_RADIUS = 6  # cells around the body cleared when that happens
+POCKET_CHECK = 1.5  # seconds of trying to move without moving before checking for a pocket
+POCKET_MOVE = 3.0  # px: moving less than this counts as not moving
+POCKET_SIZE = 24  # px: a cavity the body cannot leave within this range counts as sealed
 SAVE_VERSION = 1
 SANCTUM = Depth("sanktum", "Das Sanktum", walkers=0, flyers=0, wands=0, blocks=0, ambient=0.55)
 PEARL_PILES = 6
@@ -147,7 +165,10 @@ class Run:
         self.flasks: list[Flask] = []
         self.flask_index = 0
         self.last_aim = (0.0, 0.0)
+        self.sandbox = False  # a test run from the title menu: wands editable everywhere
+        self.god_mode = False  # sandbox: the player cannot die
         self.thrown: list[ThrownFlask] = []
+        self.droplets: list[Droplet] = []
         self.chunks = FallingChunks()
         self.messages: list[str] = []  # short German notes for the HUD, drained by the game
         self.log: list[tuple[str, dict[str, Any]]] = []  # run log entries, drained by the game
@@ -155,6 +176,9 @@ class Run:
         self._damage: dict[str, float] = {}  # player damage by cause since the last flush
         self._damage_timer = 0.0
         self._flask_budget = 0.0
+        self._pouring = False
+        self._trapped = 0.0
+        self._still_at, self._still_time = (0, 0), 0.0
         self._kick_cooldown = 0.0
         self.new_run()
 
@@ -189,6 +213,7 @@ class Run:
         self.projectiles.enemy_damage = 1.0
         self.reroll_price = REROLL_PRICE
         self.thrown = []
+        self.droplets = []
         self.perks = set()
         self.revive_used = False
         self.stats = {"kills": 0, "pearls": 0, "time": 0.0}
@@ -360,7 +385,7 @@ class Run:
     @property
     def can_edit_wands(self) -> bool:
         """Like Noita's Holy Mountain: rebuilding augmentations needs a sanctum (or a perk)."""
-        return self.in_sanctum or "flinke_haende" in self.perks
+        return self.in_sanctum or self.sandbox or "flinke_haende" in self.perks
 
     def enter_sanctum(self) -> None:
         """The safe chamber after depth ``depth_index``: heal, shop, choose a perk."""
@@ -371,6 +396,7 @@ class Run:
         self.enemies.clear()
         self.projectiles.clear()
         self.chunks.clear()
+        self.droplets = []
         self.exit_open = True
         level = self.depth_index + 2  # loot quality of the depth that follows
         offers: list[Pickup] = []
@@ -431,6 +457,7 @@ class Run:
             flasks=FLASKS_PER_DEPTH, hearts=1, cocoons=COCOONS_PER_DEPTH,
         )  # fmt: skip
         self.thrown = []
+        self.droplets = []
         if self.level.secret is not None:
             x, y = self.level.secret
             self.pickups.append(Pickup(x, y + 2, eye=True, floating=True))
@@ -593,7 +620,10 @@ class Run:
         alive = not self.player.dead and self.outcome != "victory"
         if not alive:
             controls = Controls(aim=controls.aim)
+        self._clear_overlap()
         self.player.update(self.world, dt, controls.move, controls.jump, controls.levitate)
+        if alive:
+            self._check_trapped(dt, bool(controls.move or controls.levitate))
         for wand in self.inventory.wands:
             wand.update(dt)
         if controls.cast and self.player.polymorphed <= 0:
@@ -621,6 +651,9 @@ class Run:
             if thrown.update(self.world, dt, bodies[1:]):
                 self.events.append("shatter")
         self.thrown = [t for t in self.thrown if t.alive]
+        for drop in self.droplets:
+            drop.update(self.world, dt, self.player)
+        self.droplets = [d for d in self.droplets if d.alive]
         blasts = self.projectiles.update(self.world, dt, controls.aim, bodies) + self._prop_blasts
         if self.projectiles.teleports:
             tx, ty = self.projectiles.teleports[-1]
@@ -657,6 +690,10 @@ class Run:
             self._hurt_cooldown = 0.25
         self._perk_reactions(dt)
 
+        if self.god_mode:
+            player = self.player
+            player.hp = player.max_hp
+            player.burning = player.poisoned = 0.0
         if self.player.dead and not self.outcome:
             self._flush_log()
             if "zweiter_puls" in self.perks and not self.revive_used:
@@ -880,6 +917,74 @@ class Run:
         self.events.append("descend")
         self.enter_depth(0)
 
+    def _clear_overlap(self) -> None:
+        """Material that appeared inside the player's body is pushed out of it.
+
+        Reactions, splashes and growth do not know about bodies; a cell that lands
+        inside the player would otherwise lock it in. Powders are moved above the
+        body, solids that grew into it are removed.
+        """
+        player, world = self.player, self.world
+        for y in range(player.y, player.y + player.height):
+            for x in range(player.x, player.x + player.width):
+                cell = world.get(x, y)
+                if not BLOCKS_BODY[cell] or cell == BEDROCK:
+                    continue
+                world.set_cell(x, y, AIR)
+                if KIND[cell] == POWDER:
+                    for up in range(1, 8):
+                        if world.get(x, player.y - up) == AIR:
+                            world.set_cell(x, player.y - up, cell)
+                            break
+
+    def _check_trapped(self, dt: float, trying: bool) -> None:
+        """Walled in (a crust, growth or debris shell around the body): tear free.
+
+        Fully stuck is noticed at once; a small sealed pocket is noticed when the
+        player tries to move for a while without getting anywhere.
+        """
+        player, world = self.player, self.world
+        x, y, step = player.x, player.y, player.step_up
+        stuck = (
+            player.blocked(world, x, y - 1)
+            and player.blocked(world, x, y + 1)
+            and all(player.blocked(world, x + side, y - up) for side in (-1, 1) for up in range(step + 1))
+        )
+        self._trapped = self._trapped + dt if stuck else 0.0
+        if math.dist((x, y), self._still_at) > POCKET_MOVE:
+            self._still_at, self._still_time = (x, y), 0.0
+        elif trying:
+            self._still_time += dt
+        if self._still_time >= POCKET_CHECK:
+            self._still_time = 0.0
+            if self._sealed_pocket():
+                self._trapped = TRAPPED_TIME
+        if self._trapped < TRAPPED_TIME:
+            return
+        self._trapped = 0.0
+        cx, cy = player.center
+        radius = max(player.width, player.height) // 2 + FREE_RADIUS
+        self.world.dig(int(cx), int(cy), radius, force=True)
+        self.messages.append("Du reißt dich frei.")
+        self.events.append("kick")
+        self._log("befreit", **self._log_place())
+
+    def _sealed_pocket(self) -> bool:
+        """Is the player shut in a small cavity it cannot leave?"""
+        player, world = self.player, self.world
+        start = (player.x, player.y)
+        seen, queue = {start}, [start]
+        while queue:
+            x, y = queue.pop()
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if (nx, ny) in seen or player.blocked(world, nx, ny):
+                    continue
+                if abs(nx - start[0]) > POCKET_SIZE or abs(ny - start[1]) > POCKET_SIZE:
+                    return False  # got out of the neighbourhood: not sealed in
+                seen.add((nx, ny))
+                queue.append((nx, ny))
+        return True
+
     def _kick(self, aim: tuple[float, float]) -> None:
         """Kick towards the cursor side: hurts and shoves creatures, bursts sacs, flings items."""
         self._kick_cooldown = KICK_COOLDOWN
@@ -892,13 +997,23 @@ class Run:
             ox, oy = creature.center
             if abs(ox - reach_x) <= KICK_REACH / 2 + creature.width / 2 and abs(oy - cy) <= creature.height / 2 + 6:
                 creature.hurt(KICK_DAMAGE, "Tritt")
-                if not creature.spec.boss:
+                if not creature.spec.boss and not creature.spec.stationary:
                     creature.vx = side * KICK_PUSH
                     creature.vy = -KICK_PUSH * 0.6
+                    creature.stagger = KICK_STAGGER
         for item in self.pickups:
             if not item.floating and abs(item.x - reach_x) <= KICK_REACH and abs(item.y - cy) <= 12:
                 item.vy = -KICK_PUSH * 0.8
                 item.vx = side * KICK_PUSH
+        # loose powder and liquid in front of the feet is scattered too
+        foot_y = player.y + player.height - 2
+        for dy in range(-6, 2):
+            for dx in range(2, int(KICK_REACH)):
+                x, y = int(cx + side * (player.width / 2 + dx)), foot_y + dy
+                cell = self.world.get(x, y)
+                if KIND[cell] in (POWDER, LIQUID) and self.world.get(x + side * 4, y - 3) == AIR:
+                    self.world.set_cell(x, y, AIR)
+                    self.world.set_cell(x + side * 4, y - 3, cell)
 
     def _teleport(self, tx: float, ty: float) -> None:
         """Move the player to (tx, ty) if the body fits there or a little above."""
@@ -935,7 +1050,11 @@ class Run:
             budget = int(self._flask_budget)
             self._flask_budget -= budget
             if controls.pour:
-                flask.pour(self.world, sx, sy, angle, budget)
+                if not self._pouring:
+                    self._log("giessen", phiole=flask.label_de)
+                reach = max(SPRAY_START, arm_reach(len(self.inventory.wand.blocks)))
+                tip = (sx + math.cos(angle) * reach, sy + math.sin(angle) * reach)
+                self.droplets += flask.spray(*tip, angle, budget, self.rng)
             else:
                 distance = min(REACH, math.dist((sx, sy), controls.aim))
                 tx = int(sx + math.cos(angle) * distance)
@@ -943,6 +1062,7 @@ class Run:
                 flask.absorb(self.world, tx, ty, budget)
         else:
             self._flask_budget = 0.0
+        self._pouring = controls.pour
 
     def _collect_pearls(self, dt: float) -> None:
         cx, cy = self.player.center
@@ -1089,6 +1209,8 @@ class Run:
                 norm = math.hypot(dx, dy) or 1.0
                 body.vx += dx / norm * strength / mass
                 body.vy += dy / norm * strength / mass - strength / mass * 0.3
+                if hasattr(body, "stagger") and not body.spec.boss and strength / mass > 40:
+                    body.stagger = max(body.stagger, BLAST_STAGGER)
         for item in self.pickups:  # loose items fly too
             if item.floating:
                 continue

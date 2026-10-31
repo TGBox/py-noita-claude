@@ -50,7 +50,6 @@ class HudState:
     depth_number: int
     depth_total: int
     fps: float
-    show_help: bool
     sandbox: bool = False
     banner: str = ""
     prompt: str = ""
@@ -64,7 +63,6 @@ class HudState:
     flasks: Sequence[Flask] = ()
     flask_index: int = 0
     pulse: float = 0.0  # 0..1 heartbeat phase for low-health effects
-    help_lines: Sequence[tuple[str, str]] = ()  # (binding, action) for the help panel
     sandbox_lines: Sequence[str] = ()
     hover: HoverInfo | None = None
     cursor: tuple[int, int] = (0, 0)  # window position of the cursor (for the tooltip)
@@ -104,8 +102,8 @@ class Hud:
             self._boss_bar(screen, viewport, state.boss, s)
         self._wand_panel(screen, state.inventory, left, bottom, s)
         self._flask_panel(screen, state, right, bottom, s)
-        if state.sandbox or state.show_help:
-            self._help_panel(screen, state, left, top + round(96 * s), s)
+        if state.sandbox:
+            self._sandbox_panel(screen, state, left, top + round(96 * s), s)
 
         centre_x = viewport.offset_x + viewport.target_width // 2
         height = viewport.target_height
@@ -259,26 +257,17 @@ class Hud:
         label = active.label_de if active is not None else "Keine Phiole"
         ui.text(screen, label, (x + round(10 * s), y + height - round(24 * s)), round(14 * s))
 
-    def _help_panel(self, screen: pygame.Surface, state: HudState, x: int, y: int, s: float) -> None:
-        lines = list(state.help_lines) if state.show_help else []
-        sandbox = list(state.sandbox_lines) if state.sandbox else []
-        if not lines and not sandbox:
-            return
-        row = round(17 * s)
-        width = round(360 * s)
-        gap = round(8 * s) if sandbox and lines else 0
-        height = round(30 * s) + row * (len(lines) + len(sandbox)) + gap
-        ui.panel(screen, (x, y, width, height), alpha=190, studs=False)
-        ui.text(screen, "Steuerung", (x + round(10 * s), y + round(5 * s)), round(15 * s), ui.GOLD,
+    def _sandbox_panel(self, screen: pygame.Surface, state: HudState, x: int, y: int, s: float) -> None:
+        lines = list(state.sandbox_lines)
+        row = round(16 * s)
+        width = round(370 * s)
+        height = round(30 * s) + row * len(lines)
+        ui.panel(screen, (x, y, width, height), alpha=180, studs=False)
+        ui.text(screen, "Sandbox", (x + round(10 * s), y + round(5 * s)), round(15 * s), ui.GOLD,
                 heading=True)  # fmt: skip
         cy = y + round(26 * s)
-        for line in sandbox:
-            ui.text(screen, line, (x + round(10 * s), cy), round(13 * s), ui.GOLD)
-            cy += row
-        cy += gap
-        for binding, action in lines:
-            ui.text(screen, binding, (x + round(10 * s), cy), round(13 * s), bold=True)
-            ui.text(screen, action, (x + round(150 * s), cy), round(13 * s), ui.DIM)
+        for line in lines:
+            ui.text(screen, line, (x + round(10 * s), cy), round(12 * s), ui.TEXT)
             cy += row
 
     def _outcome(self, screen: pygame.Surface, state: HudState, s: float) -> None:
