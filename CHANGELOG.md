@@ -1,8 +1,16 @@
 # Changelog
 
+## SemVer v1.2.2
+
+- 2026-11-01 (f57efd4): fix: apply fixes to remove markdownlint errors in the documentation plan
+
+## SemVer v1.2.1
+
+- 2026-11-01 (67e9978): feat: add implementation plan for the new game offshoot
+
 ## SemVer v1.2.0
 
-- 2026-11-01 (bce88e0): fix: fix pickup radius being way to small, fix: fix single pixels getting leftover after fire or explosions, fix: unknown spells are now highlighted to avoid inventory clutter, feat: add save and exit option, feat: add new sorting criteriea for inventory spells, fix: remove healing properties from blood for debuf reasons
+- 2026-11-01 (8a690f1): fix: fix pickup radius being way to small, fix: fix single pixels getting leftover after fire or explosions, fix: unknown spells are now highlighted to avoid inventory clutter, feat: add save and exit option, feat: add new sorting criteriea for inventory spells, fix: remove healing properties from blood for debuf reasons
 
 ## SemVer v1.1.2
 
