@@ -1,11 +1,17 @@
 # Changelog
 
+## SemVer v1.6.0
+
+- 2026-11-01 (752d1e6): feat: update planning documents to separate them into 134 individual S-cards, with 60-80 lines code change each, 1-2 target files + 1 testfile, context per card smaller than 15 kb and without any open design questions
+
 ## SemVer v1.5.0
 
-- 2026-11-01 (7e1c697): feat: update planning documents to prepare for creating only S cards in the next step
+- 2026-11-01 (420c686): Merge pull request #16 from TGBox/master
+- 2026-11-01 (f6aaeef): feat: update planning documents to prepare for creating only S cards in the next step
 
 ## SemVer v1.4.1
 
+- 2026-11-01 (48a9c72): Merge pull request #15 from TGBox/develop
 - 2026-11-01 (8347b94): feat: update planning documents with atomic tasks to get handled by smaller models
 
 ## SemVer v1.4.0
@@ -14,10 +20,12 @@
 
 ## SemVer v1.3.0
 
+- 2026-11-01 (5c4b81d): Merge pull request #14 from TGBox/develop
 - 2026-11-01 (f286afc): feat: update implementation plan for cloita-interdimensional
 
 ## SemVer v1.2.2
 
+- 2026-11-01 (d0e83e5): Merge pull request #13 from TGBox/develop
 - 2026-11-01 (18eae22): fix: apply fixes to remove markdownlint errors in the documentation plan
 
 ## SemVer v1.2.1
@@ -26,10 +34,12 @@
 
 ## SemVer v1.2.0
 
+- 2026-11-01 (8656efd): Merge pull request #12 from TGBox/develop
 - 2026-11-01 (8a690f1): fix: fix pickup radius being way to small, fix: fix single pixels getting leftover after fire or explosions, fix: unknown spells are now highlighted to avoid inventory clutter, feat: add save and exit option, feat: add new sorting criteriea for inventory spells, fix: remove healing properties from blood for debuf reasons
 
 ## SemVer v1.1.2
 
+- 2026-10-31 (1f99195): Merge pull request #11 from TGBox/develop
 - 2026-10-31 (d78fbd6): fix: add new row to the bag, allow spells to stack in the inventory, add sorting to the bag, add fast transfer via double or right clicking
 
 ## SemVer v1.1.1
@@ -38,14 +48,17 @@
 
 ## SemVer v1.1.0
 
+- 2026-10-31 (694c955): Merge pull request #10 from TGBox/develop
 - 2026-10-31 (fb77ee9): feat: add mouse on hover indicator for materials, perks, enemies, fluids, etc., feat: add logging mode to allow for better debugging, feat: add controller input, feat: add control schema adjustment option, fix: fix phioles not getting filled with key s, fix: fix bag access getting denied instead of only wand rebuilding during levels, fix: fix not being able to drop items, fix: menus not having real ui elements and only relying on pure text, fix: fix bag having too little slots
 
 ## SemVer v1.0.0
 
+- 2026-10-31 (6c5a344): Merge pull request #9 from TGBox/develop
 - 2026-10-31 (1b3b7b5): feat: complete big auto run with claude, feat: add over 400 spells, add 32 biomes, add boss battles, add rigid body physics, add parallel worlds in the east and west
 
 ## SemVer v0.4.2
 
+- 2026-10-30 (0241b79): Merge pull request #8 from TGBox/develop
 - 2026-10-30 (3264d89): Merge pull request #7 from TGBox/master
 - 2026-10-30 (158c0a7): fix: fix ruff errors in Github action
 
