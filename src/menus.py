@@ -31,11 +31,16 @@ CODEX_COLUMNS = 5
 MenuItem = tuple[str, str]  # (key, German label)
 
 
-def title_items(saved_depth: int | None) -> list[MenuItem]:
-    """Entries of the title menu (``saved_depth``: depth a saved run continues at)."""
+def title_items(saved_depth: int | None, live: bool = False) -> list[MenuItem]:
+    """Entries of the title menu.
+
+    ``saved_depth``: depth a saved run continues at; ``live``: the save was made in
+    the middle of a depth (continues right there) rather than at a sanctum.
+    """
     items = [("new", "Neuer Lauf")]
     if saved_depth is not None:
-        items.append(("continue", f"Lauf fortsetzen (vor Tiefe {saved_depth})"))
+        where = f"Tiefe {saved_depth}" if live else f"vor Tiefe {saved_depth}"
+        items.append(("continue", f"Lauf fortsetzen ({where})"))
     items += [
         ("sandbox", "Sandbox"),
         ("codex", "Kodex"),
@@ -52,8 +57,8 @@ PAUSE_ITEMS: tuple[MenuItem, ...] = (
     ("controls", "Steuerung"),
     ("options", "Optionen"),
     ("restart", "Neuer Lauf"),
-    ("title", "Zum Titel"),
-    ("quit", "Beenden"),
+    ("title", "Speichern und zum Titel"),
+    ("quit", "Speichern und beenden"),
 )
 
 

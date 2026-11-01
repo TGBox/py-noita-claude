@@ -29,6 +29,7 @@ PERKS: tuple[Perk, ...] = (
     Perk("dauerflug", "Ausdauernde Flughäute", "Deine Schwebekraft lädt sich auch in der Luft schnell auf.", (170, 200, 220)),
     Perk("gaslunge", "Gaslunge", "Sporen und Ätzdampf schaden dir nicht.", (164, 128, 160)),
     Perk("schleimlaeufer", "Schleimläufer", "Schleim bremst dich nicht mehr.", (176, 172, 120)),
+    Perk("blutsauger", "Blutsauger", "Blut aus der Phiole heilt dich (6 pro Schluck).", (150, 12, 24)),
     Perk("feilscher", "Feilscher", "Im Laden zahlst du ein Drittel weniger.", (232, 180, 90)),
 )  # fmt: skip
 

@@ -5,13 +5,16 @@ Pure game logic without pygame, so a whole run can be simulated in tests.
 
 from __future__ import annotations
 
+import base64
 import math
 import random
+import zlib
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from src import native
 from src.body import Body
-from src.chunks import CORPSE_HEIGHT, FallingChunks
+from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
 from src.enemies import SPECIES, Creature, EnemyManager, populate, spawn_boss
 from src.flask import ABSORB_RATE, CAPACITY, POUR_RATE, REACH, Droplet, Flask, ThrownFlask
@@ -33,11 +36,14 @@ from src.materials import (
     BEDROCK,
     BLOCKS_BODY,
     BLOOD,
+    DEBRIS,
     FLESH,
+    HARDNESS,
     KIND,
     LIQUID,
     MATERIAL_COUNT,
     POWDER,
+    SOLID,
 )
 from src.perks import PERK_BY_KEY, PERKS
 from src.player import ENERGY_RECHARGE_AIR, MAX_ENERGY, MAX_HP, Player
@@ -94,6 +100,10 @@ FREE_RADIUS = 6  # cells around the body cleared when that happens
 POCKET_CHECK = 1.5  # seconds of trying to move without moving before checking for a pocket
 POCKET_MOVE = 3.0  # px: moving less than this counts as not moving
 POCKET_SIZE = 24  # px: a cavity the body cannot leave within this range counts as sealed
+SPECK_INTERVAL = 0.2  # seconds between sweeps for floating specks around the player
+SPECK_RADIUS = 70  # px around the player swept for specks
+SPECK_MAX = 8  # cells: free-floating bits up to this size crumble away
+CRUSH_MAX = 4  # cells: a thinner obstacle in the player's way is pushed aside
 SAVE_VERSION = 1
 SANCTUM = Depth("sanktum", "Das Sanktum", walkers=0, flyers=0, wands=0, blocks=0, ambient=0.55)
 PEARL_PILES = 6
@@ -165,6 +175,7 @@ class Run:
         self.flasks: list[Flask] = []
         self.flask_index = 0
         self.last_aim = (0.0, 0.0)
+        self.known_blocks: set[str] = set()  # blocks in the Kodex (unknown ones are marked)
         self.sandbox = False  # a test run from the title menu: wands editable everywhere
         self.god_mode = False  # sandbox: the player cannot die
         self.thrown: list[ThrownFlask] = []
@@ -178,6 +189,7 @@ class Run:
         self._flask_budget = 0.0
         self._pouring = False
         self._trapped = 0.0
+        self._speck_timer = 0.0
         self._still_at, self._still_time = (0, 0), 0.0
         self._kick_cooldown = 0.0
         self.new_run()
@@ -521,16 +533,62 @@ class Run:
             "rng": [version, list(internal), gauss],
         }
 
-    def restore(self, data: dict[str, Any]) -> None:
-        """Continue a saved run: enters the sanctum the snapshot was taken at.
+    def save_state(self) -> dict[str, Any]:
+        """Everything needed to continue exactly here ("Speichern und beenden").
 
-        Raises ``ValueError`` for data that does not fit this version of the game.
+        On top of the sanctum snapshot it holds the world itself (compressed), the
+        level layout, the player's position and state, every creature and item.
+        Projectiles and flying droplets are left out; falling tissue is set down.
+        """
+        for chunk in self.chunks.items:  # tissue in flight lands where it is
+            for x, y, material in chunk.place(chunk.x, chunk.y, chunk.angle):
+                if self.world.get(x, y) == AIR:
+                    self.world.set_cell(x, y, material, force=True)
+        self.chunks.clear()
+        data = self.snapshot()
+        player = self.player
+        level = self.level
+        data["live"] = {
+            "in_sanctum": self.in_sanctum,
+            "depth_index": self.depth_index,
+            "time_in_depth": self.time_in_depth,
+            "exit_open": self.exit_open,
+            "level": [level.spawn, level.exit, level.arena, level.secret, level.vault],
+            "world": _pack(self.world.grid),
+            "life": _pack(self.world.life),
+            "player": {
+                "x": player.x, "y": player.y, "hp": player.hp, "energy": player.energy,
+                "burning": player.burning, "wet": player.wet, "oily": player.oily,
+                "slimed": player.slimed, "poisoned": player.poisoned,
+                "polymorphed": player.polymorphed,
+            },
+            "creatures": [
+                {
+                    "key": c.spec.key, "x": c.x, "y": c.y, "hp": c.hp, "max_hp": c.max_hp,
+                    "power": c.power, "alerted": c.alerted,
+                }
+                for c in self.enemies.creatures
+                if not c.dead
+            ],
+            "pickups": [_pickup_data(item) for item in self.pickups],
+            "god_mode": self.god_mode,
+            "checkpoint": self.checkpoint,  # the last sanctum, if the game ends without saving
+        }  # fmt: skip
+        return data
+
+    def restore(self, data: dict[str, Any]) -> None:
+        """Continue a saved run.
+
+        A sanctum snapshot enters that sanctum again; a full save (``save_state``)
+        continues exactly where the player stopped. Raises ``ValueError`` for data
+        that does not fit this version of the game.
         """
         try:
             if data.get("version") != SAVE_VERSION:
                 raise ValueError("unsupported save version")
             depth_index = int(data["depth_index"])
-            if not 0 <= depth_index < len(DEPTHS) - 1:
+            last = len(DEPTHS) if isinstance(data.get("live"), dict) else len(DEPTHS) - 1
+            if not 0 <= depth_index < last:
                 raise ValueError("depth out of range")
             wands = []
             for entry in data["wands"]:
@@ -587,7 +645,63 @@ class Run:
         self.flask_index = max(0, min(self.flask_index, len(self.flasks) - 1))
         self.rng.setstate(rng_state)
         self.discoveries.clear()
+        live = data.get("live")
+        if isinstance(live, dict):
+            try:
+                self._restore_live(live)
+                return
+            except (KeyError, TypeError, ValueError, IndexError, zlib.error):
+                checkpoint = live.get("checkpoint")  # damaged: back to the sanctum before
+                if isinstance(checkpoint, dict) and "live" not in checkpoint:
+                    self.restore(checkpoint)
+                    return
         self.enter_sanctum()
+
+    def _restore_live(self, live: dict[str, Any]) -> None:
+        world = self.world
+        grid, life = _unpack(live["world"]), _unpack(live["life"])
+        if len(grid) != len(world.grid) or len(life) != len(world.life):
+            raise ValueError("saved world has the wrong size")
+        if max(grid) >= MATERIAL_COUNT:
+            raise ValueError("unknown material in the saved world")
+        checkpoint = live.get("checkpoint")
+        self.checkpoint = checkpoint if isinstance(checkpoint, dict) else None
+        self.in_sanctum = bool(live["in_sanctum"])
+        self.depth_index = int(live["depth_index"])
+        world.grid[:] = grid
+        world.life[:] = life
+        world.wake_all()
+
+        def point(value):
+            return None if value is None else (int(value[0]), int(value[1]))
+
+        spawn, exit_point, arena, secret, vault = (point(v) for v in live["level"])
+        self.level = Level(spawn, exit_point, arena, secret, vault)
+        self.exit_open = bool(live["exit_open"])
+        self.time_in_depth = float(live.get("time_in_depth", 0.0))
+        self.enemies.clear()
+        for entry in live["creatures"]:
+            spec = SPECIES.get(entry["key"])
+            if spec is None:
+                continue
+            creature = Creature(spec, int(entry["x"]), int(entry["y"]), self.rng)
+            creature.empower(float(entry.get("power", 1.0)))
+            creature.max_hp = float(entry["max_hp"])
+            creature.hp = float(entry["hp"])
+            creature.alerted = bool(entry.get("alerted", False))
+            self.enemies.creatures.append(creature)
+        self.pickups = [item for item in map(_pickup_from, live["pickups"]) if item is not None]
+        self.projectiles.clear()
+        self.chunks.clear()
+        self.thrown, self.droplets = [], []
+        player = self.player
+        state = live["player"]
+        player.place(int(state["x"]), int(state["y"]))
+        player.hp = min(player.max_hp, float(state["hp"]))
+        player.energy = float(state.get("energy", player.energy_max))
+        for name in ("burning", "wet", "oily", "slimed", "poisoned", "polymorphed"):
+            setattr(player, name, float(state.get(name, 0.0)))
+        self.god_mode = bool(live.get("god_mode", False))
 
     def _reroll_perks(self) -> None:
         """Replace the perks on the altar with a new choice (never ones already owned)."""
@@ -601,7 +715,9 @@ class Run:
             self.pickups.append(Pickup(x, y, perk=key, floating=True))
 
     def _discover_blocks(self, keys) -> None:
-        self.discoveries.extend(("block", key) for key in keys if key)
+        keys = [key for key in keys if key]
+        self.discoveries.extend(("block", key) for key in keys)
+        self.known_blocks.update(keys)
 
     def _refill_wands(self) -> None:
         for wand in self.inventory.wands:
@@ -626,6 +742,12 @@ class Run:
         if not alive:
             controls = Controls(aim=controls.aim)
         self._clear_overlap()
+        if alive and controls.move:
+            self._crush_debris(controls.move)
+        self._speck_timer -= dt
+        if self._speck_timer <= 0:
+            self._speck_timer = SPECK_INTERVAL
+            self._sweep_specks()
         self.player.update(self.world, dt, controls.move, controls.jump, controls.levitate)
         if alive:
             self._check_trapped(dt, bool(controls.move or controls.levitate))
@@ -942,6 +1064,44 @@ class Run:
                             world.set_cell(x, player.y - up, cell)
                             break
 
+    def _sweep_specks(self) -> None:
+        """Tiny free-floating bits (left by fire, blasts, reactions) crumble away.
+
+        In Noita such debris falls; here a speck that touches nothing would hang in
+        the air forever and block the way, so it breaks into its debris.
+        """
+        cx, cy = self.player.center
+        world = self.world
+        groups = native.loose_groups(
+            native.byte_view(world.grid), world.width, world.height, RIGID, (int(cx), int(cy)),
+            SPECK_RADIUS, SPECK_RADIUS + 12, 1, SPECK_MAX,
+        )  # fmt: skip
+        w = world.width
+        for group in groups:
+            for index in group:
+                x, y = index % w, index // w
+                debris, _chance = DEBRIS[world.get(x, y)]
+                world.set_cell(x, y, debris if KIND[debris] != SOLID else AIR)
+
+    def _crush_debris(self, direction: int) -> None:
+        """A thin obstacle (a few loose pixels) in front of the walking player gives way."""
+        player, world = self.player, self.world
+        x = player.x + player.width if direction > 0 else player.x - 1
+        top = player.y
+        bottom = player.y + player.height - 1 - player.step_up  # the feet climb small steps
+        blocking = [
+            (x, y) for y in range(top, bottom + 1) if BLOCKS_BODY[world.get(x, y)]
+        ]
+        if not blocking or len(blocking) > CRUSH_MAX:
+            return
+        if any(HARDNESS[world.get(cx, cy)] >= 3 for cx, cy in blocking):
+            return  # enamel and bedrock never give way
+        if any(BLOCKS_BODY[world.get(cx + direction, cy)] for cx, cy in blocking):
+            return  # more than a sliver: a real wall or ceiling, not loose debris
+        for bx, by in blocking:
+            debris, _chance = DEBRIS[world.get(bx, by)]
+            world.set_cell(bx, by, debris if KIND[debris] != SOLID else AIR)
+
     def _check_trapped(self, dt: float, trying: bool) -> None:
         """Walled in (a crust, growth or debris shell around the body): tear free.
 
@@ -1045,7 +1205,7 @@ class Run:
             self.events.append("cast")
             return
         if controls.drink:
-            message = flask.drink(self.player)
+            message = flask.drink(self.player, blood_heals="blutsauger" in self.perks)
             if message:
                 self._log("trinken", phiole=flask.label_de)
                 self.messages.append(message)
@@ -1080,7 +1240,7 @@ class Run:
                 item.y += (cy - item.y) * pull
                 item.vy = 0.0
                 distance = math.hypot(item.x - cx, item.y - cy)
-            if distance <= PICKUP_RANGE + 4:
+            if distance <= PICKUP_RANGE * 0.6:
                 self.pearls += item.pearls
                 self.stats["pearls"] += item.pearls
                 self.pickups.remove(item)
@@ -1246,6 +1406,58 @@ class Run:
             self.enter_depth(self.depth_index + 1)
         elif self.depth_index + 1 < len(DEPTHS):
             self.enter_sanctum()
+
+
+def _pack(buffer: bytearray) -> str:
+    return base64.b64encode(zlib.compress(bytes(buffer), 6)).decode("ascii")
+
+
+def _unpack(text: str) -> bytes:
+    return zlib.decompress(base64.b64decode(text.encode("ascii")))
+
+
+PICKUP_FIELDS = ("pearls", "perk", "heart", "cocoon", "eye", "reroll", "portal", "seen", "price", "floating")
+
+
+def _pickup_data(item: Pickup) -> dict[str, Any]:
+    data: dict[str, Any] = {"x": item.x, "y": item.y}
+    data.update({name: getattr(item, name) for name in PICKUP_FIELDS})
+    if item.block is not None:
+        data["block"] = item.block
+    if item.wand is not None:
+        data["wand"] = {**asdict(item.wand), "blocks": list(item.wand.blocks)}
+    if item.flask is not None:
+        data["flask"] = [item.flask.material, item.flask.amount]
+    return data
+
+
+def _pickup_from(data: dict[str, Any]) -> Pickup | None:
+    """Rebuild a saved item; unknown blocks, perks or broken entries are skipped."""
+    try:
+        item = Pickup(float(data["x"]), float(data["y"]))
+        for name in PICKUP_FIELDS:
+            if name in data:
+                setattr(item, name, data[name])
+        if item.perk is not None and item.perk not in PERK_BY_KEY:
+            return None
+        block = data.get("block")
+        if block is not None:
+            if block not in CATALOG:
+                return None
+            item.block = block
+        wand = data.get("wand")
+        if wand is not None:
+            spec = WandSpec(**{**wand, "blocks": tuple(wand["blocks"])})
+            if any(key not in CATALOG for key in spec.blocks):
+                return None
+            item.wand = spec
+        if "flask" in data:
+            item.flask = _flask_from(data["flask"])
+            if item.flask is None:
+                return None
+    except (KeyError, TypeError, ValueError):
+        return None
+    return item
 
 
 def _flask_from(data: object) -> Flask | None:

@@ -91,8 +91,9 @@ Plätzen, eine Augmentation an ihrem Griff (umsortieren oder ablegen), Phiolen u
 Was auf das Feld „Ablegen“ oder aus dem Fenster gezogen wird, fällt vor dir auf den Boden.
 Ein Klick auf Griff oder Phiole nimmt sie in die Hand. **Rechtsklick oder Doppelklick** auf einen Zauber setzt ihn aus dem
 Beutel in die Augmentation in der Hand oder legt ihn aus der Augmentation in den Beutel.
-**Sortieren** fasst Stapel zusammen und ordnet den Beutel nach Drüsen, Mutationen, Nerven und
-Sekreten. Mit Controller: X wie Rechtsklick, Y sortiert. Außerhalb des Sanktums kannst du
+**Sortieren** fasst Stapel zusammen und ordnet den Beutel; der Knopf daneben wählt das
+Kriterium: Art (Drüsen, Mutationen, Nerven, Sekrete), Schaden, Mana, Name oder Anzahl. Mit
+Controller: X wie Rechtsklick, Y wechselt das Kriterium und sortiert. Außerhalb des Sanktums kannst du
 ansehen, den Beutel ordnen und ablegen; Augmentationen umbauen geht nur im Sanktum (oder mit
 dem Perk „Flinke Hände“).
 
@@ -143,12 +144,15 @@ Neben dem Altar wuchert ein Würfelgewächs: Für Blutperlen würfelt es die dre
 
 **Statistik:** Der Titelbildschirm zeigt deine Läufe, Siege, die tiefste erreichte Tiefe und
 den schnellsten Sieg. Sie liegt als `records.json` im Benutzerordner (Windows:
-`%APPDATA%\Cloita`). Läufe, in denen du die Sandbox (F1) benutzt hast, zählen nicht.
+`%APPDATA%\Cloita`). Sandbox-Läufe zählen nicht.
 
-**Speichern und Fortsetzen:** Beim Betreten eines Sanktums wird der Lauf gespeichert
-(`lauf.json` im selben Ordner). Nach einem Neustart setzt du ihn im Titel mit **F** fort und
-stehst wieder in diesem Sanktum, mit demselben Laden und denselben Perks. Tod, Sieg oder ein
-neuer Lauf löschen den Spielstand.
+**Speichern und Fortsetzen:** Wie in Noita lässt sich jederzeit aufhören: „Speichern und zum
+Titel“ oder „Speichern und beenden“ im Pausenmenü (auch das Schließen des Fensters) speichert
+den Lauf genau dort, wo du bist, mit der ganzen Welt, allen Kreaturen und Gegenständen
+(`lauf.json` im selben Ordner). Im Titel setzt „Lauf fortsetzen“ ihn fort. Ein solcher
+Spielstand gilt einmal: Danach steht wieder das letzte Sanktum auf der Platte, das auch beim
+Betreten jedes Sanktums gespeichert wird. Wer also ohne Speichern abbricht, beginnt im letzten
+Sanktum. Tod, Sieg oder ein neuer Lauf löschen den Spielstand.
 
 **Kodex:** Jeder Baustein, den du aufhebst, und jede Kreatur, die du tötest, wird dauerhaft im
 Kodex eingetragen (Titel, **K**). Neue Einträge meldet das Spiel mit „Neu im Kodex“.
@@ -168,8 +172,9 @@ Dateien `assets/audio/musik_<tiefe>.wav/.ogg` (z. B. `musik_lunge.ogg`) ersetzen
 **Phiolen:** Du trägst bis zu vier Phiolen und wechselst mit C (oder 5-8) zwischen ihnen. Du startest mit einer halb vollen Phiole Blut, und in jeder Tiefe liegen weitere,
 mal gefüllt (Blut, Säure, Talg, Schleim), mal leer. Eine Phiole fasst 300 Zellen einer einzigen
 Flüssigkeit. Ausgegossenes ist echtes Material in der Welt: Blut löscht Brände, Säure frisst
-Wände, Talg wird zur Brandfalle. Trinken wirkt je nach Inhalt (Blut heilt ein wenig, Säure ätzt
-dich, jeder Schluck löscht Feuer). Geworfen zerplatzt die Phiole und verteilt alles auf einmal.
+Wände, Talg wird zur Brandfalle. Trinken wirkt je nach Inhalt (Säure ätzt
+dich, jeder Schluck löscht Feuer). **Blut heilt nicht**, wie in Noita ist Heilung knapp: Das
+Sanktum heilt voll, Herzklumpen auch, und nur mit dem Perk „Blutsauger“ heilt ein Schluck Blut. Geworfen zerplatzt die Phiole und verteilt alles auf einmal.
 
 **Blutperlen** liegen in den Höhlen und fallen aus jedem getöteten Gegner. Du sammelst sie
 durch Berührung ein.
@@ -225,6 +230,14 @@ Talgsäcke explodieren in brennendes Fett, Säuresäcke platzen ätzend, Sporens
 entzündliche Wolke. Explosionen reißen benachbarte Säcke mit, und auch Gegnerschüsse bringen
 sie zum Platzen.
 
+**Aufheben:** Gegenstände lassen sich aus gut zwei Figurenbreiten Abstand aufheben. Zauber,
+die noch nicht im Kodex stehen, glitzern mit einem goldenen Rahmen und heißen im Tooltip
+„Neu“; auch Augmentationen nennen neue Zauber darin.
+
+**Splitter:** Winzige, frei schwebende Bröckchen (nach Feuer, Explosionen, Reaktionen)
+zerfallen in der Nähe der Figur von selbst, und ein einzelner dünner Splitter im Weg gibt
+nach, wenn du dagegenläufst. Zahnschmelz und echte Wände bleiben stehen.
+
 **Fundstücke:** In jeder Tiefe liegt ein **Herzklumpen** (+20 maximales Leben, heilt voll) und
 zwei **Brutkokons**, die beim Öffnen (E) Blutperlen und zufällige Beute ausspucken.
 
@@ -247,6 +260,7 @@ gilt für dich und für alle Gegner.
 | Leichte Knochen | Du schwebst 50 % länger. |
 | Panzerplatten | Explosionen verletzen dich kaum noch. |
 | Blutdurst | Jeder getötete Gegner heilt dich um 6. |
+| Blutsauger | Blut aus der Phiole heilt dich (6 pro Schluck). |
 | Schnelle Drüsen | Augmentationen zaubern und laden 25 % schneller. |
 | Säureblut | Wenn du verletzt wirst, spritzt ätzendes Blut um dich. |
 | Zweiter Puls | Einmal pro Lauf stehst du nach dem Tod wieder auf. |

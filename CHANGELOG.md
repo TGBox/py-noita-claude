@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.2.0
+
+- 2026-11-01 (bce88e0): fix: fix pickup radius being way to small, fix: fix single pixels getting leftover after fire or explosions, fix: unknown spells are now highlighted to avoid inventory clutter, feat: add save and exit option, feat: add new sorting criteriea for inventory spells, fix: remove healing properties from blood for debuf reasons
+
 ## SemVer v1.1.2
 
-- 2026-10-31 (de58158): fix: add new row to the bag, allow spells to stack in the inventory, add sorting to the bag, add fast transfer via double or right clicking
+- 2026-10-31 (d78fbd6): fix: add new row to the bag, allow spells to stack in the inventory, add sorting to the bag, add fast transfer via double or right clicking
 
 ## SemVer v1.1.1
 

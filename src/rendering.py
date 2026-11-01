@@ -856,7 +856,13 @@ def draw_thrown_flasks(canvas: pygame.Surface, thrown: list[ThrownFlask], cam_x:
         draw_flask(canvas, item.flask, int(item.x) - cam_x, int(item.y) - cam_y + 4)
 
 
-def draw_pickups(canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_y: int) -> None:
+NEW_MARK = (255, 236, 150)
+
+
+def draw_pickups(
+    canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_y: int, known: set[str] | None = None
+) -> None:
+    """Items in the world; blocks not yet in the Kodex sparkle (``known`` = Kodex)."""
     for item in pickups:
         if not item.seen:
             continue
@@ -920,6 +926,12 @@ def draw_pickups(canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_
                 canvas.fill(color, (x - 4 + k * 2, y - 3 + bob - k // 3, 2, 2))
         elif item.block is not None:
             color = block_color(CATALOG[item.block])
+            unknown = known is not None and item.block not in known
+            if unknown:  # a pulsing golden frame and a spark: something new
+                glow = 0.5 + 0.5 * math.sin(item.age * 6)
+                frame = _mix(NEW_MARK, (90, 60, 30), 1 - glow)
+                pygame.draw.rect(canvas, frame, (x - 4, y - 7 + bob, 9, 9), 1)
+                canvas.fill(NEW_MARK, (x, y - 10 + bob - round(glow), 1, 2))
             pygame.draw.rect(canvas, (30, 16, 20), (x - 3, y - 6 + bob, 7, 7))
             canvas.fill(color, (x - 2, y - 5 + bob, 5, 5))
 

@@ -18,7 +18,7 @@ ITEM_GRAVITY = 400.0
 ITEM_BOUNCE = 0.35
 ITEM_DRAG = 0.8  # per second in the air
 ITEM_FRICTION = 0.6  # sideways speed kept per touch of the ground
-PICKUP_RANGE = 14.0  # px between player centre and item
+PICKUP_RANGE = 26.0  # px between player centre and item (generous, like Noita)
 
 ADJECTIVES = ("Pulsierende", "Eitrige", "Vernarbte", "Zuckende", "Blasse", "Schwärende", "Hohle")
 NOUNS = ("Drüse", "Ranke", "Klaue", "Zyste", "Wucherung", "Sehne", "Rippe")
@@ -197,7 +197,7 @@ def cocoon_loot(rng: random.Random, x: float, y: float, level: int) -> list[Pick
     return items
 
 
-FLASK_CONTENTS = ((BLOOD, 4), (ACID, 2), (TALLOW, 2), (MUCUS, 1), (PUS, 1), (MAGMA, 1), (None, 2))
+FLASK_CONTENTS = ((BLOOD, 2), (ACID, 2), (TALLOW, 2), (MUCUS, 1), (PUS, 1), (MAGMA, 1), (None, 2))
 
 
 def random_flask(rng: random.Random) -> Flask:
