@@ -3,7 +3,7 @@
 ## Gegenstände in der Welt
 
 | Schlüssel | Name | Größe | Aussehen | Wirkung |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `gold_muenze` | Gold | 3×3 | runde Münze, Glanzpixel | wird beim Berühren eingesammelt |
 | `gold_haufen_s/m/l` | Goldhaufen | 5×3 / 7×4 / 9×5 | Münzstapel | 10–40 × Rang |
 | `kolben` | Kolben | 7×9 | Rundkolben aus Glas mit Korken, Füllstand in Materialfarbe | wie bisher die Phiole |
@@ -22,7 +22,7 @@
 Zwei je Universum. Fallen von Einheimischen, großen Kreaturen und Zwischengegnern oder liegen in Fundkisten. Alle 7×7 als Gegenstand und 12×12 als Icon im Rucksack (eigene Leiste „Proben“).
 
 | Schlüssel | Name | Universum | Aussehen |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `probe_gallenstein` | Gallenstein | Fleischwelt | grüngelber, kantiger Stein |
 | `probe_wucherung` | Wucherungsableger | Fleischwelt | lila Knolle mit Äderchen im Glas |
 | `probe_stempelkissen` | Stempelkissen | Aktenhalde | lila Kissen in Blechdose |
@@ -43,7 +43,7 @@ Rucksack: eigene Leiste mit 12 Plätzen für Proben (stapelbar bis 99), getrennt
 An der **Experimentierliege** der Werkstatt wählt Cloita eines von drei Experimenten, das sie an sich selbst durchführt (gilt für den Rest des Laufs). Die alten Perks werden umbenannt; einige ändern Cloitas Aussehen (Kapitel 04).
 
 | Schlüssel | Name | Bisher | Wirkung | Sichtbar |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `asbesthaut` | Asbesthaut | feuerfest | Feuer schadet nicht | grauer Hautton |
 | `saeurefest` | Säureresistente Leber | saeurehaut | Säure und Dämpfe schaden nicht | – |
 | `zweites_herz` | Zweites Herz | zaehes_fleisch | +50 maximales Leben | – |
@@ -76,7 +76,7 @@ Eine feste, handgebaute Karte (ca. 640×360, eine Bildschirmbreite, kein Scrolle
 **Stationen** (je ein Sprite mit `idle` 2–4 Frames und `use` 2–4 Frames):
 
 | Schlüssel | Name | Größe | Funktion | Aussehen |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `ws_portal` | Portalrahmen | 40×48 | Weiter ins nächste Universum (zeigt dessen Namen und Regel als Vorschau) | Torbogen aus Schrott und Spulen, Flux-Wirbel |
 | `ws_werkbank` | Werkbank | 48×28 | Waffen umbauen (öffnet den Rucksack im Umbau-Modus) | Tisch mit Schraubstock, Lötkolben |
 | `ws_fabrikator` | Fabrikator | 40×40 | Module aus Bauplänen bauen | Kasten mit Trichter oben, Ausgabeschacht unten, raucht |
@@ -93,6 +93,7 @@ Eine feste, handgebaute Karte (ca. 640×360, eine Bildschirmbreite, kein Scrolle
 Beide nutzen die vorhandene Physik. Einsatz Gold, Belohnung Gold, Proben oder Schübe. Höchstens **ein Versuch je Minispiel und Werkstatt-Besuch**.
 
 **Physik-o-Mat (`minigame_automat`)** – Einsatz 30 Gold
+
 - Ein kleines Feld (160×120) in einem Rahmen; Cloita hat eine feste Waffe und 10 Sekunden.
 - Rätsel (zufällig eines von):
   1. *Füll das Glas:* Wasser in einem Becken oben soll in ein Glas unten fließen; nur durch Sprengen und Graben.
@@ -102,13 +103,14 @@ Beide nutzen die vorhandene Physik. Einsatz Gold, Belohnung Gold, Proben oder Sc
 - Belohnung: 80 Gold oder eine Probe nach Wahl.
 
 **Schießstand (`minigame_schiessstand`)** – Einsatz 20 Gold
+
 - 30 Sekunden mit der eigenen Waffe auf auftauchende Pappfiguren (Agenten: treffen; Klonita-Pappfiguren: nicht treffen, sonst Abzug).
 - Belohnung je Punkte: Schub für das nächste Universum (Flux +20 %, Schaden +10 % oder Lauftempo +10 %).
 
 **Herausforderungen in Universen (`challenge_*`)** – ein Einheimischer je Universum bittet um etwas (Textblase, Annehmen mit E):
 
 | Universum | Herausforderung | Belohnung |
-|---|---|---|
+| --- | --- | --- |
 | Fleischwelt | „Bring mir 3 Gallensteine, ich sammle sie.“ | Lebenskapsel |
 | Aktenhalde | „Stempel 5 Formulare ab, bevor die Prüfung kommt.“ (Formulare liegen herum, mit E stempeln) | 150 Gold |
 | Glibbria | „Bring meine Kuh heil über den Sirupsee.“ (Glibberkuh muss geführt werden) | Modul Seltenheit 3 |

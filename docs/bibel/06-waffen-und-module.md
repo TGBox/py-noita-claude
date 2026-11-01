@@ -11,7 +11,7 @@ Werte wie bisher: Flux-Maximum, Flux pro Sekunde, Verzögerung, Nachladen, Plät
 Waffen in der Welt (12–20×5–8) und an Cloitas Arm werden aus Teilen zusammengesetzt; die Werte bestimmen die Teile, damit man einer Waffe ihre Art ansieht:
 
 | Teil | Varianten | Bestimmt durch |
-|---|---|---|
+| --- | --- | --- |
 | Gehäuse | kurz (6 px), mittel (9 px), lang (12 px) | Plätze 2–4 / 5–8 / 9–12 |
 | Lauf | einfach, Doppellauf, Dreifachlauf | Schüsse pro Abzug 1 / 2 / 3+ |
 | Mündung | spitz, Trichter, Sieb | Streuung klein / mittel / groß |
@@ -24,13 +24,14 @@ Je Teil 1 Sprite (Raster), Farben aus `metal`, `flux`, `n1`–`n5` plus eine Zuf
 ### Namen
 
 Zufällig aus Adjektiv + Hauptwort (Startliste, je 12):
+
 - Adjektive: Geliehene, Verbotene, Wackelige, Notdürftige, Selbstgebaute, Überladene, Verfluchte, Rostige, Klebrige, Leise, Beleidigte, Experimentelle
 - Hauptwörter: Kanone, Strahlenpistole, Spritze, Pumpe, Schleuder, Röhre, Puste, Knarre, Apparatur, Zwille, Heizdecke, Gießkanne
 
 ### Startwaffen
 
 | Schlüssel | Name | Module | Hinweis |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `start_funken` | Cloitas Funkenpistole | Turbo, Flux-Funke, Flux-Funke, Flux-Funke | entspricht der alten Funkendrüse |
 | `start_granate` | Der Matschwerfer | Wasserfüllung, Hüpfgranate, Feuerfüllung, Matschbatzen | entspricht dem alten Gallenwerfer |
 
@@ -41,7 +42,7 @@ Jede Waffe öffnet am **Ankerpunkt** eines Universums (wo bisher der Ausgang war
 ## Kategorien
 
 | Intern | Anzeige | Rahmenfarbe Icon | Bedeutung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | FORM | Geschoss | `n4` | was fliegt |
 | MODIFIER | Aufsatz | `cloth` | verändert das nächste Geschoss |
 | TRIGGER | Zünder | `gold` | das Geschoss setzt die nächste Gruppe frei |
@@ -54,7 +55,7 @@ Die Spalte „bisher“ nennt den alten Baustein, dessen Werte übernommen werde
 ### Geschosse (24)
 
 | Schlüssel | Name | Bisher | Beschreibung | Icon-Idee |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `flux_funke` | Flux-Funke | funke | Schneller Funke, kleine Explosion. Das Brot und Butter jeder Wissenschaftlerin. | türkiser Funke mit Schweif |
 | `nadelschuss` | Nadelschuss | nadel | Sehr schnell, kratzt kaum an Wänden. | Spritzennadel |
 | `huepfgranate` | Hüpfgranate | gallenblase | Prallt ab und platzt nach kurzer Zeit gewaltig. | Granate mit Sprungfeder |
@@ -83,7 +84,7 @@ Die Spalte „bisher“ nennt den alten Baustein, dessen Werte übernommen werde
 ### Aufsätze (22)
 
 | Schlüssel | Name | Bisher | Beschreibung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `turbo` | Turbo | beschleunigung | Nächstes Geschoss fliegt schneller. |
 | `turbo_x` | Überturbo | beschleunigung_stark | Zweieinhalbmal so schnell. Hält nicht lange. |
 | `sprengladung` | Sprengladung | sprengkraft | Größere Explosion. |
@@ -110,7 +111,7 @@ Die Spalte „bisher“ nennt den alten Baustein, dessen Werte übernommen werde
 ### Zünder (4)
 
 | Schlüssel | Name | Bisher | Beschreibung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `aufschlagzuender` | Aufschlagzünder | nerv_aufprall | Setzt die nächste Gruppe beim Aufprall frei. |
 | `zeitzuender` | Zeitzünder | nerv_zeit | Nach kurzer Zeit. |
 | `endzuender` | Endzünder | nerv_ende | Am Ende des Flugs. |
@@ -121,7 +122,7 @@ Die Spalte „bisher“ nennt den alten Baustein, dessen Werte übernommen werde
 Füllungen müssen in jedem Universum funktionieren; deshalb nur Grundmaterialien, plus zwei Sonderfüllungen.
 
 | Schlüssel | Name | Material | Beschreibung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `fuellung_wasser` | Wasserfüllung | Wasser | Löscht, macht nass, leitet Strom. |
 | `fuellung_oel` | Ölfüllung | Öl | Brennbar und rutschig. |
 | `fuellung_feuer` | Feuerfüllung | Feuer | Setzt in Brand. |
@@ -146,7 +147,7 @@ Die vorhandene Icon-Erzeugung (`src/icons.py`) bleibt das Grundgerüst. Für die
 Ein Schluck (30 Zellen) gibt einen zeitlich begrenzten Effekt. Kein Effekt ist Voraussetzung zum Schießen. Heilen tut keine Flüssigkeit ohne Selbstexperiment.
 
 | Flüssigkeit | Universum | Effekt |
-|---|---|---|
+| --- | --- | --- |
 | Wasser | alle | Erfrischt: Flux lädt 20 % schneller, 15 s; löscht Brand |
 | Öl | alle | Geschmiert: 15 % kürzere Verzögerung, 15 s; macht ölig |
 | Flux-Schnaps | Werkstatt (Zapfhahn) | Beschwipst: Flux lädt 50 % schneller, Zielen schwankt, 20 s |

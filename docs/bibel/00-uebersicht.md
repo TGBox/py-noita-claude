@@ -7,7 +7,7 @@ Diese Bibel ist die verbindliche Vorlage für Inhalte, Texte und Grafik. Agenten
 ## Kapitel
 
 | Datei | Inhalt | Wer braucht es |
-|---|---|---|
+| --- | --- | --- |
 | `00-uebersicht.md` | Zweck, Begriffe, Namensregeln | alle |
 | `01-stil.md` | Grafikstil, Paletten, Größen, Animation, Dateiformat, Abnahme | Grafik |
 | `02-systeme.md` | Lauf-Aufbau, Regel- und Verhaltensbibliothek, Materialien, Wirtschaft, Begleiterin, Behörde | Code, Inhalte |
@@ -32,7 +32,7 @@ Absurde Komik zuerst, mit viel schwarzem Humor: Die Welten sind bunt und albern,
 Der harte Schnitt benennt fast alles um. Die Engine bleibt; die Tabelle zeigt, was im Code welchem neuen Begriff entspricht.
 
 | Bisher (Code / Biohorror) | Neu (Spiel) | Code-Schlüssel neu (Vorschlag) |
-|---|---|---|
+| --- | --- | --- |
 | Augmentation (Stab) | **Waffe** | `weapon` (Klasse `Wand` darf intern bleiben) |
 | Baustein | **Modul** | `module` |
 | Drüse (Form) | **Geschoss** | `Category.FORM` → Anzeige „Geschoss“ |

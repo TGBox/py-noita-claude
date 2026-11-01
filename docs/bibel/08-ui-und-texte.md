@@ -9,7 +9,7 @@
 ## Oberfläche umbenennen
 
 | Element | Neu |
-|---|---|
+| --- | --- |
 | Lebensbalken | bleibt, Symbol Herz |
 | Schweben | Symbol Jetpack-Sohle statt Flügel |
 | Mana-Balken | **Flux**, Symbol türkiser Blitz im Kreis, Balken in `flux` |
@@ -43,7 +43,7 @@
 ## Textmengen (MVP)
 
 | Wer / Was | Anlässe | Sprüche je Anlass | Summe (ca.) |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Klonita | Universum betreten (allgemein) | 8 | 8 |
 | Klonita | Universum betreten (je Universum) | 3 | 18 |
 | Klonita | Cloita nimmt Schaden | 6 | 6 |
@@ -69,6 +69,7 @@
 | Archiv | Eintrag je Universum, Kreatur, böses Ich | 2–3 Sätze | ≈ 40 |
 
 Beispiele, die den Ton festlegen:
+
 - Klonita, Universum betreten (Aktenhalde): „So viel Papier! Wollen wir allen einen Brief schreiben?“
 - Klonita, Cloita tötet einen Hüpfling: „Er wollte doch nur hüpfen …“
 - Klonita, getroffen: „Au! Das war bestimmt keine Absicht!“

@@ -5,7 +5,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 ## Felder eines Universums
 
 | Feld | Bedeutung |
-|---|---|
+| --- | --- |
 | `key`, `name` | Schlüssel, Anzeigename |
 | `pitch` | ein Satz für Ladebildschirm und Archiv |
 | `rule` | Hauptregel aus Kapitel 02 |
@@ -48,7 +48,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Materialien:**
 
 | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `papier` | Papier | fest | weich | #EDE6D2 | Brennbarkeit 0,6 (sehr hoch), verbrennt zu Asche |
 | `aktendeckel` | Aktendeckel | fest | hart | #C8A060 | stabile Wände, brennt langsam |
 | `tinte` | Tinte | flüssig | – | #1E2A5A | macht Kreaturen „markiert“ (sichtbar durch Wände für 20 s), färbt Papier dunkel (dann nicht mehr brennbar) |
@@ -74,7 +74,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Materialien:**
 
 | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `glibber` | Glibber | fest | weich | #6CE0A0 | Geschosse prallen daran immer ab (zusätzlich zur Regel); Körper federn darauf |
 | `glibber_rot` | Himbeerglibber | fest | weich | #F0507A | wie Glibber, explodiert bei Feuer zu Sirup |
 | `brausesirup` | Brausesirup | flüssig | – | #F6A0E0 | sprudelt; in Kontakt mit Feuer oder Explosion → Schaumexplosion (kleine Explosion, verteilt Schaum) |
@@ -99,7 +99,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Materialien:**
 
 | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `kruemel` | Brotkrümel | fest | weich | #D8A860 | bröselt bei Explosionen zu Bröseln |
 | `brosel` | Brösel | Pulver | weich | #C89850 | Ameisen fressen es |
 | `zucker` | Zucker | Pulver | weich | #F4F4F8 | lockt Ameisen an (Duftquelle); Feuer → Karamell |
@@ -125,7 +125,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Materialien:**
 
 | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `pilzfleisch` | Pilzfleisch | fest | weich | #B080C0 | wächst auf jeden 8. Beat ein wenig in Luft hinein |
 | `pilzhut` | Pilzhut | fest | hart | #E04080 | federt leicht |
 | `leuchtsporen` | Leuchtsporen | Gas | – | #60FFE0 | leuchtet; Einatmen: „Beschwipst“ |
@@ -149,7 +149,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Materialien:**
 
 | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `mauerwerk` | Mauerwerk | fest | hart | #6A7468 | Standardwand |
 | `buntglas` | Buntglas | fest | weich | #40A0D0 / #D04060 / #E0C040 | zerspringt bei Treffern in Splitter (schneiden) |
 | `kerzenwachs` | Kerzenwachs | fest, schmilzt | weich | #EEE6C8 | Feuer schmilzt es zu flüssigem Wachs, erstarrt wieder |
@@ -171,7 +171,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 Kurzbeschreibungen, damit nichts verloren geht. Jedes wird später nach demselben Schema ausgearbeitet.
 
 | Schlüssel | Name | Regel | Idee |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `freizeitpark` | Freizeitpark Endzeit | `rule_magnet` | Ein Vergnügungspark nach dem Weltuntergang, Achterbahnschienen als Wege, Maskottchen-Kostüme ohne Inhalt, Zuckerwatte brennt. |
 | `gerichtssaal` | Gerichtsdimension | `rule_transmute` | Alles wird verhandelt; Urteile verwandeln Materie. Richterhämmer als Gegner. |
 | `spiegelwelt` | Spiegelwelt | `rule_reverse_gravity` | Alles ist Glas und Spiegel, Geschosse spiegeln, dein Spiegelbild läuft verzögert mit. |

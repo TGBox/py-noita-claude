@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.2.2
+
+- 2026-11-01 (f57efd4): fix: apply fixes to remove markdownlint errors in the documentation plan
+
 ## SemVer v1.2.1
 
-- 2026-11-01 (3a49273): feat: add implementation plan for the new game offshoot
+- 2026-11-01 (67e9978): feat: add implementation plan for the new game offshoot
 
 ## SemVer v1.2.0
 

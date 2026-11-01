@@ -16,7 +16,7 @@
 ## Größen
 
 | Klasse | Sprite-Größe (B×H) | Trefferbox | Hinweis |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Cloita | 14×24 | 8×18 (wie bisher) | Waffe wird separat am Schulterpunkt gezeichnet |
 | Klonita | 14×24 | 8×18 | gleiche Proportionen, weichere Formen |
 | Normale Kreatur | 10–24 × 8–24 | Sprite minus 1–2 px Rand | etwa spielergroß, kleine Schwärmer ab 6 px |
@@ -43,7 +43,7 @@
 Alle Sprites verwenden nur Farben aus der Hauptpalette plus der Teilpalette ihres Universums. Namen sind die Schlüssel im Code.
 
 | Gruppe | Schlüssel | Hex |
-|---|---|---|
+| --- | --- | --- |
 | Tinte | `ink` | #1C1420 |
 | Neutral | `n1` `n2` `n3` `n4` `n5` | #2E2836 #4A4452 #77707E #A9A3AE #E6E2E8 |
 | Haut | `skin_l` `skin` `skin_d` | #F2CCA8 #E0A982 #B67A5C |
@@ -67,7 +67,7 @@ Teilpaletten der Universen stehen in Kapitel 03 (je 8–12 Farben).
 - Zustände und Mindest-Framezahlen:
 
 | Zustand | Schlüssel | Frames | Pflicht für |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Ruhe | `idle` | 2–4 | alle |
 | Bewegung | `move` | 4–6 | alle beweglichen |
 | Ausholen | `windup` | 2–3 | alle mit Angriff |

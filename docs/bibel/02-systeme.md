@@ -14,7 +14,7 @@ Werkstatt → Universum A (Rang 1) → Werkstatt → Universum B (Rang 1, Zwisch
 - **Zwischengegner:** am Ende des zweiten Universums jedes Rangs. Er bewacht den Ankerpunkt; erst nach seinem Tod lässt sich das Portal öffnen. Jeder Zwischengegner hat ein **Heimat-Universum** und kämpft in dessen Arena mit dessen Regel und Materialien (Kapitel 05). Der Seed wählt je Rang einen der zwei Zwischengegner; dessen Heimat-Universum wird das zweite Universum des Rangs. Die Heimat-Universen der nicht gewählten Zwischengegner füllen die ersten Plätze der Ränge (dort ohne Zwischengegner). So kommt im MVP jedes der 6 Universen genau einmal vor.
 
   | Rang | Zwischengegner (Heimat) |
-  |---|---|
+  | --- | --- |
   | 1 | Oberstempler (Aktenhalde), Mutter Glibber (Glibbria) |
   | 2 | DJ Myzel (Sporenklub), Abt Kieme (Versunkene Abtei) |
   | 3 | Ameisenkönigin (Krümelreich), Weltenherz (Fleischwelt) |
@@ -31,7 +31,7 @@ Werkstatt → Universum A (Rang 1) → Werkstatt → Universum B (Rang 1, Zwisch
 - Heute: 1280×720 Zellen pro Tiefe. **Neu: etwa 4-fache Fläche**, Form je Universum:
 
 | Form | Größe (Zellen) | Beispiel |
-|---|---|---|
+| --- | --- | --- |
 | Breit | 3072×1024 | Bürokratenwelt (endlose Aktenregale) |
 | Hoch | 1280×2560 | Kathedrale (Turm nach unten) |
 | Quadrat | 2048×1536 | Fleischwelt |
@@ -44,7 +44,7 @@ Werkstatt → Universum A (Rang 1) → Werkstatt → Universum B (Rang 1, Zwisch
 Jedes Universum hat **genau eine Hauptregel** (im MVP) aus dieser Bibliothek; später sind zwei möglich. Regeln sind Datensätze mit Parametern; der Code bietet für jede einen Haken.
 
 | Schlüssel | Name | Wirkung | Parameter | Technik |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `rule_living_walls` | Alles lebt | Weiches Gewebe wächst langsam nach (Löcher schließen sich), Wände bluten bei Treffern | Nachwachsrate, Material | periodischer Wachstumsschritt im Kern (Reaktion „Luft neben Fleisch → Fleisch“ mit kleiner Chance) |
 | `rule_paperwork` | Papierkrieg | Fast alles Feste ist Papier: brennt extrem schnell, Feuer breitet sich weit aus | Brennbarkeit-Faktor | Materialwerte des Universums |
 | `rule_bounce` | Gummiwelt | Geschosse prallen +2-mal mehr ab, Fallen verursacht keinen Schaden, Sprünge federn | Abpraller, Sprungfaktor | Geschoss-Bounce-Bonus, Spieler-Physik |
@@ -67,19 +67,19 @@ MVP verwendet: `rule_living_walls`, `rule_paperwork`, `rule_bounce`, `rule_tiny`
 
 Verhalten sind kombinierbare Bausteine. Eine Kreatur hat eine **Haltung** (wie sie zu dir steht) und **Fähigkeiten** (was sie tut).
 
-**Haltungen**
+## **Haltungen**
 
 | Schlüssel | Bedeutung |
-|---|---|
+| --- | --- |
 | `hostile` | greift an, sobald sie dich sieht |
 | `neutral` | ignoriert dich, bis sie oder ihre Gruppe getroffen wird; danach `hostile` |
 | `passive` | greift nie an; flieht, wenn getroffen |
 | `trader` | bietet Handel an (E); wird beraubt (getötet) → alle Händler im Lauf verlangen 50 % mehr, Behörde +1 Fahndung |
 
-**Fähigkeiten**
+## **Fähigkeiten**
 
 | Schlüssel | Name | Beschreibung |
-|---|---|---|
+| --- | --- | --- |
 | `graze` | Weiden | wandert ziellos, frisst ein Material (entfernt Zellen), wächst dabei leicht |
 | `pack` | Rudel | Mitglieder einer Gruppe teilen Wissen: wird eines angegriffen, kommen alle |
 | `hunt` | Jagen | verfolgt dich über Wegsuche und Geruch (Blutspur, Kolben-Flüssigkeiten) |
@@ -97,7 +97,7 @@ Verhalten sind kombinierbare Bausteine. Eine Kreatur hat eine **Haltung** (wie s
 | `summon` | Rufen | holt Verstärkung (Gruppe oder Behörde) |
 | `stationary` | Festsitzend | bewegt sich nicht |
 
-**Allgemeine Regeln für alle Kreaturen**
+## **Allgemeine Regeln für alle Kreaturen**
 
 - Jeder Angriff hat ein **Ausholen** (≥ 0,4 s, sichtbar).
 - `retaliate` ist für alle Haltungen außer `passive` Standard. Fernschüsse aus sicherer Entfernung bleiben möglich, haben aber Folgen.
@@ -106,7 +106,7 @@ Verhalten sind kombinierbare Bausteine. Eine Kreatur hat eine **Haltung** (wie s
 ## Fraktionen
 
 | Fraktion | Verhalten zu anderen |
-|---|---|
+| --- | --- |
 | Einheimische (je Universum) | untereinander friedlich; verteidigen ihr Universum |
 | Behörde | jagt Cloita; greift Einheimische an, die Cloita helfen; wird von allen anderen gehasst |
 | Böse Ichs | eigene Fraktion (nur im Endkampf und bei der Behörde) |
@@ -129,7 +129,7 @@ Die Palette fasst heute **höchstens 21 Materialien** (8-Bit-Palette: Materialie
 ### Grundmaterialien (überall)
 
 | ID | Schlüssel | Name | Art | Härte | Wirkung |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | 0 | `air` | Leere | – | – | – |
 | 1 | `bedrock` | Weltrand | fest | unzerstörbar | Rand, Werkstatt |
 | 2 | `rock` | Fels | fest | hart | allgemeiner Stein, Splitter → Sand |
@@ -164,7 +164,7 @@ Funktioniert wie das bisherige Mana (lädt von selbst nach, je Waffe). Anzeige a
 ## Wirtschaft (Gold)
 
 | Quelle | Menge (Rang 1 / 2 / 3) |
-|---|---|
+| --- | --- |
 | Normale Kreatur | 5–10 / 10–18 / 18–30 |
 | Große Kreatur | 40 / 70 / 110 |
 | Zwischengegner | 200 / 350 / 500 |
@@ -173,7 +173,7 @@ Funktioniert wie das bisherige Mana (lädt von selbst nach, je Waffe). Anzeige a
 | Minispiele | siehe Kapitel 07 |
 
 | Ausgabe | Preis |
-|---|---|
+| --- | --- |
 | Modul beim Händler | 50–120 × (1 + 0,25 × Stufe) |
 | Waffe beim Händler | 160 + 70 × (Stufe − 1) |
 | Fabrikator-Bau | Modulpreis × 0,7 + Proben |
@@ -209,7 +209,7 @@ Funktioniert wie das bisherige Mana (lädt von selbst nach, je Waffe). Anzeige a
 Bestehende bleiben (brennend, nass, ölig, verschleimt, vergiftet, verwandelt). Neu:
 
 | Schlüssel | Name | Quelle | Wirkung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `drunk` | Beschwipst | Flux-Schnaps u. a. | Flux lädt 50 % schneller, Zielen schwankt |
 | `sticky` | Klebrig | Kaugummi, Honig, Siegellack | Bewegung 50 %, Springen 70 % |
 | `stamped` | Genehmigt / Abgelehnt | Stempler | Genehmigt: +20 % Schaden 15 s; Abgelehnt: −20 % Schaden 15 s |

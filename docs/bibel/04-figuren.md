@@ -7,6 +7,7 @@
 **Persönlichkeit (für Texte):** genial, ungeduldig, sarkastisch, hält Moral für eine Rechenungenauigkeit. Mag Klonita mehr, als sie zugibt.
 
 **Aussehen (14×24):**
+
 - Wildes, abstehendes Haar in `hair` (Orange), eine Strähne steht wie eine Antenne hoch.
 - Schutzbrille mit runden Gläsern in `flux_l` auf der Stirn; schiebt sie beim Zielen herunter (Frame-Variante `aim`).
 - Zu großer, fleckiger Laborkittel (`coat`) mit Brandloch am Saum und einem Kolben in der Brusttasche.
@@ -16,7 +17,7 @@
 **Animationen:**
 
 | Zustand | Frames | Beschreibung |
-|---|---|---|
+| --- | --- | --- |
 | `idle` | 4 | atmet, Haarsträhne wippt, tippt alle 3 s mit dem Fuß |
 | `run` | 6 | Kittel flattert nach hinten |
 | `jump` | 2 | Knie angezogen |
@@ -33,6 +34,7 @@
 **Waffe:** wird separat gezeichnet, am Schulterpunkt (wie bisher) zur Maus gedreht. Teile siehe Kapitel 06.
 
 **Sichtbare Selbstexperimente:** Manche Selbstexperimente ändern Cloitas Aussehen (Überlagerungen, je 14×24, nur die geänderten Pixel):
+
 - `asbesthaut`: grauer, rissiger Hautton
 - `froschzunge`: Zunge hängt heraus
 - `dritter_arm`: kleiner dritter Arm am Rücken, winkt
@@ -46,6 +48,7 @@
 **Persönlichkeit:** herzlich, naiv, begeistert von allem, nennt Gegner „kleiner Freund“, entschuldigt sich bei Wänden, die Cloita sprengt. Hat sich selbst einen Namen gegeben („Klonita, weil ich ein Klon bin! Und weil es nett klingt!“).
 
 **Aussehen (14×24):**
+
 - Gleiche Proportionen wie Cloita, aber weicher: runde Schultern, kein Kittel.
 - Gleiches Haar, aber gekämmt und mit einer Schleife (`clone_d`).
 - Rosa Strickpulli mit aufgesticktem Herz (`clone`), Latzhose (`clone_d`), Hausschuhe mit Hasenohren.
@@ -55,7 +58,7 @@
 **Animationen:**
 
 | Zustand | Frames | Beschreibung |
-|---|---|---|
+| --- | --- | --- |
 | `idle` | 4 | wiegt sich hin und her, summt (Notensymbol als Effekt) |
 | `run` | 6 | hüpfend |
 | `jump` | 2 | |
@@ -74,7 +77,7 @@
 Pro besuchtem Universum kann ein Händler in der Werkstatt auftauchen (bis zu 2 gleichzeitig). MVP: ein Händler je Universum.
 
 | Schlüssel | Name | Universum | Aussehen (12–18 × 18–26) | Spezialität |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `npc_magenhaendler` | Herr Pansen | Fleischwelt | Wandelnder Magen mit Melone (Hut) und Monokel, Tentakel als Arme | Füllungen aus Fleischwelt-Materialien |
 | `npc_sachbearbeiterin` | Frau Abheft | Aktenhalde | Aktenordner mit Brille, Ärmelschoner, Stempel als Hand | Zünder; verlangt eine „Bearbeitungsgebühr“ (+10 Gold) |
 | `npc_glibberhaendler` | Wobbel | Glibbria | Grüner Gelee-Würfel mit Strohhut, Dinge schwimmen in ihm | Aufsätze; hüpft beim Reden |
@@ -89,7 +92,7 @@ Jeder Händler hat `idle` (4 Frames) und `talk` (2 Frames) sowie 5 Sprüche (Kap
 Die Behörde ordnet das Multiversum – angeblich. Ihre Agenten sind identisch aussehende Beamte in Anzügen, deren Gesichter hinter einer glatten Maske mit dem Behördensiegel verborgen sind (später: unter der Maske steckt jeweils eine Cloita).
 
 | Schlüssel | Name | Größe | Aussehen | Rolle |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `agent_streife` | Streifenagent | 12×22 | grauer Anzug (`agent`), Maske mit Siegel (Kreis mit Auge), Aktenkoffer | Grundtyp, schießt Formularblitze |
 | `agent_vollstrecker` | Vollstrecker | 16×24 | breiter, Mantel, Schulterlampe, schwerer Stempel als Waffe | ab Fahndungsstufe 3, Schild aus Panzerglas |
 | `agent_drohne` | Aktendrohne | 10×8 | fliegender Aktenkoffer mit Propeller und Kameraauge | ab Stufe 2, markiert Cloita (alle Agenten wissen dann, wo sie ist) |
@@ -101,7 +104,7 @@ Gemeinsames Merkmal: das **Siegel der Behörde** (Kreis, darin ein Auge mit Stem
 Alle drei sind erkennbar Cloita (Haar, Statur), aber jede mit eigener Silhouette und Farbwelt. Kampf in Kapitel 05.
 
 | Schlüssel | Name | Herkunft | Aussehen |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `boese_kaiserin` | Kaiserin Cloita | ein Universum, das sie erobert hat | Rüstung aus Gold (`gold`), Umhang, Krone mit Antenne, Haar zu einem riesigen Turm frisiert; Leibwächter-Klone |
 | `boese_gute` | Die Gütige Cloita | ein Sekten-Universum | Weiße Kutte, Heiligenschein aus Flux (`flux_l`, leuchtend), lächelt wie Klonita – aber mit leeren Augen; schwebt |
 | `boese_omega` | Cloita-Ω | ein Maschinen-Universum | Halb Roboter: ein Arm ist eine Kanone, ein Auge ein roter Sensor (`danger`), Kabel statt Haar an einer Seite; Drohnen umkreisen sie |
