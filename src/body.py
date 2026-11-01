@@ -2,25 +2,15 @@
 
 from __future__ import annotations
 
-from src.materials import (
-    ACID,
-    AIR,
-    BLOCKS_BODY,
-    BLOOD,
-    FIRE,
-    FUME,
-    GAS,
-    HAZARD_DPS,
-    KIND,
-    LIQUID,
-    MUCUS,
-    NAME_DE,
-    PUS,
-    TALLOW,
-)
+from src import materials as mat
+from src.materials import AIR, BLOCKS_BODY, GAS, HAZARD_DPS, KEYS, KIND, LIQUID, NAME_DE
 from src.world import World
 
 UNSTICK_MAX = 24
+# Material keys behind the status effects (every universe set may bring its own).
+ACID_KEYS = frozenset({"acid", "fume"})
+OILY_KEYS = frozenset({"tallow", "oil"})
+SLIMY_KEYS = frozenset({"mucus", "kaugummi"})
 AIR_STEP_UP = 2  # small ledges a body slides over even while airborne
 BURN_TIME = 3.0  # seconds a body keeps burning after catching fire
 BURN_DPS = 10.0
@@ -42,7 +32,8 @@ class Body:
     """Axis-aligned box in world cells; position is the top-left corner."""
 
     team = "neutral"  # projectiles never hit bodies of their own team
-    blood = BLOOD  # what a wound sprays into the world
+    gravity_scale = 1.0  # set for all bodies by the universe rule (rule_tiny)
+    blood = "blood"  # material key a wound sprays into the world (None: nothing)
     gas_immune = False  # spores and fumes do no harm
     mucus_immune = False  # not slowed by mucus
     fire_immune = False
@@ -95,14 +86,15 @@ class Body:
 
     def bleed(self, world: World, x: float, y: float, amount: float, dx: float = 0.0) -> None:
         """Spray a few cells of ``blood`` from a wound at (x, y), more for bigger hits."""
-        if self.blood == AIR:
+        blood = mat.resolve(self.blood) if self.blood else None
+        if not blood:
             return
         rng = world.rng
         for _ in range(min(12, 1 + int(amount / 3))):
             px = int(x + rng.uniform(-2, 2) + dx * rng.uniform(0, 4))
             py = int(y + rng.uniform(-3, 1))
             if world.get(px, py) == AIR:
-                world.set_cell(px, py, self.blood)
+                world.set_cell(px, py, blood)
 
     def in_liquid(self, world: World) -> bool:
         cx, cy = self.center
@@ -125,7 +117,7 @@ class Body:
     def in_mucus(self, world: World) -> bool:
         """Centre or feet stuck in mucus."""
         cx = self.x + self.width // 2
-        return MUCUS in (world.get(cx, self.y + self.height // 2), world.get(cx, self.y + self.height - 1))
+        return mat.MUCUS in (world.get(cx, self.y + self.height // 2), world.get(cx, self.y + self.height - 1))
 
     def move(self, world: World, dt: float) -> None:
         """Move by the current velocity and update ``on_ground``."""
@@ -176,25 +168,27 @@ class Body:
         worst, touches_fire, touches_liquid = 0.0, False, False
         worst_material = AIR
         touches_tallow = touches_mucus = touches_pus = False
+        keys = KEYS  # status effects go by material key, never by a stand-in id
         for yy in range(self.y - 1, self.y + self.height + 1):
             for xx in range(self.x - 1, self.x + self.width + 1):
                 material = world.get(xx, yy)
-                if material == FIRE and self.fire_immune:
+                key = keys[material]
+                if key == "fire" and self.fire_immune:
                     continue
-                if material in (ACID, FUME) and self.acid_immune:
-                    touches_liquid = touches_liquid or material == ACID
+                if key in ACID_KEYS and self.acid_immune:
+                    touches_liquid = touches_liquid or key == "acid"
                     continue
                 if KIND[material] == GAS and self.gas_immune:
                     continue
                 if HAZARD_DPS[material] > worst:
                     worst, worst_material = HAZARD_DPS[material], material
-                if material == FIRE:
+                if key == "fire":
                     touches_fire = True
-                elif material == TALLOW:
+                elif key in OILY_KEYS:
                     touches_tallow = True  # fat does not douse, it soaks in
-                elif material == MUCUS:
+                elif key in SLIMY_KEYS:
                     touches_mucus = touches_liquid = True
-                elif material == PUS:
+                elif key == "pus":
                     touches_pus = touches_liquid = True
                 elif KIND[material] == LIQUID:
                     touches_liquid = True
@@ -241,7 +235,7 @@ class Body:
         x = self.x + world.rng.randrange(self.width)
         y = self.y - 1 - world.rng.randrange(2)
         if world.get(x, y) == AIR:
-            world.set_cell(x, y, FIRE)
+            world.set_cell(x, y, mat.FIRE)
 
     def hazard_dps(self, world: World) -> float:
         """Strongest damage source touching the body (fire, acid, ...)."""

@@ -1,8 +1,16 @@
 # Changelog
 
+## SemVer v1.4.1
+
+- 2026-11-01 (c8ea95d): feat: update planning documents with atomic tasks to get handled by smaller models
+
+## SemVer v1.4.0
+
+- 2026-11-01 (eb0838d): feat: add first new universe with world rules, enemies and rough idea concepts, including new controls in the sandbox for testing the new content, fix: update plan to prevent already noticed issue with global fires in the new world type
+
 ## SemVer v1.3.0
 
-- 2026-11-01 (485a9d5): feat: update implementation plan for cloita-interdimensional
+- 2026-11-01 (f286afc): feat: update implementation plan for cloita-interdimensional
 
 ## SemVer v1.2.2
 

@@ -14,7 +14,8 @@ import sys
 from functools import cache
 from pathlib import Path
 
-from src.materials import MATERIAL_COUNT, MATERIALS
+from src import materials as mat
+from src.materials import DECAY_INTO, MATERIALS
 from src.reactions import build_tables, to_fixed
 
 ABI_VERSION = 7
@@ -151,7 +152,7 @@ class Core:
             width,
             height,
             seed & 0xFFFF_FFFF_FFFF_FFFF,
-            MATERIAL_COUNT,
+            mat.MATERIAL_COUNT,
             _array(u8, [m.kind for m in MATERIALS]),
             _array(i16, [m.density for m in MATERIALS]),
             _array(u16, [to_fixed(m.flammability) for m in MATERIALS]),
@@ -161,7 +162,7 @@ class Core:
             _array(u8, [m.life[1] for m in MATERIALS]),
             _array(u8, [m.fluidity for m in MATERIALS]),
             _array(u16, [65535 if m.mobility >= 1 else to_fixed(m.mobility) for m in MATERIALS]),
-            _array(u8, [m.decay_into for m in MATERIALS]),
+            _array(u8, DECAY_INTO),
             _array(u16, [to_fixed(m.decay_chance) for m in MATERIALS]),
             _array(u8, react_a),
             _array(u8, react_b),

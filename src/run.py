@@ -9,11 +9,13 @@ import base64
 import math
 import random
 import zlib
-from dataclasses import asdict, dataclass
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
+from src import materials as mat
 from src import native
-from src.body import Body
+from src.body import ENEMY_TEAM, PLAYER_TEAM, Body
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
 from src.enemies import SPECIES, Creature, EnemyManager, populate, spawn_boss
@@ -35,21 +37,20 @@ from src.materials import (
     AIR,
     BEDROCK,
     BLOCKS_BODY,
-    BLOOD,
     DEBRIS,
-    FLESH,
     HARDNESS,
     KIND,
     LIQUID,
-    MATERIAL_COUNT,
     POWDER,
     SOLID,
 )
 from src.perks import PERK_BY_KEY, PERKS
 from src.player import ENERGY_RECHARGE_AIR, MAX_ENERGY, MAX_HP, Player
 from src.projectiles import Blast, ProjectileSystem
+from src.rules import RULE_KEYS, Rule
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
 from src.spells import CATALOG
+from src.universes.model import SHAPES
 from src.wand import PRESETS, Shot, Wand, WandSpec
 from src.world import World
 from src.worldgen import Level, generate_level, generate_sanctum
@@ -145,6 +146,8 @@ class Run:
         self, seed: int | None = None, width: int = WORLD_WIDTH, height: int = WORLD_HEIGHT
     ) -> None:
         self.rng = random.Random(seed)
+        self.default_size = (width, height)
+        mat.activate_key(mat.DEFAULT_SET.key)
         self.world = World(width, height, seed=self.rng.randrange(2**31))
         self.player = Player(0, 0)
         self.enemies = EnemyManager()
@@ -192,6 +195,9 @@ class Run:
         self._speck_timer = 0.0
         self._still_at, self._still_time = (0, 0), 0.0
         self._kick_cooldown = 0.0
+        # called with the depth's name before a (possibly slow) world generation
+        self.on_generate: Callable[[str], None] | None = None
+        self.rule = Rule()  # the universe rule of the current depth (src/rules)
         self.new_run()
 
     # ---------------------------------------------------------------- flow
@@ -214,7 +220,7 @@ class Run:
         self.inventory = Inventory(list(STARTER_WANDS), self.rng)
         self.outcome = ""
         self.pearls = self.start_pearls
-        self.flasks = [Flask(BLOOD, START_FLASK)]
+        self.flasks = [Flask(mat.BLOOD, START_FLASK)]
         self.flask_index = 0
         self.eyes = 0  # Uraugen found this run
         self.ng = 0  # New Game+ loop (0 = first descent)
@@ -406,6 +412,7 @@ class Run:
         """The safe chamber after depth ``depth_index``: heal, shop, choose a perk."""
         self.checkpoint = self.snapshot()  # taken first, so a restore rebuilds the same shop
         self.in_sanctum = True
+        self._prepare_world(SANCTUM)
         layout = generate_sanctum(self.world)
         self.level = Level(layout.spawn, layout.exit, None)
         self.enemies.clear()
@@ -444,19 +451,27 @@ class Run:
         self.in_sanctum = False
         self.depth_index = index
         depth = self.depth
+        if self.on_generate is not None:
+            self.on_generate(depth.name_de)
+        self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
         self.level = generate_level(self.world, depth)
         if self.mirror:
             self.level = self._mirror_level(self.level)
+        scale = self.area_scale
+
+        def more(count: int) -> int:  # bigger worlds hold more creatures and loot
+            return round(count * scale)
+
         self.enemies.creatures = populate(
             self.world,
             self.rng,
             self.level.spawn,
-            depth.walkers,
-            depth.flyers,
-            depth.spitters,
-            depth.bloats,
-            extra=depth.extra,
+            more(depth.walkers),
+            more(depth.flyers),
+            more(depth.spitters),
+            more(depth.bloats),
+            extra=tuple((key, more(count)) for key, count in depth.extra),
         )
         if depth.boss and self.level.arena is not None:
             self.enemies.creatures.append(spawn_boss(depth.boss, self.level.arena, self.rng))
@@ -467,9 +482,9 @@ class Run:
                     creature.empower(power)
         self.exit_open = depth.boss is None
         self.pickups = place_loot(
-            self.world, self.rng, self.level.spawn, depth.wands, depth.blocks,
+            self.world, self.rng, self.level.spawn, more(depth.wands), more(depth.blocks),
             level=index + 1 + MIRROR_LOOT * abs(self.parallel),
-            flasks=FLASKS_PER_DEPTH, hearts=1, cocoons=COCOONS_PER_DEPTH,
+            flasks=more(FLASKS_PER_DEPTH), hearts=1, cocoons=more(COCOONS_PER_DEPTH),
         )  # fmt: skip
         self.thrown = []
         self.droplets = []
@@ -478,7 +493,7 @@ class Run:
             self.pickups.append(Pickup(x, y + 2, eye=True, floating=True))
         if self.level.vault is not None:
             self._fill_vault(index)
-        self.pickups += scatter_pearls(self.world, self.rng, self.level.spawn, PEARL_PILES)
+        self.pickups += scatter_pearls(self.world, self.rng, self.level.spawn, more(PEARL_PILES))
         self.projectiles.clear()
         self.chunks.clear()
         self.player.place(*self.level.spawn)
@@ -495,6 +510,71 @@ class Run:
         )  # fmt: skip
         self._refill_wands()
         self.time_in_depth = 0.0
+
+    @property
+    def area_scale(self) -> float:
+        """World area relative to the default size (creature and loot counts follow it)."""
+        width, height = self.default_size
+        return self.world.width * self.world.height / (width * height)
+
+    def cycle_material_set(self) -> str:
+        """Sandbox: rebuild the current depth with the next material set. Returns its key."""
+        keys = list(mat.SETS)
+        depth = self.route[self.depth_index]
+        nxt = keys[(keys.index(depth.material_set) + 1) % len(keys)]
+        route = list(self.route)
+        route[self.depth_index] = replace(depth, material_set=nxt)
+        self.route = tuple(route)
+        self.enter_depth(self.depth_index)
+        return nxt
+
+    def cycle_world_size(self) -> tuple[int, int]:
+        """Sandbox: rebuild the current depth in the next world shape. Returns the size."""
+        sizes = [self.default_size, *SHAPES.values()]
+        depth = self.route[self.depth_index]
+        current = depth.size or self.default_size
+        nxt = sizes[(sizes.index(current) + 1) % len(sizes)] if current in sizes else sizes[0]
+        route = list(self.route)
+        route[self.depth_index] = replace(depth, size=None if nxt == self.default_size else nxt)
+        self.route = tuple(route)
+        self.enter_depth(self.depth_index)
+        return nxt
+
+    @property
+    def rank(self) -> int:
+        """Rank 1-3 of the current depth (the seven organism depths spread over three)."""
+        return 1 + self.depth_index * 3 // max(1, len(self.route))
+
+    def _apply_rule(self, depth: Depth) -> mat.MaterialSet:
+        """Set up the rule of ``depth``; returns the material set it asks for."""
+        self.rule = Rule.make(depth.rule, self.rank)
+        Body.gravity_scale = self.rule.gravity_scale
+        self.projectiles.gravity_scale = self.rule.gravity_scale
+        self.projectiles.bounce_bonus = {
+            PLAYER_TEAM: self.rule.bounce_bonus(enemy=False),
+            ENEMY_TEAM: self.rule.bounce_bonus(enemy=True),
+        }
+        return self.rule.material_set(mat.SETS[depth.material_set])
+
+    def cycle_rule(self) -> str:
+        """Sandbox: rebuild the current depth with the next universe rule."""
+        keys = ["", *RULE_KEYS]
+        depth = self.route[self.depth_index]
+        nxt = keys[(keys.index(depth.rule) + 1) % len(keys)] if depth.rule in keys else ""
+        route = list(self.route)
+        route[self.depth_index] = replace(depth, rule=nxt)
+        self.route = tuple(route)
+        self.enter_depth(self.depth_index)
+        return self.rule.name_de
+
+    def _prepare_world(self, depth: Depth) -> None:
+        """Rule, material set and world size of ``depth`` (work packages T1, T2, T4)."""
+        material_set = self._apply_rule(depth)
+        if mat.ACTIVE is not material_set:
+            mat.activate(material_set)
+        width, height = depth.size or self.default_size
+        if not self.world.fits(material_set.key, width, height):
+            self.world.reload(width, height)
 
     # ---------------------------------------------------------- save / load
 
@@ -528,7 +608,7 @@ class Run:
             "favoured": sorted(self.favoured_blocks),
             "bag": list(self.inventory.bag),
             "bag_counts": list(self.inventory.counts),
-            "flasks": [[flask.material, flask.amount] for flask in self.flasks],
+            "flasks": [[flask.key, flask.amount] for flask in self.flasks],
             "flask_active": self.flask_index,
             "rng": [version, list(internal), gauss],
         }
@@ -554,6 +634,8 @@ class Run:
             "time_in_depth": self.time_in_depth,
             "exit_open": self.exit_open,
             "level": [level.spawn, level.exit, level.arena, level.secret, level.vault],
+            "material_set": self.world.material_set,
+            "size": [self.world.width, self.world.height],
             "world": _pack(self.world.grid),
             "life": _pack(self.world.life),
             "player": {
@@ -658,11 +740,21 @@ class Run:
         self.enter_sanctum()
 
     def _restore_live(self, live: dict[str, Any]) -> None:
+        self._apply_rule(SANCTUM if live.get("in_sanctum") else self.route[int(live["depth_index"])])
+        set_key = str(live.get("material_set", mat.DEFAULT_SET.key))
+        material_set = mat.find_set(set_key)
+        if material_set is None:
+            raise ValueError("unknown material set in the saved world")
+        width, height = live.get("size", self.default_size)
+        if mat.ACTIVE is not material_set:
+            mat.activate(material_set)
+        if not self.world.fits(set_key, int(width), int(height)):
+            self.world.reload(int(width), int(height))
         world = self.world
         grid, life = _unpack(live["world"]), _unpack(live["life"])
         if len(grid) != len(world.grid) or len(life) != len(world.life):
             raise ValueError("saved world has the wrong size")
-        if max(grid) >= MATERIAL_COUNT:
+        if max(grid) >= mat.MATERIAL_COUNT:
             raise ValueError("unknown material in the saved world")
         checkpoint = live.get("checkpoint")
         self.checkpoint = checkpoint if isinstance(checkpoint, dict) else None
@@ -749,6 +841,7 @@ class Run:
             self._speck_timer = SPECK_INTERVAL
             self._sweep_specks()
         self.player.update(self.world, dt, controls.move, controls.jump, controls.levitate)
+        self.rule.update(self, dt, area)
         if alive:
             self._check_trapped(dt, bool(controls.move or controls.levitate))
         for wand in self.inventory.wands:
@@ -836,7 +929,7 @@ class Run:
                 )  # fmt: skip
                 self.events.append("death")
                 cx, cy = self.player.center
-                self.world.splash(int(cx), int(cy), DEATH_SPLASH, BLOOD)
+                self.world.splash(int(cx), int(cy), DEATH_SPLASH, mat.BLOOD)
         elif alive and self.exit_open and self.near_exit():
             self._descend()
         return blasts
@@ -913,7 +1006,8 @@ class Run:
         angle = math.atan2(aim[1] - sy, aim[0] - sx) + self.rng.uniform(-1, 1) * wand.spec.spread
         reach = arm_reach(len(wand.blocks))
         tip = (sx + math.cos(angle) * reach, sy + math.sin(angle) * reach)
-        self.projectiles.spawn(shots, tip[0], tip[1], angle)
+        factor = self.rule.cast_factor()
+        self.projectiles.spawn(shots, tip[0], tip[1], angle, damage_factor=factor)
         self.events.append("cast")
         name = wand.spec.name_de
         self.cast_counts[name] = self.cast_counts.get(name, 0) + 1
@@ -1330,11 +1424,11 @@ class Run:
         self.stats["kills"] += 1
         self._log("getoetet", kreatur=creature.spec.key, durch=creature.last_cause)
         self.discoveries.append(("creature", creature.spec.key))
-        if not creature.spec.boss and creature.spec.gore == BLOOD:
+        if not creature.spec.boss and creature.spec.gore == "blood":
             width = max(3, creature.width - 2)
             self.chunks.drop_corpse(
                 self.world, int(cx - width / 2), int(creature.y + creature.height - CORPSE_HEIGHT),
-                width, FLESH,
+                width, mat.FLESH,
             )  # fmt: skip
         if "blutdurst" in self.perks and not self.player.dead:
             self.player.hp = min(self.player.max_hp, self.player.hp + BLOODLUST_HEAL)
@@ -1427,7 +1521,7 @@ def _pickup_data(item: Pickup) -> dict[str, Any]:
     if item.wand is not None:
         data["wand"] = {**asdict(item.wand), "blocks": list(item.wand.blocks)}
     if item.flask is not None:
-        data["flask"] = [item.flask.material, item.flask.amount]
+        data["flask"] = [item.flask.key, item.flask.amount]
     return data
 
 
@@ -1467,8 +1561,15 @@ def _flask_from(data: object) -> Flask | None:
     material, amount = data
     if material is None:
         return Flask()
-    if not isinstance(material, int) or not isinstance(amount, int):
+    if not isinstance(amount, int):
         return None
-    if not 0 <= material < MATERIAL_COUNT or KIND[material] != LIQUID:
+    if isinstance(material, int):  # saves before material sets: ids of the organism set
+        keys = mat.KOERPER.keys()
+        if not 0 <= material < len(keys):
+            return None
+        material = keys[material]
+    if not isinstance(material, str) or material not in mat.LIBRARY:
+        return None
+    if mat.LIBRARY[material].kind != LIQUID:
         return None
     return Flask(material, max(0, min(CAPACITY, amount)))

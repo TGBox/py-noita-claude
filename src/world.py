@@ -11,6 +11,7 @@ import random
 from functools import lru_cache
 from math import isqrt
 
+from src import materials as mat
 from src.materials import (
     AIR,
     BEDROCK,
@@ -18,7 +19,6 @@ from src.materials import (
     BURN_RANGE,
     DEBRIS,
     EMPTY,
-    FIRE,
     FLAME,
     FLAMMABILITY,
     GAS,
@@ -28,9 +28,7 @@ from src.materials import (
     LIFE_RANGE,
     LIQUID,
     POWDER,
-    SINEW,
     SOLID,
-    SPARK,
 )
 from src.native import Core
 
@@ -58,20 +56,37 @@ class World:
     """Grid of materials; simulation is delegated to the Rust core."""
 
     def __init__(self, width: int, height: int, seed: int | None = None) -> None:
-        self.width = width
-        self.height = height
+        self.rng = random.Random(seed)
+        self.frame = 0
+        self._core: Core | None = None
+        self.reload(width, height)
+
+    def reload(self, width: int | None = None, height: int | None = None) -> None:
+        """New buffers (optionally another size) and a core for the active material set.
+
+        Called when a universe with another material set or world size is entered; the
+        old content is gone afterwards.
+        """
+        width = self.width if width is None else width
+        height = self.height if height is None else height
+        if self._core is not None:
+            self._core.close()
+        self.width, self.height = width, height
         size = width * height
         self.grid = bytearray(size)
         self.life = bytearray(size)
         self.chunks_x = (width + CHUNK_MASK) >> CHUNK_SHIFT
         self.chunks_y = (height + CHUNK_MASK) >> CHUNK_SHIFT
         self.active = bytearray(self.chunks_x * self.chunks_y)
-        self.rng = random.Random(seed)
-        self.frame = 0
+        self.material_set = mat.ACTIVE.key if mat.ACTIVE else ""
         self._core = Core(
             width, height, self.rng.getrandbits(64), self.grid, self.life, self.active
         )
         self.reset()
+
+    def fits(self, material_set: str, width: int, height: int) -> bool:
+        """True if this world can be reused for that set and size without a reload."""
+        return self.material_set == material_set and (self.width, self.height) == (width, height)
 
     # ------------------------------------------------------------------ setup
 
@@ -237,7 +252,7 @@ class World:
                     self.set_cell(x, y, debris if rnd() < chance else AIR)
                     destroyed += 1
             elif current == AIR and dist2 > outer and rnd() < 0.12:
-                self.set_cell(x, y, FIRE)
+                self.set_cell(x, y, mat.FIRE)
         return destroyed + self.crumble_loose(cx, cy, radius + 2)
 
     def electrify(self, cx: int, cy: int, radius: int) -> int:
@@ -245,8 +260,8 @@ class World:
         charged = 0
         for dx, dy in disc_offsets(radius):
             x, y = cx + dx, cy + dy
-            if 0 <= x < self.width and 0 <= y < self.height and self.grid[y * self.width + x] == SINEW:
-                self.set_cell(x, y, SPARK, force=True)
+            if 0 <= x < self.width and 0 <= y < self.height and self.grid[y * self.width + x] == mat.SINEW:
+                self.set_cell(x, y, mat.SPARK, force=True)
                 charged += 1
         return charged
 
@@ -327,7 +342,7 @@ class World:
             current = self.grid[y * self.width + x]
             if current == BEDROCK:
                 continue
-            if material == FIRE and FLAMMABILITY[current]:
+            if material == mat.FIRE and FLAMMABILITY[current]:
                 self.ignite(x, y)
                 placed += 1
             elif KIND[current] in (EMPTY, GAS, FLAME) and (not sprinkle or rnd() < 0.6):
@@ -339,8 +354,8 @@ class World:
         """Turn the cell at (x, y) into fire that burns as long as its fuel would."""
         i = y * self.width + x
         lo, hi = BURN_RANGE[self.grid[i]]
-        self.grid[i] = FIRE
-        self.life[i] = self.rng.randint(lo, hi) if hi else self._new_life(FIRE)
+        self.grid[i] = mat.FIRE
+        self.life[i] = self.rng.randint(lo, hi) if hi else self._new_life(mat.FIRE)
         self.wake(x, y)
 
     # -------------------------------------------------------------- simulation

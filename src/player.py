@@ -76,7 +76,7 @@ class Player(Body):
             self.vy += (-LEVITATE_MAX_SPEED - self.vy) * follow
             self.energy = max(0.0, self.energy - dt)
         else:
-            self.vy = min(self.vy + GRAVITY * dt, MAX_FALL_SPEED)
+            self.vy = min(self.vy + GRAVITY * self.gravity_scale * dt, MAX_FALL_SPEED)
         if in_liquid:
             self.vy = max(-LIQUID_MAX_SPEED, min(LIQUID_MAX_SPEED, self.vy))
 

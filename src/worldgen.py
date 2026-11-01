@@ -5,27 +5,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from src import materials as mat
 from src.depths import DEPTHS, Depth
-from src.materials import (
-    ACID,
-    AIR,
-    BEDROCK,
-    BLOCKS_BODY,
-    BLOOD,
-    BONE,
-    BONE_DUST,
-    ENAMEL,
-    FLESH,
-    GROWTH,
-    KIND,
-    LIQUID,
-    MAGMA,
-    MUCUS,
-    PUS,
-    SINEW,
-    SOLID,
-    TALLOW,
-)
+from src.materials import AIR, BEDROCK, BLOCKS_BODY, KIND, LIQUID, SOLID
 from src.native import byte_view, reachable
 from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
 from src.world import BORDER, World, disc_offsets
@@ -64,11 +46,11 @@ def generate_level(world: World, depth: Depth) -> Level:
     w, h = world.width, world.height
     scale = (w * h) / (1280 * 720)  # feature counts follow the world area
     bone_walls = depth.wall == "knochen"
-    world.reset(BONE if bone_walls else FLESH)
+    world.reset(mat.BONE if bone_walls else mat.FLESH)
     centre_x = w // 2
 
     if bone_walls:  # inverted: veins of flesh running through solid bone
-        _ribs(world, count=int(46 * scale), base=BONE, vein=FLESH)
+        _ribs(world, count=int(46 * scale), base=mat.BONE, vein=mat.FLESH)
     else:
         _ribs(world, count=int(34 * scale))
 
@@ -102,7 +84,7 @@ def generate_level(world: World, depth: Depth) -> Level:
         world.grid[row + spawn_x - 12 : row + spawn_x + 12] = bytes(24)
     for y in range(SPAWN_FLOOR, SPAWN_FLOOR + 5):
         row = y * w
-        world.grid[row + spawn_x - 12 : row + spawn_x + 12] = bytes([BONE]) * 24
+        world.grid[row + spawn_x - 12 : row + spawn_x + 12] = bytes([mat.BONE]) * 24
 
     def amount(base: float, factor: float) -> int:
         return int(base * scale * factor)
@@ -111,17 +93,17 @@ def generate_level(world: World, depth: Depth) -> Level:
         _alveolus_cluster(world)
 
     _scatter(
-        world, BONE_DUST, amount(18, depth.bone_dust), (6, 10), SPAWN_FLOOR + 10, min_width=70
+        world, mat.BONE_DUST, amount(18, depth.bone_dust), (6, 10), SPAWN_FLOOR + 10, min_width=70
     )
-    _scatter(world, BLOOD, amount(16, depth.blood), (9, 15), SPAWN_FLOOR + 10)
-    _scatter(world, TALLOW, amount(7, depth.tallow), (7, 11), h // 2)
-    _scatter(world, ACID, amount(8, depth.acid), (7, 12), int(h * 0.6))
+    _scatter(world, mat.BLOOD, amount(16, depth.blood), (9, 15), SPAWN_FLOOR + 10)
+    _scatter(world, mat.TALLOW, amount(7, depth.tallow), (7, 11), h // 2)
+    _scatter(world, mat.ACID, amount(8, depth.acid), (7, 12), int(h * 0.6))
     if depth.pus:
-        _scatter(world, PUS, amount(9, depth.pus), (7, 11), SPAWN_FLOOR + 10)
+        _scatter(world, mat.PUS, amount(9, depth.pus), (7, 11), SPAWN_FLOOR + 10)
     if depth.magma:
-        _scatter(world, MAGMA, amount(10, depth.magma), (7, 10), int(h * 0.55))
+        _scatter(world, mat.MAGMA, amount(10, depth.magma), (7, 10), int(h * 0.55))
     if depth.mucus:
-        _scatter(world, MUCUS, amount(10, depth.mucus), (8, 13), SPAWN_FLOOR + 10)
+        _scatter(world, mat.MUCUS, amount(10, depth.mucus), (8, 13), SPAWN_FLOOR + 10)
         for _ in range(amount(40, depth.mucus)):
             _mucus_drip(world)
     for _ in range(amount(6, depth.growth)):
@@ -137,7 +119,7 @@ def generate_level(world: World, depth: Depth) -> Level:
         for y in range(arena[1] + ARENA_RADIUS - 6, arena[1] + ARENA_RADIUS):
             row = y * w
             x0, x1 = arena[0] - ARENA_RADIUS, arena[0] + ARENA_RADIUS
-            world.grid[row + x0 : row + x1] = bytes([BONE]) * (x1 - x0)
+            world.grid[row + x0 : row + x1] = bytes([mat.BONE]) * (x1 - x0)
         exit_point = arena
     else:
         deepest = max(nodes[1:], key=lambda n: n[1] + 0.3 * math.dist(n, spawn))
@@ -216,7 +198,7 @@ def _alveolus_cluster(world: World) -> None:
     w, h = world.width, world.height
     for _attempt in range(12):
         cx, cy = rng.randint(80, w - 80), rng.randint(SPAWN_FLOOR + 30, h - 60)
-        if world.get(cx, cy) == FLESH and not _in_spawn_zone(world, cx, cy):
+        if world.get(cx, cy) == mat.FLESH and not _in_spawn_zone(world, cx, cy):
             break
     else:
         return
@@ -236,8 +218,8 @@ def _alveolus_cluster(world: World) -> None:
             if (angle - gap_start) % (2 * math.pi) < 1.1:  # a tear in every membrane
                 continue
             px, py = int(x + math.cos(angle) * r), int(y + math.sin(angle) * r)
-            if 0 <= px < w and 0 <= py < h and before[py * w + px] == FLESH:
-                world.set_cell(px, py, SINEW)
+            if 0 <= px < w and 0 <= py < h and before[py * w + px] == mat.FLESH:
+                world.set_cell(px, py, mat.SINEW)
 
 
 VAULT_RX, VAULT_RY = 46, 26  # the treasure vault's hall
@@ -259,10 +241,10 @@ def _vault(
             break
     else:
         return None
-    _carve_oval_material(world, x, y, VAULT_RX + VAULT_SHELL, VAULT_RY + VAULT_SHELL, BONE)
+    _carve_oval_material(world, x, y, VAULT_RX + VAULT_SHELL, VAULT_RY + VAULT_SHELL, mat.BONE)
     _carve_oval(world, x, y, VAULT_RX, VAULT_RY)
     for row in range(y + VAULT_RY - 4, y + VAULT_RY):  # a floor to stand on
-        world.grid[row * w + x - VAULT_RX + 4 : row * w + x + VAULT_RX - 4] = bytes([BONE]) * (
+        world.grid[row * w + x - VAULT_RX + 4 : row * w + x + VAULT_RX - 4] = bytes([mat.BONE]) * (
             2 * VAULT_RX - 8
         )
     return x, y
@@ -294,7 +276,7 @@ def _secret_chamber(
             if dx * dx + dy * dy <= r * r
         ):
             continue
-        world.fill_disc(x, y, SECRET_RADIUS + SECRET_SHELL, BONE)
+        world.fill_disc(x, y, SECRET_RADIUS + SECRET_SHELL, mat.BONE)
         world.fill_disc(x, y, SECRET_RADIUS, AIR)
         return x, y
     return None
@@ -366,8 +348,10 @@ def _in_spawn_zone(world: World, x: int, y: int) -> bool:
     )
 
 
-def _ribs(world: World, count: int, base: int = FLESH, vein: int = BONE) -> None:
+def _ribs(world: World, count: int, base: int | None = None, vein: int | None = None) -> None:
     """Curved ribs of ``vein`` running through the ``base`` tissue (only overwrite base)."""
+    base = mat.FLESH if base is None else base
+    vein = mat.BONE if vein is None else vein
     rng = world.rng
     for _ in range(count):
         x, y = float(rng.randint(30, world.width - 30)), float(rng.randint(30, world.height - 30))
@@ -454,7 +438,7 @@ def _mucus_drip(world: World) -> None:
     for dy in range(radius + 1):
         for dx in range(-radius + dy, radius - dy + 1):
             if world.get(x + dx, y + dy) == AIR:
-                world.set_cell(x + dx, y + dy, MUCUS)
+                world.set_cell(x + dx, y + dy, mat.MUCUS)
 
 
 def _growth_nest(world: World) -> None:
@@ -466,8 +450,8 @@ def _growth_nest(world: World) -> None:
     floor = _floor_y(world, x, y)
     r = world.rng.randint(6, 11)
     for dx, dy in disc_offsets(r):
-        if world.get(x + dx, floor + dy) in (FLESH, BLOOD):
-            world.set_cell(x + dx, floor + dy, GROWTH)
+        if world.get(x + dx, floor + dy) in (mat.FLESH, mat.BLOOD):
+            world.set_cell(x + dx, floor + dy, mat.GROWTH)
 
 
 def _enamel_vein(world: World) -> None:
@@ -476,7 +460,7 @@ def _enamel_vein(world: World) -> None:
     for _attempt in range(30):
         x = rng.randint(30, world.width - 30)
         y = rng.randint(SPAWN_FLOOR + 30, world.height - 30)
-        if world.get(x, y) in (FLESH, BONE) and not _in_spawn_zone(world, x, y):
+        if world.get(x, y) in (mat.FLESH, mat.BONE) and not _in_spawn_zone(world, x, y):
             break
     else:
         return
@@ -484,8 +468,8 @@ def _enamel_vein(world: World) -> None:
     for _step in range(rng.randint(8, 26)):
         r = rng.randint(2, 4)
         for dx, dy in disc_offsets(r):
-            if world.get(x + dx, y + dy) in (FLESH, BONE, SINEW):
-                world.set_cell(x + dx, y + dy, ENAMEL)
+            if world.get(x + dx, y + dy) in (mat.FLESH, mat.BONE, mat.SINEW):
+                world.set_cell(x + dx, y + dy, mat.ENAMEL)
         angle += rng.uniform(-0.6, 0.6)
         x += round(math.cos(angle) * 3)
         y += round(math.sin(angle) * 3)
@@ -519,7 +503,7 @@ def _sinew_bridge(world: World) -> None:
             yy = y + int(sag * math.sin(math.pi * t))
             for k in range(thickness):
                 if world.get(xx, yy + k) == AIR:
-                    world.set_cell(xx, yy + k, SINEW)
+                    world.set_cell(xx, yy + k, mat.SINEW)
         return
 
 
@@ -541,7 +525,7 @@ def generate_sanctum(world: World) -> SanctumLayout:
     """A safe, sealed chamber: bedrock shell, flesh lining, bone floor."""
     world.reset(BEDROCK)
     cx, cy = SANCTUM_CENTRE
-    _carve_oval_material(world, cx, cy, SANCTUM_RX + 6, SANCTUM_RY + 6, FLESH)
+    _carve_oval_material(world, cx, cy, SANCTUM_RX + 6, SANCTUM_RY + 6, mat.FLESH)
     _carve_oval(world, cx, cy, SANCTUM_RX, SANCTUM_RY)
     floor = cy + 40
     w = world.width
@@ -549,18 +533,18 @@ def generate_sanctum(world: World) -> SanctumLayout:
         row = y * w
         for x in range(cx - SANCTUM_RX, cx + SANCTUM_RX):
             if world.grid[row + x] == AIR:
-                world.grid[row + x] = BONE
+                world.grid[row + x] = mat.BONE
     shop = []
     for k in range(5):
         x = cx - 150 + k * 60
         for py in range(floor - 4, floor):  # pedestal
             row = py * w
-            world.grid[row + x - 4 : row + x + 4] = bytes([BONE]) * 8
+            world.grid[row + x - 4 : row + x + 4] = bytes([mat.BONE]) * 8
         shop.append((x, floor - 12))
     altar_floor = floor - 46
     for py in range(altar_floor, altar_floor + 4):
         row = py * w
-        world.grid[row + cx - 50 : row + cx + 50] = bytes([BONE]) * 100
+        world.grid[row + cx - 50 : row + cx + 50] = bytes([mat.BONE]) * 100
     altar = tuple((cx + dx, altar_floor - 10) for dx in (-34, 0, 34))
     world.wake_all()
     return SanctumLayout(
