@@ -136,7 +136,7 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 | `agent_vollstrecker` | 120 | `hostile`, `shield`, `melee`, `armor` | Stempelschlag 20 mit Druckwelle (hebt den Stempel, 0,8 s) |
 | `agent_drohne` | 15 | `hostile`, fliegt, `summon` | markiert Cloita 10 s (Scheinwerfer an, 0,5 s); alle Agenten kennen dann ihre Position |
 
-Beute: Gold 15 / 40 / 5, Agenten lassen gelegentlich einen „Dienstausweis“ fallen (Archiv-Fundstück fürs Metaziel).
+Beute: Gold 15 / 40 / 5, Agenten lassen gelegentlich einen „Dienstausweis“ fallen (Archiv-Fundstück mit Hinweisen aufs wahre Ende).
 
 ## Zwischengegner
 
@@ -232,4 +232,22 @@ Jedes böse Ich kämpft in einer eigenen kleinen Heimatwelt (ca. 1280×720). Es 
 - Phase 3: lädt ihr Bewusstsein in eine Riesenmaschine um (Arena-Boss aus Teilen).
 - Phase 4: wieder klein, schnell, verzweifelt.
 
-Alle bösen Ichs tragen irgendwo das Siegel der Behörde (Hinweis aufs Metaziel). Nach dem Sieg: Waffe des bösen Ichs, 1 Erinnerungssplitter, Archiv-Eintrag.
+Alle bösen Ichs tragen irgendwo das Siegel der Behörde (Hinweis aufs wahre Ende). Nach dem Sieg: Waffe des bösen Ichs, Archiv-Eintrag.
+
+## Wahres Ende: Der Rat der bösen Ichs (`rat`)
+
+Nur mit allen 6 Erinnerungssplittern eines Laufs. Nach dem Sieg über das böse Ich öffnet sich das Portal zum **Hauptquartier der Behörde**: ein endloser Aktensaal, an dessen Ende der Rat tagt. Kein Werkstatt-Besuch dazwischen; Cloita wird aber voll geheilt („Die Splitter erinnern sich an dich“).
+
+**Stufe 1 – Die Anhörung:** Ein Gremium aus 5 maskierten Behörden-Räten (Agenten-Optik mit Roben) sitzt hinter einem langen Pult. Sie schicken Wellen von Agenten und lassen Formulare regnen. Jeder Rat, der fällt, verliert die Maske: darunter eine weitere Cloita (je eine kurze Zeile: „Ich war die Cloita, die *nie* das Labor aufgeräumt hat.“).
+
+**Stufe 2 – Die bösen Ichs:** Die drei bösen Ichs, die Cloita **nicht** im Endkampf besiegt hat (im MVP: die zwei übrigen), treten nacheinander an, jeweils mit verkürzter Phasenfolge (2 statt 4 Phasen). Das zuletzt besiegte böse Ich ist schon tot, sein Platz bleibt demonstrativ leer.
+
+**Stufe 3 – Die Verschmelzung:** Alle besiegten Cloitas (Räte und böse Ichs) werden zu einem Fluxstrudel gesogen und verschmelzen zur **Ober-Cloita** (`ober_cloita`, ca. 96×96 aus Teilen): ein Turm aus Cloita-Köpfen, Armen mit Waffen aller Ichs, Krone der Kaiserin, Heiligenschein der Gütigen, Drohnen von Ω.
+
+- Leben 6000, 3 Phasen; jede Phase nutzt Angriffe eines anderen Ichs, die letzte alle gemischt.
+- Mechanik: Jeder abgeschlagene Kopf lässt einen Splitter fallen; Klonita sammelt sie ein und wirft sie Cloita zu (kurzer Schub). Klonita hilft hier ausnahmsweise mit – das einzige Mal im Spiel, in dem sie „kämpft“ (sie umarmt die Ober-Cloita und hält sie 3 s fest).
+- Tod: Die Ober-Cloita zerfällt in unzählige kleine Cloitas, die in alle Universen davonlaufen (Schlusswitz: das Multiversum ist nicht gerettet, nur sehr viel voller).
+
+**Ende:** Kurzer Text-Abspann über Bilder aus Sprites; Archiv-Eintrag „Wahres Ende“; danach Titel. Im Archiv wird die Ober-Cloita sichtbar.
+
+Grafik zusätzlich: Ratsmitglied (16×26, 2 Varianten der Robe), Ratspult (Kulisse 120×32), Ober-Cloita (Teile: 6 Köpfe, 6 Arme, Rumpf, Krone, Heiligenschein, Drohnen wiederverwenden), Verschmelzungs-Effekt (8 Frames), kleine flüchtende Cloita (8×12, 4 Frames).

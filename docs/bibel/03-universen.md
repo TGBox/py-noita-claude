@@ -17,7 +17,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 | `natives` | Kreaturen mit Häufigkeit je Rang |
 | `event` | wiederkehrendes Ereignis |
 | `samples` | 2 Proben (Kapitel 07) |
-| `music` | Stimmung für die prozedurale Musik (Grundton, Tempo, Klangfarbe) |
+| `music` | Stimmung für spätere Musik (im MVP **keine Musik**, Feld nur als Notiz) |
 | `arena` | wie eine Zwischengegner-Arena hier aussieht |
 | `klonita` | 3+ Sprüche, nur in diesem Universum (Kapitel 08) |
 
@@ -34,7 +34,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Einheimische:** Fleischmade (Kap. 05, `fleischmade`), Blutegel (`blutegel`).
 - **Ereignis „Verdauung“:** alle 90 s steigt in einem Magen-Gebiet für 20 s der Säurespiegel um 30 px (Ankündigung: Rumpeln, Kamerawackeln, Klonita: „Hörst du das? Ich glaube, die Welt hat Hunger.“).
 - **Proben:** Gallenstein, Wucherungsableger.
-- **Musik:** tiefe Drones, Herzschlag (bisherige Stimmung „magen“).
+- **Musik (später):** tiefe Drones, Herzschlag (bisherige Stimmung „magen“).
 - **Arena:** runde Knochenhalle mit Fleischboden, der nachwächst.
 - **Geheimnisse:** versiegelte Knochenkammer mit Erinnerungssplitter; Schatzkammer hinter Knochenpanzer.
 
@@ -60,7 +60,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Einheimische:** Aktenfresser (`aktenfresser`), Stempler (`stempler`).
 - **Ereignis „Prüfung“:** alle 120 s ertönt eine Durchsage („Bitte halten Sie Ihre Unterlagen bereit.“); 2 Behörden-Agenten erscheinen, unabhängig von der Fahndungsstufe.
 - **Proben:** Stempelkissen, Formular B-38 (in dreifacher Ausfertigung).
-- **Musik:** Schreibmaschinen-Rhythmus, Fahrstuhlmusik in Moll.
+- **Musik (später):** Schreibmaschinen-Rhythmus, Fahrstuhlmusik in Moll.
 - **Arena:** großer Sitzungssaal mit Tischen als Plattformen; Papierboden.
 - **Wechselwirkungen, die das Universum zeigen soll:** Feuer + Papier = Flächenbrand; Tinte löscht Brandausbreitung; Siegellack als selbstgebaute Brücke; Stempler-Status beeinflusst Kämpfe.
 
@@ -86,7 +86,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Einheimische:** Hüpfling (`huepfling`), Glibberteiler (`glibberteiler`); **große Kreatur:** Trampolinwal (`trampolinwal`).
 - **Ereignis „Brauseregen“:** alle 100 s regnet es 15 s Brausesirup (Regel `rule_rain` als Ereignis).
 - **Proben:** Glibberkern, Brauseperle.
-- **Musik:** fröhlicher Synthesizer mit schiefen Tönen, Tempo hoch.
+- **Musik (später):** fröhlicher Synthesizer mit schiefen Tönen, Tempo hoch.
 - **Arena:** große Gelee-Schüssel; Wände federn.
 
 ## 4. Krümelreich (`kruemelreich`)
@@ -112,7 +112,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Einheimische:** Ameisenkrieger (`ameisenkrieger`), Blattlaus (`blattlaus`).
 - **Ereignis „Riesenschritt“:** alle 80 s bebt die Welt; an einer zufälligen Stelle der Oberfläche stürzt ein riesiger Schatten herab, Zellen in einem breiten Streifen werden zusammengedrückt (Ankündigung 3 s Schatten am Boden).
 - **Proben:** Riesenzuckerkristall, Ameisenduft-Ampulle.
-- **Musik:** Pizzicato-Streicher, Grillenzirpen.
+- **Musik (später):** Pizzicato-Streicher, Grillenzirpen.
 - **Arena:** Teetasse (Rand als Wände, Teesatz am Boden).
 
 ## 5. Sporenklub (`sporenklub`)
@@ -136,7 +136,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Einheimische:** Türsteherpilz (`tuersteherpilz`), Sporenschnorrer (`sporenschnorrer`).
 - **Ereignis „Bass-Drop“:** alle 60 s ein starker Puls: alle Körper und losen Gegenstände werden 40 px hochgeschleudert, Pulver hüpft.
 - **Proben:** Leuchtspore im Glas, Plattennadel.
-- **Musik:** Four-on-the-floor mit verzerrtem Bass; Tempo exakt passend zum Takt der Regel (120 BPM).
+- **Musik (später):** Four-on-the-floor mit verzerrtem Bass; Tempo exakt passend zum Takt der Regel (120 BPM).
 - **Arena:** Hauptbühne mit DJ-Pult und Lautsprechertürmen.
 
 ## 6. Versunkene Abtei (`abtei`)
@@ -161,7 +161,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Einheimische:** Mönchsfisch (`moenchsfisch`), Orgelaal (`orgelaal`); **große Kreatur:** Kirchenkrake (`kirchenkrake`).
 - **Ereignis „Glockenschlag“:** alle 75 s läutet die große Glocke: Schockwelle durch Wasser (Stromschlag für alle im Wasser, auch Gegner), Ankündigung durch ein leiseres Vorläuten 2 s vorher.
 - **Proben:** Glockensplitter, Kerzenstumpf mit Gesichtsabdruck.
-- **Musik:** Orgel-Drone, Unterwasser-Gluckern, gregorianisches Summen.
+- **Musik (später):** Orgel-Drone, Unterwasser-Gluckern, gregorianisches Summen.
 - **Arena:** Kirchenschiff mit Luftblase unter der Kuppel.
 
 ---

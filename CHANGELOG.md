@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.3.0
+
+- 2026-11-01 (485a9d5): feat: update implementation plan for cloita-interdimensional
+
 ## SemVer v1.2.2
 
-- 2026-11-01 (f57efd4): fix: apply fixes to remove markdownlint errors in the documentation plan
+- 2026-11-01 (18eae22): fix: apply fixes to remove markdownlint errors in the documentation plan
 
 ## SemVer v1.2.1
 
