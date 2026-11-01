@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.2
+
+- 2026-11-01 (36d0318): feat: add plan to align the plans
+
 ## SemVer v1.7.1
 
-- 2026-11-01 (957a8d6): fix: fix markdownlint error in changelog
+- 2026-11-01 (2d732ea): fix: fix markdownlint error in changelog
 - 2026-11-01 (6ffcc6c): feat: add critique document from claude review
 
 ## SemVer v1.7.0
