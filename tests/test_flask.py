@@ -52,11 +52,13 @@ class TestFlask(unittest.TestCase):
         body = Body(0, 0, 4, 4, 100)
         body.hp = 50
         body.burning = 2.0
-        flask = Flask(BLOOD, SIP * 2)
+        flask = Flask(BLOOD, SIP * 3)
         self.assertTrue(flask.drink(body))
+        self.assertEqual(body.hp, 50)  # blood does not heal (like in Noita) ...
+        self.assertEqual(body.burning, 0.0)  # ... but it still puts out fire
+        self.assertEqual(flask.amount, SIP * 2)
+        flask.drink(body, blood_heals=True)  # the "Blutsauger" perk
         self.assertGreater(body.hp, 50)
-        self.assertEqual(body.burning, 0.0)
-        self.assertEqual(flask.amount, SIP)
         acid = Flask(ACID, SIP)
         hp = body.hp
         acid.drink(body)

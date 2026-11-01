@@ -20,6 +20,7 @@ from src.floaters import FloatingNumbers
 from src.gamepad import Gamepad, PadState
 from src.hover import HoverInfo, describe
 from src.hud import Hud, HudState
+from src.inventory import SORT_MODES
 from src.keybinds import ACTION_BY_KEY, binding_name_de
 from src.menus import PAUSE_ITEMS, Menus, controls_rows, help_lines, title_items
 from src.perks import PERK_BY_KEY
@@ -143,6 +144,7 @@ class Game:
         self.notice_time = 0.0
         self.run_recorded = False
         self.cheated = False  # sandbox used this run: it does not count for the records
+        self.in_run = False  # a run is being played (title screen: False)
         self.clock_time = 0.0
         self.seed = random.randrange(2**31)
         self.run = Run(self.seed)
@@ -209,6 +211,7 @@ class Game:
     def handle_events(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                self._save_run_state()  # closing the window keeps the run, like in Noita
                 self.running = False
             elif event.type == pygame.MOUSEMOTION:
                 self.pad_mode = False
@@ -242,7 +245,7 @@ class Game:
 
     def _menu_items(self) -> list[tuple[str, str]]:
         if self.state == "title":
-            return title_items(self._saved_depth())
+            return title_items(self._saved_depth(), self._saved_live())
         if self.state == "paused":
             return list(PAUSE_ITEMS)
         if self.state == "options":
@@ -253,7 +256,27 @@ class Game:
 
     def _saved_depth(self) -> int | None:
         saved = self.saved_run.get("depth_index") if self.saved_run else None
-        return saved + 2 if isinstance(saved, int) else None
+        if not isinstance(saved, int):
+            return None
+        live = self.saved_run.get("live")
+        if isinstance(live, dict):  # saved in the middle of a depth (or in a sanctum)
+            return saved + (2 if live.get("in_sanctum") else 1)
+        return saved + 2
+
+    def _saved_live(self) -> bool:
+        return bool(self.saved_run) and isinstance(self.saved_run.get("live"), dict)
+
+    def _save_run_state(self) -> None:
+        """Save the run exactly where it is (pause menu or closing the window)."""
+        if not self.in_run or self.run.outcome or self.sandbox:
+            return
+        data = self.run.save_state()
+        if records.save_run(data):
+            self.saved_run = data
+            self.saved_checkpoint = self.run.checkpoint
+        records.save(self.records)
+        self.log.write("gespeichert", ort=self._where())
+        self.in_run = False
 
     def _menu_step(self, step: int) -> None:
         items = self._menu_items()
@@ -344,8 +367,10 @@ class Game:
             elif key == "restart":
                 self._start_run(sandbox=self.sandbox)
             elif key == "title":
+                self._save_run_state()
                 self._go("title")
             elif key == "quit":
+                self._save_run_state()
                 self.running = False
             else:
                 self._go(key)
@@ -419,14 +444,26 @@ class Game:
         except ValueError:  # from an older, incompatible version: start fresh instead
             self._start_run()
             return
+        if self._saved_live():
+            # a full save is used once: from now on the disk holds the last sanctum
+            # again, so quitting without saving cannot rewind the run
+            if self.run.checkpoint is not None:
+                records.save_run(self.run.checkpoint)
+                self.saved_run = self.run.checkpoint
+            else:
+                records.delete_run()
+                self.saved_run = None
         self.saved_checkpoint = self.run.checkpoint
         self._begin(fortgesetzt=True)
 
     def _begin(self, sandbox: bool = False, **info: object) -> None:
+        self.in_run = True
         self._snap_camera()
         self.sandbox = self.cheated = sandbox
         self.run.sandbox = sandbox
         self.run.god_mode = False
+        self.run.known_blocks = set(self.records.blocks)
+        self.run.known_blocks.update(k for w in self.run.inventory.wands for k in w.slots if k)
         known = set(self.records.blocks) | {k for w in self.run.inventory.wands for k in w.slots if k}
         self.editor.palette = [block.key for block in BLOCKS if block.key in known] if sandbox else []
         self.editor.palette_mode = sandbox
@@ -643,7 +680,8 @@ class Game:
         if "x" in pad.pressed:  # like a right click: between the wand in hand and the bag
             self.editor.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(mx, my)), self.run)
         if "y" in pad.pressed:
-            self.run.inventory.sort_bag()
+            self.editor.sort_mode = (self.editor.sort_mode + 1) % len(SORT_MODES)
+            self.run.inventory.sort_bag(SORT_MODES[self.editor.sort_mode][0])
         holding = "a" in pad.buttons
         if holding != self.pad_click:
             self.pad_click = holding
@@ -801,7 +839,7 @@ class Game:
         menus = self.menus
         if self.state == "title":
             pulse = 0.5 + 0.5 * math.sin(self.clock_time * 3) ** 8
-            items = title_items(self._saved_depth())
+            items = title_items(self._saved_depth(), self._saved_live())
             self.menu_rects = menus.draw_title(
                 self.screen, pulse, self.records.lines_de(), items, self.menu_index, self.clock_time
             )
@@ -951,7 +989,7 @@ class Game:
         target = self._cursor_in_world()
         if not run.depth.final:
             draw_exit(self.canvas, run.level.exit, run.exit_open, run.time_in_depth, cam_x, cam_y)
-        draw_pickups(self.canvas, run.pickups, cam_x, cam_y)
+        draw_pickups(self.canvas, run.pickups, cam_x, cam_y, run.known_blocks)
         draw_thrown_flasks(self.canvas, run.thrown, cam_x, cam_y)
         draw_chunks(self.canvas, run.chunks.items, cam_x, cam_y)
         if not player.dead:

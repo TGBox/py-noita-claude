@@ -1146,3 +1146,50 @@ class TestBagStacks(unittest.TestCase):
         other.restore(run.checkpoint)
         index = other.inventory.bag.index("funke")
         self.assertEqual(other.inventory.count(SlotRef("bag", index)), 5)
+
+
+class TestSaveAnywhere(unittest.TestCase):
+    def test_full_save_continues_exactly_there(self) -> None:
+        import json
+
+        from src.flask import Flask
+        from src.materials import ACID
+
+        run = Run(61)
+        run.enter_sanctum()
+        run.enter_depth(1)
+        for _ in range(30):
+            run.update(1 / 60, Controls())
+        run.player.hp = 37.0
+        run.pearls = 123
+        run.flasks.append(Flask(ACID, 99))
+        creatures = sorted((c.spec.key, c.x, c.y) for c in run.enemies.creatures if not c.dead)
+        items = len(run.pickups)
+        position = (run.player.x, run.player.y)
+        data = json.loads(json.dumps(run.save_state()))  # must survive JSON
+        grid = bytes(run.world.grid)
+        other = Run(62)
+        other.restore(data)
+        self.assertEqual(other.depth_index, 1)
+        self.assertFalse(other.in_sanctum)
+        self.assertEqual(bytes(other.world.grid), grid)
+        self.assertEqual((other.player.x, other.player.y), position)
+        self.assertEqual(other.player.hp, 37.0)
+        self.assertEqual(other.pearls, 123)
+        self.assertEqual(sorted((c.spec.key, c.x, c.y) for c in other.enemies.creatures), creatures)
+        self.assertEqual(len(other.pickups), items)
+        self.assertEqual(other.level, run.level)
+        self.assertEqual([f.material for f in other.flasks], [f.material for f in run.flasks])
+        self.assertIsNotNone(other.checkpoint)  # the sanctum before stays the fallback
+        self.assertNotIn("live", other.checkpoint)
+
+    def test_broken_world_falls_back_to_the_sanctum(self) -> None:
+        run = Run(63)
+        run.enter_sanctum()
+        run.enter_depth(1)
+        data = run.save_state()
+        data["live"]["world"] = "kaputt"
+        other = Run(64)
+        other.restore(data)
+        self.assertTrue(other.in_sanctum)
+        self.assertEqual(other.depth_index, 0)  # the sanctum after the first depth

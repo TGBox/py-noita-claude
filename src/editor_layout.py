@@ -31,6 +31,7 @@ class Layout:
     bag_title: tuple[int, int] = (0, 0)
     flask_title: tuple[int, int] = (0, 0)
     sort: Rect = (0, 0, 0, 0)  # the "Sortieren" button above the bag
+    sort_mode: Rect = (0, 0, 0, 0)  # which criterion it sorts by (click: next one)
 
 
 def layout(width: int, height: int, inventory: Inventory) -> Layout:
@@ -72,8 +73,10 @@ def _layout(width: int, inventory: Inventory, s: float) -> Layout:
         result.stats.append((index, (stats_x, y + round(2 * s), stats_w, row_h - round(10 * s))))
     y = top + MAX_WANDS * row_h + round(4 * s)
     result.bag_title = (left, y)
-    sort_w = round(110 * s)
+    sort_w = round(100 * s)
     result.sort = (left + BAG_COLUMNS * step - gap - sort_w, y - round(2 * s), sort_w, round(20 * s))
+    mode_w = round(130 * s)
+    result.sort_mode = (result.sort[0] - mode_w - gap, y - round(2 * s), mode_w, round(20 * s))
     y += title_h
     bag = min(len(inventory.bag), BAG_SIZE)
     for index in range(bag):
@@ -116,6 +119,8 @@ def hit_any(result: Layout, x: int, y: int) -> tuple[str, object] | None:
         return "slot", ref
     if _inside(result.sort, x, y):
         return "sort", None
+    if _inside(result.sort_mode, x, y):
+        return "sort_mode", None
     for index, rect in result.handles:
         if _inside(rect, x, y):
             return "wand", index

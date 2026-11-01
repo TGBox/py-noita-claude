@@ -215,7 +215,9 @@ def compare(value: float, other: float, higher: bool) -> int:
 # -------------------------------------------------------------------- pickups
 
 
-def describe_pickup(item: Pickup, current: WandSpec | None, price: int) -> HoverInfo:
+def describe_pickup(
+    item: Pickup, current: WandSpec | None, price: int, known: set[str] | None = None
+) -> HoverInfo:
     """Tooltip for an item; ``price`` is what it costs the player right now."""
     lines: list[str] = []
     title, color, block, wand = item.label_de, (232, 214, 180), None, None
@@ -227,12 +229,18 @@ def describe_pickup(item: Pickup, current: WandSpec | None, price: int) -> Hover
         spec = CATALOG[item.block]
         title, block = spec.name_de, spec.key
         lines = block_lines(spec)
+        if known is not None and spec.key not in known:
+            title, color = f"Neu: {spec.name_de}", (255, 226, 130)
+            lines.insert(0, "Noch nicht im Kodex.")
     elif item.wand is not None:
         title, wand = f"Augmentation: {item.wand.name_de}", item.wand
         lines = ["Mischt die Bausteine" if item.wand.shuffle else "Feste Reihenfolge"]
         names = [CATALOG[key].name_de for key in item.wand.blocks]
         if names:
             lines.append("Enthält: " + ", ".join(names))
+        new = [CATALOG[k].name_de for k in item.wand.blocks if known is not None and k not in known]
+        if new:
+            lines.append("Neu darin: " + ", ".join(dict.fromkeys(new)))
     elif item.flask is not None:
         flask = item.flask
         if flask.empty:
@@ -295,7 +303,7 @@ def describe(
             from src.inventory import spec_of
 
             current = spec_of(run.inventory.wand)
-        return describe_pickup(best, current, run.price_of(best))
+        return describe_pickup(best, current, run.price_of(best), getattr(run, "known_blocks", None))
     world = run.world
     if not (0 <= x < world.width and 0 <= y < world.height):
         return None

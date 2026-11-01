@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from src.wand import Wand, WandSpec
 
 MAX_WANDS = 4
+# (key, German label) of the ways the bag can be sorted
+SORT_MODES = (("art", "Art"), ("schaden", "Schaden"), ("mana", "Mana"), ("name", "Name"), ("anzahl", "Anzahl"))
 BAG_SIZE = 48  # 4 rows of 12 in the inventory screen; equal blocks stack in one slot
 
 
@@ -75,8 +77,8 @@ class Inventory:
             amount = counts[index] if counts and index < len(counts) else 1
             self.add_block(key, max(1, int(amount)))
 
-    def sort_bag(self) -> None:
-        """Merge stacks and order the bag: forms, mutations, nerves, secretions, by name."""
+    def sort_bag(self, mode: str = "art") -> None:
+        """Merge stacks and order the bag by ``mode`` (see ``SORT_MODES``)."""
         from src.spells import CATALOG, Category
 
         order = list(Category)
@@ -84,7 +86,22 @@ class Inventory:
         for key, amount in zip(self.bag, self.counts):
             if key is not None:
                 totals[key] = totals.get(key, 0) + max(1, amount)
-        keys = sorted(totals, key=lambda k: (order.index(CATALOG[k].category), CATALOG[k].name_de))
+
+        def kind(key: str) -> int:
+            return order.index(CATALOG[key].category)
+
+        def damage(key: str) -> float:
+            b = CATALOG[key]
+            return b.damage * max(1, b.pellets) + b.blast * 3 + b.damage_bonus + b.blast_bonus * 3
+
+        keys_of = {
+            "art": lambda k: (kind(k), CATALOG[k].name_de),
+            "schaden": lambda k: (-damage(k), kind(k), CATALOG[k].name_de),
+            "mana": lambda k: (CATALOG[k].mana, kind(k), CATALOG[k].name_de),
+            "name": lambda k: CATALOG[k].name_de.lower(),
+            "anzahl": lambda k: (-totals[k], kind(k), CATALOG[k].name_de),
+        }
+        keys = sorted(totals, key=keys_of.get(mode, keys_of["art"]))
         self.bag = [None] * BAG_SIZE
         self.counts = [0] * BAG_SIZE
         for index, key in enumerate(keys):

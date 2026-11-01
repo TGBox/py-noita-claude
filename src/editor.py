@@ -16,7 +16,7 @@ from src import ui
 from src.editor_layout import Layout, hit_any, layout
 from src.hover import HoverInfo, block_lines, compare, wand_values
 from src.hud import draw_flask_icon
-from src.inventory import BAG_SIZE, spec_of
+from src.inventory import BAG_SIZE, SORT_MODES, spec_of
 from src.spells import CATALOG
 
 NOTICE_TIME = 2.5
@@ -37,6 +37,7 @@ class WandEditor:
         self.palette_mode = False
         self.page = 0
         self._last_click: tuple[str, object] | None = None
+        self.sort_mode = 0  # index into SORT_MODES
         self._last_click_time = 0.0
 
     def toggle(self) -> None:
@@ -102,8 +103,11 @@ class WandEditor:
         if event.button != 1:
             return
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if not self.palette_mode and hit_any(current, *event.pos) == ("sort", None):
-                run.inventory.sort_bag()
+            button = hit_any(current, *event.pos)
+            if not self.palette_mode and button in (("sort", None), ("sort_mode", None)):
+                if button[0] == "sort_mode":
+                    self.sort_mode = (self.sort_mode + 1) % len(SORT_MODES)
+                run.inventory.sort_bag(SORT_MODES[self.sort_mode][0])
                 self.dragging = None
                 return
             for name, rect in self._tabs(current).items():
@@ -215,6 +219,12 @@ class WandEditor:
             pygame.draw.rect(screen, ui.SELECT if over else SLOT_BACK, sort)
             pygame.draw.rect(screen, ui.SELECT_EDGE if over else SLOT_EDGE, sort, 1)
             ui.text(screen, "Sortieren", sort.center, round(14 * s), ui.GOLD if over else ui.TEXT, anchor="center")
+            mode = pygame.Rect(current.sort_mode)
+            over = hovered == ("sort_mode", None)
+            pygame.draw.rect(screen, ui.SELECT if over else SLOT_BACK, mode)
+            pygame.draw.rect(screen, ui.SELECT_EDGE if over else SLOT_EDGE, mode, 1)
+            label = f"nach: {SORT_MODES[self.sort_mode][1]} ›"
+            ui.text(screen, label, mode.center, round(14 * s), ui.GOLD if over else ui.TEXT, anchor="center")
         for ref, rect in current.slots:
             rect = pygame.Rect(rect)
             is_wand = ref.kind == "wand"
