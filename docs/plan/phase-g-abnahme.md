@@ -140,16 +140,16 @@
 
 ---
 
-## G10 — Bot-Vollabnahme über alle 9 Universen, Werkstatt & Hauptquartier (`V14`)
+## G10 — Bot-Vollabnahme über alle 6 MVP-Universen, Werkstatt & Hauptquartier (`V14`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `D16`, `G08`, `G09`
-- **Ziel-Dateien:** `src/` / `tools/` (Abnahme gegen `tests/spec/test_phase_g.py`)
+- **Ziel-Dateien:** `src/bot.py`, `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v09-universen-und-ereignisse.md` (`V14`), `docs/plan/vertraege.md`, `tests/spec/test_phase_g.py` (`-k g10`)
 - **Aufgabe:**
-  1. Erstelle `tests/test_full_acceptance.py` als abschließende End-to-End-Abnahmesuite:
-     - Führt `run_bot(u_key, seed=42, max_seconds=20.0)` über alle 9 Universen in `UNIVERSES` aus (`errors == []`, `stuck_ratio < 0.75`).
-     - Prüft einen kompletten Zyklus aus Universum 1 → Werkstatt (Stationen, Fabrikator, Händler, Portalwahl) → Universum 2 → Save/Load-Roundtrip → Hauptquartier (`enter_headquarters` bis Sieg über `"ober_cloita"`).
+  1. Stelle in `src/bot.py` und `src/run.py` sicher, dass die abschließende End-to-End-Abnahme in `tests/spec/test_phase_g.py` (`-k g10`) vollständig durchläuft:
+     - `run_bot(u_key, seed=42, max_seconds=20.0)` über alle 6 MVP-Universen in `UNIVERSES` (`errors == []`, `stuck_ratio < 0.75`).
+     - Kompletter Zyklus aus Universum 1 → Werkstatt (Stationen, Fabrikator, Händler, Portalwahl) → Universum 2 → Save/Load-Roundtrip → Hauptquartier (`enter_headquarters` bis Sieg über `"ober_cloita"`).
 - **Akzeptanzkriterien:**
   - `uv run pytest -q` und `uv run ruff check src tests tools` laufen ohne jeden Fehler über die gesamte Codebasis durch.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g10 -q && uv run pytest --ignore=tests/spec -q`

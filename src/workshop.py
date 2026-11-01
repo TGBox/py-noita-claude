@@ -1,4 +1,4 @@
-"""Contract V18: Workshop hub layout and 10 interactive stations (Card E01)."""
+"""Contract V18: Workshop hub layout and 12 interactive stations (Card E01)."""
 
 from __future__ import annotations
 
@@ -33,6 +33,14 @@ class WorkshopLayout:
 
 STATIONS: dict[str, Station] = {}
 
+STATION_ALIASES: dict[str, str] = {
+    "ws_workbench": "ws_werkbank",
+    "ws_fabricator": "ws_fabrikator",
+    "ws_trader": "ws_haendler",
+    "ws_physik_o_mat": "ws_automat",
+    "ws_archive": "ws_archiv",
+}
+
 
 def generate_workshop(world: World) -> WorkshopLayout:
     """Build the 640x360 workshop hall in world and return its WorkshopLayout."""
@@ -47,4 +55,3 @@ def station_at(
 ) -> Station | None:
     """Return the nearest Station within radius cells of (cell_x, cell_y), or None."""
     raise NotImplementedError("Card E01")
-

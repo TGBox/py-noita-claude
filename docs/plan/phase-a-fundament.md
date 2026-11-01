@@ -5,18 +5,19 @@
 
 ---
 
-## A01 — Kanonische Proben- & Regions-Schlüssel in `catalog.py` angleichen (`V0a`)
+## A01 — Kanonische Proben- & Regions-Schlüssel der 6 MVP-Universen in `catalog.py` angleichen (`V0a`)
 
 - **Größe:** S
 - **Abhängigkeiten:** keine
-- **Ziel-Dateien:** `src/universes/catalog.py`
+- **Ziel-Dateien:** `src/universes/catalog.py`, `src/universes/model.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0a`), `src/universes/catalog.py`, `tests/spec/test_phase_a.py` (`-k a01`)
 - **Aufgabe:**
-  1. Aktualisiere in `src/universes/catalog.py` alle `sample_key`-Werte der 9 Universen auf die kanonischen Schlüssel mit `probe_`-Präfix gemäß `V0a` (`"probe_rost"`, `"probe_pilz"`, `"probe_saft"`, `"probe_papier"`, `"probe_zucker"`, `"probe_salz"`, `"probe_harz"`, `"probe_spule"`, `"probe_bunt"`).
-  2. Stelle in `src/universes/catalog.py` sicher, dass die 3 `Region`-Einträge jedes Universums exakt die Schlüssel und die Reihenfolge `(regions[0], regions[1], regions[2])` aus der Tabelle in `V0a` tragen und `abtei` in `regions[2]` (`"krypta"`) `params=(("current_vx", 28.0),)` erhält.
+  1. Stelle sicher, dass `UNIVERSES` in `src/universes/catalog.py` exakt die **6 MVP-Universen** (`"fleischwelt"`, `"aktenhalde"`, `"glibbria"`, `"kruemelreich"`, `"sporenklub"`, `"abtei"`) enthält (`len(UNIVERSES) == 6`) und die 3 Pool-Universen (`"schrott"`, `"kuchen"`, `"spule"`) in `POOL_UNIVERSES` liegen.
+  2. Aktualisiere die `samples`-Tupel (je 2 `probe_*`-Schlüssel pro Universum) und `sample_key` (`samples[0]`) gemäß `V0a` (`("probe_gallenstein", "probe_wucherung")`, `("probe_stempelkissen", "probe_formular")`, `("probe_glibberkern", "probe_brauseperle")`, `("probe_zuckerkristall", "probe_ameisenduft")`, `("probe_leuchtspore", "probe_plattennadel")`, `("probe_glockensplitter", "probe_kerzenstumpf")`).
+  3. Stelle sicher, dass die 3 `Region`-Einträge jedes der 6 MVP-Universen exakt die Schlüssel und die Reihenfolge `(regions[0], regions[1], regions[2])` aus der Tabelle in `V0a` tragen und `abtei` in `regions[2]` (`"krypta"`) `params=(("ambient", 0.15), ("current_vx", 28.0))` erhält.
 - **Akzeptanzkriterien:**
-  - Für alle 9 Universen in `UNIVERSES` beginnt `u.sample_key` mit `"probe_"`.
-  - `[r.key for r in UNIVERSES[k].regions]` entspricht für alle 9 Universen exakt der Tabelle in `V0a`.
+  - `len(UNIVERSES) == 6`; für alle 6 Universen in `UNIVERSES` beginnen beide Einträge in `u.samples` und `u.sample_key` mit `"probe_"`.
+  - `[r.key for r in UNIVERSES[k].regions]` entspricht für alle 6 MVP-Universen exakt der Tabelle in `V0a`.
   - `UNIVERSES["abtei"].regions[2].param("current_vx") == 28.0`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a01 -q && uv run pytest --ignore=tests/spec -q`
 
@@ -63,10 +64,10 @@
 - **Ziel-Dateien:** `src/samples.py`, `src/inventory.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`), `src/inventory.py`, `tests/spec/test_phase_a.py` (`-k a04`)
 - **Aufgabe:**
-  1. Erstelle `src/samples.py` mit `SAMPLE_SLOTS = 12`, `SAMPLE_STACK = 99`, `Sample` und dem vollständigen Dictionary `SAMPLES` (alle 14 Proben aus `V11`).
+  1. Erstelle `src/samples.py` mit `SAMPLE_SLOTS = 12`, `SAMPLE_STACK = 99`, `Sample`, `SAMPLE_ALIASES` und dem vollständigen Dictionary `SAMPLES` (alle 17 Proben aus `V11`: 12 Universums-Proben + 5 allgemeine Proben).
   2. Ergänze auf `Inventory` in `src/inventory.py` das Feld `samples: list[tuple[str, int] | None]` sowie die Methoden `add_sample`, `sample_count`, `total_samples` und `take_samples` exakt nach `V11`.
 - **Akzeptanzkriterien:**
-  - Alle 9 `u.sample_key` aus `src/universes/catalog.py` sind in `SAMPLES` enthalten (`len(SAMPLES) == 14`).
+  - Alle 12 Universums-Proben (`u.samples` aus `src/universes/catalog.py`) und die 5 allgemeinen Proben sind in `SAMPLES` enthalten (`len(SAMPLES) == 17`).
   - `add_sample` stapelt bis `99` pro Slot über maximal `12` Slots und gibt die tatsächlich aufgenommene Menge zurück.
   - `take_samples` zieht nur ab, wenn alle geforderten Proben vollständig vorhanden sind (atomare Prüfung).
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a04 -q && uv run pytest --ignore=tests/spec -q`
@@ -341,9 +342,9 @@
 - **Ziel-Dateien:** `tools/palette.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py`, `tests/spec/test_phase_a.py` (`-k a21`)
 - **Aufgabe:**
-  1. Erstelle `tools/palette.py` mit `OUTLINE_DARK = (18, 14, 24, 255)`, `PaletteRamp` (`shadow`, `mid`, `light`, `highlight`, `rim`), `make_ramp(base_rgb: tuple[int, int, int]) -> PaletteRamp`, `UNIVERSE_PALETTES: dict[str, dict[str, PaletteRamp]]` für alle 9 Universen sowie `ENTITY_PALETTES` für Spielerin, Klonita, Behörde und Händler gemäß `V8`.
+  1. Erstelle `tools/palette.py` mit `OUTLINE_DARK = (18, 14, 24, 255)`, `PaletteRamp` (`shadow`, `mid`, `light`, `highlight`, `rim`), `make_ramp(base_rgb: tuple[int, int, int]) -> PaletteRamp`, `UNIVERSE_PALETTES: dict[str, dict[str, PaletteRamp]]` für alle 6 MVP-Universen (`"fleischwelt"`, `"aktenhalde"`, `"glibbria"`, `"kruemelreich"`, `"sporenklub"`, `"abtei"`) + Pool-Universen sowie `ENTITY_PALETTES` für Spielerin, Klonita, Behörde und Händler gemäß `V8`.
 - **Akzeptanzkriterien:**
-  - Für jedes der 9 Universen in `UNIVERSE_PALETTES` existieren mindestens die Rampen `"primary"`, `"secondary"`, `"accent"` und `"glow"`.
+  - Für jedes der 6 MVP-Universen in `UNIVERSES` existieren in `UNIVERSE_PALETTES` mindestens die Rampen `"primary"`, `"secondary"`, `"accent"` und `"glow"`.
   - In jeder `PaletteRamp` steigt die Helligkeit streng monoton von `shadow` über `mid` und `light` bis `highlight`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a21 -q && uv run pytest --ignore=tests/spec -q`
 

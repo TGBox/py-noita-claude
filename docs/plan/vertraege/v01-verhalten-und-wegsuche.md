@@ -8,227 +8,348 @@ Verbindliche Schnittstellen für `src/behaviour.py`, `src/enemies.py`, `src/path
 
 ```python
 from __future__ import annotations
+
 import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
-    from src.body import Body
-    from src.enemies import Creature
-    from src.factions import Grudges
-    from src.projectiles import ProjectileSystem
-    from src.world import World
+    from .enemies import Creature
+    from .loot import Pickup
+    from .player import Player
+    from .projectiles import Projectile
+    from .world import World
 
 STANCES: tuple[str, ...] = ("hostile", "neutral", "passive", "trader")
+STANCE_ALIASES: dict[str, str] = {
+    "peaceful": "passive",
+    "shy": "passive",
+    "territorial": "neutral",
+}
+
 ABILITY_KEYS: tuple[str, ...] = (
-    "graze", "pack", "hunt", "retaliate", "dig", "steal", "split", "flee",
-    "transform", "ranged", "melee", "shield", "reflect", "armor", "summon", "stationary",
+    "graze", "eat_material", "pack", "hunt", "retaliate", "dig", "steal", "split", "flee",
+    "transform", "morph", "ranged", "melee", "shield", "reflect", "armor", "summon", "stationary",
+    "aura", "teleport", "kamikaze", "burrow",
 )
-# Projectile form keys from src/spells.py (both old and new keys) that count as piercing for "armor":
+
 PIERCING_FORMS: frozenset[str] = frozenset({
+    "beam", "lance", "laser", "lightning", "chain", "saw",
     "nadel", "nadelschuss", "knochenspeer", "durchschlagbolzen",
     "nadelregen", "knochensaege", "kreissaege",
 })
+
 GRAZE_MATERIAL: dict[str, str] = {
     "huepfling": "zuckerguss",
     "blattlaus": "zucker",
+    "rostkaefer": "rust",
+    "zottenwurm": "flesh",
+    "aktenfresser": "paper",
+    "marzipanschwein": "dough",
 }
-SPLIT_SIZES: dict[str, tuple[tuple[int, int], ...]] = {
-    "glibberteiler": ((18, 14), (12, 10), (8, 7)),
-}
+
+SPLIT_SIZES: tuple[tuple[float, float], ...] = (
+    (1.0, 1.0),
+    (0.7, 0.55),
+    (0.5, 0.30),
+)
+
+
+@dataclass(frozen=True)
+class Ability:
+    kind: str
+    param: str = ""
+    param_float: float = 0.0
+
 
 @dataclass
 class BehaviourContext:
-    world: World
-    player: Body
-    creatures: list[Creature]                 # alle lebenden Kreaturen der Welt
-    projectiles: ProjectileSystem
-    rng: random.Random
     dt: float
-    grudges: Grudges | None = None
-    on_beat: bool = True                      # rule_beat: False außerhalb der ersten 50 % des Takts
-    events: list[tuple[str, dict[str, Any]]] = field(default_factory=list)  # Ausgabe an Run.emit (V12)
+    world: World
+    player: Player
+    creatures: list[Creature]
+    projectiles: list[Projectile]
+    pickups: list[Pickup] = field(default_factory=list)
+    grudges: set[tuple[str, str]] = field(default_factory=set)
+    on_beat: bool = True
+    rng: random.Random = field(default_factory=random.Random)
+    out_events: list[tuple[str, dict[str, object]]] = field(default_factory=list)
 
-class Ability:
-    key: ClassVar[str] = ""
 
-    def __init__(self, creature: Creature, params: dict[str, float]) -> None:
-        self.creature = creature
-        self.params = params
+def handle_split_on_death(
+    creature: Creature,
+    ability: Ability,
+    out_events: list[tuple[str, dict[str, object]]],
+) -> None: ...
 
-    def update(self, ctx: BehaviourContext) -> None:
-        pass
+def handle_morph_check(creature: Creature, ability: Ability) -> bool: ...
 
-    def on_hurt(
-        self, ctx: BehaviourContext, amount: float, source: tuple[float, float] | None, cause: str = ""
-    ) -> float:
-        return amount
+def handle_reflect_projectiles(
+    creature: Creature,
+    projectiles: list[Projectile],
+    out_events: list[tuple[str, dict[str, object]]],
+) -> int: ...
 
-    def wants_move(self, ctx: BehaviourContext) -> tuple[float, float] | None:
-        return None
+def handle_steal_pickup(
+    creature: Creature,
+    pickups: list[Pickup],
+    out_events: list[tuple[str, dict[str, object]]],
+) -> bool: ...
 
-ABILITIES: dict[str, type[Ability]] = {}
+def handle_eat_material(
+    creature: Creature,
+    material_name: str,
+    world: World,
+    pickups: list[Pickup],
+) -> bool: ...
 
-def register(cls: type[Ability]) -> type[Ability]: ...
-def build_abilities(creature: Creature) -> list[Ability]: ...
-def update_behaviour(creature: Creature, ctx: BehaviourContext) -> None: ...
+def handle_aura(
+    creature: Creature,
+    ability: Ability,
+    player: Player,
+    creatures: list[Creature],
+    dt: float = 0.016,
+) -> None: ...
+
+def handle_teleport(
+    creature: Creature,
+    world: World,
+    rng: random.Random,
+) -> bool: ...
+
+def handle_summon(
+    creature: Creature,
+    ability: Ability,
+    out_events: list[tuple[str, dict[str, object]]],
+) -> None: ...
+
+def handle_kamikaze(
+    creature: Creature,
+    ability: Ability,
+    player: Player,
+    world: World,
+    out_events: list[tuple[str, dict[str, object]]],
+) -> bool: ...
+
+def handle_burrow(
+    creature: Creature,
+    target_pos: tuple[float, float],
+    world: World,
+    dt: float,
+) -> None: ...
+
+def apply_chorus_buff(creature: Creature, creatures: list[Creature]) -> float: ...
+
+def tick_abilities(creature: Creature, ctx: BehaviourContext) -> None: ...
 ```
 
 - Materialien in Parametern immer als **Schlüssel** (nie als ID).
-- `build_abilities(creature)` liest `dict(creature.spec.ability_params)`. Ist ein Schlüssel in `creature.spec.abilities` weder in `ABILITY_KEYS` noch in `ABILITIES`, wirft `build_abilities` einen `ValueError(key)`.
-- Wenn `creature.spec.stance not in ("passive", "trader")` und `"retaliate"` nicht in `creature.spec.abilities` steht, hängt `build_abilities` `"retaliate"` automatisch an (sobald `"retaliate"` in `ABILITIES` registriert ist).
-- Reihenfolge in `update_behaviour(creature, ctx)`:
-  1. Haltung & Sicht prüfen (`V1a`).
-  2. Alle `ability.update(ctx)` in Reihenfolge von `creature.abilities` aufrufen.
-  3. Erster nicht-`None`-Rückgabewert von `ability.wants_move(ctx)` bestimmt das Ziel `(tx, ty)`.
-  4. Wenn `"stationary"` aktiv oder `creature.spec.stance == "trader"`: `creature.vx = creature.vy = 0.0`. Sonst wenn Ziel `(tx, ty)` vorhanden: `creature.steer_to(world, tx, ty, dt)` (nur wenn `ctx.on_beat` True ist). Sonst: Umherwandern (`creature._wander_step(world, dt)`).
-
-### V1a Haltung und Aggro
-
-- `Creature.aggro: bool` – gibt an, ob die Kreatur aktiv angreift.
-- `hostile`: `aggro = True`, sobald sie ihr Ziel (Spieler oder verfeindete Kreatur laut `V4`) innerhalb von `spec.sight` sieht (`can_see`) oder `player.smells_like_ant` (bei `ameisenkrieger`).
-- `neutral`: startet mit `aggro = False`; wird bei `hurt(..., amount > 0)` auf `aggro = True` gesetzt (und teilt dies bei `"pack"` mit ihrer `group_id`). Ausnahme `stempler`: bewegt sich auch mit `aggro = False` langsam auf den Spieler zu, wenn Abstand `< 90 px`, um einmalig zu stempeln.
-- `passive`: `aggro` ist immer `False`; `hurt(..., amount > 0)` setzt `creature.fleeing = True` (für `8.0 s`).
-- `trader`: `aggro` ist immer `False`, bewegt sich nie; `hurt(..., amount > 0)` hängt `("trader_hurt", {"key": creature.spec.key, "x": creature.x, "y": creature.y})` an `ctx.events` an.
-
-### V1b Neue Felder in `CreatureSpec` (`src/enemies.py`)
-
-Alle neuen Felder stehen am Ende von `CreatureSpec` und besitzen Standardwerte, sodass bestehende Kreaturen unverändert funktionieren:
-
-```python
-    stance: str = "hostile"
-    abilities: tuple[str, ...] = ()                      # leer = alter Codepfad in Creature.update
-    ability_params: tuple[tuple[str, float], ...] = ()   # z. B. (("dig_hardness", 2.0), ("flee_distance", 80.0))
-    faction: str = "native"                              # V4: "native" | "authority" | "evil_self"
-    windup: float = 0.4                                  # Ausholzeit in s (wird auf >= 0.4 geklemmt)
-    group_size: tuple[int, int] = (1, 1)                 # (min, max) Gruppengröße beim Spawnen
-    gold: tuple[int, int] = (0, 0)                       # (min, max) Gold auf Rang 1
-    drops: tuple[tuple[str, float], ...] = ()            # ((item_key, chance_0_to_1), ...)
-    sandbox_only: bool = False                           # True = nicht mehr in regulären Läufen spawnen
-```
-
-### V1c Neue Felder und Methoden in `Creature` (`src/enemies.py`)
-
-```python
-    state: str = "idle"                                  # V2 Animations-/Verhaltenszustand
-    state_time: float = 0.0                              # Sekunden im aktuellen Zustand
-    attack_kind: str = ""                                # z. B. "melee", "ranged", "stamp"
-    aggro: bool = False
-    fleeing: bool = False
-    flee_timer: float = 0.0
-    group_id: int = 0                                    # >0: gleiche Gruppe teilt Aggro (pack)
-    generation: int = 0                                  # >0: Teilungs-Generation (split)
-    carrying: dict[str, Any] | None = None               # gestohlener Gegenstand (steal), siehe V12
-    bribed: bool = False                                 # Türsteherpilz bestochen
-    giver: bool = False                                  # Auftraggeber einer Herausforderung (V13)
-    chorus_buff: float = 0.0                             # Mönchsfisch-Chor-Timer
-    last_hit_from: tuple[float, float] | None = None
-    last_attacker_species: str = ""                      # Art des Schützen bei Fremdbeschuss (V4)
-    path: list[tuple[int, int]] = []
-    abilities: list[Ability]                             # erzeugt durch build_abilities(self)
-
-    def steer_to(self, world: World, x: float, y: float, dt: float) -> None: ...
-    def hurt(
-        self,
-        amount: float,
-        cause: str = "",
-        source: tuple[float, float] | None = None,
-        ctx: BehaviourContext | None = None,
-        attacker_species: str = "",
-    ) -> None: ...
-```
-
-- Signatur von `EnemyManager.update` bleibt abwärtskompatibel:
-
-  ```python
-  def update(
-      self,
-      world: World,
-      dt: float,
-      player: Body,
-      projectiles: ProjectileSystem,
-      area: Rect,
-      *,
-      grudges: Grudges | None = None,
-      on_beat: bool = True,
-      out_events: list[tuple[str, dict[str, Any]]] | None = None,
-  ) -> list[Creature]:
-  ```
-
-  `EnemyManager.update` baut pro Aufruf einen `BehaviourContext`, reicht `out_events` (falls übergeben) als `ctx.events` durch und gibt wie bisher `died: list[Creature]` zurück. Dadurch brechen bestehende Aufrufer in Tests nie.
+- `tick_abilities(creature, ctx)` iteriert über `creature.spec.abilities` (`tuple[Ability, ...]`) und führt die jeweiligen Handler (`handle_eat_material`, `handle_steal_pickup`, `handle_reflect_projectiles`, `handle_aura`, `handle_summon`, `handle_kamikaze`, `handle_burrow`, `handle_morph_check` usw.) für den aktuellen Tick aus.
+- `apply_chorus_buff(creature, creatures)`: Wenn mindestens `3` lebende `moenchsfisch` innerhalb von `90..180 px` umeinander stehen, liefert die Funktion den Schadensmultiplikator `> 1.0` (`1.25` bzw. `1.5`), sonst `1.0`.
 
 ---
 
-## V2 Zustände und Ausholen (`src/enemies.py`)
+## V1a–V2 Haltungen, `CreatureSpec`, `Creature` & Zustandsmaschine (`src/enemies.py`)
 
-- `MIN_WINDUP = 0.4`. Effektive Ausholzeit: `max(MIN_WINDUP, self.spec.windup)`.
-- Standardzustände: `"idle"`, `"move"`, `"windup"`, `"attack"`, `"hurt"`, `"death"` + Sonderzustände (`"dig"`, `"stamp"`, `"hang"`, `"latched"`, `"squash"`, `"burrow_out"`, `"steal"`, `"carry"`, `"phase_change"`).
-- `Creature.set_state(name: str) -> None`: setzt `self.state = name` und `self.state_time = 0.0` (wenn `self.state != name`).
-- `Creature.begin_attack(kind: str) -> bool`:
-  - Gibt `False` zurück, wenn `self.state in ("windup", "attack")` oder die zugehörige Abklingzeit (`attack_cooldown` für `"melee"`/`"stamp"`, `ranged_cooldown` für `"ranged"`) `> 0` ist.
-  - Setzt sonst `self.attack_kind = kind`, `self.set_state("windup")` und gibt `True` zurück.
-- `Creature.poll_attack_ready() -> str`:
-  - Wenn `self.state == "windup"` und `self.state_time >= max(MIN_WINDUP, self.spec.windup)`, wechselt die Kreatur nach `self.set_state("attack")` und gibt `self.attack_kind` zurück (genau in diesem Frame wird der Schlag/Schuss ausgelöst!). Sonst `""`.
-  - Nach `0.2 s` in `"attack"` wechselt die Kreatur automatisch zurück nach `"idle"`.
-- `hurt` setzt `self.set_state("hurt")` für `0.15 s`, **außer** `self.state == "windup"` (`windup` wird durch `hurt` nicht abgebrochen).
+### 1. Haltungen (`STANCES` & `evaluate_stance`)
+
+```python
+STANCES: tuple[str, ...] = ("peaceful", "shy", "territorial", "hostile", "neutral", "passive", "trader")
+MIN_WINDUP: float = 0.40
+
+def evaluate_stance(
+    creature: Creature,
+    player_x: float,
+    player_y: float,
+    was_hit: bool = False,
+    pack_aggro: bool = False,
+) -> str:
+    """Return behaviour action ('idle', 'flee', 'chase') based on creature.spec.stance,
+    distance to (player_x, player_y), creature.aggro, was_hit, and pack_aggro."""
+    ...
+
+def begin_attack(creature: Creature, windup: float = MIN_WINDUP) -> None:
+    """Transition creature into 'windup' state with windup_timer = max(MIN_WINDUP, windup)."""
+    ...
+
+def poll_attack_ready(creature: Creature, dt: float) -> bool:
+    """Advance windup_timer by dt; when <= 0 transition into 'attack' and return True."""
+    ...
+```
+
+- **`peaceful` / `passive`:** Greift nie an (`"idle"`); flieht (`"flee"`) nach Treffer (`was_hit == True`).
+- **`shy`:** Flieht (`"flee"`), sobald die Spielerin näher als `creature.spec.aggro_radius` (`sight`) kommt.
+- **`territorial` / `neutral`:** Bleibt ruhig (`"idle"`), bis die Spielerin in den Nahbereich (`aggro_radius * 0.6`) eindringt oder die Kreatur bzw. ihre Gruppe (`was_hit` / `pack_aggro`) angegriffen wird; wechselt dann auf `"chase"` und setzt `creature.aggro = True`.
+- **`hostile`:** Verfolgt (`"chase"`) und setzt `creature.aggro = True`, sobald Distanz `<= aggro_radius`.
+
+### 2. Felder auf `CreatureSpec` (`src/enemies.py`)
+
+Alle neuen Felder besitzen Standardwerte, sodass bestehende `CreatureSpec`-Einträge unverändert funktionieren:
+
+```python
+    stance: str = "hostile"
+    faction: str = "wildnis"
+    aggro_radius: float = 130.0
+    windup_time: float = 0.40
+    group_size: tuple[int, int] = (1, 1)
+    abilities: tuple[Ability, ...] = ()
+    sample_drop: tuple[str, float] | None = None
+    is_mid_boss: bool = False
+    is_boss: bool = False
+```
+
+### 3. Felder & `EnemyManager.update` auf `Creature` (`src/enemies.py`)
+
+```python
+    state: str = "idle"                     # "idle", "move", "windup", "attack", "hurt", "death", ...
+    state_timer: float = 0.0
+    windup_timer: float = 0.0
+    aggro: bool = False
+    group_id: int = 0
+    generation: int = 0
+    carrying: Pickup | None = None
+    morphed: bool = False
+    bribed: bool = False
+    giver: bool = False
+    chorus_buff: float = 0.0
+    last_attacker_faction: str = ""
+    path_cache: Any = None
+    anim_state: str = "idle"
+    anim_time: float = 0.0
+    pending_shot: tuple[float, float] | None = None
+```
+
+Signatur von `EnemyManager.update` bleibt abwärtskompatibel über optionale Keyword-Only-Parameter:
+
+```python
+def update(
+    self,
+    world: World,
+    dt: float,
+    player: Body,
+    projectiles: ProjectileSystem,
+    area: Rect,
+    *,
+    pickups: list[Any] | None = None,
+    grudges: set[tuple[str, str]] | None = None,
+    on_beat: bool = True,
+    out_events: list[tuple[str, dict[str, Any]]] | None = None,
+) -> list[Creature]: ...
+```
 
 ---
 
 ## V3 Wegsuche (`src/pathfind.py`)
 
 ```python
-GRID = 4  # Weltpixel pro Wegsuch-Zelle
+PATH_CACHE_TTL: float = 0.4
+MAX_PATH_EXPANSIONS: int = 160
+
+
+@dataclass
+class PathCacheEntry:
+    path: list[tuple[int, int]] = field(default_factory=list)
+    goal: tuple[int, int] = (0, 0)
+    updated_at: float = -999.0
+
 
 def find_path(
     world: World,
-    start: tuple[float, float],
-    goal: tuple[float, float],
-    body_w: int,
-    body_h: int,
-    *,
-    flying: bool,
-    max_nodes: int = 3000,
-) -> list[tuple[int, int]] | None: ...
+    start: tuple[int, int],
+    goal: tuple[int, int],
+    loco: str = "walk",
+    max_expansions: int = MAX_PATH_EXPANSIONS,
+) -> list[tuple[int, int]]:
+    """Compute a coarse grid path from start to goal cell for loco ('walk', 'fly', 'swim')."""
+    ...
+
+
+def next_waypoint(
+    world: World,
+    start_x: float,
+    start_y: float,
+    goal_x: float,
+    goal_y: float,
+    loco: str,
+    cache: PathCacheEntry,
+    now: float = 0.0,
+) -> tuple[float, float]:
+    """Return the next world-pixel waypoint towards (goal_x, goal_y), updating cache if stale."""
+    ...
+
 
 class PathFollower:
-    def __init__(self, repath_interval: float = 0.5) -> None: ...
+    def __init__(self, repath_interval: float = PATH_CACHE_TTL) -> None: ...
     def next_waypoint(
-        self, creature: Creature, world: World, goal: tuple[float, float], dt: float
-    ) -> tuple[float, float] | None: ...
+        self, world: World, start_x: float, start_y: float, goal_x: float, goal_y: float, loco: str = "walk", now: float = 0.0
+    ) -> tuple[float, float]: ...
 ```
 
-- A* auf einem Gitter mit `GRID = 4` px Zellengröße, 8 Nachbarn (gerade Kosten `1.0`, diagonal `1.414`).
-- Eine Gitterzelle `(gx, gy)` entspricht der Weltposition `(gx * GRID, gy * GRID)` (obere linke Ecke der Box) und ist begehbar, wenn `!world.rect_blocked(gx * GRID, gy * GRID, body_w, body_h)`.
-- Wenn `flying == False`: hat die Zelle keinen festen Boden innerhalb von `4 px` unterhalb der Box (`!world.rect_blocked(gx * GRID, gy * GRID + 4, body_w, body_h)`), erhöhen sich die Schrittkosten um `+4.0`.
-- Rückgabewert von `find_path`: Liste von Welt-Mittelpunkten `[(wx, wy), ...]` vom ersten Schritt bis zum Ziel, oder `None` wenn unmöglich / `max_nodes` überschritten. Wirft niemals Exceptions.
+- A* auf einem vergröberten Gitter (`4×4` Weltzellen pro Knoten), begrenzt auf `max_expansions = 160`.
+- Unterstützt die Bewegungsarten `loco in ("walk", "fly", "swim")`.
+- `next_waypoint` aktualisiert `cache: PathCacheEntry` nur, wenn `now - cache.updated_at >= PATH_CACHE_TTL` oder sich das Ziel signifikant verschoben hat.
 
 ---
 
 ## V4 Fraktionen (`src/factions.py`)
 
 ```python
-PLAYER = "player"
-NATIVE = "native"
-AUTHORITY = "authority"
-EVIL_SELF = "evil_self"
+FACTIONS: tuple[str, ...] = (
+    "spieler",
+    "wildnis",
+    "fleischwelt",
+    "aktenhalde",
+    "glibbria",
+    "kruemelreich",
+    "sporenklub",
+    "abtei",
+    "schrott",
+    "pilze",
+    "parasiten",
+    "behoerde",
+    "backwerk",
+    "tiefsee",
+    "insekten",
+    "automaten",
+    "zirkus",
+    "haendler",
+    "boese_ichs",
+)
+
+HATE_MATRIX: dict[str, frozenset[str]] = {...}
+
+
+def are_hostile(
+    faction_a: str,
+    faction_b: str,
+    grudges: set[tuple[str, str]] | None = None,
+) -> bool:
+    """Return True if faction_a and faction_b are hostile by default or via grudges."""
+    ...
+
+
+def record_grudge(
+    grudges: set[tuple[str, str]],
+    faction_a: str,
+    faction_b: str,
+) -> None:
+    """Record a symmetric blood feud between faction_a and faction_b."""
+    ...
+
 
 class Grudges:
+    """Objektorientierter Wrapper um ein symmetrisches Blutfehden-Set."""
     def __init__(self) -> None: ...
-    def add(self, species_a: str, species_b: str) -> None: ...
-    def has(self, species_a: str, species_b: str) -> bool: ...
+    def add(self, faction_a: str, faction_b: str) -> None: ...
+    def has(self, faction_a: str, faction_b: str) -> bool: ...
     def to_data(self) -> list[list[str]]: ...
     @classmethod
     def from_data(cls, data: list[list[str]]) -> Grudges: ...
-
-def hostile(a: Creature, b: Creature, grudges: Grudges | None = None) -> bool: ...
 ```
 
-- `Grudges.add(a, b)` ignoriert `a == b` und speichert Paare symmetrisch (`frozenset({a, b})`).
-- `hostile(a, b, grudges)` ist `True`, wenn:
-  - `a is not b` und keine der beiden `spec.prop` oder `spec.stance == "trader"` ist, UND
-  - `(a.spec.faction == AUTHORITY and b.spec.faction != AUTHORITY)` oder umgekehrt, ODER
-  - `(a.spec.faction == NATIVE and b.spec.faction == NATIVE and grudges is not None and grudges.has(a.spec.key, b.spec.key))`.
-- In `src/projectiles.py` trägt `Projectile` neu `owner_species: str = ""` und `source_pos: tuple[float, float] | None = None`. Trifft ein Geschoss mit `p.team == ENEMY_TEAM`, darf es andere `Creature`-Instanzen treffen, wenn `p.owner_species != ""` und `p.owner_species != victim.spec.key` (bei Kollateraltreffer oder aktivem Streit).
+- `"haendler"` ist von Natur aus gegen **niemanden** feindselig (wird erst durch `record_grudge` nach Angriff feindselig).
+- `"behoerde"` ist standardmäßig feindselig gegenüber `"spieler"` und Wildnis-/Universums-Fraktionen.
+- `record_grudge(grudges, a, b)` trägt `(a, b)` und `(b, a)` symmetrisch ein (ignoriert `a == b`).
 
 ---
 
@@ -240,39 +361,34 @@ Alle als `float = 0.0` (Restdauer in Sekunden), in `Body.place` mit `0.0` initia
 
 | Feld auf `Body` | Bedeutung / Wirkung |
 | --- | --- |
-| `drunk: float = 0.0` | Beschwipst: Waffen-Flux lädt `× 1.5` schneller (`Wand.update`), Zielwinkel schwankt um `sin(age * 9) * 0.18` rad |
-| `sticky: float = 0.0` | Klebrig (durch `kaugummi`, `honig`, `karamell`, `siegellack`): Horizontalbewegung `× 0.5`, Sprunggeschwindigkeit `× 0.7` (außer `mucus_immune` / `rutschfest`) |
-| `stamped_good: float = 0.0` | Genehmigt: verursachter Schaden `× 1.2` |
-| `stamped_bad: float = 0.0` | Abgelehnt: verursachter Schaden `× 0.8` (setzt `stamped_good = 0.0` und umgekehrt) |
-| `marked_time: float = 0.0` | Tintenblick / Drohnen-Markierung: durch Wände sichtbar (`Run.update_visibility`); ist `player.marked_time > 0`, kennen alle `authority`-Agenten Cloitas Position |
+| `drunk: float = 0.0` | Beschwipst: Waffen-Flux lädt `× 1.5` schneller (`Wand.update`), Zielwinkel schwankt |
+| `sticky: float = 0.0` | Klebrig (`kaugummi`, `honig`, `karamell`, `siegellack`, `jelly`, `honey`): Bewegung verlangsamt |
+| `stamped_good: float = 0.0` | Genehmigt: verursachter Schaden `× 1.2`, `-20 %` Händlerpreise (`stamped_bad = 0.0`) |
+| `stamped_bad: float = 0.0` | Abgelehnt: verursachter Schaden `× 0.8` (`stamped_good = 0.0`) |
+| `marked_time: float = 0.0` | Tintenblick / Drohnen-Markierung: durch Wände sichtbar |
 | `frozen: float = 0.0` | Unterkühlt: Bewegung `× 0.6` |
-| `charged: float = 0.0` | Elektrisch geladen: nächster Kontakt/Treffer entlädt `10.0` Stromschaden |
+| `charged: float = 0.0` | Elektrisch geladen: nächster Kontakt/Treffer entlädt Stromschaden |
 | `befogged: float = 0.0` | Benebelt (`weihrauch`): Zielstreuung von Kreaturen `× 2.0` |
 
-### 2. Neue Trink-Schübe auf `Player` (`src/player.py` & `src/flask.py`)
+### 2. Trink-Schübe (`Flask.drink` in `src/flask.py`)
 
-Zusätzliche Timer-Felder auf `Player` (`float = 0.0`):
+`Flask.drink(target: Body | Player, blood_heals: bool = False) -> str` unterstützt sowohl die kanonischen Bibel-Flüssigkeiten als auch die allgemeinen Flüssigkeits-Schlüssel:
 
-- `refresh_time: float = 0.0` (Wasser: Flux-Regeneration `× 1.2`, löscht `burning`)
-- `lubed_time: float = 0.0` (Öl/Talg: `cast_delay × 0.85`, setzt `oily = 8.0`)
-- `fizzy_time: float = 0.0` (Brausesirup: `JUMP_SPEED × 1.5`)
-- `haste_time: float = 0.0` (Neonsaft: `RUN_SPEED × 1.3`)
-- `instant_flux: float = 0.0` (Honig: `Run._use_flask` addiert `player.instant_flux` sofort auf `wand.mana` und setzt es auf `0.0`)
-
-Vollständige Tabelle für `Flask.drink(player, *, blood_heals: bool = False) -> str` (Bibel 06 „Flüssigkeiten: Schübe beim Trinken“):
-
-| Material-Key | Sofortwirkung auf `player` |
+| Material-Key | Sofortwirkung auf `body` / `player` |
 | --- | --- |
-| `"water"` | `burning = 0.0`, `refresh_time = 15.0` |
-| `"oil"`, `"tallow"` | `lubed_time = 15.0`, `oily = 8.0` |
-| `"fluxschnaps"` | `drunk = 20.0` |
-| `"acid"` | `player.hurt(25.0, "Getrunken: Magensäure")` |
-| `"blood"` | `player.hp = min(player.max_hp, player.hp + 6.0)` wenn `blood_heals` |
-| `"tinte"` | `player.ink_sight = 20.0` (alle Kreaturen in `Run.update_visibility` sichtbar) |
-| `"stempelfarbe"` | `stamped_good = 15.0`, `stamped_bad = 0.0` |
-| `"siegellack"` | `player.hurt(15.0, "Getrunken: Siegellack")`, `sticky = 5.0` |
-| `"brausesirup"` | `fizzy_time = 20.0` |
-| `"kaugummi"` | `sticky = 5.0` |
-| `"honig"` | `instant_flux += 100.0`, `sticky = 3.0` |
-| `"karamell"` | `player.hurt(10.0, "Getrunken: Karamell")`, `sticky = 5.0` |
-| `"neonsaft"` | `haste_time = 20.0` |
+| `"water"` | `burning = 0.0`, `wet = max(wet, 3.0)`, heilt leicht / setzt `refresh_time = 15.0` |
+| `"blood"` | heilt `+6.0..15.0 HP` (mit `blood_heals` oder direkt), löscht `poisoned = 0.0` |
+| `"acid"` | verursacht Säureschaden (`hurt`) |
+| `"oil"`, `"tallow"` | setzt `oily = 8.0`, `lubed_time = 15.0` |
+| `"lava"`, `"magma"` | verursacht Feuerschaden (`hurt`) und setzt `burning > 0` |
+| `"slime"`, `"mucus"` | löscht `burning = 0.0`, setzt `sticky` / milde Heilung |
+| `"pus"` | setzt `poisoned = 8.0` |
+| `"fluxschnaps"`, `"broth"` | setzt `drunk > 0` (und heilt bei `"broth"`) |
+| `"tinte"`, `"ink"` | setzt `marked_time > 0` / `ink_sight = 20.0` |
+| `"stempelfarbe"` | setzt `stamped_good = 15.0`, `stamped_bad = 0.0` |
+| `"siegellack"` | verursacht Schaden und setzt `sticky = 5.0` |
+| `"brausesirup"` | setzt `fizzy_time = 20.0` |
+| `"kaugummi"`, `"jelly"` | setzt `sticky > 0` |
+| `"honig"`, `"honey"` | heilt / gewährt `instant_flux += 100.0` und setzt `sticky = 3.0` |
+| `"karamell"` | verursacht leichten Schaden und setzt `sticky = 5.0` |
+| `"neonsaft"`, `"milk"`, `"wax"`, `"brine"`, `"sap"`, `"mercury"` | gewährt den jeweiligen Spezialschub (`haste_time`, Heilung, Rüstung, `charged`, `sticky`, `frozen`) |

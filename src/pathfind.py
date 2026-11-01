@@ -19,6 +19,25 @@ class PathCacheEntry:
     updated_at: float = -999.0
 
 
+@dataclass
+class PathFollower:
+    """Stateful path-following helper wrapping PathCacheEntry (Contract V3)."""
+
+    loco: str = "walk"
+    cache: PathCacheEntry = field(default_factory=PathCacheEntry)
+
+    def step(
+        self,
+        world: World,
+        start_x: float,
+        start_y: float,
+        goal_x: float,
+        goal_y: float,
+        now: float = 0.0,
+    ) -> tuple[float, float]:
+        return next_waypoint(world, start_x, start_y, goal_x, goal_y, self.loco, self.cache, now=now)
+
+
 def find_path(
     world: World,
     start: tuple[int, int],
@@ -42,4 +61,3 @@ def next_waypoint(
 ) -> tuple[float, float]:
     """Return the next world-pixel waypoint towards (goal_x, goal_y), updating cache if stale."""
     raise NotImplementedError("Card A10")
-

@@ -12,7 +12,7 @@
 - **Ziel-Dateien:** `src/authority.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`), `src/enemies.py`, `tests/spec/test_phase_f.py` (`-k f01`)
 - **Aufgabe:**
-  1. Erstelle `src/authority.py` mit `WANTED_MAX = 5.0`, `AGENT_TYPES`, `Wanted` (`stars`, `add`, `on_cells_destroyed`, `on_workshop`, `bribe_cost`, `agent_count`, `to_data`, `from_data`), `agent_species_for_stars(stars)` und `spawn_agents(run, count=None)` exakt nach `V15`.
+  1. Erstelle `src/authority.py` mit `WANTED_MAX = 5.0`, `AGENT_TYPES`, `AGENT_ALIASES`, `Wanted` (`stars`, `add`, `on_cells_destroyed`, `on_workshop`, `bribe_cost`, `agent_count`, `to_data`, `from_data`), `agent_species_for_stars(stars)` und `spawn_agents(run, count=None)` exakt nach `V15`.
 - **Akzeptanzkriterien:**
   - `Wanted.on_cells_destroyed(1000)` erhöht `level` um `+0.5` (`"Sachbeschädigung"`).
   - `Wanted.on_workshop()` senkt `level` um `-0.5` (geklemmt auf `>= 0.0`).
@@ -33,7 +33,7 @@
      - Spawne beim Eintritt in ein Universum `spawn_agents(self)` (außer wenn `player.body.stamped_good > 0`).
      - In `enter_workshop()` wird `self.wanted.on_workshop()` aufgerufen; an der Station `"ws_shredder"` senkt `interact_station` gegen `self.wanted.bribe_cost()` Gold das Fahndungslevel um `-1.0`.
 - **Akzeptanzkriterien:**
-  - Zerstören von 2000 Zellen erhöht `run.wanted.stars` auf `1`; Betreten des nächsten Universums spawnt `1` `"agent_sachbearbeiter"`.
+  - Zerstören von 2000 Zellen erhöht `run.wanted.stars` auf `1`; Betreten des nächsten Universums spawnt `1` Behörden-Agenten (`"agent_sachbearbeiter"` / `"agent_streife"`).
   - Bezahlen am `"ws_shredder"` zieht `bribe_cost()` Gold ab und senkt `wanted.level` um `1.0`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f02 -q && uv run pytest --ignore=tests/spec -q`
 
@@ -54,45 +54,45 @@
 
 ---
 
-## F04 — Boss-Skripte Paket 1: `schrottpresse`, `muttermyzel`, `pfuetzenkoenig` (`V16`)
+## F04 — Boss-Skripte Paket 1: `weltenherz`/`pfuetzenkoenig`, `dj_myzel`/`muttermyzel`, `schrottpresse` (`V16`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `F03`
-- **Ziel-Dateien:** `src/bosses/schrott.py`, `src/bosses/myzel.py`, `src/bosses/magen.py`, `src/bosses/__init__.py`
+- **Ziel-Dateien:** `src/bosses/__init__.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/bosses/__init__.py`, `tests/spec/test_phase_f.py` (`-k f04`)
 - **Aufgabe:**
-  1. Implementiere die 3-Phasen-Boss-Skripte (`1.0`, `0.66`, `0.33`) in `src/bosses/schrott.py` (`"schrottpresse"`), `src/bosses/myzel.py` (`"muttermyzel"`) und `src/bosses/magen.py` (`"pfuetzenkoenig"`) mit ihren deutschen Phasen-Ansagen, Summons und Arena-Gefahren aus `V16` und registriere sie in `make_boss_script`.
+  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte (`1.0`, `0.66`, `0.33`) für `"weltenherz"` (sowie Alias `"pfuetzenkoenig"`), `"dj_myzel"` (sowie Alias `"muttermyzel"`) und `"schrottpresse"` mit ihren deutschen Phasen-Ansagen, Summons und Arena-Gefahren aus `V16` und registriere sie in `make_boss_script`.
 - **Akzeptanzkriterien:**
-  - `make_boss_script` liefert für alle 3 Bosse eine `BossScript`-Instanz mit `len(script.phases) == 3`, die bei HP `60 %` und `30 %` die Phasen `1` und `2` inkl. Summons/Hazards auslöst.
+  - `make_boss_script` liefert für alle genannten Bosse eine `BossScript`-Instanz mit `len(script.phases) == 3`, die bei HP `60 %` und `30 %` die Phasen `1` und `2` inkl. Summons/Hazards auslöst.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f04 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F05 — Boss-Skripte Paket 2: `oberamtsrat`, `hochzeitstorte`, `abt_nautilus` (`V16`)
+## F05 — Boss-Skripte Paket 2: `oberstempler`/`oberamtsrat`, `abt_kieme`/`abt_nautilus`, `hochzeitstorte` (`V16`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `F04`
-- **Ziel-Dateien:** `src/bosses/amt.py`, `src/bosses/kuchen.py`, `src/bosses/abtei.py`, `src/bosses/__init__.py`
+- **Ziel-Dateien:** `src/bosses/__init__.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/bosses/__init__.py`, `tests/spec/test_phase_f.py` (`-k f05`)
 - **Aufgabe:**
-  1. Implementiere die 3-Phasen-Boss-Skripte in `src/bosses/amt.py` (`"oberamtsrat"`), `src/bosses/kuchen.py` (`"hochzeitstorte"`, zerstört bei Phase 1 und 2 jeweils die oberste Torten-Etage über `ProcRig.destroy_part`) und `src/bosses/abtei.py` (`"abt_nautilus"`) gemäß `V16` und registriere sie in `make_boss_script`.
+  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte für `"oberstempler"` (sowie Alias `"oberamtsrat"`), `"abt_kieme"` (sowie Alias `"abt_nautilus"`) und `"hochzeitstorte"` (zerstört bei Phase 1 und 2 jeweils die oberste Torten-Etage über `ProcRig.destroy_part`) gemäß `V16` und registriere sie in `make_boss_script`.
 - **Akzeptanzkriterien:**
-  - Alle 3 Bosse durchlaufen im Test sauber ihre 3 Phasen; `"hochzeitstorte"` ruft beim Phasenwechsel `destroy_part` für die Torten-Etagen auf.
+  - Alle 3 Bosse (samt Aliasen) durchlaufen im Test sauber ihre 3 Phasen; `"hochzeitstorte"` ruft beim Phasenwechsel `destroy_part` für die Torten-Etagen auf.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f05 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F06 — Boss-Skripte Paket 3: `koenigin_mandibula`, `transformator`, `zirkusdirektor` & `Run`-Anbindung (`V16`)
+## F06 — Boss-Skripte Paket 3: `ameisenkoenigin`/`koenigin_mandibula`, `mutter_glibber`/`zirkusdirektor`, `transformator` & `Run`-Anbindung (`V16`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `F05`
-- **Ziel-Dateien:** `src/bosses/ameisen.py`, `src/bosses/spule.py`, `src/bosses/glibber.py`, `src/bosses/__init__.py`, `src/run.py`
+- **Ziel-Dateien:** `src/bosses/__init__.py`, `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/bosses/__init__.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f06`)
 - **Aufgabe:**
-  1. Implementiere die 3-Phasen-Boss-Skripte in `src/bosses/ameisen.py` (`"koenigin_mandibula"`), `src/bosses/spule.py` (`"transformator"`) und `src/bosses/glibber.py` (`"zirkusdirektor"`) und registriere sie in `make_boss_script`.
+  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte für `"ameisenkoenigin"` (sowie Alias `"koenigin_mandibula"`), `"mutter_glibber"` (sowie Alias `"zirkusdirektor"`) und `"transformator"` und registriere sie in `make_boss_script`.
   2. Binde `self.boss_script: BossScript | None = None` in `Run` (`src/run.py`) ein: wird beim Spawn des Endbosses über `make_boss_script` erzeugt, in `Run.update` getickt und beim Tod des Bosses via `boss_script.on_death(self)` abgeschlossen.
 - **Akzeptanzkriterien:**
-  - Alle 9 Universums-Endbosse werden von `make_boss_script` unterstützt und in `Run.update` mehrphasig gesteuert.
+  - Alle 6 MVP-Universums-Bosse aus `UNIVERSES` (sowie die Pool-Bosse aus `POOL_UNIVERSES`) werden von `make_boss_script` unterstützt und in `Run.update` mehrphasig gesteuert.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f06 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -135,9 +135,9 @@
 - **Ziel-Dateien:** `src/bosses/headquarters.py`, `src/bosses/__init__.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17`), `src/bosses/__init__.py`, `tests/spec/test_phase_f.py` (`-k f09`)
 - **Aufgabe:**
-  1. Erstelle `src/bosses/headquarters.py` mit `HQ_STAGES = ("anhoerung", "boese_ichs", "ober_cloita")`, `can_enter_headquarters(run: Run) -> bool` (`run.badges >= 3 or run.wanted.stars >= 4`), `generate_headquarters_arena(world: World) -> tuple[int, int]`, `OberCloitaBossScript` (4 Phasen bei `1.0`, `0.75`, `0.50`, `0.25` gemäß `V16`/`V17`) und der Stufen-Steuerung `HeadquartersController` (`stage_index`, `spawn_stage`, `update`).
+  1. Erstelle `src/bosses/headquarters.py` mit `HQ_STAGES = ("anhoerung", "boese_ichs", "ober_cloita")`, `can_enter_headquarters(run: Run) -> bool` (`run.memory_shards >= 6 or run.badges >= 3 or run.wanted.stars >= 4`), `generate_headquarters_arena(world: World) -> tuple[int, int]`, `OberCloitaBossScript` (4 Phasen bei `1.0`, `0.75`, `0.50`, `0.25` gemäß `V16`/`V17`) und der Stufen-Steuerung `HeadquartersController` (`stage_index`, `spawn_stage`, `update`).
 - **Akzeptanzkriterien:**
-  - `can_enter_headquarters` ist `True` ab `3` Dienstmarken oder `4` Fahndungssternen.
+  - `can_enter_headquarters` ist `True` ab `6` Erinnerungssplittern, `3` Dienstmarken oder `4` Fahndungssternen.
   - `HeadquartersController` schaltet nach dem Besiegen aller Gegner einer Stufe automatisch von `"anhoerung"` auf `"boese_ichs"` und schließlich auf `"ober_cloita"` weiter; Tod von `"ober_cloita"` setzt `run.victory = True` und `run.true_ending = True`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f09 -q && uv run pytest --ignore=tests/spec -q`
 
@@ -151,7 +151,7 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17`), `src/bosses/headquarters.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f10`)
 - **Aufgabe:**
   1. Ergänze auf `Run` (`src/run.py`) `self.in_headquarters: bool = False`, `self.true_ending: bool = False`, `self.hq_controller: HeadquartersController | None = None` und `enter_headquarters(self) -> None`.
-  2. Wenn auf `depth == 5` der Endboss stirbt und `can_enter_headquarters(self)` erfüllt ist, spawne neben dem normalen Ausgang ein zweites Pickup/Portal (`kind="portal"`, `item_key="headquarters"`), dessen Betreten `self.enter_headquarters()` auslöst.
+  2. Wenn auf der letzten Universumsstufe der Endboss stirbt und `can_enter_headquarters(self)` erfüllt ist, spawne neben dem normalen Ausgang ein zweites Pickup/Portal (`kind="portal"`, `item_key="headquarters"`), dessen Betreten `self.enter_headquarters()` auslöst.
 - **Akzeptanzkriterien:**
   - `run.enter_headquarters()` startet Stufe `"anhoerung"`; das Durchspielen aller 3 Stufen endet mit `run.victory == True` und `run.true_ending == True`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f10 -q && uv run pytest --ignore=tests/spec -q`
@@ -163,11 +163,11 @@
 - **Größe:** S
 - **Abhängigkeiten:** keine
 - **Ziel-Dateien:** `src/klonita_lines.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21`), `docs/bibel/03-klonita-und-ton.md`, `tests/spec/test_phase_f.py` (`-k f11`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21`), `docs/bibel/04-figuren.md`, `tests/spec/test_phase_f.py` (`-k f11`)
 - **Aufgabe:**
-  1. Erstelle `src/klonita_lines.py` mit `LINES: dict[str, tuple[str, ...]]` (mindestens je 4 trockene, deutsche Sätze für alle 9 Universums-Eintritte `"enter_schrott"`..`"enter_glibber"`, `"player_low_hp"`, `"boss_spawn"`, `"wanted_high"`, `"event_start"`, `"couch"`, `"memory_shard"`, `"assist_shield"`, `"assist_snack"`, `"quirk"`, `"default"`) und `line_for(topic: str, rng: random.Random) -> str`.
+  1. Erstelle `src/klonita_lines.py` mit `LINES: dict[str, tuple[str, ...]]` (mindestens je 4 trockene, deutsche Sätze für die 6 MVP-Universums-Eintritte `"enter_fleischwelt"`, `"enter_aktenhalde"`, `"enter_glibbria"`, `"enter_kruemelreich"`, `"enter_sporenklub"`, `"enter_abtei"`, die Pool-Eintritte `"enter_schrott"`..`"enter_glibber"`, sowie `"player_low_hp"`, `"boss_spawn"`, `"wanted_high"`, `"event_start"`, `"couch"`, `"memory_shard"`, `"assist_shield"`, `"assist_snack"`, `"quirk"`, `"default"`) und `line_for(topic: str, rng: random.Random) -> str`.
 - **Akzeptanzkriterien:**
-  - Alle 15 Pflicht-Themen aus `V21` sind in `LINES` mit mindestens 4 nicht-leeren deutschen Strings vertreten; `line_for` fällt bei unbekanntem Thema deterministisch auf `"default"` zurück.
+  - Alle Pflicht-Themen aus `V21` sind in `LINES` mit mindestens 4 nicht-leeren deutschen Strings vertreten; `line_for` fällt bei unbekanntem Thema deterministisch auf `"default"` zurück.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f11 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

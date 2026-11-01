@@ -1,6 +1,6 @@
 # Verträge V11–V12: Gegenstände, Proben, Pickup-Vereinheitlichung & Ereignisbus
 
-> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quelle: [docs/bibel/02-wirtschaft-und-werkstatt.md](../../bibel/02-wirtschaft-und-werkstatt.md).
+> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quelle: [docs/bibel/07-gegenstaende-und-werkstatt.md](../../bibel/07-gegenstaende-und-werkstatt.md).
 
 ---
 
@@ -19,53 +19,65 @@ SAMPLE_STACK: int = 99
 
 @dataclass(frozen=True)
 class Sample:
-    key: str            # "probe_rost", "probe_pilz", ... (exakt wie in V0a)
-    name: str           # Deutscher Anzeigename, z. B. "Rost-Span"
-    universe_key: str   # "schrott", "myzel", ... oder "allgemein"
+    key: str            # "probe_gallenstein", "probe_wucherung", ... (exakt wie in V0a)
+    name: str           # Deutscher Anzeigename, z. B. "Gallenstein"
+    universe_key: str   # "fleischwelt", "aktenhalde", ... oder "allgemein"
     tier: int           # 1 = gewöhnlich, 2 = selten, 3 = rar
     color: tuple[int, int, int]
     description: str
 
 
 SAMPLES: dict[str, Sample] = {
-    # 9 Universums-Proben (Tier 1, exakt 1:1 zu Universe.sample_key aus V0a)
-    "probe_rost": Sample(
-        "probe_rost", "Rost-Span", "schrott", 1, (196, 118, 54),
-        "Scharfer Metallspan aus dem Großen Schrott.",
+    # 12 Universums-Proben (je 2 pro MVP-Universum, exakt nach Bibel Kap. 07 & V0a):
+    "probe_gallenstein": Sample(
+        "probe_gallenstein", "Gallenstein", "fleischwelt", 1, (224, 198, 72),
+        "Ausgefällter Säuresplitter aus der Fleischwelt.",
     ),
-    "probe_pilz": Sample(
-        "probe_pilz", "Leuchtspore", "myzel", 1, (124, 232, 178),
-        "Biolumineszente Sporenkapsel aus dem Myzel-Dom.",
+    "probe_wucherung": Sample(
+        "probe_wucherung", "Wucherungsableger", "fleischwelt", 1, (214, 96, 128),
+        "Pulsierender Gewebe-Ableger aus der Fleischwelt.",
     ),
-    "probe_saft": Sample(
-        "probe_saft", "Magensäure-Kristall", "magen", 1, (224, 198, 72),
-        "Ausgefällter Säuresplitter aus dem Großen Magen.",
+    "probe_stempelkissen": Sample(
+        "probe_stempelkissen", "Stempelkissen", "aktenhalde", 1, (88, 124, 210),
+        "Mit amtlicher Stempelfarbe getränktes Kissen aus der Aktenhalde.",
     ),
-    "probe_papier": Sample(
-        "probe_papier", "Durchschlag-Schnipsel", "amt", 1, (228, 220, 192),
-        "Dreifach gestempeltes Formularfragment aus Amt 14.",
+    "probe_formular": Sample(
+        "probe_formular", "Formular B-38", "aktenhalde", 1, (228, 220, 192),
+        "Dreifach gestempeltes Antragsformular aus der Aktenhalde.",
     ),
-    "probe_zucker": Sample(
-        "probe_zucker", "Karamell-Splitter", "kuchen", 1, (244, 152, 196),
-        "Glasharter Zuckerkristall aus der Kuchenkruste.",
+    "probe_glibberkern": Sample(
+        "probe_glibberkern", "Glibberkern", "glibbria", 1, (236, 98, 224),
+        "Elastischer Gelatinekern aus Glibbria.",
     ),
-    "probe_salz": Sample(
-        "probe_salz", "Tiefseesalz-Korn", "abtei", 1, (116, 206, 230),
-        "Geweihtes Salzkorn aus der Versunkenen Abtei.",
+    "probe_brauseperle": Sample(
+        "probe_brauseperle", "Brauseperle", "glibbria", 1, (255, 216, 84),
+        "Prickelnde Brausekapsel aus der Sirupküste von Glibbria.",
     ),
-    "probe_harz": Sample(
-        "probe_harz", "Bernstein-Tropfen", "ameisen", 1, (218, 154, 62),
-        "Ausgehärtetes Königinnenharz aus dem Ameisen-Imperium.",
+    "probe_zuckerkristall": Sample(
+        "probe_zuckerkristall", "Riesenzuckerkristall", "kruemelreich", 1, (244, 182, 216),
+        "Glasharter Zuckerkristall aus dem Krümelreich.",
     ),
-    "probe_spule": Sample(
-        "probe_spule", "Kupferspulen-Kern", "spule", 1, (132, 198, 255),
-        "Noch summender Magnetkern aus der Summenden Spule.",
+    "probe_ameisenduft": Sample(
+        "probe_ameisenduft", "Ameisenduft-Ampulle", "kruemelreich", 1, (218, 154, 62),
+        "Duftstoff-Ampulle aus dem Ameisenbau des Krümelreichs.",
     ),
-    "probe_bunt": Sample(
-        "probe_bunt", "Wackel-Gelatine", "glibber", 1, (236, 98, 224),
-        "Mehrfarbig schillernder Glibberwürfel aus dem Glibber-Zirkus.",
+    "probe_leuchtspore": Sample(
+        "probe_leuchtspore", "Leuchtspore im Glas", "sporenklub", 1, (124, 232, 178),
+        "Biolumineszente Sporenkapsel aus dem Sporen-Klub.",
     ),
-    # 5 seltene / allgemeine Proben (Tier 2 & Tier 3)
+    "probe_plattennadel": Sample(
+        "probe_plattennadel", "Plattennadel", "sporenklub", 1, (132, 198, 255),
+        "Noch vom Bass vibrierende Plattennadel aus dem Sporen-Klub.",
+    ),
+    "probe_glockensplitter": Sample(
+        "probe_glockensplitter", "Glockensplitter", "abtei", 1, (196, 178, 114),
+        "Klingender Bronzesplitter aus der Versunkenen Abtei.",
+    ),
+    "probe_kerzenstumpf": Sample(
+        "probe_kerzenstumpf", "Kerzenstumpf mit Gesicht", "abtei", 1, (238, 222, 176),
+        "Wasserfester Wachsstumpf aus der Versunkenen Abtei.",
+    ),
+    # 5 seltene / allgemeine Proben (Tier 2 & Tier 3):
     "probe_knochen": Sample(
         "probe_knochen", "Mark-Splitter", "allgemein", 2, (230, 222, 200),
         "Dichter Knochensplitter starker Kreaturen.",
@@ -87,6 +99,30 @@ SAMPLES: dict[str, Sample] = {
         "Pulsierendes Herzstück eines besiegten Wächters.",
     ),
 }
+
+SAMPLE_ALIASES: dict[str, str] = {
+    "gallenstein": "probe_gallenstein",
+    "wucherungsableger": "probe_wucherung",
+    "stempelkissen": "probe_stempelkissen",
+    "formular_b38": "probe_formular",
+    "glibberkern": "probe_glibberkern",
+    "brauseperle": "probe_brauseperle",
+    "riesenzuckerkristall": "probe_zuckerkristall",
+    "ameisenduft": "probe_ameisenduft",
+    "leuchtspore_im_glas": "probe_leuchtspore",
+    "plattennadel": "probe_plattennadel",
+    "glockensplitter": "probe_glockensplitter",
+    "kerzenstumpf": "probe_kerzenstumpf",
+    "probe_saft": "probe_gallenstein",
+    "probe_papier": "probe_stempelkissen",
+    "probe_bunt": "probe_glibberkern",
+    "probe_zucker": "probe_zuckerkristall",
+    "probe_harz": "probe_ameisenduft",
+    "probe_pilz": "probe_leuchtspore",
+    "probe_spule": "probe_plattennadel",
+    "probe_salz": "probe_glockensplitter",
+    "probe_rost": "probe_stempelkissen",
+}
 ```
 
 ### 2. Inventar-Erweiterung (`src/inventory.py`)
@@ -102,19 +138,19 @@ samples: list[tuple[str, int] | None] = field(
 Methoden auf `Inventory`:
 
 - `add_sample(self, key: str, count: int = 1) -> int`:
-  - Validiert `key in SAMPLES` und `count > 0` (bei `count <= 0` Rückgabe `0`).
+  - Löst `key = SAMPLE_ALIASES.get(key, key)` auf, validiert `key in SAMPLES` und `count > 0` (bei `count <= 0` Rückgabe `0`).
   - Stapelt zuerst auf existierende Slots mit `slot[0] == key` bis maximal `SAMPLE_STACK = 99` pro Slot.
   - Belegt danach freie Slots (`None`) mit `(key, min(rest, 99))`.
   - Gibt die **tatsächlich aufgenommene Menge** (`int`, `0..count`) zurück.
 - `sample_count(self, key: str) -> int`:
-  - Summe aller Mengen in `self.samples` mit `slot is not None and slot[0] == key`.
+  - Löst `key = SAMPLE_ALIASES.get(key, key)` auf und liefert die Summe aller Mengen in `self.samples` mit `slot is not None and slot[0] == key`.
 - `total_samples(self) -> dict[str, int]`:
   - Liefert `{key: total_count}` für alle im Inventar vorhandenen Proben (`total_count > 0`).
 - `take_samples(self, cost: dict[str, int]) -> bool`:
   - Prüft zuerst für alle `(k, need)` in `cost`, ob `self.sample_count(k) >= need`. Falls nicht: verändert nichts und gibt `False` zurück.
   - Zieht danach die benötigten Mengen von hinten nach vorne aus `self.samples` ab; Slots mit Menge `<= 0` werden auf `None` gesetzt. Gibt `True` zurück.
 
-### 3. Vereinheitlichtes `Pickup` (`src/loot.py`)
+### 3. Vereinheitlichtes `Pickup` & `pickup_sprite_key` (`src/loot.py`)
 
 Um Abwärtskompatibilität mit allen bestehenden Tests (`wand`, `block`, `pearls`, `perk`, `flask`, `heart`, `cocoon`, `eye`, `reroll`, `portal`) zu wahren und gleichzeitig alle neuen Pickup-Arten über ein einheitliches Schema abzubilden, hat `Pickup` in `src/loot.py` folgende Signatur:
 
@@ -123,7 +159,7 @@ Um Abwärtskompatibilität mit allen bestehenden Tests (`wand`, `block`, `pearls
 class Pickup:
     x: float
     y: float
-    wand: Wand | None = None
+    wand: WandSpec | None = None
     block: str | None = None
     pearls: int = 0
     perk: str | None = None
@@ -131,30 +167,37 @@ class Pickup:
     heart: int = 0
     cocoon: bool = False
     eye: bool = False
-    reroll: int = 0
+    reroll: bool | int = False
     portal: bool = False
     kind: str = ""          # NEU: kanonischer Typ-Schlüssel
     item_key: str = ""      # NEU: Sub-Schlüssel (z. B. Sample-Key, Block-Key, Perk-Key)
     amount: int = 0         # NEU: Menge / Wert (Goldbetrag, Probenanzahl, HP-Bonus)
+    seen: bool = False
+    price: int = 0
+    floating: bool = False
     vy: float = 0.0
+    vx: float = 0.0
     age: float = 0.0
+
+def pickup_sprite_key(pickup: Pickup) -> str:
+    """Return the canonical sprite key in gegenstaende/ for pickup (Card A05)."""
+    ...
 ```
 
 #### Kanonische `kind`-Werte und Synchronisationsregeln (`__post_init__`)
 
 `Pickup.__post_init__` synchronisiert neue (`kind`, `item_key`, `amount`) und bestehende Felder bidirektional:
 
-| `kind` | `item_key` | `amount` | Gespiegeltes Legacy-Feld | Sprite-Schlüssel (`gegenstaende/<key>`) |
+| `kind` | `item_key` | `amount` | Gespiegeltes Legacy-Feld | Sprite-Schlüssel (`pickup_sprite_key`) |
 | --- | --- | --- | --- | --- |
-| `"wand"` | `""` | `1` | `wand: Wand` | `"stab"` |
+| `"wand"` | `""` | `1` | `wand: WandSpec` | `"stab"` |
 | `"block"` | `<block_key>` | `1` | `block = item_key` | `"modul"` |
 | `"pearls"` | `""` | `<count>` | `pearls = amount` | `"gold_klein"` |
 | `"gold"` | `""` | `<gold_value>` | — | `<10`: `"gold_klein"`, `10..29`: `"gold_mittel"`, `>=30`: `"gold_gross"` |
-| `"sample"` | `<sample_key>` | `<count>` (Standard `1`) | — | `<sample_key>` (z. B. `"probe_rost"`) |
+| `"sample"` | `<sample_key>` | `<count>` (Standard `1`) | — | `<sample_key>` (z. B. `"probe_gallenstein"`) |
 | `"perk"` | `<perk_key>` | `1` | `perk = item_key` | `"gabe"` |
-| `"flask"` | `""` | `1` | `flask: Flask` | `"flasche_voll"` (oder `"flasche_leer"` wenn `flask.is_empty`) |
-| `"heart"` | `""` | `<hp_bonus>` (Standard `25`) | `heart = amount` | `"lebenskapsel"` |
-| `"life_capsule"` | `""` | `<hp_bonus>` (Standard `25`) | `heart = amount` | `"lebenskapsel"` |
+| `"flask"` | `""` | `1` | `flask: Flask` | `"flasche_voll"` (oder `"flasche_leer"` wenn `flask.empty`) |
+| `"heart"` / `"life_capsule"` | `""` | `<hp_bonus>` (Standard `25`) | `heart = amount` | `"lebenskapsel"` |
 | `"cocoon"` | `""` | `1` | `cocoon = True` | `"kokon"` |
 | `"eye"` | `""` | `1` | `eye = True` | `"auge"` |
 | `"reroll"` | `""` | `<count>` (Standard `1`) | `reroll = amount` | `"wuerfel"` |
@@ -164,18 +207,6 @@ class Pickup:
 | `"crate"` | `""` | `<tier>` (`1..3`, Standard `1`) | — | `"beutekiste"` |
 | `"badge"` | `""` | `<count>` (Standard `1`) | — | `"dienstmarke"` |
 | `"formular_stempel"` | `"gut"` oder `"schlecht"` | `1` | — | `"formular_stempel"` |
-
-#### Aufnahme-Verhalten in `Run._pick_up(self, pickup: Pickup) -> bool` (`src/run.py`)
-
-- `"gold"`: `self.gold += max(1, pickup.amount)`; `self.emit("gold", amount=pickup.amount, source="pickup")`; `self.emit("pickup", kind="gold", key="gold", amount=pickup.amount)`.
-- `"pearls"`: erhöht sowohl `self.inventory.pearls += pickup.amount` als auch `self.gold += pickup.amount` (damit Legacy-Perlen-Tests weiter funktionieren und Gold synchron bleibt).
-- `"sample"`: `added = self.inventory.add_sample(pickup.item_key, max(1, pickup.amount))`; wenn `added == 0`, bleibt das Pickup liegen (`return False`); sonst `self.emit("sample", key=pickup.item_key, count=added)` und `return True`.
-- `"heart"` / `"life_capsule"`: erhöht `self.player.body.max_hp += pickup.amount` und `self.player.body.hp = min(self.player.body.max_hp, self.player.body.hp + pickup.amount)`.
-- `"memory_shard"`: `self.memory_shards += max(1, pickup.amount)`; bei `self.memory_shards % 3 == 0` löst `Run` eine Klonita-Erinnerung (`SpeechBubble`) aus.
-- `"blueprint_shard"`: `self.blueprint_shards += max(1, pickup.amount)`; solange `self.blueprint_shards >= 3`, wird `self.blueprint_shards -= 3` abgezogen und ein noch nicht freigeschalteter Bauplan in `self.records.discover("blueprint", key)` freigeschaltet (falls alle bekannt: `+40` Gold).
-- `"crate"`: öffnet sofort beim Einsammeln (oder per Kick/Treffer): spawnt `crate_gold(self.depth, self.rng)` Gold sowie zu 50 % `1..2` Proben des aktuellen Universums und zu 25 % einen `"blueprint_shard"`.
-- `"badge"`: `self.badges += max(1, pickup.amount)`; `self.records.discover("badge", "dienstmarke")`.
-- `"formular_stempel"`: setzt auf `self.player.body` entweder `stamped_good = 30.0` (wenn `item_key != "schlecht"`) oder `stamped_bad = 20.0` (wenn `item_key == "schlecht"`).
 
 ---
 
@@ -204,7 +235,7 @@ def emit(self, name: str, **data: Any) -> None:
 
 ### 2. Kanonische Ereignis-Tabelle (24 Events)
 
-Jeder Aufruf von `self.emit(name, **data)` muss exakt die folgenden Schlüssel im `payload`-Dictionary bereitstellen:
+Jeder Aufruf von `self.emit(name, **data)` stellt die folgenden Schlüssel im `payload`-Dictionary bereit:
 
 | Event-Name (`name`) | Pflicht-Schlüssel in `data` | Auslöser | Haupt-Abnehmer |
 | --- | --- | --- | --- |
@@ -217,12 +248,12 @@ Jeder Aufruf von `self.emit(name, **data)` muss exakt die folgenden Schlüssel i
 | `"leave_universe"` | `universe: str`, `depth: int`, `destination: str` (`"workshop"`, `"next"`, `"headquarters"`) | Beim Betreten des Ausgangs-Portals | Challenges (`pacifist`, `no_gold`, `speed_run`), Wanted |
 | `"event_start"` | `key: str`, `name: str` | `Event.on_start` | HUD-Banner, Klonita (`"event_start"`) |
 | `"event_end"` | `key: str` | `Event.on_end` | HUD-Banner |
-| `"beat"` | `step: int` | Wenn `RuleEffect.on_beat` von `False` auf `True` wechselt | DJ-Händler, Glibber-Kreaturen |
+| `"beat"` | `step: int` | Wenn `RuleEffect.on_beat` von `False` auf `True` wechselt | DJ-Händler, Sporen-Klub-Kreaturen |
 | `"jump"` | `x: float`, `y: float` | Spieler führt Sprung aus (`abtei`-Regel `jump_cost_air`) | Atem-Abzug in `abtei` |
 | `"trader_hurt"` | `trader_key: str`, `amount: float` | Spieler-Projektil oder Kick trifft Händler | `Wanted.add(1.5, "Händler angegriffen")`, Händler wird feindlich |
 | `"trader_killed"` | `trader_key: str`, `x: float`, `y: float` | Händler stirbt | `Wanted.add(3.0, "Händler getötet")`, Drop des Händler-Inventars |
 | `"steal"` | `item_key: str`, `value: int` | Spieler nimmt unbezahltes Händler-Item mit | `Wanted.add(1.0, "Ladendiebstahl")`, Klonita |
-| `"steal_return"` | `species: str`, `kind: str`, `x: float`, `y: float` | Dieb-Kreatur (`dieb_krabbe` / `gabelstapler_krabbe`) stirbt mit Beute | `Run` spawnt gestohlenes Pickup am Todesort |
+| `"steal_return"` | `species: str`, `kind: str`, `x: float`, `y: float` | Dieb-Kreatur (`gabelstapler_krabbe`) stirbt mit Beute | `Run` spawnt gestohlenes Pickup am Todesort |
 | `"split"` | `species: str`, `x: float`, `y: float`, `generation: int` | Kreatur mit `Ability("split", ...)` stirbt und `generation < 2` | `Run` spawnt 2 kleinere Nachkommen (`generation + 1`) |
 | `"reflect"` | `species: str`, `x: float`, `y: float` | Kreatur mit `Ability("reflect", ...)` reflektiert Projektil | Partikel-/Audio-Effekt |
 | `"summon"` | `species: str`, `target_species: str`, `x: float`, `y: float`, `count: int` | Kreatur oder Boss wirkt Beschwörung | `Run` spawnt `count` Kreaturen vom Typ `target_species` |

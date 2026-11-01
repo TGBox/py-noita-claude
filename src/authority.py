@@ -12,10 +12,16 @@ if TYPE_CHECKING:
 WANTED_MAX: float = 5.0
 
 AGENT_TYPES: tuple[str, ...] = (
+    "agent_streife",
     "agent_sachbearbeiter",
+    "agent_drohne",
     "agent_vollstrecker",
     "agent_abteilungsleiter",
 )
+
+AGENT_ALIASES: dict[str, str] = {
+    "agent_sachbearbeiter": "agent_streife",
+}
 
 
 @dataclass
@@ -69,4 +75,3 @@ def agent_species_for_stars(stars: int) -> list[str]:
 def spawn_agents(run: Run, count: int | None = None) -> list[Creature]:
     """Spawn authority agents near run.level.spawn and return spawned Creature instances."""
     raise NotImplementedError("Card F01")
-

@@ -31,7 +31,8 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Teilgebiete:** Schlund (Fleisch, Zähne), Magen (Säurebecken, Talg), Knochenmark (Knochen, Zahnschmelz).
 - **Materialien:** übernimmt den bisherigen Biohorror-Satz, höchstens 10 (Engine-Grenze, Kapitel 02). Auswahl: Fleisch, Knochen, Zahnschmelz, Blut, Magensäure, Wucherung, Sporen, Talg, Schorf, Glutblut. Entfallen (oder später in „Fleischwelt (Spätstadium)“): Schleim, Eiter, Sehnen, Nervenstrom, Knochenstaub (ersetzt durch Grundmaterial Sand), Rauch/Feuer (Grundmaterialien).
 - **Teilpalette:** #561E26 #86303A #B85060 #9A8A70 #CEDAE2 #8CC428 #A480A0 #C4AE76
-- **Einheimische:** Fleischmade (Kap. 05, `fleischmade`), Blutegel (`blutegel`).
+- **Einheimische:** Fleischmade (Kap. 05, `fleischmade`), Blutegel (`blutegel`), Säurespucker (`saeurespucker`), Zottenwurm (`zottenwurm`). **Unter-Zwischenboss:** Pfützenwurm (`pfuetzenwurm`).
+- **Zerstörbare Props:** Säurebehälter (`saeure_behaelter`), Magenzotte (`magen_zotte`).
 - **Ereignis „Verdauung“:** alle 90 s steigt in einem Magen-Gebiet für 20 s der Säurespiegel um 30 px (Ankündigung: Rumpeln, Kamerawackeln, Klonita: „Hörst du das? Ich glaube, die Welt hat Hunger.“).
 - **Proben:** Gallenstein, Wucherungsableger.
 - **Musik (später):** tiefe Drones, Herzschlag (bisherige Stimmung „magen“).
@@ -57,7 +58,8 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 | `stempelfarbe` | Stempelfarbe | flüssig | – | #6A2080 | Trinken: Status „Genehmigt“ für 15 s |
 
 - **Teilpalette:** #EDE6D2 #C8BFA6 #C8A060 #8A6A40 #1E2A5A #B0202A #6A2080 #9AB4D0 #5A5458
-- **Einheimische:** Aktenfresser (`aktenfresser`), Stempler (`stempler`).
+- **Einheimische:** Aktenfresser (`aktenfresser`), Stempler (`stempler`), Paragraphenreiter (`paragraphenreiter`), Kaffeegolem (`kaffeegolem`). **Unter-Zwischenboss:** Aktenwolf (`aktenwolf`).
+- **Zerstörbare Props:** Aktenregal (`akten_regal`), Amtsuhr (`amt_uhr`).
 - **Ereignis „Prüfung“:** alle 120 s ertönt eine Durchsage („Bitte halten Sie Ihre Unterlagen bereit.“); 2 Behörden-Agenten erscheinen, unabhängig von der Fahndungsstufe.
 - **Proben:** Stempelkissen, Formular B-38 (in dreifacher Ausfertigung).
 - **Musik (später):** Schreibmaschinen-Rhythmus, Fahrstuhlmusik in Moll.
@@ -84,7 +86,8 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 | `zuckerguss` | Zuckerguss | fest | hart | #FFFFFF | Plattformen; schmilzt bei Feuer zu Sirup |
 
 - **Teilpalette:** #6CE0A0 #3AA070 #F0507A #F6A0E0 #FFF0FA #FF80C0 #FFD860 #7A60D0 #FFFFFF
-- **Einheimische:** Hüpfling (`huepfling`), Glibberteiler (`glibberteiler`); **große Kreatur:** Trampolinwal (`trampolinwal`).
+- **Einheimische:** Hüpfling (`huepfling`), Glibberteiler (`glibberteiler`), Zuckerwattewolke (`zuckerwatte_wolke`), Konfettikanone (`konfetti_kanone`); **große Kreatur:** Trampolinwal (`trampolinwal`); **Unter-Zwischenboss:** Manegen-Clown (`manege_clown`).
+- **Zerstörbare Props:** Glibberballon (`glibber_ballon`).
 - **Ereignis „Brauseregen“:** alle 100 s regnet es 15 s Brausesirup (Regel `rule_rain` als Ereignis).
 - **Proben:** Glibberkern, Brauseperle.
 - **Musik (später):** fröhlicher Synthesizer mit schiefen Tönen, Tempo hoch.
@@ -110,7 +113,8 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 | `staubfluse` | Staubfluse | fest | weich | #8A8890 | sehr brennbar, leicht |
 
 - **Teilpalette:** #D8A860 #C89850 #F4F4F8 #C07020 #F0B020 #D0D8DC #8A8890 #503020 #A0C860
-- **Einheimische:** Ameisenkrieger (`ameisenkrieger`), Blattlaus (`blattlaus`).
+- **Einheimische:** Ameisenkrieger (`ameisenkrieger`), Blattlaus (`blattlaus`), Arbeiterameise (`arbeiterameise`), Harzspucker (`harzspucker`). **Unter-Zwischenboss:** Harzgeneral (`harzgeneral`).
+- **Zerstörbare Props:** Ameisenkokon (`ameisen_kokon`).
 - **Ereignis „Riesenschritt“:** alle 80 s bebt die Welt; an einer zufälligen Stelle der Oberfläche stürzt ein riesiger Schatten herab, Zellen in einem breiten Streifen werden zusammengedrückt (Ankündigung 3 s Schatten am Boden).
 - **Proben:** Riesenzuckerkristall, Ameisenduft-Ampulle.
 - **Musik (später):** Pizzicato-Streicher, Grillenzirpen.
@@ -134,7 +138,8 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 | `nebel` | Bühnennebel | Gas | – | #A0A0C0 | verdeckt Sicht, harmlos |
 
 - **Teilpalette:** #1A0E2A #B080C0 #E04080 #60FFE0 #E0FF40 #A0A0C0 #FF60A0 #4060FF
-- **Einheimische:** Türsteherpilz (`tuersteherpilz`), Sporenschnorrer (`sporenschnorrer`).
+- **Einheimische:** Türsteherpilz (`tuersteherpilz`), Sporenschnorrer (`sporenschnorrer`), Sporenwerfer (`sporenwerfer`), Leuchtmotte (`leuchtmotte`). **Unter-Zwischenboss:** Sporenherz (`sporenherz`).
+- **Zerstörbare Props:** Sporenknolle (`sporen_knolle`), Pilzlaterne (`pilz_laterne`).
 - **Ereignis „Bass-Drop“:** alle 60 s ein starker Puls: alle Körper und losen Gegenstände werden 40 px hochgeschleudert, Pulver hüpft.
 - **Proben:** Leuchtspore im Glas, Plattennadel.
 - **Musik (später):** Four-on-the-floor mit verzerrtem Bass; Tempo exakt passend zum Takt der Regel (120 BPM).
@@ -159,7 +164,8 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 | `weihrauch` | Weihrauch | Gas | – | #C8C0B0 | macht Gegner benebelt (zielen schlechter) |
 
 - **Teilpalette:** #1C2E2A #3A5A50 #6A7468 #40A0D0 #D04060 #E0C040 #EEE6C8 #B08840 #3A7A40
-- **Einheimische:** Mönchsfisch (`moenchsfisch`), Orgelaal (`orgelaal`); **große Kreatur:** Kirchenkrake (`kirchenkrake`).
+- **Einheimische:** Mönchsfisch (`moenchsfisch`), Orgelaal (`orgelaal`), Glockenqualle (`glockenqualle`), Korallenwächter (`korallenwaechter`); **große Kreatur:** Kirchenkrake (`kirchenkrake`); **Unter-Zwischenboss:** Glockenwächter (`glockenwaechter`).
+- **Zerstörbare Props:** Abteiglocke (`abtei_glocke`).
 - **Ereignis „Glockenschlag“:** alle 75 s läutet die große Glocke: Schockwelle durch Wasser (Stromschlag für alle im Wasser, auch Gegner), Ankündigung durch ein leiseres Vorläuten 2 s vorher.
 - **Proben:** Glockensplitter, Kerzenstumpf mit Gesichtsabdruck.
 - **Musik (später):** Orgel-Drone, Unterwasser-Gluckern, gregorianisches Summen.
@@ -191,5 +197,8 @@ Kurzbeschreibungen, damit nichts verloren geht. Jedes wird später nach demselbe
 | `nebelwald` | Nebelwald | `rule_darkness` | Leuchtende Pilze, Pflanzen, die sich bewegen, wenn man nicht hinsieht. |
 | `zahnarztpraxis` | Wartezimmer der Ewigkeit | `rule_slowtime` | Nummer ziehen, warten, Bohrer als Gegner. |
 | `biohorror_plus` | Fleischwelt (Spätstadium) | `rule_living_walls` + `rule_darkness` | Härtere Fassung der Fleischwelt mit den übrigen alten Biomen (Leber, Lunge, Herzkammer). |
+| `schrott` | Der Große Schrott | `rule_magnet` | Ausgearbeitetes Pool-Universum: Regionen `halde`, `schmelze`, `kernwerk`; Kreaturen `rostkaefer`, `schweissimp`, `magnetwurm`, `schrottgolem`; Zwischenboss `gabelstapler_krabbe`; Endboss `schrottpresse`; Probe `probe_rost`. |
+| `kuchen` | Die Kuchenkruste | `rule_hot` | Ausgearbeitetes Pool-Universum: Regionen `glasur`, `biskuit`, `boden`; Kreaturen `zuckerspinne`, `kerzenkobold`, `marzipanschwein`, `baiser_geist`; Zwischenboss `marzipan_ritter`; Endboss `hochzeitstorte`; Probe `probe_zucker`. |
+| `spule` | Die Summende Spule | `rule_magnet` | Ausgearbeitetes Pool-Universum: Regionen `spulenwald`, `kondensator`, `kern`; Kreaturen `funkenhornisse`, `spulenkrabbe`, `kupferschlange`, `kondensator_geist`; Zwischenboss `spulenmeister`; Endboss `transformator`; Probe `probe_spule`. |
 
 Die 32 alten Biome (Schlund, Magen, …) gehen als Teilgebiete in Fleischwelt und „Fleischwelt (Spätstadium)“ auf.

@@ -9,224 +9,348 @@ Verbindliche Schnittstellen für `src/sprites.py`, `src/sprite_render.py`, `src/
 Kein `import pygame` in `src/sprites.py`.
 
 ```python
-from pathlib import Path
-from dataclasses import dataclass
+from __future__ import annotations
 
-SPRITE_ROOT = Path("assets/sprites_png")
-LOOPING: frozenset[str] = frozenset({"idle", "move", "run", "float", "swim", "hang", "latched", "carry"})
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class AnimSpec:
+    row: int
+    frames: int
+    fps: float = 8.0
+    loop: bool = True
+    next_anim: str = "idle"
+
+
+@dataclass(frozen=True)
+class GlowPoint:
+    offset: tuple[int, int]
+    color: tuple[int, int, int]
+    radius: int = 12
+
 
 @dataclass(frozen=True)
 class SheetMeta:
-    key: str
-    frame_w: int
-    frame_h: int
-    anchor: tuple[int, int]                         # (ax, ay) Fuß-/Ankerpunkt im Frame
-    hitbox: tuple[int, int, int, int]               # (hx, hy, hw, hh) relativ zur oberen linken Frame-Ecke
-    states: dict[str, tuple[int, int, int]]         # state -> (first_frame_idx, frame_count, fps)
-    glow: dict[int, tuple[tuple[int, int], ...]]    # frame_idx -> ((px, py), ...)
-    mount: tuple[int, int] | None = None            # optionaler Andockpunkt für Waffenteile
+    frame_size: tuple[int, int]
+    anchor: tuple[int, int]
+    anims: dict[str, AnimSpec] = field(default_factory=dict)
+    glow: tuple[GlowPoint, ...] = ()
 
-def load_meta(path: Path) -> SheetMeta: ...
-def find_meta(category: str, key: str, root: Path = SPRITE_ROOT) -> SheetMeta | None: ...
+
+def load_sheet_meta(json_path: Path) -> SheetMeta:
+    """Load SheetMeta from a JSON sidecar file."""
+    ...
+
 
 class Animator:
-    def __init__(self, meta: SheetMeta) -> None: ...
-    @property
-    def state(self) -> str: ...
-    def set_state(self, state: str, *, restart: bool = False) -> None: ...  # unbekannt -> "idle"
-    def update(self, dt: float) -> None: ...
-    @property
-    def frame(self) -> int: ...                     # absoluter Frame-Index (0 .. total_frames - 1)
-    @property
-    def done(self) -> bool: ...                     # True, wenn state nicht in LOOPING und letztes Frame erreicht
+    def __init__(self, meta: SheetMeta, initial: str = "idle") -> None:
+        self.meta: SheetMeta = meta
+        self.state: str = initial
+        self.frame_index: int = 0
+        self.timer: float = 0.0
+        self.finished: bool = False
+
+    def play(self, state: str, *, restart: bool = False) -> None:
+        """Switch to animation state (ignored if already in state unless restart=True)."""
+        ...
+
+    def update(self, dt: float) -> None:
+        """Advance animation timer and frame_index by dt seconds."""
+        ...
+
+    def frame_rect(self) -> tuple[int, int, int, int]:
+        """Return (x, y, w, h) pixel rectangle on the sprite sheet."""
+        ...
 ```
 
-- JSON-Schema in `assets/sprites_png/<category>/<key>.json`:
+- **JSON-Sidecar-Format (`<name>.json`):**
 
   ```json
   {
-    "key": "aktenfresser",
-    "frame_w": 20,
-    "frame_h": 17,
-    "anchor": [10, 16],
-    "hitbox": [2, 1, 16, 16],
-    "states": {"idle": [0, 2, 4], "move": [2, 4, 8], "hurt": [6, 1, 1], "death": [7, 3, 8]},
-    "glow": {"0": [[14, 5]], "1": [[14, 6]]},
-    "mount": [4, 3]
+    "frame_size": [16, 20],
+    "anchor": [8, 18],
+    "anims": {
+      "idle": {"row": 0, "frames": 4, "fps": 6.0, "loop": true},
+      "attack": {"row": 1, "frames": 3, "fps": 10.0, "loop": false, "next_anim": "idle"}
+    },
+    "glow": [{"offset": [2, -6], "color": [120, 240, 200], "radius": 14}]
   }
   ```
 
-- `"mount"` ist optional (`null` oder weggelassen → `None`).
-- Fehlt ein Pflichtfeld (`key`, `frame_w`, `frame_h`, `anchor`, `hitbox`, `states`) oder ist `"idle"` nicht in `states`, wirft `load_meta` einen `ValueError`.
-- `find_meta(category, key)` prüft `root / category / f"{key}.json"` (und dass die `.png` daneben existiert); fehlt eine davon, gibt sie `None` zurück.
+- `Animator.play(state, restart=False)` wechselt in `state` (oder fällt auf `"idle"` zurück, falls `state` unbekannt ist). Wenn `loop == False`, stoppt die Animation am letzten Frame, setzt `finished = True` und wechselt automatisch nach `next_anim` (`"idle"`).
 
 ---
 
 ## V6 Sprite-Zeichnen (`src/sprite_render.py`, pygame)
 
 ```python
+from __future__ import annotations
+
+from pathlib import Path
 import pygame
-from src.sprites import SheetMeta
+from .sprites import Animator, SheetMeta
+
+ASSET_ROOT: Path = Path(__file__).resolve().parent.parent / "assets" / "sprites"
+
 
 class SheetCache:
-    def __init__(self, root: Path = SPRITE_ROOT) -> None: ...
-    def surface(self, meta: SheetMeta, category: str = "") -> pygame.Surface: ...
+    def __init__(self, root: Path = ASSET_ROOT) -> None:
+        self.root: Path = root
+        self._cache: dict[tuple[str, str], tuple[pygame.Surface, SheetMeta]] = {}
+
+    def get(self, category: str, name: str) -> tuple[pygame.Surface, SheetMeta]:
+        """Return cached (Surface, SheetMeta) for category/name, with headless fallback."""
+        ...
+
 
 def blit_frame(
-    canvas: pygame.Surface,
-    cache: SheetCache,
+    target: pygame.Surface,
+    sheet: pygame.Surface,
     meta: SheetMeta,
-    frame: int,
-    x: int,
-    y: int,
+    animator: Animator,
+    world_x: float,
+    world_y: float,
+    cam_x: float,
+    cam_y: float,
     *,
-    flip: bool = False,
-    flash_white: bool = False,
-    category: str = "",
-) -> None: ...
+    flip_x: bool = False,
+    angle_deg: float = 0.0,
+    flash: float = 0.0,
+    tint: tuple[int, int, int] | None = None,
+) -> None:
+    """Blit the current animator frame anchored at (world_x - cam_x, world_y - cam_y)."""
+    ...
+
 
 def glow_points(
-    meta: SheetMeta, frame: int, x: int, y: int, flip: bool = False
-) -> list[tuple[int, int]]: ...
+    meta: SheetMeta,
+    world_x: float,
+    world_y: float,
+    flip_x: bool = False,
+) -> list[tuple[float, float, tuple[int, int, int], int]]:
+    """Return world-space glow tuples (wx, wy, color, radius) for meta.glow."""
+    ...
 ```
 
-- `(x, y)` ist der **Bildschirm-/Kamera-relativ umgerechnete Ankerpunkt** (d. h. `world_anchor_x - camera_x`, `world_anchor_y - camera_y`).
-- Linke obere Zeichenposition des Frames:
-  - `flip == False`: `draw_x = x - meta.anchor[0]`, `draw_y = y - meta.anchor[1]`.
-  - `flip == True`: `draw_x = x - (meta.frame_w - 1 - meta.anchor[0])`, `draw_y = y - meta.anchor[1]`.
-- `glow_points` transformiert jedes `(gx, gy)` aus `meta.glow.get(frame, ())` nach derselben Spiegelungsformel in Welt- bzw. Kamerakoordinaten `(x + (meta.frame_w - 1 - gx - (meta.frame_w - 1 - meta.anchor[0]) if flip else gx - meta.anchor[0]), y + gy - meta.anchor[1])`.
-- Für einen `Body` (`Creature` oder `Player`) gilt für den Welt-Ankerpunkt (Fußmitte):
-  `world_anchor_x = int(body.x + body.width // 2)`, `world_anchor_y = int(body.y + body.height)`.
+- Bei `flip_x == True` wird `offset[0]` in `glow_points` horizontal gespiegelt (`world_x - offset[0]`, sonst `world_x + offset[0]`).
 
 ---
 
 ## V7 Prozedurale Körper aus Teilen (`src/procbody.py`, headless)
 
 ```python
-from dataclasses import dataclass
-from src.world import World
+from __future__ import annotations
 
+from dataclasses import dataclass, field
+
+
+@dataclass
 class Chain:
-    """Segmente mit festem Abstand, die dem Kopf folgen (Würmer, Orgelaal, Schwänze)."""
-    def __init__(self, count: int, spacing: float, x: float, y: float) -> None: ...
-    def update(self, head_x: float, head_y: float) -> None: ...
-    points: list[tuple[float, float]]   # Länge == count; points[0] == (head_x, head_y)
+    segments: list[tuple[float, float]] = field(default_factory=list)
+    spacing: float = 6.0
 
+    def update(self, head_x: float, head_y: float) -> list[tuple[float, float]]:
+        """Pull chain segments towards (head_x, head_y) keeping spacing distance."""
+        ...
+
+
+@dataclass
 class Legs:
-    """Schrittbeine mit festen Fußpunkten auf dem Boden."""
-    def __init__(self, count: int, length: float, stride: float) -> None: ...
-    def update(self, body_x: float, body_y: float, world: World) -> None: ...
-    feet: list[tuple[float, float]]     # Länge == count
+    count: int = 4
+    stride: float = 8.0
+    step_height: float = 3.0
+    phase: float = 0.0
 
-class Tentacle:
-    """Gliederkette mit Sinus-Wellenbewegung und optionalem Greifziel."""
-    def __init__(self, count: int, spacing: float, wave: float = 4.0, speed: float = 3.0) -> None: ...
     def update(
-        self, root_x: float, root_y: float, t: float, reach: tuple[float, float] | None = None
-    ) -> None: ...
-    points: list[tuple[float, float]]   # Länge == count; points[0] == (root_x, root_y)
+        self,
+        dt: float,
+        body_x: float,
+        body_y: float,
+        vx: float = 0.0,
+    ) -> list[tuple[float, float, float, float]]:
+        """Return (hip_x, hip_y, foot_x, foot_y) tuples for each leg."""
+        ...
+
+
+@dataclass
+class Tentacle:
+    segments: int = 5
+    length: float = 20.0
+    amp: float = 4.0
+    freq: float = 3.0
+    phase: float = 0.0
+
+    def points(self, root_x: float, root_y: float, time: float) -> list[tuple[float, float]]:
+        """Return segments + 1 points starting at (root_x, root_y)."""
+        ...
+
 
 @dataclass(frozen=True)
 class PartSpec:
-    sprite_key: str                     # Schlüssel unter Kategorie "kreaturen" oder "bosse"
-    attachment: str                     # "body" | "chain:<i>" | "tentacle:<t>:<i>" | "leg:<i>"
-    offset: tuple[int, int] = (0, 0)    # Versatz relativ zum Ankerpunkt (bei flip wird offset[0] negiert)
+    key: str
+    offset: tuple[float, float]
+    z_order: int = 0
+    sheet_name: str = ""
+    bob_amp: float = 1.0
+    bob_freq: float = 2.5
+    destructible: bool = False
+
 
 @dataclass(frozen=True)
 class PartLayout:
-    key: str                            # Kreaturschlüssel, z. B. "orgelaal", "trampolinwal", "kirchenkrake"
-    parts: tuple[PartSpec, ...]
-    chain_count: int = 0
-    chain_spacing: float = 6.0
-    tentacles: int = 0
-    tentacle_segments: int = 5
-    tentacle_spacing: float = 5.0
-    legs: int = 0
-    leg_length: float = 10.0
-    leg_stride: float = 8.0
+    parts: tuple[PartSpec, ...] = ()
 
-LAYOUTS: dict[str, PartLayout] = {}
+
+class ProcRig:
+    def __init__(self, layout: PartLayout) -> None:
+        self.layout: PartLayout = layout
+        self.time: float = 0.0
+        self.destroyed: set[str] = set()
+        self.recoils: dict[str, float] = {}
+
+    def update(self, dt: float, vx: float = 0.0, vy: float = 0.0, facing: int = 1) -> None: ...
+    def recoil(self, part_key: str, amount: float) -> None: ...
+    def destroy_part(self, part_key: str) -> None: ...
+    def world_parts(
+        self,
+        root_x: float,
+        root_y: float,
+        flip_x: bool = False,
+    ) -> list[tuple[str, float, float, str]]:
+        """Return z-ordered (part_key, wx, wy, sheet_name) for all non-destroyed parts."""
+        ...
+
+
+RIG_LAYOUTS: dict[str, PartLayout] = {}
 ```
-
-- Anbindung an `Creature`: Wenn `spec.key in LAYOUTS`, legt `Creature.__init__` eine Instanz `self.rig: ProcRig | None = ProcRig(LAYOUTS[spec.key], self.center[0], self.center[1])` an, die in `Creature.update` mit `(cx, cy, world, self.age)` aktualisiert wird und eine Methode `world_parts(cx: float, cy: float, facing: int) -> list[tuple[str, int, int, bool]]` (`(sprite_key, world_x, world_y, flip)`) für `rendering.py` bereitstellt.
 
 ---
 
 ## V8 Sprite-Quellen & Werkzeug (`tools/palette.py`, `tools/sprites.py`)
 
-### 1. `tools/palette.py`
+### 1. Farbpaletten (`tools/palette.py`)
 
 ```python
-PALETTE: dict[str, str] = {
-    "ink": "#1C1420",
-    "n1": "#2E2836", "n2": "#4A4452", "n3": "#77707E", "n4": "#A9A3AE", "n5": "#E6E2E8",
-    "skin_l": "#F2CCA8", "skin": "#E0A982", "skin_d": "#B67A5C",
-    "hair_l": "#FF9A4A", "hair": "#EC6E34", "hair_d": "#B34424",
-    "coat_l": "#F6F7F2", "coat": "#D6DCD8", "coat_d": "#9AA6A8",
-    "cloth": "#8C46AA", "cloth_d": "#5E2C78",
-    "flux_l": "#B4FFF0", "flux": "#3CE6C8", "flux_d": "#1C9488",
-    "gold_l": "#FFF09A", "gold": "#F2C230", "gold_d": "#A87A14",
-    "danger_l": "#FF8A7A", "danger": "#E83A3A", "danger_d": "#9A1E28",
-    "agent_l": "#9AA4C8", "agent": "#5A6490", "agent_d": "#333A5C",
-    "metal_l": "#C8CED6", "metal": "#8A94A2", "metal_d": "#545C6A",
-    "clone_l": "#FFE0EC", "clone": "#F6B4CC", "clone_d": "#D07EA0",
-    "life_l": "#B8F59A", "life": "#6CD25A", "life_d": "#3A8A3C",
+OUTLINE_DARK: tuple[int, int, int, int] = (18, 14, 24, 255)
+
+
+@dataclass(frozen=True)
+class PaletteRamp:
+    shadow: tuple[int, int, int, int]
+    mid: tuple[int, int, int, int]
+    light: tuple[int, int, int, int]
+    highlight: tuple[int, int, int, int]
+    rim: tuple[int, int, int, int]
+
+
+def make_ramp(base_rgb: tuple[int, int, int]) -> PaletteRamp:
+    """Create a 5-stop PaletteRamp from base_rgb with monotonically increasing brightness."""
+    ...
+
+
+UNIVERSE_PALETTES: dict[str, dict[str, PaletteRamp]] = {
+    # Enthält mindestens alle 6 MVP-Universen ("fleischwelt", "aktenhalde", "glibbria",
+    # "kruemelreich", "sporenklub", "abtei") sowie die Pool-Universen ("schrott", "kuchen", "spule")
+    ...
 }
-# Teilpaletten je Universum: Schlüssel "u1", "u2", ... in der Reihenfolge aus Bibel 03:
-PALETTES: dict[str, dict[str, str]] = {
-    "fleischwelt": {...},
-    "aktenhalde": {...},
-    "glibbria": {...},
-    "kruemelreich": {...},
-    "sporenklub": {...},
-    "abtei": {...},
+
+ENTITY_PALETTES: dict[str, dict[str, PaletteRamp]] = {
+    # "player", "klonita", "authority", "evil_kaiserin", "evil_gute", "evil_omega", "ober_cloita"
+    ...
 }
 ```
 
-### 2. `tools/sprites.py`
+### 2. Pixel-Canvas & Sprite-Builder (`tools/sprites.py`)
 
-Pflicht- und optionale Konstanten einer Sprite-Quelldatei `assets/sprites/<kategorie>/<key>.py`:
+```python
+class PixelCanvas:
+    def __init__(self, width: int, height: int) -> None: ...
+    def set_px(self, x: int, y: int, rgba: tuple[int, int, int, int]) -> None: ...
+    def get_px(self, x: int, y: int) -> tuple[int, int, int, int]: ...
 
-- Pflicht: `PALETTE: dict[str, str]`, `SIZE: tuple[int, int]`, `ANCHOR: tuple[int, int]`, `HITBOX: tuple[int, int, int, int]`, `FPS: dict[str, int]`, `FRAMES: dict[str, list[list[str]]]`.
-- Optional: `UNIVERSE: str | None = None`, `GLOW: list[str] = []`, `STATIC: bool = False`, `ATTACKS: bool = False`, `MOUNT: tuple[int, int] | None = None`.
-- Mindestzustände (`CATEGORY_MIN_STATES`):
-  - Kategorien `ui`, `module`, `waffenteile`, `gegenstaende`, `effekte`: nur `("idle",)`.
-  - Kategorie `werkstatt`: `("idle", "use")`.
-  - Kategorie `npc`: `("idle", "talk")`.
-  - Alle übrigen (`figuren`, `kreaturen`, `bosse`, `boese_ichs`): `("idle", "hurt", "death")` + `("move",)` (falls nicht `STATIC = True`) + `("windup", "attack")` (falls `ATTACKS = True`).
+def draw_shaded_ellipse(canvas: PixelCanvas, cx: int, cy: int, rx: int, ry: int, ramp: PaletteRamp) -> None: ...
+def draw_shaded_rect(canvas: PixelCanvas, x0: int, y0: int, x1: int, y1: int, ramp: PaletteRamp) -> None: ...
+def draw_segment_line(canvas: PixelCanvas, x0: int, y0: int, x1: int, y1: int, rgba: tuple[int, int, int, int], thickness: int = 1) -> None: ...
+def apply_dark_outline(canvas: PixelCanvas) -> None: ...
+def add_dither(canvas: PixelCanvas, intensity: int = 8) -> None: ...
+def save_sheet(
+    category: str,
+    name: str,
+    frames: dict[str, list[PixelCanvas]],
+    *,
+    anchor: tuple[int, int],
+    fps: dict[str, float] | None = None,
+    loops: dict[str, bool] | None = None,
+    next_anims: dict[str, str] | None = None,
+    glow: list[dict[str, object]] | None = None,
+    out_dir: Path = ASSET_ROOT,
+) -> tuple[Path, Path]: ...
+def build_all(out_dir: Path = ASSET_ROOT) -> list[Path]: ...
+```
 
 ---
 
 ## V8b Waffenteile & Zusammenbau (`src/weapon_parts.py`, headless)
 
 ```python
+from __future__ import annotations
+
 from dataclasses import dataclass
-from src.wand import WandSpec
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .spells import Wand
+
+WEAPON_PART_KEYS: tuple[str, ...] = (
+    # Kanonische Bibel-Waffenteile (Kap. 06) + kompakte Stab-Teile:
+    "griff_holz",
+    "griff_eisen",
+    "griff_knochen",
+    "griff_pistole",
+    "griff_kurbel",
+    "griff_handschuh",
+    "gehaeuse_kurz",
+    "gehaeuse_mittel",
+    "gehaeuse_lang",
+    "kern_rubin",
+    "kern_spule",
+    "kern_auge",
+    "kern_leere",
+    "lauf_einfach",
+    "lauf_doppel",
+    "lauf_dreifach",
+    "muendung_spitz",
+    "muendung_trichter",
+    "muendung_sieb",
+    "spitz_prisma",
+    "spitz_gabel",
+    "spitz_zahn",
+    "tank_klein",
+    "tank_mittel",
+    "tank_gross",
+    "zier_antenne",
+    "zier_wackelauge",
+    "zier_gluehbirne",
+    "zier_schraubenzieher",
+    "zier_klebeband",
+)
+
 
 @dataclass(frozen=True)
 class WeaponPartPlacement:
-    part_key: str               # Dateiname unter assets/sprites_png/waffenteile/<part_key>
-    offset_x: int               # px relativ zum Griff-/Schulter-Anker der Waffe (nach rechts)
-    offset_y: int               # px relativ zum Griff-/Schulter-Anker (nach unten)
+    part_key: str
+    offset_x: int
+    offset_y: int
 
-def parts_for(spec: WandSpec, seed: int = 0) -> tuple[str, ...]:
-    """Return (body, barrel, muzzle, tank, grip, charm) part keys for spec (bible 06)."""
+
+def parts_for(wand: Wand) -> list[str]:
+    """Select >= 3 valid WEAPON_PART_KEYS for wand based on its stats and blocks."""
     ...
 
-def layout_for(spec: WandSpec, seed: int = 0) -> tuple[WeaponPartPlacement, ...]:
-    """Compute pixel offsets for each part relative to the weapon's grip anchor (0, 0)."""
+
+def layout_for(wand: Wand) -> list[WeaponPartPlacement]:
+    """Return ordered WeaponPartPlacement entries with ascending offset_x."""
     ...
 ```
-
-Zuordnungsregeln in `parts_for(spec, seed)`:
-
-1. **Gehäuse (`body`):** `capacity <= 4` → `"gehaeuse_kurz"` (Breite 6), `5 <= capacity <= 8` → `"gehaeuse_mittel"` (Breite 9), `>= 9` → `"gehaeuse_lang"` (Breite 12).
-2. **Lauf (`barrel`):** `casts <= 1` → `"lauf_einfach"`, `casts == 2` → `"lauf_doppel"`, `casts >= 3` → `"lauf_dreifach"`.
-3. **Mündung (`muzzle`):** `spread <= 0.03` → `"muendung_spitz"`, `spread <= 0.08` → `"muendung_trichter"`, `> 0.08` → `"muendung_sieb"`.
-4. **Tank (`tank`):** `mana_max < 140` → `"tank_klein"`, `mana_max <= 220` → `"tank_mittel"`, `> 220` → `"tank_gross"`.
-5. **Griff (`grip`):** `cast_delay <= 0.12` → `"griff_pistole"`, `cast_delay <= 0.25` → `"griff_kurbel"`, `> 0.25` → `"griff_handschuh"`.
-6. **Zierteil (`charm`):** `spec.shuffle == True` → `"zier_klebeband"`, sonst deterministisch über `random.Random(seed ^ hash(spec.name_de))` aus `("zier_antenne", "zier_wackelauge", "zier_gluehbirne", "zier_schraubenzieher")`.
-
-Anker-Geometrie in `layout_for`:
-
-- `grip` sitzt bei `(0, 2)`, `body` bei `(0, 0)` (Breite `bw` = 6/9/12), `tank` unter dem Gehäuse bei `(bw // 3, 3)`, `barrel` rechts am Gehäuse bei `(bw, 0)` (Breite `lw` = 4), `muzzle` bei `(bw + lw, 0)`, `charm` oben auf dem Gehäuse bei `(bw // 2, -2)`.

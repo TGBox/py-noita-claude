@@ -21,7 +21,8 @@
 | Augmentation | **Waffe** (Panel unten links) |
 | Phiole | **Kolben** (Panel unten rechts) |
 | Pausemenü „Dieser Lauf“ | Universum, Rang, Gold, Experimente, Erinnerungssplitter x/6, Fahndungsstufe |
-| Kodex | **Archiv** (Kategorien: Module, Kreaturen, Universen, Böse Ichs, Fundstücke; alte Biohorror-Daten werden verworfen, Archiv beginnt leer) |
+| Kodex | **Archiv** (5 Reiter: Module, Baupläne, Kreaturen, Universen, Böse Ichs + Dienstausweise & bester Karriere-Rang; alte Biohorror-Daten werden verworfen, Archiv beginnt leer) |
+| Lauf-Endbildschirm | **neu:** Punktestand-Abrechnung (`compute_score`) und Karriere-Rang (`Praktikantin` → `Hilfs-Alchemistin` → `Sachbearbeiterin der Magie` → `Ober-Laborantin` → `Erz-Klonologin` → `Realitäts-Rebellin`) |
 
 ## Neue UI-Icons (8×8 bis 16×16)
 

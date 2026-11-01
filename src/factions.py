@@ -5,6 +5,12 @@ from __future__ import annotations
 FACTIONS: tuple[str, ...] = (
     "spieler",
     "wildnis",
+    "fleischwelt",
+    "aktenhalde",
+    "glibbria",
+    "kruemelreich",
+    "sporenklub",
+    "abtei",
     "schrott",
     "pilze",
     "parasiten",
@@ -19,6 +25,25 @@ FACTIONS: tuple[str, ...] = (
 )
 
 HATE_MATRIX: dict[str, frozenset[str]] = {}
+
+
+class Grudges(set[tuple[str, str]]):
+    """Dynamic blood-feud set between factions (Contract V4)."""
+
+    def mark(self, faction_a: str, faction_b: str) -> None:
+        record_grudge(self, faction_a, faction_b)
+
+    def hated(self, faction_a: str, faction_b: str) -> bool:
+        return (faction_a, faction_b) in self or (faction_b, faction_a) in self
+
+
+def hostile(
+    faction_a: str,
+    faction_b: str,
+    grudges: set[tuple[str, str]] | None = None,
+) -> bool:
+    """Alias for are_hostile (Contract V4)."""
+    return are_hostile(faction_a, faction_b, grudges)
 
 
 def are_hostile(
@@ -37,4 +62,3 @@ def record_grudge(
 ) -> None:
     """Record a symmetric blood feud between faction_a and faction_b."""
     raise NotImplementedError("Card A11")
-

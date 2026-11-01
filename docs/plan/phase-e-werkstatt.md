@@ -5,17 +5,17 @@
 
 ---
 
-## E01 — Werkstatt-Generator & 10 Stationen (`src/workshop.py`) (`V18`)
+## E01 — Werkstatt-Generator & 12 Stationen (`src/workshop.py`) (`V18`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A03`
 - **Ziel-Dateien:** `src/workshop.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`), `src/world.py`, `tests/spec/test_phase_e.py` (`-k e01`)
 - **Aufgabe:**
-  1. Erstelle `src/workshop.py` mit `WORKSHOP_SIZE = (640, 360)`, `Station`, `WorkshopLayout`, `STATIONS` (alle 10 Stationen `"ws_portal"` bis `"ws_workbench"` mit ihren exakten Rechtecken und `sprite_key`-Werten aus `V18`), `generate_workshop(world: World) -> WorkshopLayout` und `station_at(layout, cell_x, cell_y, radius=10) -> Station | None`.
+  1. Erstelle `src/workshop.py` mit `WORKSHOP_SIZE = (640, 360)`, `Station`, `WorkshopLayout`, `STATIONS` (alle 12 Stationen aus `V18`: die 10 Bibel-Stationen `"ws_portal"`, `"ws_werkbank"`, `"ws_fabrikator"`, `"ws_liege"`, `"ws_haendler"`, `"ws_zapfhahn"`, `"ws_automat"`, `"ws_schiessstand"`, `"ws_archiv"`, `"ws_couch"` plus `"ws_shredder"`, `"ws_well"`), `STATION_ALIASES` (für englische Kurzschlüssel `"ws_workbench"`, `"ws_fabricator"`, `"ws_trader"`, `"ws_physik_o_mat"`, `"ws_archive"`), `generate_workshop(world: World) -> WorkshopLayout` und `station_at(layout, cell_x, cell_y, radius=10) -> Station | None`.
 - **Akzeptanzkriterien:**
   - `generate_workshop(World(640, 360))` erzeugt eine begehbare Halle mit festem Boden ab `y = 210`, Wasser im Becken bei `"ws_well"` und Luft am `spawn`.
-  - `len(layout.stations) == 10`, und `station_at` findet jede der 10 Stationen an ihrem Mittelpunkt.
+  - `len(layout.stations) >= 10`, und `station_at` findet jede Station an ihrem Mittelpunkt.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_e.py -k e01 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -58,14 +58,14 @@
 - **Ziel-Dateien:** `src/traders.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V19`), `src/spells.py`, `tests/spec/test_phase_e.py` (`-k e04`)
 - **Aufgabe:**
-  1. Erstelle `src/traders.py` mit `TraderOffer`, `TraderSpec`, `TRADERS` (alle 6 Händler aus `V19`), `pick_trader_for_universe(universe_key, rng)` und `generate_offers(trader, depth, rng, *, price_factor=1.0, universe_sample_key="probe_rost") -> list[TraderOffer]`.
+  1. Erstelle `src/traders.py` mit `TraderOffer`, `TraderSpec`, `TRADERS` (alle 6 Bibel-Händler aus `V19` mit ihren kanonischen `home_universe`-Schlüsseln `"fleischwelt"`, `"aktenhalde"`, `"glibbria"`, `"kruemelreich"`, `"sporenklub"`, `"abtei"`), `pick_trader_for_universe(universe_key, rng)` und `generate_offers(trader, depth, rng, *, price_factor=1.0, universe_sample_key="probe_gallenstein") -> list[TraderOffer]`.
   2. Setze in `generate_offers` die Sortiments- und Preisregeln um:
-     - `"npc_magenhaendler"`: organische Payloads + 1 `"heart"`.
-     - `"npc_sachbearbeiterin"`: `flat_fee = 10` auf jedes Angebot aufgeschlagen.
-     - `"npc_glibberhaendler"`: Modifikator-Blöcke + `"flask"` (`"jelly"`/`"honey"`).
-     - `"npc_ameisenhehler"`: `price_multiplier = 0.75` und `sample_cost = ((universe_sample_key, 2),)` auf Modul-Angeboten.
-     - `"npc_dj"`: Blitz-/Klang-Module.
-     - `"npc_kuester"`: Schutz-Module + Zauberstab-Angebote mit `blessed = True`.
+     - `"npc_magenhaendler"` (`fleischwelt`): organische Payloads + 1 `"heart"`.
+     - `"npc_sachbearbeiterin"` (`aktenhalde`): `flat_fee = 10` auf jedes Angebot aufgeschlagen.
+     - `"npc_glibberhaendler"` (`glibbria`): Modifikator-Blöcke + `"flask"` (`"jelly"`/`"honey"`).
+     - `"npc_ameisenhehler"` (`kruemelreich`): `price_multiplier = 0.75` und `sample_cost = ((universe_sample_key, 2),)` auf Modul-Angeboten.
+     - `"npc_dj"` (`sporenklub`): Blitz-/Klang-Module.
+     - `"npc_kuester"` (`abtei`): Schutz-Module + Zauberstab-Angebote mit `blessed = True`.
 - **Akzeptanzkriterien:**
   - `len(TRADERS) == 6`; `generate_offers` liefert für jeden Händler genau `4` Angebote, die seine Sortiments-, Gebühren-, Proben-Tausch- bzw. `blessed`-Regel erfüllen.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_e.py -k e04 -q && uv run pytest --ignore=tests/spec -q`
@@ -85,7 +85,7 @@
      - Bei `"npc_sachbearbeiterin"` setzt ein erfolgreicher Kauf `run.player.body.stamped_good = 30.0`.
      - Bei `"npc_kuester"` und `offer.blessed == True` erhält der gekaufte Zauberstab `+10 %` `mana_max` und `-10 %` `recharge`.
 - **Akzeptanzkriterien:**
-  - Alle 6 Händler-Sonderregeln (inkl. DJ-Taktprüfung, Ameisen-Proben-Tausch, Sachbearbeiterin-Stempel und Küster-Segen) sind durch gezielte Unit-Tests in `tests/test_traders.py` abgedeckt.
+  - Alle 6 Händler-Sonderregeln (inkl. DJ-Taktprüfung, Ameisen-Proben-Tausch, Sachbearbeiterin-Stempel und Küster-Segen) sind durch `tests/spec/test_phase_e.py -k e05` abgedeckt.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_e.py -k e05 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -106,7 +106,7 @@
 
 ---
 
-## E07 — Minispiel-Basis & Physik-o-Mat Rätsel 1–2 (`lava_water`, `acid_gold`) (`V20`)
+## E07 — Minispiel-Basis & Physik-o-Mat Rätsel Teil 1 (`lava_water`, `acid_gold`, `glas_fuellen`, `vase_retten`) (`V20`)
 
 - **Größe:** S
 - **Abhängigkeiten:** keine
@@ -114,23 +114,23 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V20`), `src/world.py`, `tests/spec/test_phase_e.py` (`-k e07`)
 - **Aufgabe:**
   1. Erstelle `src/minigames/__init__.py` mit `MINIGAME_WORLD_SIZE = (160, 120)`, `NEXT_BOOST_KEYS`, `MinigameResult` und der Basisklasse `Minigame` gemäß `V20`.
-  2. Erstelle `src/minigames/physik_o_mat.py` mit den ersten 2 Rätseln (`"lava_water"` und `"acid_gold"`), bei denen die Spielerin per Aktion `"use"`/`"carve"` am Cursor einen Riegel öffnet und die `160×120`-Sub-`World` die physikalische Reaktion bis zur Siegbedingung ausführt.
+  2. Erstelle `src/minigames/physik_o_mat.py` mit den ersten 4 Rätseln (`"lava_water"`, `"acid_gold"`, `"glas_fuellen"`, `"vase_retten"`), bei denen die Spielerin per Aktion `"use"`/`"carve"` am Cursor einen Riegel öffnet und die `160×120`-Sub-`World` die physikalische Reaktion bis zur Siegbedingung ausführt.
 - **Akzeptanzkriterien:**
   - Öffnen des Riegels im `"lava_water"`- und im `"acid_gold"`-Rätsel führt innerhalb von `120` Simulations-Steps zum Sieg (`result.won == True`, `reward_gold == 25`, `result.next_boost in NEXT_BOOST_KEYS`).
 - **Verifikation:** `uv run pytest tests/spec/test_phase_e.py -k e07 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## E08 — Physik-o-Mat Rätsel 3–4 (`oil_fire`, `electricity_water`) (`V20`)
+## E08 — Physik-o-Mat Rätsel Teil 2 (`oil_fire`, `electricity_water`, `kerze_zuenden`, `ameisenstrasse`) (`V20`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `E07`
 - **Ziel-Dateien:** `src/minigames/physik_o_mat.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V20`), `src/minigames/physik_o_mat.py`, `tests/spec/test_phase_e.py` (`-k e08`)
 - **Aufgabe:**
-  1. Ergänze in `src/minigames/physik_o_mat.py` die Rätsel `"oil_fire"` (Ölspur zu 3 Dochten entzünden) und `"electricity_water"` (Salzwasser-Leitung zwischen zwei Elektroden schließen) sowie die Fabrikfunktion `make_physik_puzzle(puzzle_key: str | None = None, seed: int = 0) -> Minigame`.
+  1. Ergänze in `src/minigames/physik_o_mat.py` die restlichen 4 Rätsel aus `PUZZLE_KEYS` (`"oil_fire"`, `"electricity_water"`, `"kerze_zuenden"`, `"ameisenstrasse"`) sowie die Fabrikfunktion `make_physik_puzzle(puzzle_key: str | None = None, seed: int = 0) -> Minigame`.
 - **Akzeptanzkriterien:**
-  - Alle 4 Rätsel in `PUZZLE_KEYS = ("lava_water", "acid_gold", "oil_fire", "electricity_water")` sind lösbar und laufen bei Nichtstun nach `time_limit` Sekunden sauber mit `won == False` ab.
+  - Alle Rätsel in `PUZZLE_KEYS` sind lösbar und laufen bei Nichtstun nach `time_limit` Sekunden sauber mit `won == False` ab.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_e.py -k e08 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -149,7 +149,7 @@
 
 ---
 
-## E10 — Werkstatt-Modus & Direkt-Stationen (`ws_couch`, `ws_well`, `ws_shredder`, `ws_workbench`) in `Run` (`V18`)
+## E10 — Werkstatt-Modus & Direkt-Stationen (`ws_couch`, `ws_liege`, `ws_well`, `ws_zapfhahn`, `ws_werkbank`/`ws_workbench`) in `Run` (`V18`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `E01`, `E06`
@@ -157,11 +157,11 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`, `V20`), `src/workshop.py`, `src/run.py`, `tests/spec/test_phase_e.py` (`-k e10`)
 - **Aufgabe:**
   1. Ergänze auf `Run` (`src/run.py`) `self.in_workshop: bool = False`, `self.workshop_layout: WorkshopLayout | None = None`, `self.fabricator = Fabricator()`, `self.couch_used: bool = False`, `self.minigame_used: set[str] = set()`, `self.next_boost: str = ""`, `self.price_factor: float = 1.0`, `self.menu_mode: str = ""` sowie `enter_workshop(self) -> None` und `interact_station(self) -> str | None`.
-  2. Behandle in `interact_station(self)` die Direkt-Stationen:
-     - `"ws_couch"`: heilt einmal pro Besuch `+35 %` `max_hp`.
-     - `"ws_well"`: füllt `self.flask` kostenlos auf `"water"` (`amount = max_amount`).
-     - `"ws_workbench"`: öffnet das Zauberstab-Inventar (`self.inventory_open = True`).
-     - `"ws_portal"`, `"ws_fabricator"`, `"ws_trader"`, `"ws_archive"`: setzt `self.menu_mode` auf `"portal_select"`, `"fabricator"`, `"trader"` bzw. `"archive"`.
+  2. Behandle in `interact_station(self)` die Direkt-Stationen (inkl. `STATION_ALIASES`):
+     - `"ws_couch"` / `"ws_liege"`: heilt einmal pro Besuch `+35 %` `max_hp` (bzw. voll gegen Gold an der Klon-Liege).
+     - `"ws_well"` / `"ws_zapfhahn"`: füllt `self.flask` kostenlos auf `"water"` (`amount = max_amount`).
+     - `"ws_werkbank"` / `"ws_workbench"`: öffnet das Zauberstab-Inventar (`self.inventory_open = True`).
+     - `"ws_portal"`, `"ws_fabrikator"`/`"ws_fabricator"`, `"ws_haendler"`/`"ws_trader"`, `"ws_archiv"`/`"ws_archive"`: setzt `self.menu_mode` auf `"portal_select"`, `"fabricator"`, `"trader"` bzw. `"archive"`.
 - **Akzeptanzkriterien:**
   - `run.enter_workshop()` baut die `640×360`-Werkstatt auf, setzt die Spielerin auf `workshop_layout.spawn` und ruft `fabricator.reset_visit()` auf.
   - Interaktion an `"ws_couch"` heilt `+35 %` `max_hp` genau einmal pro Besuch; `"ws_well"` füllt die Flasche mit `"water"`.
@@ -169,7 +169,7 @@
 
 ---
 
-## E11 — Portal-Auswahl-Menü (`"portal_select"`) & `UniversePlan`-Weiterschaltung (`V9`, `V22`)
+## E11 — Portal-Auswahl-Menü (`"portal_select"`) & `RunPlan`-/`UniversePlan`-Weiterschaltung (`V9`, `V22`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `D10`, `E10`
@@ -215,17 +215,17 @@
 
 ---
 
-## E14 — Minispiel-Einbindung (`ws_physik_o_mat` & `ws_schiessstand`) in `src/run.py` & `src/menus.py` (`V20`)
+## E14 — Minispiel-Einbindung (`ws_automat`/`ws_physik_o_mat` & `ws_schiessstand`) in `src/run.py` & `src/menus.py` (`V20`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `E08`, `E09`, `E10`
 - **Ziel-Dateien:** `src/run.py`, `src/menus.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V20`), `src/minigames/__init__.py`, `src/run.py`, `tests/spec/test_phase_e.py` (`-k e14`)
 - **Aufgabe:**
-  1. Ergänze auf `Run` `self.active_minigame: Minigame | None = None`: Aktivieren von `"ws_physik_o_mat"` oder `"ws_schiessstand"` in `interact_station` startet (maximal `1×` pro Werkstatt-Besuch je Station) das jeweilige Minispiel und setzt `self.menu_mode = "minigame"`.
+  1. Ergänze auf `Run` `self.active_minigame: Minigame | None = None`: Aktivieren von `"ws_automat"`/`"ws_physik_o_mat"` oder `"ws_schiessstand"` in `interact_station` startet (maximal `1×` pro Werkstatt-Besuch je Station) das jeweilige Minispiel und setzt `self.menu_mode = "minigame"`.
   2. Ergänze `step_minigame(self, dt: float, action: str | None = None, cursor: tuple[int, int] = (80, 60))` auf `Run` (zahlt bei `result.won == True` `reward_gold` aus und setzt `self.next_boost = result.next_boost`) sowie `draw_minigame_overlay` in `src/menus.py`.
 - **Akzeptanzkriterien:**
-  - Starten und Gewinnen eines Minispiels an `"ws_physik_o_mat"` erhöht `run.gold` um `25`, setzt `run.next_boost` und sperrt die Station für den Rest desselben Werkstatt-Besuchs.
+  - Starten und Gewinnen eines Minispiels an `"ws_automat"`/`"ws_physik_o_mat"` erhöht `run.gold` um `25`, setzt `run.next_boost` und sperrt die Station für den Rest desselben Werkstatt-Besuchs.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_e.py -k e14 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

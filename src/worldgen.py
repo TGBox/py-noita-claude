@@ -34,7 +34,7 @@ class Level:
     secret: tuple[int, int] | None = None  # sealed chamber with an Urauge
     vault: tuple[int, int] | None = None  # bone-sealed treasure vault
     exit_point: tuple[int, int] = (0, 0)  # canonical exit coordinate alias (Contract V9)
-    universe_key: str = "schrott"
+    universe_key: str = "fleischwelt"
     mid_boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)
     boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)
     trader_nook: tuple[int, int, int, int] | None = None

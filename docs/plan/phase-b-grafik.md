@@ -41,9 +41,9 @@
 - **Ziel-Dateien:** `tools/sprites_chars.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`), `tools/sprites_chars.py`, `tests/spec/test_phase_b.py` (`-k b03`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_chars.py` `build_agent_sheets(out_dir)` für die 3 Behörden-Agenten in `charaktere/`: `"agent_sachbearbeiter"` (`18×22`), `"agent_vollstrecker"` (`22×26` mit Aktenkoffer-Schild) und `"agent_abteilungsleiter"` (`24×28` schwebend mit Paragraphen-Krone), jeweils mit `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`.
+  1. Ergänze in `tools/sprites_chars.py` `build_agent_sheets(out_dir)` für die 4 Behörden-Agenten in `charaktere/`: `"agent_streife"` (sowie Alias `"agent_sachbearbeiter"`), `"agent_drohne"`, `"agent_vollstrecker"` (`22×26` mit Aktenkoffer-Schild) und `"agent_abteilungsleiter"` (`24×28` schwebend mit Paragraphen-Krone), jeweils mit `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`.
 - **Akzeptanzkriterien:**
-  - Alle 3 Sheets unter `charaktere/agent_*.{png,json}` existieren, lassen sich über `load_sheet_meta` laden und erfüllen die `V8`-Qualitätsregeln.
+  - Alle Agenten-Sheets unter `charaktere/agent_*.{png,json}` existieren, lassen sich über `load_sheet_meta` laden und erfüllen die `V8`-Qualitätsregeln.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b03 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -230,44 +230,44 @@
 
 ---
 
-## B17 — Endboss-Sheets & Körperteile Teil 1 (`schrottpresse`, `muttermyzel`, `pfuetzenkoenig`) (`V7`, `V8`)
+## B17 — Zwischengegner- & Endboss-Sheets Teil 1 (`weltenherz`, `oberstempler`, `mutter_glibber` + Pool-Bosse) (`V7`, `V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A20`, `B15`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`, `src/procbody.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `tests/spec/test_phase_b.py` (`-k b17`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets (`36×36` bis `48×48` px) unter `bosse/` für `"schrottpresse"` (Stempelkolben + Magnetgreifer), `"muttermyzel"` (Hauptknolle + Sporenkelche) und `"pfuetzenkoenig"` (Säurekrone + Schlund) und trage ihre `PartLayout`-Definitionen in `RIG_LAYOUTS` (`src/procbody.py`) ein.
+  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets (`36×36` bis `48×48` px) unter `bosse/` für `"weltenherz"` / `"pfuetzenkoenig"`, `"oberstempler"` / `"oberamtsrat"`, `"mutter_glibber"` / `"zirkusdirektor"`, `"schrottpresse"` und `"muttermyzel"` und trage ihre `PartLayout`-Definitionen in `RIG_LAYOUTS` (`src/procbody.py`) ein.
 - **Akzeptanzkriterien:**
-  - Sheets und `RIG_LAYOUTS`-Einträge für `"schrottpresse"`, `"muttermyzel"` und `"pfuetzenkoenig"` existieren und bestehen den `V8`-Qualitätstest.
+  - Sheets und `RIG_LAYOUTS`-Einträge für die genannten Bosse existieren und bestehen den `V8`-Qualitätstest.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b17 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B18 — Endboss-Sheets & Körperteile Teil 2 (`oberamtsrat`, `hochzeitstorte`, `abt_nautilus`) (`V7`, `V8`)
+## B18 — Zwischengegner- & Endboss-Sheets Teil 2 (`ameisenkoenigin`, `dj_myzel`, `abt_kieme` + Pool-Bosse) (`V7`, `V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B17`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`, `src/procbody.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `tests/spec/test_phase_b.py` (`-k b18`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets unter `bosse/` für `"oberamtsrat"` (Riesenstempel + Aktenflügel), `"hochzeitstorte"` (3 abschmelzbare Torten-Etagen) und `"abt_nautilus"` (Spiralschale + Glockententakel) und registriere ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`).
+  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets unter `bosse/` für `"ameisenkoenigin"` / `"koenigin_mandibula"`, `"dj_myzel"`, `"abt_kieme"` / `"abt_nautilus"` und `"hochzeitstorte"` (3 abschmelzbare Torten-Etagen) und registriere ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`).
 - **Akzeptanzkriterien:**
-  - Sheets und `RIG_LAYOUTS`-Einträge für `"oberamtsrat"`, `"hochzeitstorte"` (mit 3 Etagen-Teilen) und `"abt_nautilus"` existieren und erfüllen `V8`.
+  - Sheets und `RIG_LAYOUTS`-Einträge für `"oberstempler"`/`"oberamtsrat"`, `"hochzeitstorte"` (mit 3 Etagen-Teilen) und `"abt_kieme"`/`"abt_nautilus"` existieren und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b18 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B19 — Endboss-Sheets & Körperteile Teil 3 (`koenigin_mandibula`, `transformator`, `zirkusdirektor`) (`V7`, `V8`)
+## B19 — Zwischengegner-, Großkreaturen- & Endboss-Sheets Teil 3 (`trampolinwal`, `kirchenkrake`, `transformator`, `zirkusdirektor`) (`V7`, `V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B18`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`, `src/procbody.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `tests/spec/test_phase_b.py` (`-k b19`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets unter `bosse/` für `"koenigin_mandibula"` (Abdomen + Mandibeln), `"transformator"` (Spulenturm + Elektrodenarme) und `"zirkusdirektor"` (Wackelzylinder + Peitschenarm) und registriere ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`).
+  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets unter `bosse/` bzw. `kreaturen/` für die Großkreaturen `"trampolinwal"` und `"kirchenkrake"` sowie `"koenigin_mandibula"`, `"transformator"` und `"zirkusdirektor"` und registriere ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`).
 - **Akzeptanzkriterien:**
-  - Alle 9 Endbosse aus `[u.boss for u in UNIVERSES.values()]` haben sowohl gültige Sheets unter `bosse/` als auch `PartLayout`-Einträge in `RIG_LAYOUTS`.
+  - Alle 6 MVP-Bosse aus `[u.boss for u in UNIVERSES.values()]` (`weltenherz`, `oberstempler`, `mutter_glibber`, `ameisenkoenigin`, `dj_myzel`, `abt_kieme`) sowie die Pool-Bosse haben gültige Sheets unter `bosse/` und `PartLayout`-Einträge in `RIG_LAYOUTS`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b19 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -342,16 +342,16 @@
 
 ---
 
-## B25 — Gegenstands-Icons Pack 1: Die 9 Universums-Proben (`gegenstaende/probe_*`) (`V8`, `V11`)
+## B25 — Gegenstands-Icons Pack 1: Die 12 Universums-Proben (`gegenstaende/probe_*`) (`V8`, `V11`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A04`, `B20`
 - **Ziel-Dateien:** `tools/sprites_items.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`), `tests/spec/test_phase_b.py` (`-k b25`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` `12×12`-Sprites unter `gegenstaende/` für die 9 Universums-Proben aus `SAMPLES`: `"probe_rost"`, `"probe_pilz"`, `"probe_saft"`, `"probe_papier"`, `"probe_zucker"`, `"probe_salz"`, `"probe_harz"`, `"probe_spule"`, `"probe_bunt"`.
+  1. Ergänze in `tools/sprites_items.py` `12×12`-Sprites unter `gegenstaende/` für alle 12 kanonischen Universums-Proben aus `SAMPLES` (`"probe_gallenstein"`, `"probe_wucherung"`, `"probe_stempelkissen"`, `"probe_formular"`, `"probe_glibberkern"`, `"probe_brauseperle"`, `"probe_zuckerkristall"`, `"probe_ameisenduft"`, `"probe_leuchtspore"`, `"probe_plattennadel"`, `"probe_glockensplitter"`, `"probe_kerzenstumpf"`) sowie die Pool-Proben-Aliase.
 - **Akzeptanzkriterien:**
-  - Alle 9 Universums-Proben-Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
+  - Alle 12 Universums-Proben-Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b25 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -365,7 +365,7 @@
 - **Aufgabe:**
   1. Ergänze in `tools/sprites_items.py` die `12×12`-Sprites unter `gegenstaende/` für die 5 seltenen Proben (`"probe_knochen"`, `"probe_aether"`, `"probe_schatten"`, `"probe_gold"`, `"probe_kern"`) sowie die 3 Gold-Größen (`"gold_klein"`, `"gold_mittel"`, `"gold_gross"`).
 - **Akzeptanzkriterien:**
-  - Alle 14 Proben aus `SAMPLES` und alle 3 Gold-Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
+  - Alle 17 Proben aus `SAMPLES` und alle 3 Gold-Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b26 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -384,16 +384,16 @@
 
 ---
 
-## B28 — Umgebungs-Props Pack 1: Die 10 Werkstatt-Stationen (`umgebung/`) (`V8`, `V18`)
+## B28 — Umgebungs-Props Pack 1: Die 12 Werkstatt-Stationen (`umgebung/`) (`V8`, `V18`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A22`
 - **Ziel-Dateien:** `tools/sprites_env.py`, `tools/sprites.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`), `tests/spec/test_phase_b.py` (`-k b28`)
 - **Aufgabe:**
-  1. Erstelle `tools/sprites_env.py` (und binde es in `tools/sprites.py` ein) mit den 10 Stations-Sprites (`24×24` bis `32×32` px) unter `umgebung/` gemäß `V18`: `"portal_stein"`, `"fabrikator"`, `"haendler_stand"`, `"physik_o_mat"`, `"schiessstand"`, `"archiv_pult"`, `"klonita_sofa"`, `"akten_schredder"`, `"flaschen_brunnen"`, `"werkbank"` sowie `"portal_headquarters"` und `"trainings_attrappe"`.
+  1. Erstelle `tools/sprites_env.py` (und binde es in `tools/sprites.py` ein) mit den 12 Stations-Sprites (`24×24` bis `32×32` px) unter `umgebung/` gemäß `V18`: `"portal_stein"`, `"fabrikator"`, `"haendler_stand"`, `"physik_o_mat"`, `"schiessstand"`, `"archiv_pult"`, `"klonita_sofa"`, `"akten_schredder"`, `"flaschen_brunnen"`, `"werkbank"`, `"experimentier_liege"`, `"zapfhahn"` sowie `"portal_headquarters"` und `"trainings_attrappe"`.
 - **Akzeptanzkriterien:**
-  - Alle 10 `station.sprite_key` aus `V18` + `"portal_headquarters"` + `"trainings_attrappe"` existieren unter `umgebung/` und erfüllen `V8`.
+  - Alle 12 `station.sprite_key` aus `V18` + `"portal_headquarters"` + `"trainings_attrappe"` existieren unter `umgebung/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b28 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -497,7 +497,7 @@
 
 ---
 
-## B36 — Vollständiger Sprite-Generierungslauf & Qualitäts-Abnahmetest (`V8`)
+## B36 — Vollständiger Sprite-Generierungslauf & Qualitäts-Abnahme (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B05`, `B14`, `B19`, `B24`, `B27`, `B31`
@@ -505,8 +505,7 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `tools/sprites.py`, `tests/spec/test_phase_b.py` (`-k b36`)
 - **Aufgabe:**
   1. Vervollständige `build_all()` in `tools/sprites.py`, sodass ein einziger Aufruf `uv run python -m tools.sprites` sämtliche Sheets in `charaktere/`, `kreaturen/`, `bosse/`, `waffen/`, `zauber/`, `gegenstaende/`, `umgebung/` und `partikel/` deterministisch erzeugt.
-  2. Schreibe `tests/test_all_sprites_quality.py`, der prüft, dass jedes erwartete `.png`/`.json`-Paar existiert, über `load_sheet_meta` ladbar ist, mindestens 5 verschiedene RGB-Farben besitzt und `> 20 %` nicht-transparente Pixel im ersten Frame aufweist.
 - **Akzeptanzkriterien:**
   - `uv run python -m tools.sprites` läuft unter 5 Sekunden fehlerfrei durch.
-  - `tests/test_all_sprites_quality.py` bestätigt alle `V8`-Qualitätskriterien ohne eine einzige Ausnahme.
+  - Der schreibgeschützte Abnahmetest `tests/spec/test_phase_b.py -k b36` bestätigt alle `V8`-Qualitätskriterien (`.png`/`.json`-Paar existiert, über `load_sheet_meta` ladbar, mindestens 5 verschiedene RGB-Farben und `> 20 %` nicht-transparente Pixel im ersten Frame) ohne Ausnahme.
 - **Verifikation:** `uv run python -m tools.sprites && uv run pytest tests/spec/test_phase_b.py -k b36 -q && uv run pytest --ignore=tests/spec -q`
