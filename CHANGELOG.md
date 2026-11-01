@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.5.0
+
+- 2026-11-01 (7e1c697): feat: update planning documents to prepare for creating only S cards in the next step
+
 ## SemVer v1.4.1
 
-- 2026-11-01 (c8ea95d): feat: update planning documents with atomic tasks to get handled by smaller models
+- 2026-11-01 (8347b94): feat: update planning documents with atomic tasks to get handled by smaller models
 
 ## SemVer v1.4.0
 

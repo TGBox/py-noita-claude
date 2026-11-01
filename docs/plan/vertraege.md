@@ -1,319 +1,157 @@
-# Verträge (Schnittstellen)
+# Technische Spezifikation & Schnittstellen-Verträge (`V0`–`V23`)
 
-Verbindlich für alle Aufgabenkarten. Eine Karte darf einen Vertrag **nicht** ändern; braucht sie eine Änderung, wird das als offene Frage notiert und von einem großen Modell hier nachgetragen.
+Dieses Dokument ist die **verbindliche technische Spezifikation (Single Source of Truth)** und der **Vertrags-Index** für die atomare Umsetzung von `py-noita-claude` gemäß der Design-Bibel ([docs/bibel/00-uebersicht.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/bibel/00-uebersicht.md)) und dem [ADR zu atomaren Aufgabenkarten](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/adr/2026-11-01-atomare-aufgabenkarten.md).
 
-Grundsätze:
+Um das Kontextbudget kleiner/kostengünstiger Sprachmodelle (`< 15 KB` pro Aufgabenkarte) strikt einzuhalten, sind die detaillierten Python-Signaturen, Datenstrukturen und Übergabeparameter in **8 thematische Vertragsdateien** unter [`docs/plan/vertraege/`](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/) aufgeteilt. Jede Aufgabenkarte in `phase-a-fundament.md` bis `phase-g-abnahme.md` referenziert genau die Vertragsdatei(en), die sie benötigt.
 
-- Logik ist headless testbar (kein `import pygame` in Logikmodulen). Zeichnen nur in `src/rendering.py`, `src/sprite_render.py`, `src/hud.py`, `src/menus.py`, `src/ui.py`.
-- Neue Felder bekommen **Standardwerte**, die das heutige Verhalten unverändert lassen. Alte Kreaturen ohne neue Felder laufen über den alten Codepfad weiter, bis U1 sie ersetzt.
-- Zeiten in Sekunden, Strecken in Pixeln (= Zellen), Wahrscheinlichkeiten 0–1.
-- Spieltexte als `*_de`-Felder oder Konstanten; Schlüssel `snake_case` ohne Umlaute.
+---
 
-## V1 Verhalten (`src/behaviour.py`)
+## 1. Zielsetzung & Geltungsbereich (Objective)
 
-```python
-STANCES = ("hostile", "neutral", "passive", "trader")
-ABILITY_KEYS = (
-    "graze", "pack", "hunt", "retaliate", "dig", "steal", "split", "flee",
-    "transform", "ranged", "melee", "shield", "reflect", "armor", "summon", "stationary",
-)
+1. **Nahtlose Kombinierbarkeit:** Alle Module (Universums-Generatoren, Kreaturen-KI, Fraktionen, Sprites/Rigging, Werkstatt-Hub, Wirtschaft, Behörden-Fahndung, Boss-Phasen, Klonita-Begleiterin, UI und Persistenz) greifen über explizite, typisierte Python-Schnittstellen (`V0`–`V23`) ohne implizite Annahmen ineinander.
+2. **Bibel-Konformität als Kanon:** Wo bisherige Planungsdokumente oder früherer Bestands-Code von der Design-Bibel abwichen, setzt die Spezifikation die Design-Bibel vollständig durch und definiert in `V0a`–`V0d` explizite Migrations- und Vorab-Entscheidungen.
+3. **100 % Atomare S-Karten:** Jede Aufgabenkarte in den Phasen `A` bis `G` hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien + `1` Testdatei, `0` offene Designfragen).
 
-@dataclass
-class BehaviourContext:
-    world: World
-    player: Body
-    creatures: list[Creature]          # alle lebenden Kreaturen der Welt
-    projectiles: ProjectileSystem
-    rng: random.Random
-    dt: float
-    events: list[tuple[str, dict[str, Any]]]  # Ausgabe; Run verarbeitet sie (V12)
+---
 
-class Ability:
-    key: ClassVar[str]
-    def __init__(self, creature: Creature, params: dict[str, float]) -> None: ...
-    def update(self, ctx: BehaviourContext) -> None: ...          # jedes Bild
-    def on_hurt(self, ctx: BehaviourContext, amount: float,
-                source: tuple[float, float] | None) -> float:     # gibt (veränderten) Schaden zurück
-        return amount
-    def wants_move(self) -> tuple[float, float] | None:           # Zielpunkt oder None
-        return None
+## 2. Tech-Stack & Ausführbare Kommandos
 
-ABILITIES: dict[str, type[Ability]] = {}
-def register(cls: type[Ability]) -> type[Ability]: ...           # Dekorator, trägt cls.key ein
-def build_abilities(creature: Creature) -> list[Ability]: ...     # aus creature.spec
-def update_behaviour(creature: Creature, ctx: BehaviourContext) -> None: ...
-GRAZE_MATERIAL: dict[str, str] = {}   # Kreaturschlüssel -> Materialschlüssel, den sie frisst
+- **Sprache & Laufzeit:** Python `>= 3.12` (verwaltet über `uv`).
+- **Bibliotheken:** `pygame-ce` (`import pygame`), Python-Standardbibliothek (`dataclasses`, `math`, `random`, `json`, `pathlib`, `typing`, `collections`).
+- **Optionaler Beschleuniger:** Rust/PyO3-Kern (`noita_core` in `native/`) mit vollständigem reinem Python-Fallback in [`src/world.py`](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/src/world.py).
+- **Verbindliche Prüfkommandos nach jeder S-Karte:**
+  - Einzeltest zur Karte: `uv run pytest tests/<test_datei>.py -q`
+  - Gesamte Test-Suite: `uv run pytest -q`
+  - Linter & Formatierung: `uv run ruff check src tests tools` und `uv run ruff format --check src tests tools`
+  - Sprite-Generator (für Grafik-Karten): `uv run python -m tools.sprites`
+
+---
+
+## 3. Projektstruktur & Modul-Landkarte
+
+```text
+src/
+├── universes/
+│   ├── model.py          # Universe, Region, RuleEffect, CreatureSpawn, UniverseTheme
+│   ├── catalog.py        # Die 9 Universen (V0a: kanonische probe_*-Keys & Region-Order)
+│   ├── plan.py           # UniversePlan (5-Universen-Abfolge mit 2er-Portalwahl)
+│   └── gen/              # NEU (V9): __init__.py, common.py + 9 Universums-Generatoren
+├── bosses/               # NEU (V16–V17): __init__.py, 9 Endbosse, evil_selves.py, headquarters.py
+├── minigames/            # NEU (V20): __init__.py, physik_o_mat.py, schiessstand.py
+├── behaviour.py          # NEU (V1): BehaviourContext, Ability, 10 Spezialfähigkeiten
+├── pathfind.py           # NEU (V3): A*-Pfadsuche (walk, fly, swim) mit Budget & Cache
+├── factions.py           # NEU (V4): 11 Fraktionen, Hass-Matrix, Blutfehden (grudges)
+├── sprites.py            # NEU (V5): SheetMeta, Animator, JSON-Metadaten-Loader
+├── sprite_render.py      # NEU (V6): SheetCache, blit_frame, glow_points
+├── procbody.py           # NEU (V7): Chain, Legs, Tentacle, PartSpec, PartLayout, ProcRig
+├── weapon_parts.py       # NEU (V8b): Modulare Waffenteile & Slot-Layout
+├── samples.py            # NEU (V11): Sample, SAMPLES (14 Proben), Stapel-Konstanten
+├── events.py             # NEU (V10): 9 Sekundärereignisse (EventSpec, Event)
+├── challenges.py         # NEU (V13): 6 optionale Prüfungen (ChallengeSpec, Challenge)
+├── bot.py                # NEU (V14): Deterministischer Playtest-Bot (run_bot, run_full)
+├── authority.py          # NEU (V15): Wanted (0..5 Sterne), 3 Behörden-Agenten-Typen
+├── workshop.py           # NEU (V18): 640×360-Werkstatt-Hub & 10 Stationen
+├── economy.py            # NEU (V19): Gold-, Preis- und Reroll-Formeln
+├── traders.py            # NEU (V19): 6 Händler-Persönlichkeiten & Sonderregeln
+├── fabricator.py         # NEU (V20): Zauberblock-Herstellung aus Proben + Gold
+├── klonita.py            # NEU (V21): Klonita-Begleiterin (Zustände, 4 Hilfen, 3 Macken)
+├── klonita_lines.py      # NEU (V21): Deutsche Kommentar-Datenbank
+└── (Bestandsmodule)      # world.py, materials.py, enemies.py, player.py, body.py, spells.py,
+                          # loot.py, inventory.py, flask.py, projectiles.py, rules.py,
+                          # records.py, hover.py, hud.py, menus.py, rendering.py, run.py
 ```
 
-Materialien in Parametern immer als **Schlüssel** (nie als ID), weil IDs je Universum wechseln.
+---
 
-Reihenfolge in `update_behaviour`: Haltung prüfen (V1a) → alle `update` → erster nicht-`None` `wants_move` in Reihenfolge von `spec.abilities` bestimmt das Bewegungsziel → Bewegung über `Creature.steer_to(x, y, dt)`.
+## 4. Code-Stil & Namenskonventionen
 
-### V1a Haltung und Aggro
-
-- `Creature.aggro: bool` – greift an. `hostile`: `aggro=True` sobald sie den Spieler sieht. `neutral`: erst nach Treffer an sich oder ihrer Gruppe. `passive`: nie; Treffer setzt `fleeing=True`. `trader`: nie, Treffer → `ctx.events.append(("trader_hurt", {...}))`.
-- `retaliate` ist für alle Haltungen außer `passive` automatisch aktiv (in `build_abilities` ergänzen, wenn nicht genannt).
-
-### V1b Neue Felder in `CreatureSpec` (`src/enemies.py`)
+- **Sprachregel:** Alle Bezeichner (Variablen, Funktionen, Klassen, Dateinamen, Enum-/Dict-Keys für interne Zustände) und Code-Kommentare sind auf **Englisch**. Alle für Spielende sichtbaren Texte (`name`, `subtitle`, `description`, `greeting_de`, Sprechblasen, HUD, Menüs) sowie alle Planungs-/Bibel-Dokumente unter `docs/` sind auf **Deutsch** (mit korrekten Umlauten `ä, ö, ü, ß`).
+- **Typisierung:** Jede Datei beginnt mit `from __future__ import annotations`. Alle öffentlichen Funktionen, Methoden und `@dataclass`-Felder tragen vollständige Typ-Annotationen (`tuple[...]`, `list[...]`, `dict[...]`, `X | None`).
+- **Vorbild-Muster (unveränderliche Spezifikations-Dataclasses + reine Funktionen):**
 
 ```python
-stance: str = "hostile"
-abilities: tuple[str, ...] = ()                      # leer = alter Codepfad
-ability_params: tuple[tuple[str, float], ...] = ()   # z. B. (("dig_hardness", 1), ("split_generations", 2))
-faction: str = "native"                              # V4
-windup: float = 0.4                                  # Ausholen in s, nie < 0.4
-group_size: tuple[int, int] = (1, 1)                 # Spawn in Gruppen
-gold: tuple[int, int] = (0, 0)                       # Gold bei Tod (Rang 1), W2 skaliert
-drops: tuple[tuple[str, float], ...] = ()            # (Gegenstand-/Probenschlüssel, Chance)
-```
+from __future__ import annotations
 
-### V1c Neue Felder in `Creature`
+from dataclasses import dataclass
 
-```python
-state: str = "idle"      # V2
-state_time: float = 0.0
-aggro: bool = False
-fleeing: bool = False
-group_id: int = 0        # gleiche Gruppe teilt Aggro (pack)
-last_hit_from: tuple[float, float] | None = None
-path: list[tuple[int, int]] = []
-abilities: list[Ability]
-def steer_to(self, x: float, y: float, dt: float) -> None: ...   # nutzt _crawl/_fly-Logik
-def hurt(self, amount: float, cause: str = "",
-         source: tuple[float, float] | None = None) -> None: ...  # source = Weltposition des Verursachers
-```
 
-## V2 Zustände und Ausholen
-
-- Zustandsnamen = Sprite-Zustände aus Bibel 01 „Animation“: `idle`, `move`, `windup`, `attack`, `hurt`, `death` + Sonderzustände je Kreatur (z. B. `dig`, `stamp`, `hang`, `latched`, `squash`, `burrow_out`).
-- `Creature.set_state(name: str) -> None` setzt `state` und `state_time = 0`.
-- Jeder Angriff läuft `windup` (Dauer `spec.windup`) → `attack` → zurück zu `idle`/`move`. Schaden entsteht nur beim Übergang `windup → attack`. Funktion: `Creature.begin_attack(kind: str) -> bool` (False, wenn schon im Angriff oder Abklingzeit).
-- `hurt` dauert 0,15 s und unterbricht kein `windup`.
-
-## V3 Wegsuche (`src/pathfind.py`)
-
-```python
-GRID = 4  # px pro Wegsuch-Zelle
-def find_path(world: World, start: tuple[float, float], goal: tuple[float, float],
-              body_w: int, body_h: int, *, flying: bool, max_nodes: int = 3000
-              ) -> list[tuple[int, int]] | None: ...
-class PathFollower:
-    def __init__(self, repath_interval: float = 0.5) -> None: ...
-    def next_waypoint(self, creature: Creature, world: World,
-                      goal: tuple[float, float], dt: float) -> tuple[float, float] | None: ...
-```
-
-- A* auf einem Gitter mit `GRID`-Zellen, 8 Nachbarn. Eine Gitterzelle ist frei, wenn kein Weltpixel im Körperrechteck `mat.BLOCKS_BODY` ist.
-- `flying=False`: Kosten +4 für Zellen ohne Boden darunter (bevorzugt Boden), sonst gleich. Laufende Kreaturen springen, wenn der nächste Wegpunkt höher liegt.
-- Kein Weg innerhalb `max_nodes` → `None`. Nie Ausnahmen.
-
-## V4 Fraktionen (`src/factions.py`)
-
-```python
-PLAYER, NATIVE, AUTHORITY, EVIL_SELF = "player", "native", "authority", "evil_self"
-class Grudges:
-    def add(self, species_a: str, species_b: str) -> None: ...
-    def has(self, species_a: str, species_b: str) -> bool: ...
-    def to_data(self) -> list[list[str]]: ...
-    @classmethod
-    def from_data(cls, data: list[list[str]]) -> Grudges: ...
-def hostile(a: Creature, b: Creature, grudges: Grudges) -> bool: ...
-```
-
-Regeln aus Bibel 02 „Fraktionen“: Einheimische untereinander friedlich außer bei Groll (`Grudges`), Behörde ↔ alle feindlich, böse Ichs eigene Fraktion. `Run.grudges: Grudges` wird gespeichert.
-
-## V5 Sprite-Metadaten und Animation (`src/sprites.py`, headless)
-
-```python
-SPRITE_ROOT = Path("assets/sprites_png")
-LOOPING = frozenset({"idle", "move", "hang", "latched"})
-@dataclass(frozen=True)
-class SheetMeta:
-    key: str
-    frame_w: int
-    frame_h: int
-    anchor: tuple[int, int]
-    hitbox: tuple[int, int, int, int]
-    states: dict[str, tuple[int, int, int]]   # Zustand -> (erstes Frame, Anzahl, fps)
-    glow: dict[int, tuple[tuple[int, int], ...]]  # Frame -> leuchtende Pixel
-def load_meta(path: Path) -> SheetMeta: ...
-def find_meta(category: str, key: str) -> SheetMeta | None: ...   # None, wenn keine Datei
-class Animator:
-    def __init__(self, meta: SheetMeta) -> None: ...
-    def set_state(self, state: str, restart: bool = False) -> None: ...  # unbekannt -> "idle"
-    def update(self, dt: float) -> None: ...
-    @property
-    def frame(self) -> int: ...     # absoluter Frame-Index im Bogen
-    @property
-    def done(self) -> bool: ...     # nicht-schleifender Zustand ist durchgelaufen
-```
-
-JSON-Format wie Bibel 01 „Dateiformat“; zusätzlich `glow` als `{"<frame>": [[x, y], ...]}`.
-
-## V6 Sprite-Zeichnen (`src/sprite_render.py`, pygame)
-
-```python
-class SheetCache:
-    def surface(self, meta: SheetMeta) -> pygame.Surface: ...      # lädt PNG einmal
-def blit_frame(canvas: pygame.Surface, cache: SheetCache, meta: SheetMeta, frame: int,
-               x: int, y: int, flip: bool = False) -> None: ...      # x, y = Weltpixel des Ankers minus Kamera
-def glow_points(meta: SheetMeta, frame: int, x: int, y: int, flip: bool) -> list[tuple[int, int]]: ...
-```
-
-Fehlt ein Bogen (`find_meta` → `None`), zeichnet `rendering.py` wie bisher prozedural. So bleibt das Spiel zu jeder Zeit lauffähig.
-
-## V7 Körper aus Teilen (`src/procbody.py`, headless)
-
-```python
-class Chain:      # Segmente, die dem Kopf folgen (Würmer, Schwänze)
-    def __init__(self, count: int, spacing: float, x: float, y: float) -> None: ...
-    def update(self, head_x: float, head_y: float) -> None: ...
-    points: list[tuple[float, float]]
-class Legs:       # Schrittbeine mit festen Fußpunkten
-    def __init__(self, count: int, length: float, stride: float) -> None: ...
-    def update(self, body_x: float, body_y: float, world: World) -> None: ...
-    feet: list[tuple[float, float]]
-class Tentacle:   # Kette mit Wellenbewegung
-    def __init__(self, count: int, spacing: float, wave: float, speed: float) -> None: ...
-    def update(self, root_x: float, root_y: float, t: float, reach: tuple[float, float] | None) -> None: ...
-    points: list[tuple[float, float]]
-@dataclass(frozen=True)
-class PartLayout:  # welche Teil-Sprites an welchen Punkt kommen
-    key: str
-    parts: tuple[tuple[str, str], ...]   # (Teil-Spritekey, "chain"|"legs"|"tentacle:<i>"|"body")
-```
-
-## V8 Sprite-Quelle (`tools/sprites.py`, Werkzeug)
-
-- Quellformat genau wie Bibel 01 „Dateiformat“ (Python-Datei mit `PALETTE`, `SIZE`, `ANCHOR`, `HITBOX`, `GLOW`, `FPS`, `FRAMES`).
-- Palettennamen → Farben in `tools/palette.py` als `PALETTE: dict[str, str]` (Hex) aus Bibel 01 „Hauptpalette“ plus je Universum die Teilpalette aus Bibel 03 (`PALETTES: dict[str, dict[str, str]]`).
-- Aufruf: `uv run python -m tools.sprites build [<kategorie>[/<key>]]`, `... sheet <kategorie>`, `... check`.
-- Optionale Konstanten der Quelle: `STATIC = True` (kein `move`), `ATTACKS = True` (verlangt `windup`, `attack`), `MOUNT = (x, y)` (Andockpunkt für Waffenteile), `CATEGORY_MIN_STATES` gilt je Kategorie: `ui`, `module`, `waffenteile` brauchen nur `idle`.
-- `check` meldet: falsche Frame-Größe, ungleich lange Zeilen, unbekannte Zeichen, Farbe nicht in Palette, fehlende Pflichtzustände. Exit-Code 1 bei Fehlern.
-
-## V9 Universum-Generator (`src/universes/gen/`)
-
-```python
-# src/universes/gen/__init__.py
-Generator = Callable[[World, Universe, int, random.Random], Level]
-GENERATORS: dict[str, Generator] = {}
-def register(key: str) -> Callable[[Generator], Generator]: ...
-def generate(world: World, universe: Universe, rank: int) -> Level: ...   # nutzt world.rng
-```
-
-`Level` (`src/worldgen.py`) bekommt zusätzlich (mit Standardwerten):
-
-```python
-life_capsule: tuple[int, int] | None = None
-crates: tuple[tuple[int, int], ...] = ()
-gold_piles: tuple[tuple[int, int], ...] = ()
-regions: dict[str, tuple[int, int, int, int]] = field(default_factory=dict)  # Schlüssel -> x, y, b, h
-spawns: tuple[tuple[str, int, int], ...] = ()     # (Kreaturschlüssel, x, y)
-challenge: tuple[int, int] | None = None          # Platz des Auftraggebers
-```
-
-`exit` bleibt der Ankerpunkt, `secret` die Kammer mit dem Erinnerungssplitter, `vault` die Schatzkammer, `arena` die Zwischengegner-Arena (nur auf Bossplätzen).
-
-Gemeinsame Bausteine in `src/universes/gen/common.py` (U0): `carve_oval`, `carve_tunnel`, `ensure_path` (aus `worldgen` weiterverwenden, nicht kopieren), `place_anchor`, `place_secret`, `place_vault`, `place_life_capsule`, `place_crates`, `place_gold`, `place_natives`, `split_regions`.
-
-## V10 Ereignisse (`src/events.py`)
-
-```python
-@dataclass(frozen=True)
-class EventSpec:
-    key: str
-    name_de: str
-    interval: float        # s zwischen Starts
-    duration: float        # s aktiv
-    warn: float = 3.0      # s Ankündigung vor dem Start
-    announce_de: str = ""  # Durchsage/Spruch bei Ankündigung
-class Event:
-    spec: ClassVar[EventSpec]
-    def __init__(self, rank: int) -> None: ...
-    def update(self, run: Run, dt: float) -> None: ...     # Zeitsteuerung, ruft die Haken
-    def on_warn(self, run: Run) -> None: ...
-    def on_start(self, run: Run) -> None: ...
-    def on_tick(self, run: Run, dt: float) -> None: ...
-    def on_end(self, run: Run) -> None: ...
-    def to_data(self) -> dict[str, Any]: ...
-EVENTS: dict[str, type[Event]] = {}
-def register(cls: type[Event]) -> type[Event]: ...
-```
-
-`Run.event: Event | None` entsteht beim Betreten eines Universums aus `Universe.event`.
-
-## V11 Gegenstände, Proben (`src/samples.py`, `src/loot.py`)
-
-```python
-@dataclass(frozen=True)
-class Sample:
-    key: str        # "probe_gallenstein"
-    name_de: str
-    universe: str
-SAMPLES: dict[str, Sample]
-SAMPLE_SLOTS, SAMPLE_STACK = 12, 99
-```
-
-- `Pickup.kind` kennt zusätzlich `"sample"`, `"gold"`, `"life_capsule"`, `"memory_shard"`, `"crate"`, `"blueprint_shard"`, `"badge"`. Bestehende Arten bleiben.
-- `Inventory.samples: list[tuple[str, int] | None]` (12 Plätze), `add_sample(key, n=1) -> bool`, `take_samples(key, n) -> bool`. Speichern über Schlüssel.
-
-## V12 Ereignisbus in `Run`
-
-```python
-def emit(self, name: str, **data: Any) -> None: ...     # ruft _log und alle Hörer
-self.listeners: list[Callable[[str, dict[str, Any]], None]]
-```
-
-Feste Namen (weitere nur per Vertragsänderung): `kill`, `hurt_player`, `pickup`, `sample`, `gold`, `enter_universe`, `leave_universe`, `event_start`, `event_end`, `beat`, `jump`, `trader_hurt`, `trader_killed`, `steal`, `wanted_change`, `boss_phase`, `challenge_done`, `cells_destroyed`.
-Kreatur-Ereignisse aus `BehaviourContext.events` werden 1:1 mit `emit` weitergereicht.
-
-## V13 Herausforderungen (`src/challenges.py`)
-
-```python
 @dataclass(frozen=True)
 class ChallengeSpec:
-    key: str            # "challenge_fleischwelt"
-    universe: str
-    giver: str          # Kreaturschlüssel des Auftraggebers
-    text_de: str
-    goal: int
-    reward: tuple[str, int]   # ("gold", 150) | ("module_rarity", 3) | ("sample", 2) | ("life_capsule", 1) | ...
-class Challenge:
-    def __init__(self, spec: ChallengeSpec) -> None: ...
-    accepted: bool; progress: int; done: bool
-    def on_event(self, name: str, data: dict[str, Any]) -> None: ...   # Hörer an Run.emit
-CHALLENGES: dict[str, type[Challenge]]
+    key: str
+    name: str
+    description: str
+    reward_gold: int
+    reward_samples: int = 2
+    reward_perk: bool = False
+    time_limit: float = 0.0
 ```
 
-## V14 Bot-Lauf (`src/bot.py`, headless)
+---
 
-```python
-@dataclass
-class BotReport:
-    universe: str; rank: int; seed: int
-    crashed: str | None        # Fehlermeldung oder None
-    anchor_reachable: bool     # find_path/ensure_path von spawn zu exit
-    frames: int
-    logic_p99_ms: float
-def run_bot(universe: str, rank: int, seed: int, seconds: float = 30.0, dt: float = 1 / 30) -> BotReport: ...
-```
+## 5. Test-Strategie
 
-Der Bot spielt nicht: Spieler im Gottmodus, folgt dem Weg zum Anker per `find_path(..., flying=True)` und lässt die Welt `seconds` lang laufen. Tests rufen ihn mit kleinen `seconds`.
+- **Headless-Ausführung:** Alle Unit- und Integrations-Tests unter `tests/` laufen ohne Grafikfenster (`SDL_VIDEODRIVER=dummy` bzw. reine Daten-/Oberflächen-Tests).
+- **Determinismus:** Zufallsabhängige Tests übergeben immer ein explizites `random.Random(seed)` oder einen festen `seed: int`.
+- **1-zu-1-Kartenabsicherung:** Jede S-Karte nennt im Feld **Verifikation** einen konkreten `uv run pytest ...`-Befehl mit benannten Testfunktionen, die exakt das neue Verhalten prüfen, sowie den anschließenden Gesamtlauf `uv run pytest -q`.
 
-## V15 Behörde (`src/authority.py`)
+---
 
-```python
-WANTED_MAX = 5.0
-class Wanted:
-    level: float = 0.0
-    destroyed_cells: int = 0
-    def add(self, amount: float, reason: str) -> None: ...     # klemmt 0..5, Run emittiert wanted_change
-    def on_cells_destroyed(self, n: int) -> None: ...          # je 5000 Zellen +0,5
-    def on_workshop(self) -> None: ...                         # -1
-    def agent_count(self) -> int: ...                          # round(level * 2)
-    def to_data(self) -> dict[str, Any]: ...
-AGENT_TYPES = ("agent_streife", "agent_vollstrecker", "agent_drohne")  # Bibel 05 „Behörden-Agenten“
-def spawn_agents(run: Run, count: int) -> list[Creature]: ...
-```
+## 6. Drei-Stufen-Grenzen (Always / Ask First / Never)
 
-Agenten-Auswahl nach Stufe: `agent_streife` ab 1, `agent_drohne` ab 2, `agent_vollstrecker` ab 3 (Bibel 04).
+### Always (Immer ohne Rückfrage ausführen)
+
+- Vor dem Bearbeiten einer S-Karte die in der Karte verlinkte Vertragsdatei unter `docs/plan/vertraege/` und die genannten Zieldateien lesen.
+- Nach jeder Änderung `uv run pytest -q` und `uv run ruff check src tests tools` ausführen.
+- Rückwärtskompatibilität bestehender Signaturen (über Default-Parameter / Keyword-Only-Argumente wie in `EnemyManager.update` oder `Pickup.__post_init__`) wahren, damit kein bestehender Test bricht.
+
+### Ask First (Vorab Rückfrage stellen)
+
+- Änderungen an einer Vertragssignatur in `docs/plan/vertraege/v*.md`, falls sich während der Implementierung ein unvorhergesehener Konflikt zeigt.
+- Hinzufügen neuer Dateien außerhalb der im Plan benannten Modul-Landkarte.
+
+### Never (Niemals tun)
+
+- **Niemals** `pyproject.toml`, `CHANGELOG.md` oder den Rust-Code unter `native/` verändern.
+- **Niemals** `git commit`, `git push` oder destruktive Git-Befehle ohne ausdrücklichen Nutzerwunsch ausführen.
+- **Niemals** bestehende Audio-Events in `Run.events: list[str]` durch das neue Gameplay-Event-System `Run.emit` überschreiben.
+- **Niemals** Platzhalter-Grafiken (einfarbige Rechtecke) in `tools/sprites.py` erzeugen; alle Sprites folgen den Paletten- und Schattierungsregeln aus `V8`.
+
+---
+
+## 7. Vertrags-Index (`V0` bis `V23`)
+
+Jede Vertragsdatei ist unter `10 KB` groß und definiert alle Typen, Signaturen, Konstanten und Invarianten ihres Teilbereichs:
+
+| Datei | Enthaltene Verträge | Abgedeckte Module & Schnittstellen |
+| --- | --- | --- |
+| [v00-migration-und-schluessel.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v00-migration-und-schluessel.md) | `V0a`, `V0b`, `V0c`, `V0d` | Kanonische `probe_*`-Keys & `Region.key`-Reihenfolge in `src/universes/catalog.py`; `Block.rarity_tier` (`1..3`) in `src/spells.py`; `World.take_destroyed_cells()` & `gold_vein` in `src/world.py`; Vorab-Entscheidungen (`blattlaus` → `"zucker"` + Honig-Drop, `krypta`-Strömung, `glow`-JSON-Schema, `tuersteherpilz`-Bestechung, `moenchsfisch`-Chor) |
+| [v01-verhalten-und-wegsuche.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v01-verhalten-und-wegsuche.md) | `V1`, `V1a`, `V1b`, `V1c`, `V2`, `V3`, `V4`, `V4b` | `src/behaviour.py` (`BehaviourContext`, `Ability`, 10 Fähigkeiten); 4 Haltungen (`peaceful`, `shy`, `territorial`, `hostile`); erweiterte `CreatureSpec` & `Creature` + abwärtskompatibles `EnemyManager.update`; Zustandsmaschine & Telegrafie; `src/pathfind.py` (A*); `src/factions.py` (11 Fraktionen & Blutfehden); alle Status-Timer auf `Body` & alle 15 Flaschen-Trinkeffekte in `src/flask.py` |
+| [v05-sprites-und-teile.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v05-sprites-und-teile.md) | `V5`, `V6`, `V7`, `V8`, `V8b` | `src/sprites.py` (`SheetMeta`, `Animator`); `src/sprite_render.py` (`SheetCache`, `blit_frame`, `glow_points`); `src/procbody.py` (`Chain`, `Legs`, `Tentacle`, `PartSpec`, `PartLayout`, `ProcRig`); `tools/palette.py` & `tools/sprites.py`; `src/weapon_parts.py` (`WeaponPartPlacement`, `parts_for`, `layout_for`) |
+| [v09-universen-und-ereignisse.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v09-universen-und-ereignisse.md) | `V9`, `V10`, `V13`, `V14` | `Level`-Erweiterung (inkl. `(x0, y0, x1, y1)`-Konvention & `Run._mirror_level`), `src/universes/gen/__init__.py` & `common.py` (inkl. `"top_split"` & `"islands"`); `src/events.py` (9 Sekundärereignisse); `src/challenges.py` (6 Prüfungen); `src/bot.py` (`BotReport`, `run_bot`, `run_full`) |
+| [v11-gegenstaende-und-ereignisbus.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md) | `V11`, `V12` | `src/samples.py` (`Sample`, `SAMPLES`, 14 Proben), Proben-Slots in `src/inventory.py`, vereinheitlichtes `Pickup` (`kind`, `item_key`, `amount`) in `src/loot.py`; `Run.emit(name, **data)` & vollständige Payload-Tabelle aller 24 Gameplay-Ereignisse |
+| [v15-behoerde-und-bosse.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v15-behoerde-und-bosse.md) | `V15`, `V16`, `V17` | `src/authority.py` (`Wanted`, `0..5` Sterne, 3 Agenten-Spezies, `spawn_agents`); `src/bosses/__init__.py` (`BossPhase`, `BossScript`, 3- und 4-Phasen-Schwellen, 9 Universums-Endbosse); `src/bosses/evil_selves.py` (3 Böse Ichs, Signatur-Stäbe, Kaiserin-Handel) & `src/bosses/headquarters.py` (3-stufiges Hauptquartier & `"ober_cloita"`) |
+| [v18-werkstatt-und-wirtschaft.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md) | `V18`, `V19`, `V20` | `src/workshop.py` (`640×360`-Hub & alle 10 Stationen `ws_portal`..`ws_workbench`); `src/economy.py` (Gold- & Preisformeln) & `src/traders.py` (6 Händler inkl. Sonderregeln: Magen, +10G Gebühr, Glibber, Ameisen-Proben-Tausch, DJ-Taktpflicht, Küster-Segen); `src/fabricator.py` & `src/minigames/` (4 Physik-o-Mat-Rätsel + Schießstand) |
+| [v21-klonita-ui-und-speichern.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v21-klonita-ui-und-speichern.md) | `V21`, `V22`, `V23` | `src/klonita.py` & `src/klonita_lines.py` (Zustände, `[K]`-Toggle, 5 Auto-Trigger, 4 Hilfen, 3 Macken); `SpeechBubble`, HUD-Erweiterung, 5 neue Menü-Modi, Hover-Infos; `Records`-Erweiterung, Rang-Formel, rückwärtskompatibles Live-Save-Schema & `MODULE_ALIASES`/`PERK_ALIASES` |
+
+---
+
+## 8. Fähigkeits-Landkarte & Phasen-Zuordnung (Capability Map)
+
+| Phase | Datei | Kern-Fähigkeiten | Benötigte Verträge |
+| --- | --- | --- | --- |
+| **Phase A** | [phase-a-fundament.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-a-fundament.md) | Vorab-Migration (`V0a`–`V0d`), Proben & Pickup-Vereinheitlichung, Ereignisbus, Status-Timer & 15 Flascheneffekte, Pfadsuche, Fraktionen, Verhaltens-Fähigkeiten, Kreaturen-Zustandsmaschine, Sprite-/Animator-/Prozedural-Rig-Fundament | `V0a`–`V0d`, `V1`–`V8b`, `V11`, `V12` |
+| **Phase B** | [phase-b-grafik.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-b-grafik.md) | Farbpaletten & Zeichen-Primitiven, Charakter-/Begleiter-/Agenten-/Händler-Sprites, alle 36 Kreaturen-Sheets (in 3er-Packs), 18 Bosse, 10 Waffenteile, 35 Zauber-Icons (in 7er-Packs), 28 Gegenstands-Icons (in 7er-Packs), 26 Umgebungs-Props (in 6er/7er-Packs), 12 Partikel-Sheets, Renderer-Anbindung | `V5`–`V8b`, `V11`, `V18` |
+| **Phase C** | [phase-c-kreaturen.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-c-kreaturen.md) | Alle 36 regulären Kreaturen (je 4 pro Universum), 9 Zwischenbosse, 9 Endboss-Grundkörper, 3 Behörden-Agenten, 3 Böse Ichs, Ober-Cloita, Projektil-Sonderformen & Kreaturen-Interaktionen (Bestechung, Blattlaus-Melken, Chor) | `V0d`, `V1`–`V4b`, `V15`–`V17` |
+| **Phase D** | [phase-d-universen.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-d-universen.md) | `Level`-Erweiterung & Generator-Hilfen (`common.py`), alle 9 Universums-Generatoren (je 3 Regionen + Boss-Arenen + Schrein/Händler-Nische), Weltregel-Erweiterungen (Strömung, Takt, Rutschigkeit, Sprung-Luftkosten), 9 Sekundärereignisse, 6 Prüfungen, Playtest-Bot | `V0a`, `V0d`, `V9`, `V10`, `V13`, `V14` |
+| **Phase E** | [phase-e-werkstatt.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-e-werkstatt.md) | `640×360`-Werkstatt-Generator & 10 Stationen, Wirtschaft & Gold-Drops, 6 Händler mit allen Sonderregeln, Fabrikator, 4 Physik-o-Mat-Rätsel + Schießstand, Portal-Auswahl-, Fabrikator- & Händler-Menüs, Werkstatt-Ablauf in `Run` | `V11`, `V12`, `V18`–`V20`, `V22` |
+| **Phase F** | [phase-f-behoerde-bosse-klonita.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-f-behoerde-bosse-klonita.md) | Fahndungslevel & Agenten-Spawns, mehrphasige Boss-Skripte für alle 9 Endbosse (in atomaren 3er-Paketen), Begegnungen mit den 3 Bösen Ichs (inkl. Kaiserin-Handel), 3-stufiges Hauptquartier & Wahres Ende, Klonita-Begleiterin & Sprechblasen | `V12`, `V15`–`V17`, `V21`, `V22` |
+| **Phase G** | [phase-g-abnahme.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-g-abnahme.md) | HUD-Erweiterung (Gold, Sterne, Proben, Event-Banner), Entdeckungs-Archiv (5 Reiter), Hover-Infos, vollständige Save/Load-Serialisierung & Alias-Tabellen, Rang-Abrechnung, Bot-Vollabnahme über alle 9 Universen | `V14`, `V22`, `V23` |
+
+---
+
+## 9. Erfolgskriterien (Success Criteria)
+
+1. Jede Schnittstelle zwischen `src/`-Modulen ist in `docs/plan/vertraege/v*.md` mit exakten Feldnamen, Typen und Rückgabewerten spezifiziert.
+2. Alle 4 vormals widersprüchlichen Bestands-Stellen (`V0a` Sample-/Regions-Keys, `V0b` `Block.rarity_tier`, `V0c` `World.take_destroyed_cells`, `V11`/`V23` `Pickup` & `Records.discover`) haben rückwärtskompatible Verträge.
+3. Jede Mechanik aus `docs/bibel/` (alle 15 Trank-Effekte, alle 6 Händler-Eigenheiten, alle 10 Verhaltens-Fähigkeiten, Kreaturen-Sonderinteraktionen, 3 Böse Ichs + Kaiserin-Handel, 3-stufiges Hauptquartier) ist vertraglich abgedeckt.
+4. Keine Aufgabenkarte in den Phasen `A` bis `G` überschreitet die Größe **S** (`<= 60–80` Zeilen Code-Änderung, `1–2` Zieldateien + Test, `< 15 KB` zu lesender Kontext).
