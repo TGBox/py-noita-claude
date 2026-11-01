@@ -2,7 +2,8 @@
 
 ## SemVer v1.7.1
 
-- 2026-11-01 (9f29bb9): feat: add critique document from claude review
+- 2026-11-01 (957a8d6): fix: fix markdownlint error in changelog
+- 2026-11-01 (6ffcc6c): feat: add critique document from claude review
 
 ## SemVer v1.7.0
 
