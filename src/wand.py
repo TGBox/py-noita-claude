@@ -24,7 +24,7 @@ class WandSpec:
     """Static description of a wand (an augmentation)."""
 
     name_de: str
-    blocks: tuple[str, ...]
+    blocks: tuple[str, ...] | int = ()
     mana_max: float = 150.0
     mana_regen: float = 50.0  # per second
     cast_delay: float = 0.15  # seconds between casts
@@ -33,6 +33,12 @@ class WandSpec:
     casts: int = 1  # groups drawn per cast ("Zauber pro Wurf")
     shuffle: bool = False  # reshuffle the deck on every recharge
     capacity: int = 0  # number of slots; 0 means exactly as many as blocks
+
+    def __post_init__(self) -> None:
+        if isinstance(self.blocks, int):
+            if not self.capacity:
+                object.__setattr__(self, "capacity", self.blocks)
+            object.__setattr__(self, "blocks", ())
 
 
 @dataclass
@@ -143,11 +149,22 @@ class _Draw:
 class Wand:
     """Runtime state of one wand: deck position, mana and timers."""
 
-    def __init__(self, spec: WandSpec, rng: random.Random | None = None) -> None:
+    def __init__(self, spec: WandSpec, rng: random.Random | list[str | None] | None = None) -> None:
         self.spec = spec
+        initial_slots: list[str | None] | None = None
+        if isinstance(rng, list):
+            initial_slots = rng
+            rng = None
         self.rng = rng or random.Random()
-        capacity = max(spec.capacity, len(spec.blocks))
-        self.slots: list[str | None] = [*spec.blocks, *[None] * (capacity - len(spec.blocks))]
+        blocks_tuple = spec.blocks if isinstance(spec.blocks, tuple) else ()
+        capacity = max(spec.capacity, len(blocks_tuple), len(initial_slots or ()))
+        if initial_slots is not None:
+            self.slots: list[str | None] = [
+                *initial_slots,
+                *[None] * (capacity - len(initial_slots)),
+            ]
+        else:
+            self.slots = [*blocks_tuple, *[None] * (capacity - len(blocks_tuple))]
         self.mana = spec.mana_max
         self.cooldown = 0.0
         self.recharge_left = 0.0
@@ -175,9 +192,7 @@ class Wand:
             left.setdefault(block.key, []).append(charge)
         self.slots = list(slots)
         self.blocks: tuple[Block, ...] = tuple(CATALOG[k] for k in self.slots if k is not None)
-        self.charges = [
-            left[b.key].pop(0) if left.get(b.key) else b.uses for b in self.blocks
-        ]
+        self.charges = [left[b.key].pop(0) if left.get(b.key) else b.uses for b in self.blocks]
         self.order = list(range(len(self.blocks)))
         if self.spec.shuffle:
             self.rng.shuffle(self.order)

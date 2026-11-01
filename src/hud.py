@@ -117,7 +117,9 @@ class Hud:
             self._outcome(screen, state, s)
             return
         if state.prompt:
-            ui.text(screen, state.prompt, (centre_x, y0 + height * 0.64), round(19 * s), anchor="center")
+            ui.text(
+                screen, state.prompt, (centre_x, y0 + height * 0.64), round(19 * s), anchor="center"
+            )
         if state.notice:
             ui.text(screen, state.notice, (centre_x, y0 + height * 0.36), round(20 * s), ui.GOLD,
                     heading=True, anchor="center")  # fmt: skip
@@ -160,24 +162,34 @@ class Hud:
                     anchor="center")  # fmt: skip
             cx += w + round(5 * s)
         if not chips and state.eyes:
-            ui.text(screen, f"Uraugen: {state.eyes}", (x + round(10 * s), cy), round(13 * s), ui.DIM)
+            ui.text(
+                screen, f"Uraugen: {state.eyes}", (x + round(10 * s), cy), round(13 * s), ui.DIM
+            )
 
-    def _rule_panel(self, screen: pygame.Surface, state: HudState, right: int, y: int, s: float) -> None:
+    def _rule_panel(
+        self, screen: pygame.Surface, state: HudState, right: int, y: int, s: float
+    ) -> None:
         width = round(270 * s)
         rows = 2 if state.breath is not None else 1
         height = round((8 + 18 * rows) * s)
         x = right - width
         ui.panel(screen, (x, y, width, height), alpha=190)
-        ui.text(screen, state.rule_line, (x + round(10 * s), y + round(5 * s)), round(13 * s), ui.GOLD)
+        ui.text(
+            screen, state.rule_line, (x + round(10 * s), y + round(5 * s)), round(13 * s), ui.GOLD
+        )
         if state.beat > 0:
             radius = max(2, round((3 + 3 * state.beat) * s))
-            pygame.draw.circle(screen, ui.GOLD, (x + width - round(16 * s), y + round(13 * s)), radius)
+            pygame.draw.circle(
+                screen, ui.GOLD, (x + width - round(16 * s), y + round(13 * s)), radius
+            )
         if state.breath is not None:
             bar = (x + round(52 * s), y + round(26 * s), width - round(64 * s), round(8 * s))
             ui.text(screen, "Atem", (x + round(10 * s), y + round(22 * s)), round(12 * s), ui.DIM)
             ui.bar(screen, bar, state.breath, (120, 190, 230))
 
-    def _depth_panel(self, screen: pygame.Surface, state: HudState, right: int, y: int, s: float) -> int:
+    def _depth_panel(
+        self, screen: pygame.Surface, state: HudState, right: int, y: int, s: float
+    ) -> int:
         width = round(270 * s)
         perk_rows = (len(state.perks) + 1) // 2
         height = round((52 + 17 * perk_rows) * s) + (round(6 * s) if perk_rows else 0)
@@ -205,7 +217,9 @@ class Hud:
             ui.text(screen, name, (cx + round(14 * s), cy), round(13 * s))
         return y + height
 
-    def _boss_bar(self, screen: pygame.Surface, viewport: Viewport, boss: Creature, s: float) -> None:
+    def _boss_bar(
+        self, screen: pygame.Surface, viewport: Viewport, boss: Creature, s: float
+    ) -> None:
         width = int(viewport.target_width * 0.42)
         x = viewport.offset_x + (viewport.target_width - width) // 2
         y = viewport.offset_y + round(34 * s)
@@ -213,7 +227,9 @@ class Hud:
                 heading=True, anchor="midbottom")  # fmt: skip
         ui.bar(screen, (x, y, width, round(12 * s)), boss.hp / boss.max_hp, ui.ACCENT)
 
-    def _wand_panel(self, screen: pygame.Surface, inventory: Inventory, left: int, bottom: int, s: float) -> None:
+    def _wand_panel(
+        self, screen: pygame.Surface, inventory: Inventory, left: int, bottom: int, s: float
+    ) -> None:
         wand = inventory.wand
         slot = round(SLOT * s)
         gap = round(3 * s)
@@ -263,7 +279,9 @@ class Hud:
                 ui.text(screen, str(left_charges), (rect.right - 2, rect.bottom), round(12 * s), color,
                         bold=True, anchor="bottomright")  # fmt: skip
 
-    def _flask_panel(self, screen: pygame.Surface, state: HudState, right: int, bottom: int, s: float) -> None:
+    def _flask_panel(
+        self, screen: pygame.Surface, state: HudState, right: int, bottom: int, s: float
+    ) -> None:
         flasks = list(state.flasks)
         size = round(24 * s)
         gap = round(8 * s)
@@ -272,13 +290,17 @@ class Hud:
         x, y = right - width, bottom - height
         ui.panel(screen, (x, y, width, height), alpha=205)
         for index, flask in enumerate(flasks):
-            rect = pygame.Rect(x + round(12 * s) + index * (size + gap), y + round(10 * s), size, round(32 * s))
+            rect = pygame.Rect(
+                x + round(12 * s) + index * (size + gap), y + round(10 * s), size, round(32 * s)
+            )
             draw_flask_icon(screen, rect, flask, index == state.flask_index)
         active = state.flask
         label = active.label_de if active is not None else "Keine Phiole"
         ui.text(screen, label, (x + round(10 * s), y + height - round(24 * s)), round(14 * s))
 
-    def _sandbox_panel(self, screen: pygame.Surface, state: HudState, x: int, y: int, s: float) -> None:
+    def _sandbox_panel(
+        self, screen: pygame.Surface, state: HudState, x: int, y: int, s: float
+    ) -> None:
         lines = list(state.sandbox_lines)
         row = round(16 * s)
         width = round(370 * s)
@@ -326,7 +348,11 @@ class Hud:
         screen.blit(frame, (viewport.offset_x, viewport.offset_y))
 
     def draw_floaters(
-        self, screen: pygame.Surface, viewport: Viewport, floaters: list[Floater], cam: tuple[int, int]
+        self,
+        screen: pygame.Surface,
+        viewport: Viewport,
+        floaters: list[Floater],
+        cam: tuple[int, int],
     ) -> None:
         """Damage numbers in screen space (crisp text at any window size)."""
         size = round(17 * ui.scale_of(screen))
@@ -361,4 +387,37 @@ def draw_flask_icon(screen: pygame.Surface, rect: pygame.Rect, flask: Flask, act
         pygame.draw.line(screen, light, (body.x + 2, top), (body.right - 3, top))
     pygame.draw.rect(screen, GLASS, body, 1)
     pygame.draw.rect(screen, GLASS, neck, 1)
-    pygame.draw.line(screen, (255, 255, 255), (body.x + 3, body.y + 3), (body.x + 3, body.y + body.height // 2))
+    pygame.draw.line(
+        screen, (255, 255, 255), (body.x + 3, body.y + 3), (body.x + 3, body.y + body.height // 2)
+    )
+
+
+@dataclass
+class SpeechBubble:
+    """Floating speech bubble above a speaker in world coordinates (Contract V21, Card G02)."""
+
+    speaker: str
+    text: str
+    world_x: float
+    world_y: float
+    remaining: float = 2.8
+
+
+def draw_speech_bubbles(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    bubbles: list[SpeechBubble],
+    cam_x: float,
+    cam_y: float,
+) -> None:
+    """Render active speech bubbles onto ``surface`` (Card G02)."""
+    raise NotImplementedError("Card G02")
+
+
+def draw_boss_banner(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    banner: tuple[str, float] | None,
+) -> None:
+    """Render boss phase banner onto ``surface`` (Card G02)."""
+    raise NotImplementedError("Card G02")

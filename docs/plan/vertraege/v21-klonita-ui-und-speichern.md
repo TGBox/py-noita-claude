@@ -1,6 +1,6 @@
 # Verträge V21–V23: Klonita, UI/Menüs/Sprechblasen & Speicher-/Archiv-Schema
 
-> Teil des Vertrags-Index [vertraege.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege.md). Kanonische Quellen: [docs/bibel/03-klonita-und-ton.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/bibel/03-klonita-und-ton.md), [docs/bibel/07-ui-und-progression.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/bibel/07-ui-und-progression.md).
+> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quellen: [docs/bibel/03-klonita-und-ton.md](../../bibel/03-klonita-und-ton.md), [docs/bibel/07-ui-und-progression.md](../../bibel/07-ui-und-progression.md).
 
 ---
 

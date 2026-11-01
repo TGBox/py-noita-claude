@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src import materials as mat
 from src.depths import DEPTHS, Depth
@@ -29,10 +29,18 @@ class Level:
     """Where things are in a generated level."""
 
     spawn: tuple[int, int]  # player top-left
-    exit: tuple[int, int]  # centre of the way down
-    arena: tuple[int, int] | None  # centre of the boss chamber, if any
-    secret: tuple[int, int] | None = None  # centre of the sealed chamber with an Urauge
-    vault: tuple[int, int] | None = None  # centre of the bone-sealed treasure vault
+    exit: tuple[int, int] = (0, 0)  # centre of the way down
+    arena: tuple[int, int] | None = None  # boss chamber centre (None if no boss)
+    secret: tuple[int, int] | None = None  # sealed chamber with an Urauge
+    vault: tuple[int, int] | None = None  # bone-sealed treasure vault
+    exit_point: tuple[int, int] = (0, 0)  # canonical exit coordinate alias (Contract V9)
+    universe_key: str = "schrott"
+    mid_boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)
+    boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)
+    trader_nook: tuple[int, int, int, int] | None = None
+    challenge_shrine: tuple[int, int, int, int] | None = None
+    regions: list[tuple[str, tuple[int, int, int, int]]] = field(default_factory=list)
+    destructible_props: list[tuple[str, int, int]] = field(default_factory=list)
 
 
 def generate_world(world: World) -> tuple[int, int]:
@@ -290,8 +298,9 @@ def _connections(world: World, nodes: list[tuple[int, int]]) -> list[tuple]:
     while remaining:
         a, b = min(
             ((a, b) for a in connected for b in remaining),
-            key=lambda e: (nodes[e[0]][0] - nodes[e[1]][0]) ** 2
-            + (nodes[e[0]][1] - nodes[e[1]][1]) ** 2,
+            key=lambda e: (
+                (nodes[e[0]][0] - nodes[e[1]][0]) ** 2 + (nodes[e[0]][1] - nodes[e[1]][1]) ** 2
+            ),
         )
         edges.append((nodes[a], nodes[b]))
         connected.append(b)
@@ -343,8 +352,7 @@ def _carve_tunnel(
 def _in_spawn_zone(world: World, x: int, y: int) -> bool:
     centre_x = world.width // 2
     return (
-        abs(x - centre_x) < SPAWN_HALF_WIDTH + SPAWN_CLEARANCE
-        and y < SPAWN_FLOOR + SPAWN_CLEARANCE
+        abs(x - centre_x) < SPAWN_HALF_WIDTH + SPAWN_CLEARANCE and y < SPAWN_FLOOR + SPAWN_CLEARANCE
     )
 
 

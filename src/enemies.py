@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
+from typing import Any
 
 from src import materials as mat
 from src.body import ENEMY_TEAM, Body
@@ -54,6 +55,17 @@ class CreatureSpec:
     ignites: bool = False  # sets its splash on fire when destroyed
     burrows: int = 0  # >0: digs through solid tissue with this radius as it moves
     inhale: float = 0.0  # >0: periodically sucks the player in (px/s) and breathes out spores
+    stance: str = "hostile"  # "hostile" | "territorial" | "curious" | "fearful" | "peaceful"
+    faction: str = "wildnis"  # faction key from src.factions.FACTIONS
+    abilities: tuple[Any, ...] = ()  # Ability entries from src.behaviour
+    windup_time: float = 0.25
+    recover_time: float = 0.20
+    weak_material: str = ""
+    resist_material: str = ""
+    drops_sample: str = ""
+    sample_chance: float = 0.35
+    is_mid_boss: bool = False
+    is_boss: bool = False
 
 
 MAGGOT = CreatureSpec(
@@ -175,6 +187,14 @@ SPECIES: dict[str, CreatureSpec] = {
         TALLOW_SAC, ACID_SAC, SPORE_SAC, BONE_EATER, BREATH, SHAPESHIFTER,
     )
 }  # fmt: skip
+for _alias, _target_spec in (
+    ("beetle", MAGGOT),
+    ("moth", SWARMER),
+    ("imp", EMBER_MAGGOT),
+    ("leech", LEECH),
+    ("golem", MUCUS_CRAWLER),
+):
+    SPECIES.setdefault(_alias, _target_spec)
 
 MELEE_REACH = 2  # px around the body that counts as touching
 WANDER_PAUSE = 0.35  # chance that a new wander leg is a pause
@@ -214,9 +234,28 @@ class Creature(Body):
         self.flash_cooldown = 0.0
         self.stagger = 0.0  # seconds it tumbles helplessly after a kick or blast
         self.inhaling = False
+        self.species: str = spec.key
+        self.stance: str = spec.stance
+        self.state: str = "idle"
+        self.state_timer: float = 0.0
+        self.aggro: bool = False
+        self.group_id: int = 0
+        self.home: tuple[float, float] = (float(x), float(y))
+        self.generation: int = 0
+        self.carrying: str = ""
+        self.morphed: bool = False
+        self.bribed: bool = False
+        self.giver: bool = False
+        self.ability_cooldowns: dict[str, float] = {}
+        self.path_cache: Any = None
+        self.anim_state: str = "idle"
+        self.anim_time: float = 0.0
+        self.pending_shot: tuple[float, float] | None = None
         self.attacks = [
             Wand(
-                WandSpec(spec.name_de, blocks, mana_max=1e9, mana_regen=1e9, cast_delay=0, recharge=0),
+                WandSpec(
+                    spec.name_de, blocks, mana_max=1e9, mana_regen=1e9, cast_delay=0, recharge=0
+                ),
                 rng,
             )
             for blocks in spec.patterns
@@ -235,9 +274,7 @@ class Creature(Body):
             self.alerted = True
         super().hurt(amount, cause)
 
-    def update(
-        self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
-    ) -> None:
+    def update(self, world: World, dt: float, player: Body, projectiles: ProjectileSystem) -> None:
         if self.dead:
             return
         self.age += dt
@@ -411,14 +448,34 @@ class EnemyManager:
     def alive(self) -> list[Creature]:
         return [c for c in self.creatures if not c.dead]
 
+    def spawn(self, species: str, x: float, y: float) -> Creature:
+        """Spawn a creature of ``species`` at (x, y) and append to self.creatures."""
+        spec = SPECIES.get(species, MAGGOT)
+        c = Creature(spec, round(x), round(y), random.Random())
+        c.species = species
+        self.creatures.append(c)
+        return c
+
     def update(
         self,
-        world: World,
-        dt: float,
+        world_or_dt: World | float,
+        dt_or_world: float | World,
         player: Body,
-        projectiles: ProjectileSystem,
-        area: Rect,
+        projectiles: ProjectileSystem | list[Any],
+        area: Rect | None = None,
+        *,
+        grudges: set[tuple[str, str]] | None = None,
+        on_beat: bool = True,
+        out_events: list[tuple[str, dict[str, Any]]] | None = None,
     ) -> list[Creature]:
+        if isinstance(world_or_dt, (int, float)):
+            dt = float(world_or_dt)
+            world = dt_or_world  # type: ignore[assignment]
+        else:
+            world = world_or_dt
+            dt = float(dt_or_world)  # type: ignore[arg-type]
+        if area is None:
+            area = (0, 0, world.width, world.height)
         """Update creatures inside ``area``; returns the ones that died this update."""
         x0, y0, x1, y1 = area
         for creature in self.creatures:
@@ -526,3 +583,24 @@ def populate(
             creatures.append(Creature(spec, left, top, rng))
             placed += 1
     return creatures
+
+
+def evaluate_stance(
+    creature: Creature,
+    player: Body,
+    all_creatures: list[Creature],
+    *,
+    stance_override: str | None = None,
+) -> bool:
+    """Evaluate whether ``creature`` should attack ``player`` under its stance (Card A14)."""
+    raise NotImplementedError("Card A14")
+
+
+def begin_attack(creature: Creature, target_xy: tuple[float, float]) -> None:
+    """Enter windup state before firing at ``target_xy`` (Card A15)."""
+    raise NotImplementedError("Card A15")
+
+
+def poll_attack_ready(creature: Creature, dt: float) -> tuple[float, float] | None:
+    """Advance attack telegraph timer; return target_xy when ready to fire (Card A15)."""
+    raise NotImplementedError("Card A15")

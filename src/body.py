@@ -46,6 +46,19 @@ class Body:
         self.step_up = 0
         self.place(x, y)
 
+    @property
+    def body(self) -> Body:
+        """Compatibility alias so both entity.hp and entity.body.hp resolve to this Body."""
+        return self
+
+    def step_timers(self, dt: float, world: World) -> None:
+        """Advance all status effect timers on this Body by dt seconds (Card A08)."""
+        raise NotImplementedError("Card A08")
+
+    def take_damage(self, amount: float, cause: str = "") -> None:
+        """Apply damage taking status multipliers (e.g. stamped_bad) into account (Card A08)."""
+        self.hurt(amount, cause)
+
     def place(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
@@ -59,6 +72,16 @@ class Body:
         self.oily = 0.0  # soaked in tallow: burns longer and hotter
         self.slimed = 0.0  # covered in mucus: still slowed for a moment
         self.poisoned = 0.0  # festering after touching pus
+        self.chilled = 0.0  # slowed by cold aura/effects (Contract V4b)
+        self.regen = 0.0  # healing over time timer (Contract V4b)
+        self.drunk = 0.0  # wobbly movement + aim spread (Contract V4b, Card A08)
+        self.sticky = 0.0  # slowed run and jump (Contract V4b, Card A08)
+        self.stamped_good = 0.0  # authority pass & shop discount (Contract V4b, Card A08)
+        self.stamped_bad = 0.0  # +25% incoming damage taken (Contract V4b, Card A08)
+        self.marked_time = 0.0  # targeted by nearby enemies (Contract V4b, Card A08)
+        self.frozen = 0.0  # immobilized (Contract V4b, Card A08)
+        self.charged = 0.0  # electric discharge in liquid (Contract V4b, Card A08)
+        self.befogged = 0.0  # reduced sight radius (Contract V4b, Card A08)
         self._flame_timer = 0.0
         self._ignite_grace = 0.0
         self._rx = 0.0
@@ -117,7 +140,10 @@ class Body:
     def in_mucus(self, world: World) -> bool:
         """Centre or feet stuck in mucus."""
         cx = self.x + self.width // 2
-        return mat.MUCUS in (world.get(cx, self.y + self.height // 2), world.get(cx, self.y + self.height - 1))
+        return mat.MUCUS in (
+            world.get(cx, self.y + self.height // 2),
+            world.get(cx, self.y + self.height - 1),
+        )
 
     def move(self, world: World, dt: float) -> None:
         """Move by the current velocity and update ``on_ground``."""

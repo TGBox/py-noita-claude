@@ -59,7 +59,17 @@ class World:
         self.rng = random.Random(seed)
         self.frame = 0
         self._core: Core | None = None
+        self._destroyed_cells: int = 0
+        self._destroyed_gold_vein_cells: int = 0
         self.reload(width, height)
+
+    def take_destroyed_cells(self) -> int:
+        """Return and reset count of destroyed solid cells since last call (Card A03)."""
+        raise NotImplementedError("Card A03")
+
+    def take_destroyed_gold_vein_cells(self) -> int:
+        """Return and reset count of destroyed gold_vein cells since last call (Card A03)."""
+        raise NotImplementedError("Card A03")
 
     def reload(self, width: int | None = None, height: int | None = None) -> None:
         """New buffers (optionally another size) and a core for the active material set.
@@ -176,6 +186,16 @@ class World:
         self.wake(x, y)
         return True
 
+    def set(self, x: int, y: int, material: int, *, force: bool = False) -> bool:
+        """Compatibility alias for set_cell(x, y, material)."""
+        return self.set_cell(x, y, material, force=force)
+
+    def fill_rect(self, x0: int, y0: int, x1: int, y1: int, material: int) -> None:
+        """Fill axis-aligned rectangle [x0..x1, y0..y1) with material."""
+        for yy in range(max(0, y0), min(self.height, y1)):
+            for xx in range(max(0, x0), min(self.width, x1)):
+                self.set_cell(xx, yy, material)
+
     def fill_disc(self, cx: int, cy: int, radius: int, material: int) -> None:
         """Fast raw disc fill for world generation (no waking, bedrock frame kept)."""
         w, h = self.width, self.height
@@ -260,7 +280,11 @@ class World:
         charged = 0
         for dx, dy in disc_offsets(radius):
             x, y = cx + dx, cy + dy
-            if 0 <= x < self.width and 0 <= y < self.height and self.grid[y * self.width + x] == mat.SINEW:
+            if (
+                0 <= x < self.width
+                and 0 <= y < self.height
+                and self.grid[y * self.width + x] == mat.SINEW
+            ):
                 self.set_cell(x, y, mat.SPARK, force=True)
                 charged += 1
         return charged

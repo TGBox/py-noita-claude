@@ -9,7 +9,13 @@ from src.wand import Wand, WandSpec
 
 MAX_WANDS = 4
 # (key, German label) of the ways the bag can be sorted
-SORT_MODES = (("art", "Art"), ("schaden", "Schaden"), ("mana", "Mana"), ("name", "Name"), ("anzahl", "Anzahl"))
+SORT_MODES = (
+    ("art", "Art"),
+    ("schaden", "Schaden"),
+    ("mana", "Mana"),
+    ("name", "Name"),
+    ("anzahl", "Anzahl"),
+)
 BAG_SIZE = 48  # 4 rows of 12 in the inventory screen; equal blocks stack in one slot
 
 
@@ -23,12 +29,31 @@ class SlotRef:
 
 
 class Inventory:
-    def __init__(self, wands: list[WandSpec], rng: random.Random | None = None) -> None:
+    def __init__(
+        self, wands: list[WandSpec] | None = None, rng: random.Random | None = None
+    ) -> None:
         self.rng = rng or random.Random()
-        self.wands: list[Wand] = [Wand(spec, self.rng) for spec in wands[:MAX_WANDS]]
+        self.wands: list[Wand] = [Wand(spec, self.rng) for spec in (wands or [])[:MAX_WANDS]]
         self.bag: list[str | None] = [None] * BAG_SIZE
         self.counts: list[int] = [0] * BAG_SIZE  # stack size per bag slot (0 = empty)
+        self.samples: list[tuple[str, int] | None] = [None] * 12  # sample slots (Contract V11)
         self.active = 0
+
+    def add_sample(self, key: str, count: int = 1) -> int:
+        """Stack sample key (up to 99 per slot across 12 slots) and return added count (Card A04)."""
+        raise NotImplementedError("Card A04")
+
+    def sample_count(self, key: str) -> int:
+        """Return total count of sample key across all sample slots (Card A04)."""
+        raise NotImplementedError("Card A04")
+
+    def total_samples(self) -> dict[str, int]:
+        """Return {sample_key: total_count} for all carried samples (Card A04)."""
+        raise NotImplementedError("Card A04")
+
+    def take_samples(self, cost: dict[str, int]) -> bool:
+        """Atomically deduct sample counts if all requirements in cost are met (Card A04)."""
+        raise NotImplementedError("Card A04")
 
     @property
     def wand(self) -> Wand:
@@ -178,7 +203,11 @@ class Inventory:
                 else:
                     self.add_block(other)
             return True
-        if target.kind == "bag" and other is not None and (other == moving or self.count(target) > 1):
+        if (
+            target.kind == "bag"
+            and other is not None
+            and (other == moving or self.count(target) > 1)
+        ):
             self._put(source, None)  # onto a stack: it joins (or finds its own stack)
             if other == moving:
                 self.counts[target.index] = self.count(target) + 1

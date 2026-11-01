@@ -36,9 +36,11 @@ class Player(Body):
 
     team = PLAYER_TEAM
 
-    def __init__(self, x: int, y: int) -> None:
+    def __init__(self, x: float, y: float) -> None:
         self.energy_max = MAX_ENERGY
-        super().__init__(x, y, PLAYER_WIDTH, PLAYER_HEIGHT, MAX_HP)
+        self.mana: float = 100.0
+        self.max_mana: float = 100.0
+        super().__init__(int(x), int(y), PLAYER_WIDTH, PLAYER_HEIGHT, MAX_HP)
         self.step_up = STEP_UP
 
     def place(self, x: int, y: int) -> None:

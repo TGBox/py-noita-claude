@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.0
+
+- 2026-11-01 (f062c47): feat: add huge amount of connected test suite definitions to ensure that the smaller models adhere to a clear pattern that alllows everything to work in the end
+
 ## SemVer v1.6.0
 
-- 2026-11-01 (752d1e6): feat: update planning documents to separate them into 134 individual S-cards, with 60-80 lines code change each, 1-2 target files + 1 testfile, context per card smaller than 15 kb and without any open design questions
+- 2026-11-01 (5e7eda7): feat: update planning documents to separate them into 134 individual S-cards, with 60-80 lines code change each, 1-2 target files + 1 testfile, context per card smaller than 15 kb and without any open design questions
 
 ## SemVer v1.5.0
 

@@ -1,6 +1,6 @@
 # Verträge V15–V17: Behörde für Realitätsordnung, Boss-Phasen, Böse Ichs & Hauptquartier
 
-> Teil des Vertrags-Index [vertraege.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege.md). Kanonische Quelle: [docs/bibel/04-behoerde-und-bosse.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/bibel/04-behoerde-und-bosse.md).
+> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quelle: [docs/bibel/04-behoerde-und-bosse.md](../../bibel/04-behoerde-und-bosse.md).
 
 ---
 
