@@ -15,7 +15,7 @@
 | `wackelportal` | Wackelportal | 20×24 | instabiles, zitterndes Portal mit Schrift „AUSSER BETRIEB“ | in die nächste Parallelwelt |
 | `anker` | Ankerpunkt | 16×16 | Metallsockel mit Flux-Spule, summt | hier öffnet die Waffe das Portal zur Werkstatt |
 | `bauplan_splitter` | Bauplan-Splitter | 7×7 | eingerissenes Blaupausen-Stück | für Fabrikator-Bauten Seltenheit 3+ |
-| `dienstausweis` | Dienstausweis | 6×5 | Behördenausweis mit Siegel | Archiv-Fundstück fürs Metaziel |
+| `dienstausweis` | Dienstausweis | 6×5 | Behördenausweis mit Siegel | Archiv-Fundstück mit Hinweisen aufs wahre Ende |
 
 ## Proben (für den Fabrikator)
 

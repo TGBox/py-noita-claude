@@ -9,9 +9,13 @@ Werkstatt → Universum A (Rang 1) → Werkstatt → Universum B (Rang 1, Zwisch
           → Werkstatt → Heimat des bösen Ichs (Endkampf)
 ```
 
-- **6 Universen + Endkampf** pro Lauf. Der Seed zieht die Universen ohne Wiederholung aus dem Pool. Im MVP-Pool sind genau 6, also erscheint jedes einmal, in zufälliger Reihenfolge.
-- **Rang** bestimmt Gegnerzahl, Gegnerstärke (Faktor 1,0 / 1,5 / 2,2) und Beutequalität (Stufe 1–2 / 3–4 / 5–6), nicht das Universum selbst. Jedes Universum muss auf allen Rängen spielbar sein.
-- **Zwischengegner:** am Ende des zweiten Universums jedes Rangs. Er bewacht den Ankerpunkt; erst nach seinem Tod lässt sich das Portal öffnen. Jeder Zwischengegner hat ein **Heimat-Universum** und kämpft in dessen Arena mit dessen Regel und Materialien (Kapitel 05). Der Seed wählt je Rang einen der zwei Zwischengegner; dessen Heimat-Universum wird das zweite Universum des Rangs. Die Heimat-Universen der nicht gewählten Zwischengegner füllen die ersten Plätze der Ränge (dort ohne Zwischengegner). So kommt im MVP jedes der 6 Universen genau einmal vor.
+- **6 Universen + Endkampf** pro Lauf, jedes Universum höchstens einmal.
+- **Wahl am Portal:** Vor jedem Universum zeigt der Portalrahmen in der Werkstatt **zwei Vorschläge** (Name, Regel, Rang, ob ein Zwischengegner wartet und welcher); Cloita wählt einen. Der Seed bestimmt die Vorschläge:
+  - *Freier Platz* (erstes Universum eines Rangs): zwei zufällige, noch nicht besuchte Universen. Wählt man dabei die Heimat eines Zwischengegners dieses Rangs, kämpft man dort **nicht** gegen ihn; der Rang endet dann im anderen.
+  - *Bossplatz* (zweites Universum eines Rangs): die noch nicht besuchten Heimat-Universen der Zwischengegner dieses Rangs (ein oder zwei Vorschläge).
+  - Mit mehr Universen im Pool gelten dieselben Regeln, die freien Plätze ziehen dann aus allen übrigen.
+- **Rang** bestimmt Gegnerzahl, Gegnerstärke (Faktor 1,0 / 1,5 / 2,2), Beutequalität (Stufe 1–2 / 3–4 / 5–6) **und die Stärke der Universumsregel** (Spalte „Rang-Steigerung“ unten). Jedes Universum muss auf allen Rängen spielbar sein.
+- **Zwischengegner:** am Ende des zweiten Universums jedes Rangs. Er bewacht den Ankerpunkt; erst nach seinem Tod lässt sich das Portal öffnen. Jeder Zwischengegner hat ein **Heimat-Universum** und kämpft in dessen Arena mit dessen Regel und Materialien (Kapitel 05). Welcher es wird, entscheidet die Wahl am Bossplatz (siehe oben). Im MVP kommt so jedes der 6 Universen genau einmal vor.
 
   | Rang | Zwischengegner (Heimat) |
   | --- | --- |
@@ -24,7 +28,7 @@ Werkstatt → Universum A (Rang 1) → Werkstatt → Universum B (Rang 1, Zwisch
 - **Ausgang:** In jedem Universum liegt am Ende ein **Ankerpunkt**. Dort öffnet Cloitas Waffe genau ein Portal zur Werkstatt; sonst ist sie eine normale Waffe.
 - **Parallelwelten (Wackelportal):** wie bisher über eine versteckte Schatzkammer. Führt in eine gespiegelte oder dunklere, härtere Fassung desselben Laufs.
 - **„Noch einmal, nur schlimmer“** (NG+) nach dem Sieg: neue Universen-Reihenfolge, Gegnerfaktor +0,6 je Runde.
-- **Metaziel Behörde:** ab 3 Siegen erscheint im Archiv ein Hinweis; ab 5 Siegen gibt es nach dem bösen Ich ein siebtes Portal zur Behörde. Im MVP nur angelegt (Kapitel 09).
+- **Wahres Ende = die Behörde:** Wer in einem Lauf alle 6 Erinnerungssplitter findet und das böse Ich besiegt, sieht, dass dessen Waffe das Siegel der Behörde trägt. Statt des normalen Siegs öffnet sich ein Portal zum **Hauptquartier der Behörde**: ein mehrstufiger Endkampf gegen den **Rat der bösen Ichs**, die am Ende zur **Ober-Cloita** verschmelzen (Kapitel 05). Das ersetzt das bisher getrennt geplante Metaziel. Ab 3 Siegen erscheinen im Archiv Hinweise, dass die Splitter wichtig sind.
 
 ## Weltgröße
 
@@ -62,6 +66,17 @@ Jedes Universum hat **genau eine Hauptregel** (im MVP) aus dieser Bibliothek; sp
 | `rule_magnet` | Magnetisch | Metall zieht Metallgeschosse und -gegenstände an | Stärke | Kraftfeld auf Geschosse und Gegenstände |
 
 MVP verwendet: `rule_living_walls`, `rule_paperwork`, `rule_bounce`, `rule_tiny`, `rule_beat`, `rule_flooded`.
+
+**Rang-Steigerung der MVP-Regeln** (je höher der Rang, desto stärker die Regel):
+
+| Regel | Rang 1 | Rang 2 | Rang 3 |
+| --- | --- | --- | --- |
+| `rule_living_walls` | Nachwachsen langsam (1 Zelle/s je 100 Randzellen) | doppelt so schnell | dreifach; nachgewachsenes Fleisch kann Geschosse schlucken |
+| `rule_paperwork` | Brennbarkeit ×1,5 | ×2 | ×3, Funken entzünden Papier aus 3 px Abstand |
+| `rule_bounce` | +2 Abpraller | +3 | +4, auch Gegnergeschosse prallen mehrfach |
+| `rule_tiny` | Schwerkraft 50 % | 45 % | 40 %, Riesenschritt doppelt so oft |
+| `rule_beat` | Takt 0,5 s, Bonus 25 % | 0,4 s, 25 % | 0,33 s, 30 %; Gegner nur auf dem Beat verwundbar für volle Wirkung |
+| `rule_flooded` | Atem 15 s | 11 s | 8 s, Wasser steigt alle 60 s um 20 px |
 
 ## Verhaltensbibliothek
 
@@ -202,7 +217,15 @@ Funktioniert wie das bisherige Mana (lädt von selbst nach, je Waffe). Anzeige a
   - *Warnung:* Sehr selten ruft sie einem Gegner „Pass auf, sie schießt gleich!“ zu (Gegner weicht einmal aus).
   - Die Nachteile sind selten genug, um zu schmunzeln, nicht zu frustrieren (Faustregel: höchstens einmal pro Universum je Art).
 - **Kommentare:** Text-Blasen über ihrem Kopf, Anlässe und Mengen in Kapitel 08.
-- **Tasten:** keine Pflicht-Steuerung. Optional eine Taste „Klonita rufen“ (kommt sofort her und bleibt 10 s stehen).
+- **Taste „Klonita rufen / wegschicken“** (frei belegbar, Standard **K**, Controller: linker Stick drücken):
+  - *Rufen:* Klonita kommt sofort her (teleportiert, wenn sie weit weg ist) und folgt wieder.
+  - *Wegschicken:* Klonita winkt, sagt etwas Gekränktes und setzt sich in die Werkstatt auf die Couch. Kein Folgen, keine Sprüche, keine Vor- und Nachteile, bis man sie ruft.
+- **Von selbst erscheinen** (auch wenn sie weggeschickt ist, dann nur kurz, und sie geht danach wieder):
+  - beim ersten Betreten jedes Universums (winkt, ein Spruch),
+  - wenn Cloita unter 20 % Leben fällt (einmal je Universum: „Du siehst gar nicht gut aus!“, zeigt auf die nächste Lebenskapsel, falls bekannt),
+  - wenn ein Erinnerungssplitter in der Nähe ist (zeigt darauf),
+  - zu Beginn jedes Zwischengegner-Kampfs und des Endkampfs (feuert an),
+  - wenn Cloita stirbt (sitzt neben ihr, Spruch auf dem Tod-Bildschirm).
 
 ## Status-Effekte
 

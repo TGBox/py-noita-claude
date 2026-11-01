@@ -97,7 +97,7 @@ Die Behörde ordnet das Multiversum – angeblich. Ihre Agenten sind identisch a
 | `agent_vollstrecker` | Vollstrecker | 16×24 | breiter, Mantel, Schulterlampe, schwerer Stempel als Waffe | ab Fahndungsstufe 3, Schild aus Panzerglas |
 | `agent_drohne` | Aktendrohne | 10×8 | fliegender Aktenkoffer mit Propeller und Kameraauge | ab Stufe 2, markiert Cloita (alle Agenten wissen dann, wo sie ist) |
 
-Gemeinsames Merkmal: das **Siegel der Behörde** (Kreis, darin ein Auge mit Stempelrand). Das Siegel taucht auch bei den bösen Ichs versteckt auf (Hinweis aufs Metaziel).
+Gemeinsames Merkmal: das **Siegel der Behörde** (Kreis, darin ein Auge mit Stempelrand). Das Siegel taucht auch bei den bösen Ichs versteckt auf (Hinweis aufs wahre Ende).
 
 ## Böse Ichs (Optik)
 

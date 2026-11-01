@@ -55,7 +55,7 @@ Jedes Paket **U1–U6** enthält:
 4. Einheimische und ggf. große Kreatur: Sprites (Kategorie `kreaturen`), Verhalten, Werte, Geräusche,
 5. Ereignis,
 6. Proben,
-7. Musik-Stimmung,
+7. Notiz zur Musik-Stimmung (Musik kommt erst nach dem MVP),
 8. Herausforderung (Kapitel 07),
 9. Klonita-Sprüche und Mauszeiger-Texte,
 10. Arena für Zwischengegner.
@@ -87,8 +87,9 @@ Abnahme je Universum: ein Bot-Lauf durch das Universum auf allen drei Rängen oh
 | B1 | Zwischengegner Rang 1 (Oberstempler, Mutter Glibber) mit Phasen |
 | B2 | Rang 2 (DJ Myzel, Abt Kieme) |
 | B3 | Rang 3 (Ameisenkönigin, Weltenherz) |
-| B4 | 3 böse Ichs mit Heimatwelten, erbeutbare Waffe, Enden (Sieg, wahres Ende mit 6 Splittern, böses Ende bei der Kaiserin) |
-| B5 | Behörde: Agenten (3 Typen), Fahndungsstufe, Durchsagen, Dienstausweise; Metaziel nur vorbereitet |
+| B4 | 3 böse Ichs mit Heimatwelten, erbeutbare Waffe, Enden (Sieg, böses Ende bei der Kaiserin) |
+| B5 | Behörde: Agenten (3 Typen), Fahndungsstufe, Durchsagen, Dienstausweise |
+| B6 | Wahres Ende: Hauptquartier, Rat der bösen Ichs (3 Stufen), Verschmelzung zur Ober-Cloita, Abspann |
 
 ## Phase F – Umbenennung, Texte, Oberfläche
 
@@ -113,7 +114,7 @@ Abnahme je Universum: ein Bot-Lauf durch das Universum auf allen drei Rängen oh
 
 - [ ] Steuerung: frei belegbar, Controller, Pausenübersicht nur für das aktive Gerät
 - [ ] Speichern jederzeit (Welt komprimiert, einmal gültig, Rückfall aufs letzte Werkstatt-Speichern) – Speicherformat wird neu: alte Spielstände sauber ablehnen
-- [ ] Archiv/Statistik: alte `records.json` mit Biohorror-Schlüsseln migrieren oder neu beginnen (Entscheidung offen)
+- [ ] Archiv/Statistik: **neu beginnen**; alte `records.json`, `lauf.json` werden beim ersten Start von Cloita Interdimensional ignoriert (neuer Dateiname, z. B. `archiv.json`, `spielstand.json`); `steuerung.json` und `optionen.json` bleiben gültig
 - [ ] Lauf-Protokoll: neue Ereignisse (Universum, Rang, Fahndung, Händler beraubt, Fabrikator, Minispiel, Klonita-Hinweis)
 - [ ] Sandbox (nur aus dem Hauptmenü): Gottmodus, Modulbuch, Universum wählen statt Tiefe
 - [ ] Härtestufen, Splitter-Aufräumen, Einmauer-Schutz, Treten, Geschosse durch Flüssigkeiten
@@ -122,7 +123,7 @@ Abnahme je Universum: ein Bot-Lauf durch das Universum auf allen drei Rängen oh
 - [ ] Kolben: mehrere, wechseln, gießen als Sprühstrahl, füllen mit S; Material per Schlüssel
 - [ ] Unbekannte Module glitzern; Neu-Markierung im Tooltip
 - [ ] Parallelwelten (Wackelportal), NG+ („Noch einmal, nur schlimmer“)
-- [ ] Musik: Stimmung je Universum; Soundeffekte je Kreatur
+- [ ] Musik im MVP **abschalten** (vorhandene prozedurale Musik deaktivieren, Option „Musik“ ausblenden); Soundeffekte je Kreatur bleiben
 - [ ] Optionen bleiben, ggf. neue (Klonita-Sprüche an/aus, Sprechblasen-Häufigkeit)
 - [ ] Leistung: Simulation nur um die Kamera, Bildzeit-Budget 16,7 ms
 
@@ -138,23 +139,30 @@ Abnahme je Universum: ein Bot-Lauf durch das Universum auf allen drei Rängen oh
 - [ ] Wegsuche für Kreaturen (Gegenwehr außer Sicht)
 - [ ] Gold als Gegenstand, Goldadern melden zerstörte Zellen
 - [ ] Sandbox-Modulbuch, Gottmodus und Universum-Auswahl testen
+- [ ] Taste „Klonita rufen / wegschicken“ (Standard K, Pad: linker Stick) in `keybinds.py`; Klonita erscheint von selbst an den Punkten aus Kapitel 02
+- [ ] Wahl zwischen zwei Universen am Portalrahmen, inkl. Vorschau (Regel, Rang, Zwischengegner)
+- [ ] Rang-Steigerung jeder Regel (Tabelle Kapitel 02)
 
 ## Nach dem MVP (Rückstand)
 
+- Musik (pro Universum eine Stimmung, Werkstatt, Bosse) – zuerst prozedural, später ggf. echte Stücke
 - Pool-Universen aus Kapitel 03 (18 Stück), jedes als eigenes U-Paket
 - Zweite Regel je Universum
 - `rule_reverse_gravity` (Kern: umkehrbare Fallrichtung)
 - Universen überlagern (V5), Risse (V6)
-- Behörde als spielbares Metaziel: Hauptquartier, Rat der bösen Ichs, eigene Endsequenz
 - Weitere böse Ichs (Ziel: 8), weitere Zwischengegner (Ziel: 4 je Rang)
 - Mehr Händler, mehr Minispiele, mehr Herausforderungen
 - Voller Crafting-Baum (falls gewünscht)
 
+## Entschiedene Fragen (2026-11-01)
+
+1. Archiv und Statistik aus Biohorror-Zeiten werden **verworfen**.
+2. Taste „Klonita rufen / wegschicken“: **ja**; Klonita erscheint außerdem an bestimmten Punkten von selbst.
+3. Am Portal wählt man aus **zwei Vorschlägen**.
+4. Wahres Ende: **mehrstufiger Kampf gegen die alternativen Ichs, die am Ende verschmelzen** (Rat der bösen Ichs, Kapitel 05).
+5. Universumsregeln werden **mit dem Rang stärker**.
+6. **Keine Musik** im MVP; kommt in einer späteren Runde.
+
 ## Offene Fragen
 
-1. Archiv/Statistik aus Biohorror-Zeiten: migrieren oder beim Umstieg neu beginnen?
-2. Sollen Universen innerhalb eines Laufs je Rang einen festen Schwierigkeitsunterschied in ihrer Regel haben (z. B. Bass schneller auf Rang 3)?
-3. Taste „Klonita rufen“: ja oder nein?
-4. Darf der Spieler das Universum in der Werkstatt aus 2 Vorschlägen wählen (mehr Kontrolle) oder ist es immer zufällig?
-5. Wahres Ende: Was passiert erzählerisch (Text, kleine Szene)?
-6. Musik: weiter rein prozedural oder später echte Stücke?
+Keine. Neue Fragen hier eintragen.

@@ -3,7 +3,7 @@
 ## Logo und Titel
 
 - **Logo:** „CLOITA“ groß in dicken Pixel-Buchstaben (`hair`-Orange mit `ink`-Kontur), darunter „INTERDIMENSIONAL“ kleiner in `flux`, leicht schief, als hätte jemand es nachträglich angeklebt. Ein Portal-Wirbel hinter dem „O“. Größe: 160×48 Pixel (wird skaliert), 4 Frames (Wirbel dreht sich).
-- **Titelbild:** Cloita steht in der Werkstatt-Tür, Klonita winkt im Hintergrund; hinter ihnen ein offenes Portal. Als Szene aus vorhandenen Sprites zusammengesetzt (keine Extra-Grafik nötig), Musik der Werkstatt.
+- **Titelbild:** Cloita steht in der Werkstatt-Tür, Klonita winkt im Hintergrund; hinter ihnen ein offenes Portal. Als Szene aus vorhandenen Sprites zusammengesetzt (keine Extra-Grafik nötig). Im MVP ohne Musik, nur Werkstatt-Geräusche (Summen, Tropfen).
 - **Untertitel** wechselt zufällig (10 Sprüche), z. B. „Ein Multiversum. Unendlich viele Probleme.“, „Jetzt mit 30 % weniger Moral.“, „Keine Klonkopie wurde beim Testen ernsthaft verletzt.“
 
 ## Oberfläche umbenennen
@@ -21,7 +21,7 @@
 | Augmentation | **Waffe** (Panel unten links) |
 | Phiole | **Kolben** (Panel unten rechts) |
 | Pausemenü „Dieser Lauf“ | Universum, Rang, Gold, Experimente, Erinnerungssplitter x/6, Fahndungsstufe |
-| Kodex | **Archiv** (Kategorien: Module, Kreaturen, Universen, Böse Ichs, Fundstücke) |
+| Kodex | **Archiv** (Kategorien: Module, Kreaturen, Universen, Böse Ichs, Fundstücke; alte Biohorror-Daten werden verworfen, Archiv beginnt leer) |
 
 ## Neue UI-Icons (8×8 bis 16×16)
 
@@ -56,6 +56,9 @@
 | Klonita | Cloita trinkt (je Flüssigkeit-Gruppe gut/schlecht) | 4 + 4 | 8 |
 | Klonita | Händler beraubt | 3 | 3 |
 | Klonita | Cloita stirbt | 5 | 5 |
+| Klonita | gerufen / weggeschickt | 5 + 5 | 10 |
+| Klonita | erscheint von selbst (wenig Leben, Splitter, Bosskampf) | 3 je | 9 |
+| Rat der bösen Ichs / Ober-Cloita | Auftritt, je Stufe, Verschmelzung, Tod | 8 | 8 |
 | Cloita | Antworten auf Klonita (optional, selten) | – | 15 |
 | Händler | Begrüßung, Kauf, zu wenig Gold, Abschied, beraubt | 1 je × 6 Händler | 30 |
 | Zwischengegner | Auftritt, Phasenwechsel ×2, Tod | 4 je × 6 | 24 |
