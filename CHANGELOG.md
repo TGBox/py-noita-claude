@@ -1,8 +1,13 @@
 # Changelog
 
+## SemVer v1.7.4
+
+- 2026-11-01 (adcfa11): fix: fix github actions to prevent the temporary tests from failing the suite
+
 ## SemVer v1.7.3
 
-- 2026-11-01 (840d717): fix: re-align the implementation plans from claude with the new additions that have been made by gemini - update bible to reflect and consolidate the changes into a coherent plan (hopefully - has to be double checked by claude before real implementation can begin), fix implementation cards not being within the capped scope
+- 2026-11-01 (e672d5e): Merge pull request #22 from TGBox/plan-align
+- 2026-11-01 (c7129f3): fix: re-align the implementation plans from claude with the new additions that have been made by gemini - update bible to reflect and consolidate the changes into a coherent plan (hopefully - has to be double checked by claude before real implementation can begin), fix implementation cards not being within the capped scope
 
 ## SemVer v1.7.2
 

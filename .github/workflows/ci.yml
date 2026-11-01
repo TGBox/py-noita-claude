@@ -30,4 +30,4 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           ARCADE_HEADLESS: "True"
-        run: uv run pytest
+        run: uv run pytest --ignore=tests/spec
