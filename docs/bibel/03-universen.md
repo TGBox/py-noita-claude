@@ -63,6 +63,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 - **Musik (später):** Schreibmaschinen-Rhythmus, Fahrstuhlmusik in Moll.
 - **Arena:** großer Sitzungssaal mit Tischen als Plattformen; Papierboden.
 - **Wechselwirkungen, die das Universum zeigen soll:** Feuer + Papier = Flächenbrand; Tinte löscht Brandausbreitung; Siegellack als selbstgebaute Brücke; Stempler-Status beeinflusst Kämpfe.
+- **Brandabschnitte:** Papier nur in abgetrennten Abschnitten (Kammern, Regalfelder) zwischen nicht brennbaren Trennwänden (Fels, Aktendeckel, getränktes Papier, Tintenrinnen). Ein Brand darf nie mehr als einen Abschnitt erfassen; kein zusammenhängender brennbarer Bereich größer als etwa ein Bildschirm.
 
 ## 3. Glibbria (`glibbria`)
 

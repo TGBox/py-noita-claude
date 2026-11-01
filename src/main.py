@@ -11,7 +11,7 @@ import pygame
 
 from src import materials as mat
 from src import options as settings_store
-from src import records
+from src import records, ui
 from src.audio import Audio
 from src.depths import DEPTHS
 from src.editor import WandEditor
@@ -39,6 +39,7 @@ from src.rendering import (
     draw_status,
     draw_thrown_flasks,
 )
+from src.rules import describe_de as describe_rule
 from src.run import Controls, Run
 from src.runlog import RunLog
 from src.settings import (
@@ -53,8 +54,6 @@ from src.settings import (
     TITLE,
     VIEW_HEIGHT,
     VIEW_WIDTH,
-    WORLD_HEIGHT,
-    WORLD_WIDTH,
 )
 from src.spells import BLOCKS, CATALOG
 from src.viewport import Viewport
@@ -73,18 +72,18 @@ PAD_AIM_DISTANCE = 90.0  # px between the player and the gamepad crosshair
 PAD_CURSOR_SPEED = 900.0  # window px/s of the inventory cursor on the left stick
 PAD_REPEAT = 0.22  # seconds between menu steps while a stick is held
 STATUS_INTERVAL = 10.0  # seconds between position/health lines in the run log
-# Sandbox: keys 1-9 and 0 select what the right mouse button paints.
+# Sandbox: keys 1-9 and 0 select what the right mouse button paints (material keys).
 PAINT_MATERIALS = (
-    mat.BONE_DUST,
-    mat.BLOOD,
-    mat.TALLOW,
-    mat.ACID,
-    mat.FLESH,
-    mat.BONE,
-    mat.MUCUS,
-    mat.FIRE,
-    mat.GROWTH,
-    mat.ENAMEL,
+    "bone_dust",
+    "blood",
+    "tallow",
+    "acid",
+    "flesh",
+    "bone",
+    "mucus",
+    "fire",
+    "growth",
+    "enamel",
 )
 NUMBER_KEYS = (
     pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5,
@@ -94,6 +93,9 @@ SANDBOX_LINES = (
     "Rechte Maus: malen | Mittlere Maus: radieren",
     "Mausrad: Material | +/-: Pinselgröße",
     "N: Welt neu | Bild auf/ab: Tiefe wechseln",
+    "U: Materialsatz wechseln (Körper / Aktenhalde)",
+    "O: Weltgröße wechseln (normal, quadrat, breit, hoch, inseln)",
+    "R: Universumsregel wechseln",
     "Rucksack: Zauberbuch mit allen bekannten Zaubern",
     "ESC: Menü (Zum Titel beendet die Sandbox)",
 )
@@ -148,6 +150,7 @@ class Game:
         self.clock_time = 0.0
         self.seed = random.randrange(2**31)
         self.run = Run(self.seed)
+        self.run.on_generate = self._draw_loading
         self.renderer = WorldRenderer(self.run.world, VIEW_WIDTH, VIEW_HEIGHT)
         self.sprite_right, self.sprite_left = build_player_sprites()
         self.creature_sprites = build_creature_sprites()
@@ -178,8 +181,9 @@ class Game:
         self._clamp_camera()
 
     def _clamp_camera(self) -> None:
-        self.camera[0] = min(max(self.camera[0], 0.0), WORLD_WIDTH - VIEW_WIDTH)
-        self.camera[1] = min(max(self.camera[1], 0.0), WORLD_HEIGHT - VIEW_HEIGHT)
+        world = self.run.world
+        self.camera[0] = min(max(self.camera[0], 0.0), world.width - VIEW_WIDTH)
+        self.camera[1] = min(max(self.camera[1], 0.0), world.height - VIEW_HEIGHT)
 
     def _apply_options(self) -> None:
         options = self.options
@@ -576,6 +580,18 @@ class Game:
         elif key == pygame.K_n:
             run.enter_depth(run.depth_index)
             self._snap_camera()
+        elif key == pygame.K_u:
+            name = run.cycle_material_set()
+            self._snap_camera()
+            self.notice, self.notice_time = f"Materialsatz: {name}", NOTICE_TIME
+        elif key == pygame.K_r:
+            name = run.cycle_rule()
+            self._snap_camera()
+            self.notice, self.notice_time = f"Regel: {name}", NOTICE_TIME
+        elif key == pygame.K_o:
+            width, height = run.cycle_world_size()
+            self._snap_camera()
+            self.notice, self.notice_time = f"Weltgröße: {width} × {height}", NOTICE_TIME
         elif key in (pygame.K_PLUS, pygame.K_KP_PLUS):
             self.brush = min(self.brush + 1, BRUSH_MAX)
         elif key in (pygame.K_MINUS, pygame.K_KP_MINUS):
@@ -752,7 +768,7 @@ class Game:
             kick="kick" in queued,
         )
         if self.sandbox and mouse[2]:
-            self.run.world.paint(*target, self.brush, PAINT_MATERIALS[self.paint_index])
+            self.run.world.paint(*target, self.brush, mat.id_of(PAINT_MATERIALS[self.paint_index]))
         elif self.sandbox and mouse[1]:
             self.run.world.paint(*target, self.brush, mat.AIR)
 
@@ -813,13 +829,27 @@ class Game:
 
     # ------------------------------------------------------------------- draw
 
+    def _draw_loading(self, name: str) -> None:
+        """Shown while a new world is generated (big worlds take a second or two)."""
+        screen = pygame.display.get_surface() or self.screen
+        screen.fill(ui.PANEL_DARK)
+        width, height = screen.get_size()
+        s = ui.scale_of(screen)
+        ui.text(screen, name, (width / 2, height / 2 - 20 * s), round(30 * s), ui.GOLD,
+                heading=True, anchor="center")  # fmt: skip
+        ui.text(screen, "Die Welt wird erzeugt …", (width / 2, height / 2 + 20 * s),
+                round(16 * s), ui.DIM, anchor="center")  # fmt: skip
+        pygame.display.flip()
+        pygame.event.pump()
+
     def draw(self) -> None:
         jitter_x = random.uniform(-self.shake, self.shake)
         jitter_y = random.uniform(-self.shake, self.shake)
-        cam_x = int(min(max(self.camera[0] + jitter_x, 0), WORLD_WIDTH - VIEW_WIDTH))
-        cam_y = int(min(max(self.camera[1] + jitter_y, 0), WORLD_HEIGHT - VIEW_HEIGHT))
+        world = self.run.world
+        cam_x = int(min(max(self.camera[0] + jitter_x, 0), world.width - VIEW_WIDTH))
+        cam_y = int(min(max(self.camera[1] + jitter_y, 0), world.height - VIEW_HEIGHT))
         if self.lighting:
-            ambient = self.run.depth.ambient * self.run.darkness
+            ambient = min(1.0, self.run.depth.ambient * self.run.darkness * self.run.rule.light_factor())
             self.renderer.refresh(self.run.world, cam_x, cam_y, self._lights(), ambient)
         else:
             self.renderer.refresh(self.run.world, cam_x, cam_y)
@@ -942,7 +972,7 @@ class Game:
             pulse=math.sin(self.clock_time * HEARTBEAT_RATE * math.pi) ** 8,
             notice=self.notice if self.notice_time > 0 else "",
             sandbox_lines=(
-                f"Pinsel: {mat.NAME_DE[PAINT_MATERIALS[self.paint_index]]} | Größe {self.brush}",
+                f"Pinsel: {mat.NAME_DE[mat.id_of(PAINT_MATERIALS[self.paint_index])]} | Größe {self.brush}",
                 f"Gottmodus: {'an' if run.god_mode else 'aus'} (G)",
                 *SANDBOX_LINES,
             ),
@@ -951,6 +981,15 @@ class Game:
             outcome_keys=outcome_keys,
             log_path=str(self.log.path) if self.log.path else "",
             eyes=run.eyes,
+            rule_line=describe_rule(run.rule) if run.rule.key else "",
+            breath=(
+                run.rule.breath / run.rule.max_breath
+                if run.rule.max_breath and run.rule.breath < run.rule.max_breath
+                else None
+            ),
+            beat=max(0.0, 1.0 - run.rule.beat_time / run.rule.params["period"])
+            if "period" in run.rule.params
+            else 0.0,
         )
 
     def _key_name(self, action: str) -> str:

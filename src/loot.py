@@ -8,7 +8,7 @@ from collections.abc import Collection
 from dataclasses import dataclass
 
 from src.flask import CAPACITY, Flask
-from src.materials import ACID, AIR, BLOOD, MAGMA, MUCUS, PUS, STOPS_PROJECTILE, TALLOW
+from src.materials import AIR, STOPS_PROJECTILE
 from src.perks import PERK_BY_KEY
 from src.spells import BLOCKS, CATALOG, Block, Category
 from src.wand import WandSpec
@@ -197,7 +197,10 @@ def cocoon_loot(rng: random.Random, x: float, y: float, level: int) -> list[Pick
     return items
 
 
-FLASK_CONTENTS = ((BLOOD, 2), (ACID, 2), (TALLOW, 2), (MUCUS, 1), (PUS, 1), (MAGMA, 1), (None, 2))
+# Flask contents by material key (a universe without the material pours its stand-in).
+FLASK_CONTENTS = (
+    ("blood", 2), ("acid", 2), ("tallow", 2), ("mucus", 1), ("pus", 1), ("magma", 1), (None, 2),
+)
 
 
 def random_flask(rng: random.Random) -> Flask:

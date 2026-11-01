@@ -66,6 +66,14 @@ neu, Bild auf/ab wechselt die Tiefe. Augmentationen lassen sich überall umbauen
 Rucksack hat ein **Zauberbuch** mit allen Zaubern aus dem Kodex: Hineinziehen setzt eine Kopie
 ein, ein Baustein zurück ins Buch verschwindet.
 
+Zum Ausprobieren des Multiversum-Umbaus baut die Sandbox die aktuelle Tiefe neu:
+
+| Taste | Wirkung |
+| ------- | --------- |
+| **U** | Materialsatz wechseln: Körper oder Aktenhalde (Papier, Tinte, Siegellack, Asche, Stempelfarbe) |
+| **O** | Weltgröße wechseln: normal, quadrat (2048×1536), breit (3072×1024), hoch (1280×2560), inseln (2560×1280) |
+| **R** | Universumsregel wechseln: Alles lebt, Papierkrieg, Gummiwelt, Winzig, Bass, Geflutet, keine |
+
 **Menüs** lassen sich mit Pfeiltasten und Enter, mit der Maus oder mit dem Controller
 (Steuerkreuz oder Stick, A wählt, B zurück) bedienen. **Controller:** Jeder Pad mit
 Xbox-Belegung wird erkannt, auch wenn er während des Spiels eingesteckt wird. Im Rucksack
@@ -439,11 +447,30 @@ Nässe-Nerv löst beim Eintauchen aus.
 
 Reaktionen stehen als Tabelle in `src/reactions.py`. Eine neue Wechselwirkung ist eine Zeile.
 
+**Materialsätze:** Die 8-Bit-Palette fasst höchstens 21 Materialien. Deshalb lädt jedes
+Universum seinen eigenen Satz (`src/materials.py`): Die Liste oben ist der Satz „Körper“.
+Phiolen, Bausteine und Spielstände merken sich Materialien über ihren Schlüssel (`"blood"`,
+`"papier"`) statt über die Nummer. Fehlt ein Material in einem Satz, nimmt ein Ersatz seinen
+Platz ein (in der Aktenhalde wird aus Fleisch Papier und aus Blut Tinte).
+
+**Universumsregeln** (`src/rules.py`) verändern die Physik eines Universums, je Rang stärker:
+
+| Regel | Rang 1 | Rang 2 | Rang 3 |
+| ------- | -------- | -------- | -------- |
+| Alles lebt | Fleisch wächst langsam in Löcher nach | doppelt so schnell | dreimal so schnell |
+| Papierkrieg | Papier brennt 1,5-mal so leicht | 2-mal | 3-mal |
+| Gummiwelt | Geschosse prallen 2-mal öfter ab | 3-mal | 4-mal, auch gegnerische |
+| Winzig | Schwerkraft 50 % | 45 % | 40 % |
+| Bass | Beat alle 0,5 s, auf dem Beat +25 % Schaden | alle 0,4 s | alle 0,33 s, +30 % |
+| Geflutet | 15 s Atem unter Wasser | 11 s | 8 s |
+
 ## Technik
 
 - Sichtbarer Ausschnitt: 640x360 Weltpixel, verzerrungsfrei auf Fenster oder Vollbild skaliert.
 - Welt: 1280x720 Zellen pro Tiefe, aufgeteilt in 16x16-Chunks. Ruhende Chunks schlafen, und
-  simuliert wird nur ein Bereich um die Kamera.
+  simuliert wird nur ein Bereich um die Kamera. Universen dürfen größer sein (bis etwa zur
+  vierfachen Fläche, je nach Form); Kreaturen und Beute wachsen mit der Fläche. Gemessen:
+  Erzeugen 1,3 bis 1,7 s, Spiellogik pro Bild unter 4 ms, Spielstand unter 0,2 MB.
 - Die Zellsimulation, das Rendern und die Beleuchtung laufen in einem kleinen Rust-Kern ohne
   externe Pakete (`native/`), der per `ctypes` direkt auf den Python-Puffern arbeitet. Alle
   Material- und Reaktionsdaten kommen aus Python.
@@ -488,8 +515,10 @@ py-noita-claude/
 │   ├── depths.py        # Die sieben Tiefen und ihre Eigenschaften
 │   ├── worldgen.py      # Prozedurale Level mit Ausgang und Bossarena
 │   ├── world.py         # Weltpuffer, Malen, Explosionen, Kollision
-│   ├── materials.py     # Materialien, Palette, Leuchtkraft
-│   ├── reactions.py     # Reaktionstabelle
+│   ├── materials.py     # Materialien, Materialsätze je Universum, Palette
+│   ├── reactions.py     # Reaktionstabelle (über Materialschlüssel)
+│   ├── rules.py         # Universumsregeln mit Rang-Steigerung
+│   ├── universes/       # Universen als Daten und der Weg eines Laufs (Portalwahl, Ränge)
 │   ├── body.py          # Gemeinsame Körperphysik (Spieler und Gegner)
 │   ├── player.py        # Spielfigur: Laufen, Hüpfen, Schweben
 │   ├── enemies.py       # Gegner, Bosse, Platzierung

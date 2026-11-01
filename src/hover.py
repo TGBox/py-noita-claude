@@ -23,6 +23,7 @@ from src.materials import (
     HARDNESS_DE,
     HAZARD_DPS,
     KIND,
+    LIBRARY,
     LIQUID,
     MATERIALS,
     POWDER,
@@ -173,9 +174,9 @@ def block_lines(block: Block) -> list[str]:
         lines.append(", ".join(stats))
     material = block.material if block.material is not None else block.default_material
     if block.trail is not None:
-        lines.append(f"Spur: {MATERIALS[block.trail].name_de}")
+        lines.append(f"Spur: {LIBRARY[block.trail].name_de}")
     elif material is not None:
-        lines.append(f"Material: {MATERIALS[material].name_de}")
+        lines.append(f"Material: {LIBRARY[material].name_de}")
     if block.description_de:
         lines.append(block.description_de)
     return lines
@@ -247,8 +248,8 @@ def describe_pickup(
             lines = ["Leer. Halte sie an eine Flüssigkeit, um sie zu füllen."]
         else:
             share = round(100 * flask.amount / FLASK_CAPACITY)
-            lines = [f"{MATERIALS[flask.material].name_de}: {share} %"]
-            effect = DRINK_EFFECTS.get(flask.material)
+            lines = [f"{flask.name_de}: {share} %"]
+            effect = DRINK_EFFECTS.get(flask.key)
             if effect:
                 lines.append(f"Trinken: {effect[2]}")
     elif item.heart:

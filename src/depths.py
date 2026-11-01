@@ -34,6 +34,9 @@ class Depth:
     ambient: float = 0.3  # base brightness (0 = pitch black, 1 = fully lit)
     boss: str | None = None  # creature key of the boss guarding this depth
     final: bool = False  # killing the boss wins the run
+    material_set: str = "koerper"  # which material set the universe loads (src/materials)
+    rule: str = ""  # key of the universe rule (src/rules), "" for none
+    size: tuple[int, int] | None = None  # world size in cells (None: the run's default)
 
 
 DEPTHS: tuple[Depth, ...] = (

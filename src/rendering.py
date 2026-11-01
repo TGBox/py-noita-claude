@@ -13,6 +13,7 @@ import random
 
 import pygame
 
+from src import materials as mat
 from src import native
 from src.chunks import Chunk
 from src.enemies import Creature
@@ -20,15 +21,11 @@ from src.flask import CAPACITY as FLASK_CAPACITY
 from src.flask import Flask, ThrownFlask
 from src.loot import Pickup
 from src.materials import (
-    ACID,
-    BLOOD,
-    FIRE,
     GLOW,
+    LIBRARY,
     LIGHT_LEVELS,
     MATERIALS,
-    MUCUS,
     OPAQUE,
-    TALLOW,
     VARIANTS,
     build_palette,
     shade,
@@ -84,13 +81,21 @@ class WorldRenderer:
     def __init__(self, world: World, view_width: int, view_height: int) -> None:
         self.view_width = view_width
         self.view_height = view_height
-        self._grain = make_grain(world.width, world.height)
-        self._grain_view = native.byte_view(self._grain)
+        self._grain_size = (0, 0)
+        self._fit_grain(world)
         self._buffer = bytearray(view_width * view_height)
         self._buffer_view = native.byte_view(self._buffer)
         self._flicker = random.Random()
         self.surface = pygame.image.frombuffer(self._buffer, (view_width, view_height), "P")
         self.surface.set_palette(build_palette())
+        self._palette_generation = mat.GENERATION
+
+    def _fit_grain(self, world: World) -> None:
+        """The grain texture covers the whole world; rebuild it when the size changes."""
+        if self._grain_size != (world.width, world.height):
+            self._grain = make_grain(world.width, world.height)
+            self._grain_view = native.byte_view(self._grain)
+            self._grain_size = (world.width, world.height)
 
     def refresh(
         self,
@@ -105,6 +110,10 @@ class WorldRenderer:
         ``lights`` are (x, y, radius, intensity) in world pixels; glowing materials
         light themselves. With ``ambient=1`` and no lights everything is fully lit.
         """
+        self._fit_grain(world)
+        if self._palette_generation != mat.GENERATION:  # another universe's material set
+            self.surface.set_palette(build_palette())
+            self._palette_generation = mat.GENERATION
         native.render_lit(
             native.byte_view(world.grid),
             self._grain_view,
@@ -123,9 +132,11 @@ class WorldRenderer:
         )
         choice = self._flicker.choice
         top = LIGHT_LEVELS - 1
+        if not (mat.has("fire") and mat.has("acid")):
+            return
         for variant in range(VARIANTS):
-            fire = (FIRE * VARIANTS + variant) * LIGHT_LEVELS + top
-            acid = (ACID * VARIANTS + variant) * LIGHT_LEVELS + top
+            fire = (mat.FIRE * VARIANTS + variant) * LIGHT_LEVELS + top
+            acid = (mat.ACID * VARIANTS + variant) * LIGHT_LEVELS + top
             self.surface.set_palette_at(fire, choice(FIRE_TONES))
             self.surface.set_palette_at(acid, choice(ACID_TONES))
 
@@ -175,7 +186,7 @@ FORM_COLORS = {
 def block_color(block: Block) -> tuple[int, int, int]:
     """Colour of a block's node: payloads show their material."""
     if block.material is not None:
-        return MATERIALS[block.material].color
+        return LIBRARY[block.material].color
     return CATEGORY_COLORS[block.category]
 
 
@@ -280,7 +291,7 @@ def draw_projectiles(
             canvas.fill(color, (x - 1, y, 3, 1))
             canvas.fill(color, (x, y - 1, 1, 3))
         elif key == "klumpen":
-            material = p.material if p.material is not None else BLOOD
+            material = p.material if p.material is not None else mat.BLOOD
             pygame.draw.circle(canvas, MATERIALS[material].color, (x, y), 2)
         else:
             color = FORM_COLORS.get(key, (255, 255, 255))
@@ -840,7 +851,14 @@ def draw_chunks(canvas: pygame.Surface, chunks: list[Chunk], cam_x: int, cam_y: 
                 canvas.fill(CHUNK_COLORS[material], (sx, sy, 1, 1))
 
 
-CHUNK_COLORS = [shade(variant_color(m, 1), LIGHT_LEVELS - 2) for m in MATERIALS]
+CHUNK_COLORS: list[tuple[int, int, int]] = []
+
+
+def _chunk_colors() -> None:
+    CHUNK_COLORS[:] = [shade(variant_color(m, 1), LIGHT_LEVELS - 2) for m in MATERIALS]
+
+
+mat.subscribe(_chunk_colors)
 
 
 def draw_droplets(canvas: pygame.Surface, droplets: list, cam_x: int, cam_y: int) -> None:
@@ -963,6 +981,6 @@ def draw_status(canvas: pygame.Surface, body, cam_x: int, cam_y: int, rng: rando
     elif body.wet > 0 and rng.random() < 0.3:
         canvas.fill(DRIP_COLOR, (x + rng.randrange(body.width), y + body.height, 1, 1))
     if body.oily > 0 and rng.random() < 0.25:  # a greasy sheen
-        canvas.fill(MATERIALS[TALLOW].color, (x + rng.randrange(body.width), y + rng.randrange(body.height), 1, 1))
+        canvas.fill(MATERIALS[mat.TALLOW].color, (x + rng.randrange(body.width), y + rng.randrange(body.height), 1, 1))
     if body.slimed > 0 and rng.random() < 0.4:
-        canvas.fill(MATERIALS[MUCUS].color, (x + rng.randrange(body.width), y + body.height - 1, 1, 2))
+        canvas.fill(MATERIALS[mat.MUCUS].color, (x + rng.randrange(body.width), y + body.height - 1, 1, 2))

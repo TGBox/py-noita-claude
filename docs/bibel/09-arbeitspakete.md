@@ -34,6 +34,15 @@ Erst wenn Phase A steht, lohnt es sich, Grafik in großer Menge zu erzeugen. Uni
 | **T5 Verhaltensbibliothek** | Haltungen + Fähigkeiten aus Kapitel 02 als kombinierbare Bausteine; Wegsuche für `hunt`/`retaliate`; Fraktionen; Ausholen als Pflichtzustand | je Fähigkeit ein Test (headless) |
 | **T6 Sprite-Laufzeit** | Laden der PNG-Bögen + JSON; Zustandsautomat für Animationen; prozedurale Körper aus Teilen (Segmente, Beine, Tentakel); Leuchtpixel als Lichtquellen | Testbild mit 1 einfachem und 1 zusammengesetzten Sprite |
 
+### Stand Phase A (2026-11-01)
+
+- **T1 erledigt:** Materialsätze mit Schlüsseln, Ersatz-Materialien (Aliase), Aktivierung schreibt Tabellen in place; Sätze „koerper“ (heutiges Spiel, ID-gleich) und „aktenhalde“ (Grundmaterialien + Papier, Getränktes Papier, Aktendeckel, Tinte, Siegellack, Lack, Asche, Stempelfarbe). Kolben, Bausteine und Speicherstände über Schlüssel; alte Spielstände mit Kolben-IDs laden weiter. Der echte Fleischwelt-Satz (11 Grund + 10) kommt mit U1.
+- **T2 erledigt:** Weltgröße je Tiefe/Universum, Welt wird bei Satz- oder Größenwechsel neu aufgebaut, Kamera und Körnung passen sich an, Kreaturen und Beute wachsen mit der Fläche, Ladebildschirm. Gemessen (Quadrat bis Breit): Erzeugen 1,3–1,7 s, Logik p99 < 4 ms, Speicherstand < 0,2 MB. Die sieben heutigen Tiefen bleiben 1280×720, bis die Universen sie ersetzen.
+- **T3 erledigt:** `src/universes/` mit den 6 Universen (nur Bibel-Daten), Zwischengegnern, bösen Ichs und `RunPlan` (Portalwahl, freie Plätze und Bossplätze, Seed, Speichern). Angeschlossen an Werkstatt und Portalrahmen wird der Plan in W1.
+- **T4 erledigt:** `src/rules.py` mit den 6 MVP-Regeln und Rang-Steigerung; HUD-Zeile mit Regel, Takt-Punkt und Atem-Leiste. Offen: „Wasser steigt alle 60 s“ (Geflutet Rang 3), „nachgewachsenes Fleisch schluckt Geschosse“ (Alles lebt Rang 3), „Funken entzünden Papier aus 3 px“ (Papierkrieg Rang 3), Kreaturen im Takt (Bass) – kommen mit den jeweiligen Universen (U1–U6).
+- **Sandbox:** U = Materialsatz, O = Weltgröße, R = Regel (für Spieltests).
+- **Offen:** T5 Verhaltensbibliothek, T6 Sprite-Laufzeit.
+
 ## Phase B – Grafik-Werkzeug und Stil
 
 | Paket | Inhalt | Abnahme |

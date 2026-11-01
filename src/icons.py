@@ -13,7 +13,7 @@ import re
 from functools import cache
 from itertools import pairwise
 
-from src.materials import FLAME, GAS, KIND, LIQUID, MATERIALS, POWDER
+from src.materials import FLAME, GAS, LIBRARY, LIQUID, POWDER
 from src.spells import CATALOG, Block, Category, Trigger
 
 SIZE = 16
@@ -406,7 +406,7 @@ def _main_color(block: Block) -> Color:
         material = block.default_material
     if material is None:
         return GLYPH_COLORS[block.category]
-    color = MATERIALS[material].color
+    color = LIBRARY[material].color
     if sum(color) < 240:  # dark materials (smoke, blood) would vanish on the dark ground
         color = _mix(color, (255, 255, 255), 0.35)
     return color
@@ -503,7 +503,7 @@ def _draw_modifier(c: _Canvas, b: Block) -> None:
 
 
 def _draw_payload(c: _Canvas, b: Block) -> None:
-    kind = KIND[b.material] if b.material is not None else LIQUID
+    kind = LIBRARY[b.material].kind if b.material is not None else LIQUID
     if kind == LIQUID:
         _drop(c)
     elif kind == GAS:

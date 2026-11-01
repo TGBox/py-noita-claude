@@ -7,6 +7,7 @@ import random
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
+from src import materials as mat
 from src.body import BURN_TIME, PLAYER_TEAM, Body
 from src.materials import AIR, KIND, LIQUID, STOPS_PROJECTILE
 from src.spells import TIMER_DELAY, Block, Category, Trigger
@@ -81,7 +82,7 @@ def build(
     """Apply a shot's modifiers to its form and launch it."""
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
-    material, homing, trigger = form.default_material, form.homing, None
+    material, homing, trigger = mat.opt_id(form.default_material), form.homing, None
     timer = 0.0
     lifetime, bounces = form.lifetime, form.bounces + form.ricochet
     pierce, ignites = form.pierce, False
@@ -90,7 +91,7 @@ def build(
         gravity *= block.gravity_factor
         damage += block.damage_bonus
         if block.trail is not None:
-            trail = block.trail
+            trail = mat.id_of(block.trail)
         speed *= block.speed_factor
         blast += block.blast_bonus
         lifetime *= block.lifetime_factor
@@ -104,7 +105,7 @@ def build(
             trigger = block.trigger
             timer = block.timer
         if block.material is not None:
-            material = block.material
+            material = mat.id_of(block.material)
     angle += shot.angle_offset
     return Projectile(
         form=form,
@@ -148,6 +149,9 @@ class ProjectileSystem:
         self.teleports: list[tuple[float, float]] = []  # where player teleport bolts ended
         self.player_damage = 1.0  # factor on the player's projectile damage (perks)
         self.enemy_damage = 1.0  # factor on creatures' projectile damage (New Game+)
+        # universe rule: gravity factor and extra bounces per team
+        self.gravity_scale = 1.0
+        self.bounce_bonus: dict[str, int] = {}
         self.polymorphs: list[Body] = []  # creatures hit by a polymorph bolt (run replaces them)
         self.swaps: list[Body] = []  # creatures the player swaps places with
 
@@ -155,7 +159,13 @@ class ProjectileSystem:
         self.items.clear()
 
     def spawn(
-        self, shots: list[Shot], x: float, y: float, angle: float, team: str = PLAYER_TEAM
+        self,
+        shots: list[Shot],
+        x: float,
+        y: float,
+        angle: float,
+        team: str = PLAYER_TEAM,
+        damage_factor: float = 1.0,
     ) -> None:
         for shot in shots:
             pellets = max(1, shot.form.pellets)
@@ -167,6 +177,9 @@ class ProjectileSystem:
                 if extra:
                     spread += self._rng.uniform(-extra, extra)
                 projectile = build(shot, x, y, angle + spread, team)
+                projectile.gravity *= self.gravity_scale
+                projectile.bounces += self.bounce_bonus.get(team, 0)
+                projectile.damage *= damage_factor
                 if pellets > 1:
                     factor = self._rng.uniform(0.8, 1.1)
                     projectile.vx *= factor

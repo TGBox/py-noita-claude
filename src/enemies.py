@@ -6,8 +6,9 @@ import math
 import random
 from dataclasses import dataclass
 
+from src import materials as mat
 from src.body import ENEMY_TEAM, Body
-from src.materials import ACID, AIR, BLOOD, BONE_DUST, FIRE, MUCUS, SPORES, TALLOW
+from src.materials import AIR
 from src.player import GRAVITY, MAX_FALL_SPEED
 from src.projectiles import ProjectileSystem
 from src.spells import CATALOG
@@ -41,7 +42,7 @@ class CreatureSpec:
     summon_interval: float = 0.0
     summon_max: int = 0
     boss: bool = False
-    gore: int = BLOOD
+    gore: str = "blood"  # material key
     burst: int = 4  # radius of the gore splash on death
     pop_on_touch: bool = False  # bursts when it touches the player
     hangs: bool = False  # placed under ceilings instead of on floors
@@ -72,7 +73,7 @@ STOMACH_WORM = CreatureSpec(
         ("beschleunigung", "nadel"),
         ("beschleunigung", "nadel"),
     ),
-    ranged_cooldown=1.1, ranged_range=520, hover_height=70, boss=True, gore=ACID, pearls=150,
+    ranged_cooldown=1.1, ranged_range=520, hover_height=70, boss=True, gore="acid", pearls=150,
 )  # fmt: skip
 HEART = CreatureSpec(
     "herz", "Das Herz", width=40, height=36, hp=1000, flying=True, speed=0, sight=700,
@@ -90,7 +91,7 @@ BROOD_MOTHER = CreatureSpec(
     ),
     ranged_cooldown=1.4, ranged_range=520, hover_height=55,
     summon=("sporenblase", "schwaermer"), summon_interval=5.0, summon_max=4,
-    boss=True, gore=SPORES, pearls=220,  # solid gore would plug the exit
+    boss=True, gore="spores", pearls=220,  # solid gore would plug the exit
 )  # fmt: skip
 BONE_SPITTER = CreatureSpec(
     "knochenspeier", "Knochenspeier", width=8, height=7, hp=30, flying=True, speed=0,
@@ -99,18 +100,18 @@ BONE_SPITTER = CreatureSpec(
 )  # fmt: skip
 SPORE_BLOAT = CreatureSpec(
     "sporenblase", "Sporenblase", width=9, height=9, hp=8, flying=True, speed=28, sight=300,
-    melee_damage=6, pop_on_touch=True, gore=SPORES, burst=11, pearls=10,
+    melee_damage=6, pop_on_touch=True, gore="spores", burst=11, pearls=10,
 )  # fmt: skip
 EMBER_MAGGOT = CreatureSpec(
     "brandmade", "Brandmade", width=10, height=6, hp=26, flying=False, speed=58, sight=450,
-    melee_damage=10, melee_cooldown=0.8, jump_speed=190, gore=FIRE, burst=6,
+    melee_damage=10, melee_cooldown=0.8, jump_speed=190, gore="fire", burst=6,
     fire_immune=True, pearls=14,
 )  # fmt: skip
 ACID_SPITTER = CreatureSpec(
     "saeurespucker", "Säurespucker", width=11, height=9, hp=34, flying=False, speed=30,
     sight=420, melee_damage=6, jump_speed=120,
     patterns=(("sekret_saeure", "klumpen"), ("gallenregen",)), ranged_cooldown=2.2,
-    ranged_range=300, gore=ACID, acid_immune=True, pearls=16,
+    ranged_range=300, gore="acid", acid_immune=True, pearls=16,
 )  # fmt: skip
 LEECH = CreatureSpec(
     "egel", "Blutegel", width=7, height=4, hp=8, flying=True, speed=95, sight=380,
@@ -123,7 +124,7 @@ EYE_BLOAT = CreatureSpec(
 )  # fmt: skip
 MUCUS_CRAWLER = CreatureSpec(
     "schleimkriecher", "Schleimkriecher", width=16, height=9, hp=90, flying=False, speed=24,
-    sight=360, melee_damage=18, melee_cooldown=1.3, jump_speed=0, gore=MUCUS, burst=8,
+    sight=360, melee_damage=18, melee_cooldown=1.3, jump_speed=0, gore="mucus", burst=8,
     acid_immune=True, pearls=24,
 )  # fmt: skip
 NERVE_KNOT = CreatureSpec(
@@ -136,14 +137,14 @@ BONE_EATER = CreatureSpec(
     sight=700, melee_damage=14, melee_cooldown=1.3,
     patterns=(("knochensaege",), ("beschleunigung", "knochenspeer"), ("doppel", "knochenspeer", "knochenspeer")),
     ranged_cooldown=1.5, ranged_range=520, hover_height=0, burrows=17, boss=True,
-    gore=BONE_DUST, pearls=200,
+    gore="bone_dust", pearls=200,
 )  # fmt: skip
 BREATH = CreatureSpec(
     "atem", "Der Atem", width=40, height=30, hp=520, flying=True, speed=26, sight=700,
     melee_damage=12, melee_cooldown=1.3,
     patterns=(("sekret_sporen", "klumpen"), ("sekret_schleim", "klumpen")), radial=6,
     ranged_cooldown=3.0, ranged_range=600, hover_height=40, inhale=55.0,
-    summon=("egel",), summon_interval=6.0, summon_max=6, boss=True, gore=MUCUS, pearls=240,
+    summon=("egel",), summon_interval=6.0, summon_max=6, boss=True, gore="mucus", pearls=240,
 )  # fmt: skip
 INHALE_TIME = 2.2  # seconds of each breath cycle spent sucking in
 BREATH_CYCLE = 6.0
@@ -155,15 +156,15 @@ SHAPESHIFTER = CreatureSpec(
 )  # fmt: skip
 TALLOW_SAC = CreatureSpec(
     "talgsack", "Talgsack", width=8, height=9, hp=3, flying=False, speed=0, sight=0,
-    gore=TALLOW, burst=7, blast=12, ignites=True, prop=True, pearls=0,
+    gore="tallow", burst=7, blast=12, ignites=True, prop=True, pearls=0,
 )  # fmt: skip
 ACID_SAC = CreatureSpec(
     "saeuresack", "Säuresack", width=8, height=9, hp=3, flying=False, speed=0, sight=0,
-    gore=ACID, burst=8, blast=6, prop=True, acid_immune=True, pearls=0,
+    gore="acid", burst=8, blast=6, prop=True, acid_immune=True, pearls=0,
 )  # fmt: skip
 SPORE_SAC = CreatureSpec(
     "sporensack", "Sporensack", width=8, height=9, hp=2, flying=False, speed=0, sight=0,
-    gore=SPORES, burst=12, prop=True, pearls=0,
+    gore="spores", burst=12, prop=True, pearls=0,
 )  # fmt: skip
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
@@ -265,7 +266,7 @@ class Creature(Body):
             self.vx = self.vy = 0.0
         elif self.stagger > 0:  # knocked about: no steering, it just flies and falls
             if not self.spec.flying:
-                self.vy = min(self.vy + GRAVITY * dt, MAX_FALL_SPEED)
+                self.vy = min(self.vy + GRAVITY * self.gravity_scale * dt, MAX_FALL_SPEED)
             self.vx *= max(0.0, 1.0 - 1.5 * dt)
             self.vy *= max(0.0, 1.0 - (1.5 if self.spec.flying else 0.0) * dt)
             self.move(world, dt)
@@ -315,7 +316,7 @@ class Creature(Body):
                 self.vy = -self.spec.jump_speed
             else:
                 self.wander_dir = -self.wander_dir
-        self.vy = min(self.vy + GRAVITY * dt, MAX_FALL_SPEED)
+        self.vy = min(self.vy + GRAVITY * self.gravity_scale * dt, MAX_FALL_SPEED)
 
     def _fly(self, world: World, dt: float, hunting: bool) -> None:
         cx, cy = self.center
@@ -429,11 +430,12 @@ class EnemyManager:
         for creature in died:
             cx, cy = creature.center
             radius = 12 if creature.spec.boss else creature.spec.burst
-            world.splash(int(cx), int(cy), radius, creature.spec.gore)
+            gore = mat.id_of(creature.spec.gore)
+            world.splash(int(cx), int(cy), radius, gore)
             if creature.spec.ignites:
                 for dx, dy in disc_offsets(radius):
                     x, y = int(cx) + dx, int(cy) + dy
-                    if world.get(x, y) == creature.spec.gore and world.rng.random() < 0.3:
+                    if world.get(x, y) == gore and world.rng.random() < 0.3:
                         world.ignite(x, y)
         self.creatures = [c for c in self.creatures if not c.dead]
         return died

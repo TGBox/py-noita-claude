@@ -10,21 +10,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from src import materials as mat
 from src.body import Body
-from src.materials import (
-    ACID,
-    AIR,
-    BEDROCK,
-    BLOOD,
-    KIND,
-    LIQUID,
-    MAGMA,
-    MUCUS,
-    NAME_DE,
-    PUS,
-    STOPS_PROJECTILE,
-    TALLOW,
-)
+from src.materials import AIR, BEDROCK, KIND, LIQUID, NAME_DE, STOPS_PROJECTILE
 from src.world import World, disc_offsets
 
 CAPACITY = 300  # cells
@@ -42,31 +30,69 @@ SPRAY_LIFETIME = 3.0
 THROW_GRAVITY = 420.0
 SHATTER_RADIUS_PER_CELL = 0.06  # splash radius grows with the content
 
-# What a sip does: (heal, damage) per sip and a German description.
-DRINK_EFFECTS: dict[int, tuple[float, float, str]] = {
-    BLOOD: (0.0, 0.0, "Blut. Es schmeckt nach Eisen, heilen kann es dich nicht."),
-    ACID: (0.0, 25.0, "Die Säure verätzt dich von innen!"),
-    TALLOW: (0.0, 0.0, "Fettig. Du fühlst dich schwer."),
-    MUCUS: (2.0, 0.0, "Zäh und kalt. Das Brennen lässt nach."),
-    PUS: (0.0, 0.0, "Eiter. Dir wird übel, das Gift brennt in den Adern."),
-    MAGMA: (0.0, 40.0, "Glutblut! Es verbrennt dich von innen."),
+# What a sip does: (heal, damage) per sip and a German description, by material key.
+DRINK_EFFECTS: dict[str, tuple[float, float, str]] = {
+    "blood": (0.0, 0.0, "Blut. Es schmeckt nach Eisen, heilen kann es dich nicht."),
+    "acid": (0.0, 25.0, "Die Säure verätzt dich von innen!"),
+    "tallow": (0.0, 0.0, "Fettig. Du fühlst dich schwer."),
+    "mucus": (2.0, 0.0, "Zäh und kalt. Das Brennen lässt nach."),
+    "pus": (0.0, 0.0, "Eiter. Dir wird übel, das Gift brennt in den Adern."),
+    "magma": (0.0, 40.0, "Glutblut! Es verbrennt dich von innen."),
+    "water": (0.0, 0.0, "Wasser. Erfrischend langweilig."),
+    "oil": (0.0, 0.0, "Öl. Du fühlst dich geschmiert."),
+    "tinte": (0.0, 0.0, "Tinte. Deine Zunge ist jetzt blau."),
+    "stempelfarbe": (0.0, 0.0, "Stempelfarbe. Du fühlst dich genehmigt."),
+    "siegellack": (0.0, 5.0, "Siegellack. Dein Mund ist jetzt versiegelt."),
+    "fluxschnaps": (0.0, 0.0, "Flux-Schnaps. Die Welt dreht sich ein bisschen."),
 }
 
 
-@dataclass
 class Flask:
-    material: int | None = None
-    amount: int = 0
+    """A flask's content is stored by material **key**, so it survives universe changes.
+
+    ``material`` is the id of that key in the active material set (or its stand-in).
+    """
+
+    def __init__(self, material: int | str | None = None, amount: int = 0) -> None:
+        self.key: str | None = None
+        self.material = material
+        self.amount = amount
+
+    @property
+    def material(self) -> int | None:
+        return None if self.key is None else mat.id_of(self.key)
+
+    @material.setter
+    def material(self, value: int | str | None) -> None:
+        if value is None or isinstance(value, str):
+            self.key = value
+        else:
+            self.key = mat.key_of(value)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Flask):
+            return NotImplemented
+        return (self.key, self.amount) == (other.key, other.amount)
+
+    def __repr__(self) -> str:
+        return f"Flask({self.key!r}, {self.amount})"
 
     @property
     def empty(self) -> bool:
-        return self.amount <= 0 or self.material is None
+        return self.amount <= 0 or self.key is None
 
     @property
     def label_de(self) -> str:
         if self.empty:
             return "Leere Phiole"
-        return f"Phiole: {NAME_DE[self.material]} ({round(100 * self.amount / CAPACITY)} %)"
+        return f"Phiole: {self.name_de} ({round(100 * self.amount / CAPACITY)} %)"
+
+    @property
+    def name_de(self) -> str:
+        if self.key is None:
+            return ""
+        spec = mat.LIBRARY.get(self.key)
+        return spec.name_de if spec else NAME_DE[self.material]
 
     def _drain(self, cells: int) -> None:
         self.amount = max(0, self.amount - cells)
@@ -138,21 +164,22 @@ class Flask:
         """
         if self.empty:
             return ""
-        heal, damage, message = DRINK_EFFECTS.get(self.material, (0.0, 0.0, "Es schmeckt nach nichts."))
-        if self.material == BLOOD and blood_heals:
+        key = self.key
+        heal, damage, message = DRINK_EFFECTS.get(key, (0.0, 0.0, "Es schmeckt nach nichts."))
+        if key == "blood" and blood_heals:
             heal, message = BLOOD_HEAL, "Das Blut stillt deine Wunden."
         share = min(1.0, self.amount / SIP)
         body.hp = min(body.max_hp, body.hp + heal * share)
         if damage:
-            body.hurt(damage * share, f"Getrunken: {NAME_DE[self.material]}")
-        if self.material == MAGMA:
+            body.hurt(damage * share, f"Getrunken: {self.name_de}")
+        if key == "magma":
             body.burning = 3.0
         else:
             body.wet = max(body.wet, 3.0)
             body.burning = 0.0
-        if self.material == PUS:
+        if key == "pus":
             body.poisoned = 8.0
-        elif self.material == BLOOD:
+        elif key == "blood":
             body.poisoned = 0.0  # fresh blood flushes the poison out
         self._drain(SIP)
         return message

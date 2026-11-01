@@ -15,9 +15,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from src import materials as mat
 from src import native
 from src.body import Body
-from src.materials import BEDROCK, KIND, MATERIAL_COUNT, POWDER, SOLID
+from src.materials import BEDROCK, KIND, POWDER, SOLID
 from src.world import World
 
 SEARCH_MARGIN = 3.0  # search window = blast radius * this
@@ -105,7 +106,14 @@ class Chunk:
         return cells
 
 
-RIGID = [2 if m == BEDROCK else int(KIND[m] == SOLID) for m in range(MATERIAL_COUNT)]
+RIGID: list[int] = []  # per material of the active set: 2 bedrock, 1 solid, 0 loose
+
+
+def _rigid() -> None:
+    RIGID[:] = [2 if m == BEDROCK else int(KIND[m] == SOLID) for m in range(mat.MATERIAL_COUNT)]
+
+
+mat.subscribe(_rigid)
 
 
 def find_loose(world: World, cx: int, cy: int, radius: int) -> list[list[tuple[int, int]]]:

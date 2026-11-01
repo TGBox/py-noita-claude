@@ -67,6 +67,9 @@ class HudState:
     hover: HoverInfo | None = None
     cursor: tuple[int, int] = (0, 0)  # window position of the cursor (for the tooltip)
     outcome_keys: str = ""  # e.g. "N: Noch tiefer | R: Neuer Lauf"
+    rule_line: str = ""  # the universe rule (e.g. "Bass (Rang 1)")
+    breath: float | None = None  # 0..1 air left (rule_flooded), None: not shown
+    beat: float = 0.0  # 1 on the beat, fading to 0 (rule_beat)
     log_path: str = ""
     eyes: int = 0
 
@@ -97,7 +100,9 @@ class Hud:
             self._danger_vignette(screen, viewport, state.pulse)
 
         self._vitals(screen, state, left, top, s)
-        self._depth_panel(screen, state, right, top, s)
+        depth_end = self._depth_panel(screen, state, right, top, s)
+        if state.rule_line:
+            self._rule_panel(screen, state, right, depth_end + round(6 * s), s)
         if state.boss is not None:
             self._boss_bar(screen, viewport, state.boss, s)
         self._wand_panel(screen, state.inventory, left, bottom, s)
@@ -157,7 +162,22 @@ class Hud:
         if not chips and state.eyes:
             ui.text(screen, f"Uraugen: {state.eyes}", (x + round(10 * s), cy), round(13 * s), ui.DIM)
 
-    def _depth_panel(self, screen: pygame.Surface, state: HudState, right: int, y: int, s: float) -> None:
+    def _rule_panel(self, screen: pygame.Surface, state: HudState, right: int, y: int, s: float) -> None:
+        width = round(270 * s)
+        rows = 2 if state.breath is not None else 1
+        height = round((8 + 18 * rows) * s)
+        x = right - width
+        ui.panel(screen, (x, y, width, height), alpha=190)
+        ui.text(screen, state.rule_line, (x + round(10 * s), y + round(5 * s)), round(13 * s), ui.GOLD)
+        if state.beat > 0:
+            radius = max(2, round((3 + 3 * state.beat) * s))
+            pygame.draw.circle(screen, ui.GOLD, (x + width - round(16 * s), y + round(13 * s)), radius)
+        if state.breath is not None:
+            bar = (x + round(52 * s), y + round(26 * s), width - round(64 * s), round(8 * s))
+            ui.text(screen, "Atem", (x + round(10 * s), y + round(22 * s)), round(12 * s), ui.DIM)
+            ui.bar(screen, bar, state.breath, (120, 190, 230))
+
+    def _depth_panel(self, screen: pygame.Surface, state: HudState, right: int, y: int, s: float) -> int:
         width = round(270 * s)
         perk_rows = (len(state.perks) + 1) // 2
         height = round((52 + 17 * perk_rows) * s) + (round(6 * s) if perk_rows else 0)
@@ -183,6 +203,7 @@ class Hud:
             pygame.draw.rect(screen, color, box)
             pygame.draw.rect(screen, ui.PANEL_DARK, box, 1)
             ui.text(screen, name, (cx + round(14 * s), cy), round(13 * s))
+        return y + height
 
     def _boss_bar(self, screen: pygame.Surface, viewport: Viewport, boss: Creature, s: float) -> None:
         width = int(viewport.target_width * 0.42)
