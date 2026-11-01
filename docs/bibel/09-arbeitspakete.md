@@ -14,6 +14,10 @@ Phase G  Abnahme                    Q1 … Q3
 
 Erst wenn Phase A steht, lohnt es sich, Grafik in großer Menge zu erzeugen. Universen werden **einzeln vollständig** fertig gemacht (vertikaler Schnitt), nicht alle Grafiken zuerst.
 
+## Umsetzung in Aufgabenkarten
+
+Die Pakete unten sind die grobe Übersicht. **Umgesetzt wird nach den Aufgabenkarten in `docs/plan/`** (Einstieg: `docs/plan/README.md`, Schnittstellen: `docs/plan/vertraege.md`, Entscheidung: `docs/adr/2026-11-01-atomare-aufgabenkarten.md`). Jede Karte ist klein genug für ein günstiges Modell und nennt genau, was zu lesen und zu ändern ist.
+
 ## Regeln für Agenten
 
 - Jedes Paket arbeitet auf einem eigenen Zweig bzw. eigenem Arbeitsbaum; nichts committen, das macht der Nutzer.
