@@ -15,12 +15,18 @@ from typing import Any
 
 from src import materials as mat
 from src import native
+from src.authority import Wanted
 from src.body import ENEMY_TEAM, PLAYER_TEAM, Body
+from src.bosses import BossScript
+from src.challenges import Challenge
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
 from src.enemies import SPECIES, Creature, EnemyManager, populate, spawn_boss
+from src.events import Event
 from src.flask import ABSORB_RATE, CAPACITY, POUR_RATE, REACH, Droplet, Flask, ThrownFlask
+from src.hud import SpeechBubble
 from src.inventory import Inventory
+from src.klonita import Klonita
 from src.loot import (
     PICKUP_RANGE,
     Pickup,
@@ -47,11 +53,15 @@ from src.materials import (
 from src.perks import PERK_BY_KEY, PERKS
 from src.player import ENERGY_RECHARGE_AIR, MAX_ENERGY, MAX_HP, Player
 from src.projectiles import Blast, ProjectileSystem
+from src.records import Records
 from src.rules import RULE_KEYS, Rule
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
 from src.spells import CATALOG
-from src.universes.model import SHAPES
+from src.universes.catalog import BY_KEY as UNIVERSE_BY_KEY
+from src.universes.catalog import UNIVERSES
+from src.universes.model import SHAPES, Universe
 from src.wand import PRESETS, Shot, Wand, WandSpec
+from src.workshop import WorkshopLayout
 from src.world import World
 from src.worldgen import Level, generate_level, generate_sanctum
 
@@ -143,8 +153,15 @@ def arm_reach(block_count: int) -> float:
 
 class Run:
     def __init__(
-        self, seed: int | None = None, width: int = WORLD_WIDTH, height: int = WORLD_HEIGHT
+        self,
+        seed: int | None = None,
+        width: int = WORLD_WIDTH,
+        height: int = WORLD_HEIGHT,
+        *,
+        universe_key: str = "fleischwelt",
     ) -> None:
+        self.seed = seed if seed is not None else 0
+        self.universe_key = universe_key
         self.rng = random.Random(seed)
         self.default_size = (width, height)
         mat.activate_key(mat.DEFAULT_SET.key)
@@ -170,7 +187,9 @@ class Run:
         self.events: list[str] = []  # sound cues of the last update
         self._hurt_cooldown = 0.0
         self._accumulator = 0.0
-        self.discoveries: list[tuple[str, str]] = []  # ("block"|"creature", key), drained by the game
+        self.discoveries: list[
+            tuple[str, str]
+        ] = []  # ("block"|"creature", key), drained by the game
         self.checkpoint: dict[str, Any] | None = None  # state at the last sanctum entry
         # Kodex unlocks, set by the game before a run starts:
         self.favoured_blocks: frozenset[str] = frozenset()  # likelier in the shop
@@ -198,6 +217,30 @@ class Run:
         # called with the depth's name before a (possibly slow) world generation
         self.on_generate: Callable[[str], None] | None = None
         self.rule = Rule()  # the universe rule of the current depth (src/rules)
+        self.gold: int = 0
+        self.memory_shards: int = 0
+        self.blueprint_shards: int = 0
+        self.badges: int = 0
+        self.price_factor: float = 1.0
+        self.next_boost: str = ""
+        self.in_workshop: bool = False
+        self.in_headquarters: bool = False
+        self.victory: bool = False
+        self._true_ending_flag: bool = False
+        self.menu_mode: str = ""
+        self.listeners: list[Callable[[str, dict[str, Any]], None]] = []
+        self.emitted_events: list[tuple[str, dict[str, Any]]] = []
+        self.grudges: set[tuple[str, str]] = set()
+        self.wanted: Wanted = Wanted()
+        self.klonita: Klonita = Klonita()
+        self.bubbles: list[SpeechBubble] = []
+        self.boss_banner: tuple[str, float] | None = None
+        self.workshop_layout: WorkshopLayout | None = None
+        self.event: Event | None = None
+        self.challenge: Challenge | None = None
+        self.boss_script: BossScript | None = None
+        self.records: Records = Records()
+        self.universe: Universe = UNIVERSE_BY_KEY.get(universe_key, UNIVERSES[0])
         self.new_run()
 
     # ---------------------------------------------------------------- flow
@@ -427,7 +470,9 @@ class Run:
             offers.append(Pickup(x, y, block=key, price=block_price(key, level), floating=True))
         x, y = layout.shop[SHOP_BLOCKS]
         offers.append(
-            Pickup(x, y, wand=generate_wand(self.rng, level), price=wand_price(level), floating=True)
+            Pickup(
+                x, y, wand=generate_wand(self.rng, level), price=wand_price(level), floating=True
+            )
         )
         available = [perk.key for perk in PERKS if perk.key not in self.perks]
         for (x, y), key in zip(layout.altar, self.rng.sample(available, PERK_CHOICES)):
@@ -601,7 +646,10 @@ class Run:
                 "acid_immune": player.acid_immune,
             },
             "wands": [
-                {"spec": {**asdict(wand.spec), "blocks": list(wand.spec.blocks)}, "slots": list(wand.slots)}
+                {
+                    "spec": {**asdict(wand.spec), "blocks": list(wand.spec.blocks)},
+                    "slots": list(wand.slots),
+                }
                 for wand in self.inventory.wands
             ],
             "active": self.inventory.active,
@@ -740,7 +788,9 @@ class Run:
         self.enter_sanctum()
 
     def _restore_live(self, live: dict[str, Any]) -> None:
-        self._apply_rule(SANCTUM if live.get("in_sanctum") else self.route[int(live["depth_index"])])
+        self._apply_rule(
+            SANCTUM if live.get("in_sanctum") else self.route[int(live["depth_index"])]
+        )
         set_key = str(live.get("material_set", mat.DEFAULT_SET.key))
         material_set = mat.find_set(set_key)
         if material_set is None:
@@ -823,8 +873,12 @@ class Run:
         side = 1 if aim[0] >= cx else -1
         return cx + SHOULDER_OFFSET[0] * side, cy + SHOULDER_OFFSET[1]
 
-    def update(self, dt: float, controls: Controls, area: Rect | None = None) -> list[Blast]:
+    def update(
+        self, dt: float, controls: Controls | None = None, area: Rect | None = None
+    ) -> list[Blast]:
         """Advance the run by ``dt`` seconds; ``area`` limits simulation (cells)."""
+        if controls is None:
+            controls = Controls()
         self.events = []
         self.last_aim = controls.aim
         self.time_in_depth += dt
@@ -937,7 +991,11 @@ class Run:
     @property
     def true_ending(self) -> bool:
         """Won with every Urauge: the organism is not just dead, it is yours."""
-        return self.outcome == "victory" and self.eyes >= len(DEPTHS)
+        return self._true_ending_flag or (self.outcome == "victory" and self.eyes >= len(DEPTHS))
+
+    @true_ending.setter
+    def true_ending(self, value: bool) -> None:
+        self._true_ending_flag = bool(value)
 
     def near_secret(self, distance: float = SECRET_HINT_RANGE) -> bool:
         secret = self.level.secret
@@ -1017,6 +1075,8 @@ class Run:
 
     def _fill_vault(self, index: int) -> None:
         """Treasure and a strengthened guardian inside the depth's bone vault."""
+        if self.level.vault is None:
+            return
         x, y = self.level.vault
         floor = y + VAULT_FLOOR_OFFSET
         self.pickups += [
@@ -1085,8 +1145,10 @@ class Run:
         """Western worlds are darker: a factor on the depth's ambient light."""
         return WEST_DARKNESS ** abs(self.parallel) if self.parallel < 0 else 1.0
 
-    def _mirror_level(self, level: Level) -> Level:
+    def _mirror_level(self, level: Level | None = None) -> Level:
         """Flip the freshly generated depth and every position in it."""
+        if level is None:
+            level = self.level
         self.world.mirror()
         w = self.world.width
 
@@ -1183,9 +1245,7 @@ class Run:
         x = player.x + player.width if direction > 0 else player.x - 1
         top = player.y
         bottom = player.y + player.height - 1 - player.step_up  # the feet climb small steps
-        blocking = [
-            (x, y) for y in range(top, bottom + 1) if BLOCKS_BODY[world.get(x, y)]
-        ]
+        blocking = [(x, y) for y in range(top, bottom + 1) if BLOCKS_BODY[world.get(x, y)]]
         if not blocking or len(blocking) > CRUSH_MAX:
             return
         if any(HARDNESS[world.get(cx, cy)] >= 3 for cx, cy in blocking):
@@ -1207,7 +1267,11 @@ class Run:
         stuck = (
             player.blocked(world, x, y - 1)
             and player.blocked(world, x, y + 1)
-            and all(player.blocked(world, x + side, y - up) for side in (-1, 1) for up in range(step + 1))
+            and all(
+                player.blocked(world, x + side, y - up)
+                for side in (-1, 1)
+                for up in range(step + 1)
+            )
         )
         self._trapped = self._trapped + dt if stuck else 0.0
         if math.dist((x, y), self._still_at) > POCKET_MOVE:
@@ -1244,7 +1308,9 @@ class Run:
                 queue.append((nx, ny))
         return True
 
-    def _kick(self, aim: tuple[float, float]) -> None:
+    def _kick(self, aim: tuple[float, float] | None = None) -> None:
+        if aim is None:
+            aim = (self.player.center[0] + 10.0, self.player.center[1])
         """Kick towards the cursor side: hurts and shoves creatures, bursts sacs, flings items."""
         self._kick_cooldown = KICK_COOLDOWN
         self.events.append("kick")
@@ -1254,7 +1320,10 @@ class Run:
         reach_x = cx + side * (player.width / 2 + KICK_REACH / 2)
         for creature in self.enemies.creatures:
             ox, oy = creature.center
-            if abs(ox - reach_x) <= KICK_REACH / 2 + creature.width / 2 and abs(oy - cy) <= creature.height / 2 + 6:
+            if (
+                abs(ox - reach_x) <= KICK_REACH / 2 + creature.width / 2
+                and abs(oy - cy) <= creature.height / 2 + 6
+            ):
                 creature.hurt(KICK_DAMAGE, "Tritt")
                 if not creature.spec.boss and not creature.spec.stationary:
                     creature.vx = side * KICK_PUSH
@@ -1340,11 +1409,14 @@ class Run:
                 self.pickups.remove(item)
                 self.events.append("pearl")
 
-    def _pick_up(self) -> None:
-        item = self.nearest_pickup()
+    def _pick_up(self, item: Pickup | None = None) -> bool:
+        if item is None:
+            item = self.nearest_pickup()
         if item is None:
             return
-        self._log("aufheben", gegenstand=item.label_de, preis=self.price_of(item), perlen=self.pearls)
+        self._log(
+            "aufheben", gegenstand=item.label_de, preis=self.price_of(item), perlen=self.pearls
+        )
         if item.perk is not None:
             self.apply_perk(item.perk)
             self.pickups = [i for i in self.pickups if i.perk is None and not i.reroll]
@@ -1410,8 +1482,49 @@ class Run:
             self.events.append("pickup")
         elif item.block is not None and self.inventory.add_block(item.block):
             self._discover_blocks((item.block,))
-            self.pickups.remove(item)
+            if item in self.pickups:
+                self.pickups.remove(item)
             self.events.append("pickup")
+            return True
+        return False
+
+    def emit(self, event_name: str, **payload: Any) -> None:
+        """Emit a gameplay event on the structured event bus (Contract V12, Card A07)."""
+        raise NotImplementedError("Card A07")
+
+    def _pickup_data(self, item: Pickup) -> dict[str, Any]:
+        return _pickup_data(item)
+
+    def _pickup_from(self, data: dict[str, Any]) -> Pickup | None:
+        return _pickup_from(data)
+
+    def try_interact_creature(self) -> bool:
+        """Attempt special E-key interaction with nearby creature (Card A16)."""
+        raise NotImplementedError("Card A16")
+
+    def enter_workshop(self) -> None:
+        """Transition the run into the between-universes workshop (Card E02)."""
+        raise NotImplementedError("Card E02")
+
+    def choose_next_universe(self, index: int) -> bool:
+        """Select portal offer ``index`` in the workshop and enter that universe (Card E02)."""
+        raise NotImplementedError("Card E02")
+
+    def enter_headquarters(self) -> None:
+        """Transition into the authority headquarters final stage (Card F08)."""
+        raise NotImplementedError("Card F08")
+
+    def say(self, speaker: str, text: str, x: float, y: float, duration: float = 2.8) -> None:
+        """Spawn a floating speech bubble in the world (Card F14 / G02)."""
+        raise NotImplementedError("Card F14")
+
+    def boss_line(self, boss_key: str, trigger: str, x: float, y: float) -> None:
+        """Trigger a boss dialogue bubble for ``trigger`` (Card F13)."""
+        raise NotImplementedError("Card F13")
+
+    def handle_menu_input(self, key: int) -> bool:
+        """Handle keyboard navigation for modal overlays (Card G09)."""
+        raise NotImplementedError("Card G09")
 
     def _on_death(self, creature) -> None:
         cx, cy = creature.center
@@ -1435,7 +1548,9 @@ class Run:
         self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
         self.events.append("blast_big" if creature.spec.boss else "kill")
         if creature.spec.boss:
-            self._log("waechter_besiegt", kreatur=creature.spec.key, zeit=round(self.stats["time"], 1))
+            self._log(
+                "waechter_besiegt", kreatur=creature.spec.key, zeit=round(self.stats["time"], 1)
+            )
             if self.depth.final:
                 self.outcome = "victory"
                 self.events.append("victory")
@@ -1510,7 +1625,18 @@ def _unpack(text: str) -> bytes:
     return zlib.decompress(base64.b64decode(text.encode("ascii")))
 
 
-PICKUP_FIELDS = ("pearls", "perk", "heart", "cocoon", "eye", "reroll", "portal", "seen", "price", "floating")
+PICKUP_FIELDS = (
+    "pearls",
+    "perk",
+    "heart",
+    "cocoon",
+    "eye",
+    "reroll",
+    "portal",
+    "seen",
+    "price",
+    "floating",
+)
 
 
 def _pickup_data(item: Pickup) -> dict[str, Any]:

@@ -7,7 +7,31 @@ own material set it borrows the organism set ("koerper").
 
 from __future__ import annotations
 
+from typing import Any
+
 from src.universes.model import Region, Universe
+
+
+class _UniverseCatalogTuple(tuple[Universe, ...]):
+    """Tuple of Universe instances that also supports dict-like lookup by universe key."""
+
+    def keys(self):
+        return BY_KEY.keys()
+
+    def values(self):
+        return BY_KEY.values()
+
+    def items(self):
+        return BY_KEY.items()
+
+    def get(self, key: str, default: Universe | None = None) -> Universe | None:
+        return BY_KEY.get(key, default)
+
+    def __getitem__(self, key: int | slice | str) -> Any:  # type: ignore[override]
+        if isinstance(key, str):
+            return BY_KEY[key]
+        return super().__getitem__(key)
+
 
 UNIVERSES: tuple[Universe, ...] = (
     Universe(
@@ -97,6 +121,8 @@ UNIVERSES: tuple[Universe, ...] = (
 )  # fmt: skip
 
 BY_KEY: dict[str, Universe] = {u.key: u for u in UNIVERSES}
+UNIVERSES = _UniverseCatalogTuple(UNIVERSES)
+
 
 # Mid-bosses per rank: (boss key, home universe). Bible chapter 02 / 05.
 MID_BOSSES: dict[int, tuple[tuple[str, str], ...]] = {

@@ -109,9 +109,7 @@ class Rule:
         changed = []
         for material in base.resolved():
             if material.kind == mat.SOLID and material.flammability > 0:
-                material = replace(
-                    material, flammability=min(1.0, material.flammability * factor)
-                )
+                material = replace(material, flammability=min(1.0, material.flammability * factor))
             changed.append(material)
         derived = mat.MaterialSet(
             f"{base.key}+{self.key}{self.rank}", tuple(changed), base.aliases, base.reactions
@@ -206,7 +204,12 @@ class Rule:
                 continue
             if abs(x - px) < REGROW_KEEP_OUT and abs(y - py) < REGROW_KEEP_OUT:
                 continue
-            around = (world.get(x - 1, y), world.get(x + 1, y), world.get(x, y - 1), world.get(x, y + 1))
+            around = (
+                world.get(x - 1, y),
+                world.get(x + 1, y),
+                world.get(x, y - 1),
+                world.get(x, y + 1),
+            )
             if sum(1 for cell in around if cell == flesh) >= 2:
                 world.set_cell(x, y, flesh)
 
@@ -217,3 +220,14 @@ def describe_de(rule: Rule) -> str:
         return ""
     return f"Regel: {rule.name_de} · Rang {rule.rank}"
 
+
+def apply_player_rules(
+    player: Any,
+    world: Any,
+    rule: Rule | str,
+    dt: float,
+    *,
+    region: Any = None,
+) -> None:
+    """Apply universe/region rules such as current_vx to the player (Card A26)."""
+    raise NotImplementedError("Card A26")

@@ -1,8 +1,8 @@
 # Technische Spezifikation & Schnittstellen-Verträge (`V0`–`V23`)
 
-Dieses Dokument ist die **verbindliche technische Spezifikation (Single Source of Truth)** und der **Vertrags-Index** für die atomare Umsetzung von `py-noita-claude` gemäß der Design-Bibel ([docs/bibel/00-uebersicht.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/bibel/00-uebersicht.md)) und dem [ADR zu atomaren Aufgabenkarten](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/adr/2026-11-01-atomare-aufgabenkarten.md).
+Dieses Dokument ist die **verbindliche technische Spezifikation (Single Source of Truth)** und der **Vertrags-Index** für die atomare Umsetzung von `py-noita-claude` gemäß der Design-Bibel ([docs/bibel/00-uebersicht.md](../bibel/00-uebersicht.md)) und dem [ADR zu atomaren Aufgabenkarten](../adr/2026-11-01-atomare-aufgabenkarten.md).
 
-Um das Kontextbudget kleiner/kostengünstiger Sprachmodelle (`< 15 KB` pro Aufgabenkarte) strikt einzuhalten, sind die detaillierten Python-Signaturen, Datenstrukturen und Übergabeparameter in **8 thematische Vertragsdateien** unter [`docs/plan/vertraege/`](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/) aufgeteilt. Jede Aufgabenkarte in `phase-a-fundament.md` bis `phase-g-abnahme.md` referenziert genau die Vertragsdatei(en), die sie benötigt.
+Um das Kontextbudget kleiner/kostengünstiger Sprachmodelle (`< 15 KB` pro Aufgabenkarte) strikt einzuhalten, sind die detaillierten Python-Signaturen, Datenstrukturen und Übergabeparameter in **8 thematische Vertragsdateien** unter [`docs/plan/vertraege/`](vertraege) aufgeteilt. Jede Aufgabenkarte in `phase-a-fundament.md` bis `phase-g-abnahme.md` referenziert genau die Vertragsdatei(en), die sie benötigt.
 
 ---
 
@@ -18,7 +18,7 @@ Um das Kontextbudget kleiner/kostengünstiger Sprachmodelle (`< 15 KB` pro Aufga
 
 - **Sprache & Laufzeit:** Python `>= 3.12` (verwaltet über `uv`).
 - **Bibliotheken:** `pygame-ce` (`import pygame`), Python-Standardbibliothek (`dataclasses`, `math`, `random`, `json`, `pathlib`, `typing`, `collections`).
-- **Optionaler Beschleuniger:** Rust/PyO3-Kern (`noita_core` in `native/`) mit vollständigem reinem Python-Fallback in [`src/world.py`](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/src/world.py).
+- **Optionaler Beschleuniger:** Rust/PyO3-Kern (`noita_core` in `native/`) mit vollständigem reinem Python-Fallback in [`src/world.py`](../../src/world.py).
 - **Verbindliche Prüfkommandos nach jeder S-Karte:**
   - Einzeltest zur Karte: `uv run pytest tests/<test_datei>.py -q`
   - Gesamte Test-Suite: `uv run pytest -q`
@@ -88,11 +88,13 @@ class ChallengeSpec:
 
 ---
 
-## 5. Test-Strategie
+## 5. Test-Strategie (Vorab-Abnahmetests / Red-Green-Harness)
 
+- **Vorab geschriebene Spec-Tests (`tests/spec/`):** Alle Abnahmetests für die Phasen `A` bis `G` wurden **vorab** durch ein starkes Modell gegen die Verträge `V0`–`V23` erstellt und liegen unter `tests/spec/` (`test_phase_a.py` bis `test_phase_g.py`).
+- **`tests/` ist schreibgeschützt (Read-Only für ausführende Modelle):** Ausführende Modelle dürfen Dateien unter `tests/` **niemals** verändern, abschwächen oder löschen. Jede S-Karte ändert ausschließlich Produktionscode unter `src/` bzw. `tools/`.
 - **Headless-Ausführung:** Alle Unit- und Integrations-Tests unter `tests/` laufen ohne Grafikfenster (`SDL_VIDEODRIVER=dummy` bzw. reine Daten-/Oberflächen-Tests).
 - **Determinismus:** Zufallsabhängige Tests übergeben immer ein explizites `random.Random(seed)` oder einen festen `seed: int`.
-- **1-zu-1-Kartenabsicherung:** Jede S-Karte nennt im Feld **Verifikation** einen konkreten `uv run pytest ...`-Befehl mit benannten Testfunktionen, die exakt das neue Verhalten prüfen, sowie den anschließenden Gesamtlauf `uv run pytest -q`.
+- **1-zu-1-Kartenabsicherung:** Jede S-Karte wird über ihren spezifischen Spec-Test `uv run pytest tests/spec/test_phase_<x>.py -k <id_klein> -q` sowie den Regressionslauf der Bestands-Suite `uv run pytest --ignore=tests/spec -q` abgenommen.
 
 ---
 
@@ -100,8 +102,8 @@ class ChallengeSpec:
 
 ### Always (Immer ohne Rückfrage ausführen)
 
-- Vor dem Bearbeiten einer S-Karte die in der Karte verlinkte Vertragsdatei unter `docs/plan/vertraege/` und die genannten Zieldateien lesen.
-- Nach jeder Änderung `uv run pytest -q` und `uv run ruff check src tests tools` ausführen.
+- Vor dem Bearbeiten einer S-Karte die in der Karte verlinkte Vertragsdatei unter `docs/plan/vertraege/`, die zugehörige Testfunktion in `tests/spec/` und die genannten Zieldateien lesen.
+- Nach jeder Änderung den karten-spezifischen Spec-Test (`uv run pytest tests/spec/test_phase_<x>.py -k <id_klein> -q`), die Bestands-Suite (`uv run pytest --ignore=tests/spec -q`) und `uv run ruff check src tools` ausführen.
 - Rückwärtskompatibilität bestehender Signaturen (über Default-Parameter / Keyword-Only-Argumente wie in `EnemyManager.update` oder `Pickup.__post_init__`) wahren, damit kein bestehender Test bricht.
 
 ### Ask First (Vorab Rückfrage stellen)
@@ -111,6 +113,7 @@ class ChallengeSpec:
 
 ### Never (Niemals tun)
 
+- **Niemals** Dateien unter `tests/` (weder bestehende Tests noch `tests/spec/`) editieren, auskommentieren oder mit `@pytest.mark.skip` versehen!
 - **Niemals** `pyproject.toml`, `CHANGELOG.md` oder den Rust-Code unter `native/` verändern.
 - **Niemals** `git commit`, `git push` oder destruktive Git-Befehle ohne ausdrücklichen Nutzerwunsch ausführen.
 - **Niemals** bestehende Audio-Events in `Run.events: list[str]` durch das neue Gameplay-Event-System `Run.emit` überschreiben.
@@ -124,14 +127,14 @@ Jede Vertragsdatei ist unter `10 KB` groß und definiert alle Typen, Signaturen,
 
 | Datei | Enthaltene Verträge | Abgedeckte Module & Schnittstellen |
 | --- | --- | --- |
-| [v00-migration-und-schluessel.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v00-migration-und-schluessel.md) | `V0a`, `V0b`, `V0c`, `V0d` | Kanonische `probe_*`-Keys & `Region.key`-Reihenfolge in `src/universes/catalog.py`; `Block.rarity_tier` (`1..3`) in `src/spells.py`; `World.take_destroyed_cells()` & `gold_vein` in `src/world.py`; Vorab-Entscheidungen (`blattlaus` → `"zucker"` + Honig-Drop, `krypta`-Strömung, `glow`-JSON-Schema, `tuersteherpilz`-Bestechung, `moenchsfisch`-Chor) |
-| [v01-verhalten-und-wegsuche.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v01-verhalten-und-wegsuche.md) | `V1`, `V1a`, `V1b`, `V1c`, `V2`, `V3`, `V4`, `V4b` | `src/behaviour.py` (`BehaviourContext`, `Ability`, 10 Fähigkeiten); 4 Haltungen (`peaceful`, `shy`, `territorial`, `hostile`); erweiterte `CreatureSpec` & `Creature` + abwärtskompatibles `EnemyManager.update`; Zustandsmaschine & Telegrafie; `src/pathfind.py` (A*); `src/factions.py` (11 Fraktionen & Blutfehden); alle Status-Timer auf `Body` & alle 15 Flaschen-Trinkeffekte in `src/flask.py` |
-| [v05-sprites-und-teile.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v05-sprites-und-teile.md) | `V5`, `V6`, `V7`, `V8`, `V8b` | `src/sprites.py` (`SheetMeta`, `Animator`); `src/sprite_render.py` (`SheetCache`, `blit_frame`, `glow_points`); `src/procbody.py` (`Chain`, `Legs`, `Tentacle`, `PartSpec`, `PartLayout`, `ProcRig`); `tools/palette.py` & `tools/sprites.py`; `src/weapon_parts.py` (`WeaponPartPlacement`, `parts_for`, `layout_for`) |
-| [v09-universen-und-ereignisse.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v09-universen-und-ereignisse.md) | `V9`, `V10`, `V13`, `V14` | `Level`-Erweiterung (inkl. `(x0, y0, x1, y1)`-Konvention & `Run._mirror_level`), `src/universes/gen/__init__.py` & `common.py` (inkl. `"top_split"` & `"islands"`); `src/events.py` (9 Sekundärereignisse); `src/challenges.py` (6 Prüfungen); `src/bot.py` (`BotReport`, `run_bot`, `run_full`) |
-| [v11-gegenstaende-und-ereignisbus.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md) | `V11`, `V12` | `src/samples.py` (`Sample`, `SAMPLES`, 14 Proben), Proben-Slots in `src/inventory.py`, vereinheitlichtes `Pickup` (`kind`, `item_key`, `amount`) in `src/loot.py`; `Run.emit(name, **data)` & vollständige Payload-Tabelle aller 24 Gameplay-Ereignisse |
-| [v15-behoerde-und-bosse.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v15-behoerde-und-bosse.md) | `V15`, `V16`, `V17` | `src/authority.py` (`Wanted`, `0..5` Sterne, 3 Agenten-Spezies, `spawn_agents`); `src/bosses/__init__.py` (`BossPhase`, `BossScript`, 3- und 4-Phasen-Schwellen, 9 Universums-Endbosse); `src/bosses/evil_selves.py` (3 Böse Ichs, Signatur-Stäbe, Kaiserin-Handel) & `src/bosses/headquarters.py` (3-stufiges Hauptquartier & `"ober_cloita"`) |
-| [v18-werkstatt-und-wirtschaft.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md) | `V18`, `V19`, `V20` | `src/workshop.py` (`640×360`-Hub & alle 10 Stationen `ws_portal`..`ws_workbench`); `src/economy.py` (Gold- & Preisformeln) & `src/traders.py` (6 Händler inkl. Sonderregeln: Magen, +10G Gebühr, Glibber, Ameisen-Proben-Tausch, DJ-Taktpflicht, Küster-Segen); `src/fabricator.py` & `src/minigames/` (4 Physik-o-Mat-Rätsel + Schießstand) |
-| [v21-klonita-ui-und-speichern.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege/v21-klonita-ui-und-speichern.md) | `V21`, `V22`, `V23` | `src/klonita.py` & `src/klonita_lines.py` (Zustände, `[K]`-Toggle, 5 Auto-Trigger, 4 Hilfen, 3 Macken); `SpeechBubble`, HUD-Erweiterung, 5 neue Menü-Modi, Hover-Infos; `Records`-Erweiterung, Rang-Formel, rückwärtskompatibles Live-Save-Schema & `MODULE_ALIASES`/`PERK_ALIASES` |
+| [v00-migration-und-schluessel.md](vertraege/v00-migration-und-schluessel.md) | `V0a`, `V0b`, `V0c`, `V0d` | Kanonische `probe_*`-Keys & `Region.key`-Reihenfolge in `src/universes/catalog.py`; `Block.rarity_tier` (`1..3`) in `src/spells.py`; `World.take_destroyed_cells()` & `gold_vein` in `src/world.py`; Vorab-Entscheidungen (`blattlaus` → `"zucker"` + Honig-Drop, `krypta`-Strömung, `glow`-JSON-Schema, `tuersteherpilz`-Bestechung, `moenchsfisch`-Chor) |
+| [v01-verhalten-und-wegsuche.md](vertraege/v01-verhalten-und-wegsuche.md) | `V1`, `V1a`, `V1b`, `V1c`, `V2`, `V3`, `V4`, `V4b` | `src/behaviour.py` (`BehaviourContext`, `Ability`, 10 Fähigkeiten); 4 Haltungen (`peaceful`, `shy`, `territorial`, `hostile`); erweiterte `CreatureSpec` & `Creature` + abwärtskompatibles `EnemyManager.update`; Zustandsmaschine & Telegrafie; `src/pathfind.py` (A*); `src/factions.py` (11 Fraktionen & Blutfehden); alle Status-Timer auf `Body` & alle 15 Flaschen-Trinkeffekte in `src/flask.py` |
+| [v05-sprites-und-teile.md](vertraege/v05-sprites-und-teile.md) | `V5`, `V6`, `V7`, `V8`, `V8b` | `src/sprites.py` (`SheetMeta`, `Animator`); `src/sprite_render.py` (`SheetCache`, `blit_frame`, `glow_points`); `src/procbody.py` (`Chain`, `Legs`, `Tentacle`, `PartSpec`, `PartLayout`, `ProcRig`); `tools/palette.py` & `tools/sprites.py`; `src/weapon_parts.py` (`WeaponPartPlacement`, `parts_for`, `layout_for`) |
+| [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md) | `V9`, `V10`, `V13`, `V14` | `Level`-Erweiterung (inkl. `(x0, y0, x1, y1)`-Konvention & `Run._mirror_level`), `src/universes/gen/__init__.py` & `common.py` (inkl. `"top_split"` & `"islands"`); `src/events.py` (9 Sekundärereignisse); `src/challenges.py` (6 Prüfungen); `src/bot.py` (`BotReport`, `run_bot`, `run_full`) |
+| [v11-gegenstaende-und-ereignisbus.md](vertraege/v11-gegenstaende-und-ereignisbus.md) | `V11`, `V12` | `src/samples.py` (`Sample`, `SAMPLES`, 14 Proben), Proben-Slots in `src/inventory.py`, vereinheitlichtes `Pickup` (`kind`, `item_key`, `amount`) in `src/loot.py`; `Run.emit(name, **data)` & vollständige Payload-Tabelle aller 24 Gameplay-Ereignisse |
+| [v15-behoerde-und-bosse.md](vertraege/v15-behoerde-und-bosse.md) | `V15`, `V16`, `V17` | `src/authority.py` (`Wanted`, `0..5` Sterne, 3 Agenten-Spezies, `spawn_agents`); `src/bosses/__init__.py` (`BossPhase`, `BossScript`, 3- und 4-Phasen-Schwellen, 9 Universums-Endbosse); `src/bosses/evil_selves.py` (3 Böse Ichs, Signatur-Stäbe, Kaiserin-Handel) & `src/bosses/headquarters.py` (3-stufiges Hauptquartier & `"ober_cloita"`) |
+| [v18-werkstatt-und-wirtschaft.md](vertraege/v18-werkstatt-und-wirtschaft.md) | `V18`, `V19`, `V20` | `src/workshop.py` (`640×360`-Hub & alle 10 Stationen `ws_portal`..`ws_workbench`); `src/economy.py` (Gold- & Preisformeln) & `src/traders.py` (6 Händler inkl. Sonderregeln: Magen, +10G Gebühr, Glibber, Ameisen-Proben-Tausch, DJ-Taktpflicht, Küster-Segen); `src/fabricator.py` & `src/minigames/` (4 Physik-o-Mat-Rätsel + Schießstand) |
+| [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) | `V21`, `V22`, `V23` | `src/klonita.py` & `src/klonita_lines.py` (Zustände, `[K]`-Toggle, 5 Auto-Trigger, 4 Hilfen, 3 Macken); `SpeechBubble`, HUD-Erweiterung, 5 neue Menü-Modi, Hover-Infos; `Records`-Erweiterung, Rang-Formel, rückwärtskompatibles Live-Save-Schema & `MODULE_ALIASES`/`PERK_ALIASES` |
 
 ---
 
@@ -139,13 +142,13 @@ Jede Vertragsdatei ist unter `10 KB` groß und definiert alle Typen, Signaturen,
 
 | Phase | Datei | Kern-Fähigkeiten | Benötigte Verträge |
 | --- | --- | --- | --- |
-| **Phase A** | [phase-a-fundament.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-a-fundament.md) | Vorab-Migration (`V0a`–`V0d`), Proben & Pickup-Vereinheitlichung, Ereignisbus, Status-Timer & 15 Flascheneffekte, Pfadsuche, Fraktionen, Verhaltens-Fähigkeiten, Kreaturen-Zustandsmaschine, Sprite-/Animator-/Prozedural-Rig-Fundament | `V0a`–`V0d`, `V1`–`V8b`, `V11`, `V12` |
-| **Phase B** | [phase-b-grafik.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-b-grafik.md) | Farbpaletten & Zeichen-Primitiven, Charakter-/Begleiter-/Agenten-/Händler-Sprites, alle 36 Kreaturen-Sheets (in 3er-Packs), 18 Bosse, 10 Waffenteile, 35 Zauber-Icons (in 7er-Packs), 28 Gegenstands-Icons (in 7er-Packs), 26 Umgebungs-Props (in 6er/7er-Packs), 12 Partikel-Sheets, Renderer-Anbindung | `V5`–`V8b`, `V11`, `V18` |
-| **Phase C** | [phase-c-kreaturen.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-c-kreaturen.md) | Alle 36 regulären Kreaturen (je 4 pro Universum), 9 Zwischenbosse, 9 Endboss-Grundkörper, 3 Behörden-Agenten, 3 Böse Ichs, Ober-Cloita, Projektil-Sonderformen & Kreaturen-Interaktionen (Bestechung, Blattlaus-Melken, Chor) | `V0d`, `V1`–`V4b`, `V15`–`V17` |
-| **Phase D** | [phase-d-universen.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-d-universen.md) | `Level`-Erweiterung & Generator-Hilfen (`common.py`), alle 9 Universums-Generatoren (je 3 Regionen + Boss-Arenen + Schrein/Händler-Nische), Weltregel-Erweiterungen (Strömung, Takt, Rutschigkeit, Sprung-Luftkosten), 9 Sekundärereignisse, 6 Prüfungen, Playtest-Bot | `V0a`, `V0d`, `V9`, `V10`, `V13`, `V14` |
-| **Phase E** | [phase-e-werkstatt.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-e-werkstatt.md) | `640×360`-Werkstatt-Generator & 10 Stationen, Wirtschaft & Gold-Drops, 6 Händler mit allen Sonderregeln, Fabrikator, 4 Physik-o-Mat-Rätsel + Schießstand, Portal-Auswahl-, Fabrikator- & Händler-Menüs, Werkstatt-Ablauf in `Run` | `V11`, `V12`, `V18`–`V20`, `V22` |
-| **Phase F** | [phase-f-behoerde-bosse-klonita.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-f-behoerde-bosse-klonita.md) | Fahndungslevel & Agenten-Spawns, mehrphasige Boss-Skripte für alle 9 Endbosse (in atomaren 3er-Paketen), Begegnungen mit den 3 Bösen Ichs (inkl. Kaiserin-Handel), 3-stufiges Hauptquartier & Wahres Ende, Klonita-Begleiterin & Sprechblasen | `V12`, `V15`–`V17`, `V21`, `V22` |
-| **Phase G** | [phase-g-abnahme.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/phase-g-abnahme.md) | HUD-Erweiterung (Gold, Sterne, Proben, Event-Banner), Entdeckungs-Archiv (5 Reiter), Hover-Infos, vollständige Save/Load-Serialisierung & Alias-Tabellen, Rang-Abrechnung, Bot-Vollabnahme über alle 9 Universen | `V14`, `V22`, `V23` |
+| **Phase A** | [phase-a-fundament.md](phase-a-fundament.md) | Vorab-Migration (`V0a`–`V0d`), Proben & Pickup-Vereinheitlichung, Ereignisbus, Status-Timer & 15 Flascheneffekte, Pfadsuche, Fraktionen, Verhaltens-Fähigkeiten, Kreaturen-Zustandsmaschine, Sprite-/Animator-/Prozedural-Rig-Fundament | `V0a`–`V0d`, `V1`–`V8b`, `V11`, `V12` |
+| **Phase B** | [phase-b-grafik.md](phase-b-grafik.md) | Farbpaletten & Zeichen-Primitiven, Charakter-/Begleiter-/Agenten-/Händler-Sprites, alle 36 Kreaturen-Sheets (in 3er-Packs), 18 Bosse, 10 Waffenteile, 35 Zauber-Icons (in 7er-Packs), 28 Gegenstands-Icons (in 7er-Packs), 26 Umgebungs-Props (in 6er/7er-Packs), 12 Partikel-Sheets, Renderer-Anbindung | `V5`–`V8b`, `V11`, `V18` |
+| **Phase C** | [phase-c-kreaturen.md](phase-c-kreaturen.md) | Alle 36 regulären Kreaturen (je 4 pro Universum), 9 Zwischenbosse, 9 Endboss-Grundkörper, 3 Behörden-Agenten, 3 Böse Ichs, Ober-Cloita, Projektil-Sonderformen & Kreaturen-Interaktionen (Bestechung, Blattlaus-Melken, Chor) | `V0d`, `V1`–`V4b`, `V15`–`V17` |
+| **Phase D** | [phase-d-universen.md](phase-d-universen.md) | `Level`-Erweiterung & Generator-Hilfen (`common.py`), alle 9 Universums-Generatoren (je 3 Regionen + Boss-Arenen + Schrein/Händler-Nische), Weltregel-Erweiterungen (Strömung, Takt, Rutschigkeit, Sprung-Luftkosten), 9 Sekundärereignisse, 6 Prüfungen, Playtest-Bot | `V0a`, `V0d`, `V9`, `V10`, `V13`, `V14` |
+| **Phase E** | [phase-e-werkstatt.md](phase-e-werkstatt.md) | `640×360`-Werkstatt-Generator & 10 Stationen, Wirtschaft & Gold-Drops, 6 Händler mit allen Sonderregeln, Fabrikator, 4 Physik-o-Mat-Rätsel + Schießstand, Portal-Auswahl-, Fabrikator- & Händler-Menüs, Werkstatt-Ablauf in `Run` | `V11`, `V12`, `V18`–`V20`, `V22` |
+| **Phase F** | [phase-f-behoerde-bosse-klonita.md](phase-f-behoerde-bosse-klonita.md) | Fahndungslevel & Agenten-Spawns, mehrphasige Boss-Skripte für alle 9 Endbosse (in atomaren 3er-Paketen), Begegnungen mit den 3 Bösen Ichs (inkl. Kaiserin-Handel), 3-stufiges Hauptquartier & Wahres Ende, Klonita-Begleiterin & Sprechblasen | `V12`, `V15`–`V17`, `V21`, `V22` |
+| **Phase G** | [phase-g-abnahme.md](phase-g-abnahme.md) | HUD-Erweiterung (Gold, Sterne, Proben, Event-Banner), Entdeckungs-Archiv (5 Reiter), Hover-Infos, vollständige Save/Load-Serialisierung & Alias-Tabellen, Rang-Abrechnung, Bot-Vollabnahme über alle 9 Universen | `V14`, `V22`, `V23` |
 
 ---
 

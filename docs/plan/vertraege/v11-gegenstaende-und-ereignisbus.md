@@ -1,6 +1,6 @@
 # Verträge V11–V12: Gegenstände, Proben, Pickup-Vereinheitlichung & Ereignisbus
 
-> Teil des Vertrags-Index [vertraege.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/plan/vertraege.md). Kanonische Quelle: [docs/bibel/02-wirtschaft-und-werkstatt.md](file:///c:/Users/DaniBani/Documents/VisualStudioCodeProjects/py-noita-claude/docs/bibel/02-wirtschaft-und-werkstatt.md).
+> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quelle: [docs/bibel/02-wirtschaft-und-werkstatt.md](../../bibel/02-wirtschaft-und-werkstatt.md).
 
 ---
 

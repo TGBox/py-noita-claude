@@ -100,8 +100,11 @@ class Pickup:
     heart: int = 0  # >0: a "Herzklumpen" that raises maximum health by this much
     cocoon: bool = False  # a brood cocoon: opening it spills loot
     eye: bool = False  # an Urauge, the hidden treasure of a depth
-    reroll: bool = False  # the sanctum's "Neuwürfeln" growth: new perk choices for pearls
+    reroll: bool | int = False  # the sanctum's "Neuwürfeln" growth: new perk choices for pearls
     portal: bool = False  # the mirror portal: leads into the mirror world
+    kind: str = ""  # unified pickup kind (Contract V11, Card A05)
+    item_key: str = ""  # sub-key for sample/block/perk/stamp (Contract V11, Card A05)
+    amount: int = 0  # quantity or gold/HP value (Contract V11, Card A05)
     seen: bool = False  # the player has had it in sight (hidden items are not drawn)
     price: int = 0  # >0: shop item that must be bought
     floating: bool = False  # shop items and perks hover in place
@@ -199,7 +202,13 @@ def cocoon_loot(rng: random.Random, x: float, y: float, level: int) -> list[Pick
 
 # Flask contents by material key (a universe without the material pours its stand-in).
 FLASK_CONTENTS = (
-    ("blood", 2), ("acid", 2), ("tallow", 2), ("mucus", 1), ("pus", 1), ("magma", 1), (None, 2),
+    ("blood", 2),
+    ("acid", 2),
+    ("tallow", 2),
+    ("mucus", 1),
+    ("pus", 1),
+    ("magma", 1),
+    (None, 2),
 )
 
 
@@ -284,3 +293,9 @@ def scatter_pearls(
             continue
         items.append(Pickup(x, y, pearls=rng.randint(8, 25)))
     return items
+
+
+def pickup_sprite_key(pickup: Pickup) -> str:
+    """Return the canonical sprite key in gegenstaende/ for pickup (Card A05)."""
+    raise NotImplementedError("Card A05")
+

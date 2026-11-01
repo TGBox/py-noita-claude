@@ -34,3 +34,11 @@ PERKS: tuple[Perk, ...] = (
 )  # fmt: skip
 
 PERK_BY_KEY: dict[str, Perk] = {perk.key: perk for perk in PERKS}
+
+PERK_ALIASES: dict[str, str] = {}
+
+
+def resolve_perk_key(key: str) -> str:
+    """Resolve alias to canonical perk key (Contract V23, Card G04)."""
+    return PERK_ALIASES.get(key, key)
+

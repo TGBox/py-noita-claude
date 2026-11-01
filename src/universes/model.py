@@ -30,6 +30,14 @@ class Region:
 
 
 @dataclass(frozen=True)
+class CreatureSpawn:
+    """Creature spawn entry for a universe (Contract V0a/V1b)."""
+
+    species: str
+    weight: float = 1.0
+
+
+@dataclass(frozen=True)
 class Universe:
     key: str
     name_de: str
@@ -43,11 +51,19 @@ class Universe:
     big: str | None = None  # big creature key, if any
     event: str = ""  # key of the recurring event
     samples: tuple[str, ...] = ()  # two sample item keys (workshop crafting)
+    sample_key: str = ""  # primary canonical sample key (Contract V0a)
+    mid_boss: str = ""  # canonical mid-boss species key (Contract V0a)
+    boss: str = ""  # canonical end-boss species key (Contract V0a)
     music_de: str = ""  # mood note for later music (no music in the MVP)
     arena_de: str = ""  # what a mid-boss arena looks like here
     klonita_de: tuple[str, ...] = ()  # Klonita lines only spoken here
     ready: bool = False  # generator, creatures and materials done (Phase C)
     size_override: tuple[int, int] | None = field(default=None)
+
+    @property
+    def creatures(self) -> tuple[CreatureSpawn, ...]:
+        """Creature spawn specifications for this universe."""
+        return tuple(CreatureSpawn(sp) for sp in self.natives)
 
     @property
     def size(self) -> tuple[int, int]:

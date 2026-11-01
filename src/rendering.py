@@ -240,7 +240,8 @@ def draw_projectiles(
             speed = math.hypot(p.vx, p.vy) or 1.0
             ux, uy = p.vx / speed, p.vy / speed
             pygame.draw.polygon(
-                canvas, FORM_COLORS[key],
+                canvas,
+                FORM_COLORS[key],
                 [(x + ux * 4, y + uy * 4), (x - uy * 2, y + ux * 2), (x + uy * 2, y - ux * 2)],
             )
         elif key == "blutegel":
@@ -255,7 +256,9 @@ def draw_projectiles(
             pygame.draw.circle(canvas, (120, 110, 96), (x, y), 3)
             for k in range(4):
                 a = turn + k * math.pi / 2
-                canvas.fill(FORM_COLORS[key], (x + round(math.cos(a) * 3), y + round(math.sin(a) * 3), 1, 1))
+                canvas.fill(
+                    FORM_COLORS[key], (x + round(math.cos(a) * 3), y + round(math.sin(a) * 3), 1, 1)
+                )
         elif key == "sporenmine":
             pygame.draw.circle(canvas, FORM_COLORS[key], (x, y), 2)
             if int(p.age * 3) % 2:
@@ -619,7 +622,12 @@ FRAME_RATES = {
 def outline_cells(rows: tuple[str, ...]) -> list[tuple[int, int]]:
     """Empty cells next to a sprite's pixels (in a frame one pixel larger on every side)."""
     height, width = len(rows), len(rows[0])
-    filled = {(x, y) for y, row in enumerate(rows) for x, code in enumerate(row) if code in CREATURE_COLORS}
+    filled = {
+        (x, y)
+        for y, row in enumerate(rows)
+        for x, code in enumerate(row)
+        if code in CREATURE_COLORS
+    }
     cells = []
     for y in range(-1, height + 1):
         for x in range(-1, width + 1):
@@ -644,7 +652,9 @@ def build_creature_sprites() -> dict[tuple, pygame.Surface]:
                 for y, row in enumerate(rows):
                     for x, code in enumerate(row):
                         if code in CREATURE_COLORS:
-                            surface.set_at((x, y), FLASH_COLOR if flashing else CREATURE_COLORS[code])
+                            surface.set_at(
+                                (x, y), FLASH_COLOR if flashing else CREATURE_COLORS[code]
+                            )
                 sprites[(key, index, True, flashing)] = surface
                 sprites[(key, index, False, flashing)] = pygame.transform.flip(surface, True, False)
             rim = pygame.Surface((len(rows[0]) + 2, len(rows) + 2), pygame.SRCALPHA)
@@ -736,7 +746,11 @@ def _draw_heart(canvas: pygame.Surface, heart: Creature, x: int, y: int) -> None
     pygame.draw.polygon(
         canvas,
         dark,
-        [(cx - w * 0.5, cy - h * 0.1), (cx + w * 0.5, cy - h * 0.05), (cx + w * 0.05, cy + h * 0.5)],
+        [
+            (cx - w * 0.5, cy - h * 0.1),
+            (cx + w * 0.5, cy - h * 0.05),
+            (cx + w * 0.05, cy + h * 0.5),
+        ],
     )
     pygame.draw.circle(canvas, HEART_LIGHT, (cx + w * 0.12, cy - h * 0.22), w * 0.12)
     for k in range(4):  # veins
@@ -777,13 +791,20 @@ def _draw_breath(canvas: pygame.Surface, breath: Creature, x: int, y: int) -> No
         pygame.draw.ellipse(canvas, dark, (rect[0] - 1, rect[1] - 1, rect[2] + 2, rect[3] + 2))
         pygame.draw.ellipse(canvas, lobe, rect)
         for k in range(3):  # bronchi
-            pygame.draw.line(canvas, dark, (cx, cy - h * 0.3), (cx + side * w * (0.3 + k * 0.2), cy + h * (k * 0.15)))
+            pygame.draw.line(
+                canvas,
+                dark,
+                (cx, cy - h * 0.3),
+                (cx + side * w * (0.3 + k * 0.2), cy + h * (k * 0.15)),
+            )
     pygame.draw.rect(canvas, (160, 140, 150), (cx - 2, y - 8, 4, 12))  # windpipe
     if breath.inhaling:
         for k in range(4):  # air rushing in
             a = breath.age * 5 + k * 1.6
             r = 30 - (breath.age * 40 + k * 7) % 25
-            canvas.fill((200, 190, 180), (int(cx + math.cos(a) * r), int(cy + math.sin(a) * r), 1, 1))
+            canvas.fill(
+                (200, 190, 180), (int(cx + math.cos(a) * r), int(cy + math.sin(a) * r), 1, 1)
+            )
 
 
 BROOD_SKIN = (128, 104, 96)
@@ -869,7 +890,9 @@ def draw_droplets(canvas: pygame.Surface, droplets: list, cam_x: int, cam_y: int
             canvas.fill(MATERIALS[drop.material].color, (x, y, 1, 1))
 
 
-def draw_thrown_flasks(canvas: pygame.Surface, thrown: list[ThrownFlask], cam_x: int, cam_y: int) -> None:
+def draw_thrown_flasks(
+    canvas: pygame.Surface, thrown: list[ThrownFlask], cam_x: int, cam_y: int
+) -> None:
     for item in thrown:
         draw_flask(canvas, item.flask, int(item.x) - cam_x, int(item.y) - cam_y + 4)
 
@@ -878,7 +901,11 @@ NEW_MARK = (255, 236, 150)
 
 
 def draw_pickups(
-    canvas: pygame.Surface, pickups: list[Pickup], cam_x: int, cam_y: int, known: set[str] | None = None
+    canvas: pygame.Surface,
+    pickups: list[Pickup],
+    cam_x: int,
+    cam_y: int,
+    known: set[str] | None = None,
 ) -> None:
     """Items in the world; blocks not yet in the Kodex sparkle (``known`` = Kodex)."""
     for item in pickups:
@@ -921,7 +948,9 @@ def draw_pickups(
             for k in range(3):
                 a = spin + k * 2.1
                 color = PERK_BY_KEY[PERK_KEYS[(int(item.age) + k) % len(PERK_KEYS)]].color
-                pygame.draw.circle(canvas, color, (x + math.cos(a) * 4, y + bob + math.sin(a) * 4), 2)
+                pygame.draw.circle(
+                    canvas, color, (x + math.cos(a) * 4, y + bob + math.sin(a) * 4), 2
+                )
             pygame.draw.circle(canvas, (90, 30, 40), (x, y + bob), 2)
             continue
         if item.eye:
@@ -955,7 +984,12 @@ def draw_pickups(
 
 
 def draw_exit(
-    canvas: pygame.Surface, centre: tuple[int, int], is_open: bool, age: float, cam_x: int, cam_y: int
+    canvas: pygame.Surface,
+    centre: tuple[int, int],
+    is_open: bool,
+    age: float,
+    cam_x: int,
+    cam_y: int,
 ) -> None:
     """The way down: a pulsing sphincter that only opens when the depth is cleared."""
     x, y = centre[0] - cam_x, centre[1] - cam_y
@@ -981,6 +1015,21 @@ def draw_status(canvas: pygame.Surface, body, cam_x: int, cam_y: int, rng: rando
     elif body.wet > 0 and rng.random() < 0.3:
         canvas.fill(DRIP_COLOR, (x + rng.randrange(body.width), y + body.height, 1, 1))
     if body.oily > 0 and rng.random() < 0.25:  # a greasy sheen
-        canvas.fill(MATERIALS[mat.TALLOW].color, (x + rng.randrange(body.width), y + rng.randrange(body.height), 1, 1))
+        canvas.fill(
+            MATERIALS[mat.TALLOW].color,
+            (x + rng.randrange(body.width), y + rng.randrange(body.height), 1, 1),
+        )
     if body.slimed > 0 and rng.random() < 0.4:
-        canvas.fill(MATERIALS[mat.MUCUS].color, (x + rng.randrange(body.width), y + body.height - 1, 1, 2))
+        canvas.fill(
+            MATERIALS[mat.MUCUS].color, (x + rng.randrange(body.width), y + body.height - 1, 1, 2)
+        )
+
+
+class Renderer:
+    """High-level run renderer facade for HUD and world (Card G01/G02)."""
+
+    def __init__(self, screen: pygame.Surface) -> None:
+        self.screen = screen
+
+    def draw(self, run: object) -> None:
+        raise NotImplementedError("Card G01")

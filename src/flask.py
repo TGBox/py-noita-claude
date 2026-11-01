@@ -53,10 +53,18 @@ class Flask:
     ``material`` is the id of that key in the active material set (or its stand-in).
     """
 
-    def __init__(self, material: int | str | None = None, amount: int = 0) -> None:
+    def __init__(
+        self,
+        material: int | str | None = None,
+        amount: float = 0,
+        *,
+        liquid: str | None = None,
+        capacity: float = CAPACITY,
+    ) -> None:
         self.key: str | None = None
-        self.material = material
-        self.amount = amount
+        self.capacity: float = float(capacity)
+        self.material = liquid if liquid is not None else material
+        self.amount = int(amount)
 
     @property
     def material(self) -> int | None:

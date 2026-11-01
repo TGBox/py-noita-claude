@@ -26,7 +26,6 @@ MINE_RANGE = 16.0  # px
 LIQUID_DRAG = 0.97  # speed kept per cell flown through liquid (projectiles pass through pools)
 
 
-
 @dataclass(frozen=True)
 class Blast:
     """An explosion that happened this frame (for camera shake and damage)."""
@@ -38,19 +37,19 @@ class Blast:
 
 @dataclass
 class Projectile:
-    form: Block
-    x: float
-    y: float
-    vx: float
-    vy: float
-    gravity: float
-    lifetime: float
-    blast: int
-    splash: int
-    material: int | None
-    bounces: int
-    homing: bool
-    trigger: Trigger | None
+    form: Block | str = field(default_factory=lambda: Block("spark", "Funke", Category.FORM, 0.0))
+    x: float = 0.0
+    y: float = 0.0
+    vx: float = 0.0
+    vy: float = 0.0
+    gravity: float = 0.0
+    lifetime: float = 1.0
+    blast: int = 0
+    splash: int = 0
+    material: int | None = None
+    bounces: int = 0
+    homing: bool = False
+    trigger: Trigger | None = None
     damage: float = 0.0
     team: str = PLAYER_TEAM
     children: list[Shot] = field(default_factory=list)
@@ -69,16 +68,16 @@ class Projectile:
     released: bool = False
     hit_ids: set[int] = field(default_factory=set)
     wet: bool = False  # flew through liquid (Nässe-Nerv)
+    owner_species: str = ""  # creature species that fired this projectile (Contract V4, Card A11)
+    from_player: bool = True  # compatibility flag for player vs enemy projectile origin
 
     @property
     def fused(self) -> bool:
         """Fused forms (bombs) rest after bouncing and only end when their time is up."""
-        return self.form.bounces > 0
+        return isinstance(self.form, Block) and self.form.bounces > 0
 
 
-def build(
-    shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM
-) -> Projectile:
+def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM) -> Projectile:
     """Apply a shot's modifiers to its form and launch it."""
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
@@ -259,7 +258,11 @@ class ProjectileSystem:
                     return
                 continue
             if not STOPS_PROJECTILE[cell]:
-                if p.trail is not None and cell == AIR and (int(nx), int(ny)) != (int(p.x), int(p.y)):
+                if (
+                    p.trail is not None
+                    and cell == AIR
+                    and (int(nx), int(ny)) != (int(p.x), int(p.y))
+                ):
                     world.set_cell(int(p.x), int(p.y), p.trail)  # behind the projectile
                 p.x, p.y = nx, ny
                 continue
@@ -294,7 +297,9 @@ class ProjectileSystem:
         )  # fmt: skip
         self._pending.append(leap)
 
-    def _hit_body(self, p: Projectile, victim: Body, world: World, bodies: Sequence[Body] = ()) -> None:
+    def _hit_body(
+        self, p: Projectile, victim: Body, world: World, bodies: Sequence[Body] = ()
+    ) -> None:
         p.hit_ids.add(id(victim))
         damage = p.damage * (self.player_damage if p.team == PLAYER_TEAM else self.enemy_damage)
         owner = "Eigener Zauber" if p.team == PLAYER_TEAM else "Geschoss"
@@ -369,9 +374,7 @@ def _body_near(bodies: Sequence[Body], team: str, x: float, y: float, radius: fl
     return False
 
 
-def _body_at(
-    bodies: Sequence[Body], team: str, x: float, y: float, skip: set[int]
-) -> Body | None:
+def _body_at(bodies: Sequence[Body], team: str, x: float, y: float, skip: set[int]) -> Body | None:
     for body in bodies:
         if body.team != team and not body.dead and id(body) not in skip and body.contains(x, y):
             return body
@@ -388,3 +391,16 @@ def _steer(p: Projectile, target: tuple[float, float], dt: float) -> None:
     turn = max(-HOMING_TURN_RATE * dt, min(HOMING_TURN_RATE * dt, diff))
     p.vx = math.cos(current + turn) * speed
     p.vy = math.sin(current + turn) * speed
+
+
+def update_projectiles(
+    projectiles: list[Projectile],
+    dt: float,
+    world: World,
+    player: object,
+    enemies: object,
+    pickups: list[object],
+    out_events: list[tuple[str, dict[str, object]]] | None = None,
+) -> None:
+    """Update projectiles and apply creature projectile status effects (Card C15)."""
+    raise NotImplementedError("Card C15")

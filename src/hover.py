@@ -8,6 +8,7 @@ used by the inventory screen for blocks and wands.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from src.enemies import Creature
@@ -217,7 +218,10 @@ def compare(value: float, other: float, higher: bool) -> int:
 
 
 def describe_pickup(
-    item: Pickup, current: WandSpec | None, price: int, known: set[str] | None = None
+    item: Pickup,
+    current: WandSpec | None = None,
+    price: int = 0,
+    known: set[str] | None = None,
 ) -> HoverInfo:
     """Tooltip for an item; ``price`` is what it costs the player right now."""
     lines: list[str] = []
@@ -253,7 +257,10 @@ def describe_pickup(
             if effect:
                 lines.append(f"Trinken: {effect[2]}")
     elif item.heart:
-        lines = ["Ein pochender Klumpen Herzmuskel.", f"Erhöht dein maximales Leben um {item.heart}."]
+        lines = [
+            "Ein pochender Klumpen Herzmuskel.",
+            f"Erhöht dein maximales Leben um {item.heart}.",
+        ]
     elif item.cocoon:
         lines = ["Ein zuckender Kokon. Öffne ihn mit E – drinnen liegt Beute."]
     elif item.eye:
@@ -266,7 +273,9 @@ def describe_pickup(
         lines.append(f"Preis: {price} Blutperlen (E: Kaufen)")
     elif item.perk is None and not item.pearls:
         lines.append("E: Aufheben")
-    return HoverInfo(title, lines, color, "pickup", block=block, wand=wand, compare=current if wand else None)
+    return HoverInfo(
+        title, lines, color, "pickup", block=block, wand=wand, compare=current if wand else None
+    )
 
 
 # --------------------------------------------------------------------- query
@@ -304,7 +313,9 @@ def describe(
             from src.inventory import spec_of
 
             current = spec_of(run.inventory.wand)
-        return describe_pickup(best, current, run.price_of(best), getattr(run, "known_blocks", None))
+        return describe_pickup(
+            best, current, run.price_of(best), getattr(run, "known_blocks", None)
+        )
     world = run.world
     if not (0 <= x < world.width and 0 <= y < world.height):
         return None
@@ -316,3 +327,17 @@ def _readable(color: Color) -> Color:
     if sum(color) >= 330:
         return color
     return (min(255, color[0] + 90), min(255, color[1] + 80), min(255, color[2] + 80))
+
+
+def inspect_world(
+    world: object,
+    wx: int,
+    wy: int,
+    player: object,
+    creatures: Sequence[Creature] = (),
+    pickups: Sequence[Pickup] = (),
+    *,
+    workshop_layout: object | None = None,
+) -> HoverInfo:
+    """Inspect world coordinates (wx, wy) including workshop stations and samples (Card G03)."""
+    raise NotImplementedError("Card G03")

@@ -37,6 +37,11 @@ class Records:
     best_ng: int = 0  # highest New Game+ loop won
     blocks: list[str] = field(default_factory=list)  # Kodex: blocks ever found
     creatures: dict[str, int] = field(default_factory=dict)  # Kodex: kills per species
+    blueprints: list[str] = field(default_factory=list)  # unlocked fabricator blueprints (Contract V23)
+    universes: list[str] = field(default_factory=list)  # visited universes (Contract V23)
+    evil_selves: list[str] = field(default_factory=list)  # defeated evil selves (Contract V23)
+    badges: int = 0  # collected authority badges (Contract V23)
+    best_rank: str = "Praktikantin"  # highest rank achieved (Contract V23)
 
     def discover(self, kind: str, key: str) -> bool:
         """Note a find for the Kodex. Returns True the first time."""
@@ -134,7 +139,9 @@ def load(path: Path | None = None) -> Records:
     creatures = raw.get("creatures")
     if isinstance(creatures, dict):
         values["creatures"] = {
-            key: int(count) for key, count in creatures.items() if isinstance(key, str) and _is_number(count)
+            key: int(count)
+            for key, count in creatures.items()
+            if isinstance(key, str) and _is_number(count)
         }
     return Records(**values)
 
@@ -184,3 +191,34 @@ def delete_run(path: Path | None = None) -> None:
         (path or data_dir() / SAVE_NAME).unlink()
     except OSError:
         pass
+
+
+RANKS: tuple[tuple[int, str], ...] = (
+    (0, "Praktikantin"),
+    (150, "Hilfs-Alchemistin"),
+    (350, "Sachbearbeiterin der Magie"),
+    (650, "Ober-Laborantin"),
+    (1000, "Erz-Klonologin"),
+    (1500, "Realitäts-Rebellin"),
+)
+
+
+def compute_score(
+    *,
+    depth: int,
+    kills: int,
+    gold: int,
+    samples_collected: int,
+    challenges_won: int,
+    bosses_killed: int,
+    victory: bool,
+    true_ending: bool = False,
+) -> int:
+    """Compute final run score according to Contract V23 (Card G04)."""
+    raise NotImplementedError("Card G04")
+
+
+def rank_for_score(score: int) -> str:
+    """Return highest German rank title whose threshold <= score (Card G04)."""
+    raise NotImplementedError("Card G04")
+

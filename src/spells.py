@@ -44,6 +44,7 @@ class Block:
     cast_delay: float = 0.0  # seconds added to the wand's cast delay
     uses: int = 0  # >0: charges per visit to a sanctum (0 = unlimited)
     rarity: float = 1.0  # weight when loot and shops pick blocks
+    rarity_tier: int = 1  # tier 1..3 for fabricator and trader pricing (Contract V0b)
     timer: float = 0.0  # Zeit-Nerv: seconds until release (0 = the usual TIMER_DELAY)
     description_de: str = ""
     # Drüse (form)
@@ -602,5 +603,48 @@ def _families() -> list[Block]:
 
 BLOCKS = BLOCKS + tuple(_families())
 
+from typing import Any
+
+
+class _BlockCatalogTuple(tuple[Block, ...]):
+    """Tuple of Block instances that also supports dict-like lookup by block key."""
+
+    def keys(self):
+        return CATALOG.keys()
+
+    def values(self):
+        return CATALOG.values()
+
+    def items(self):
+        return CATALOG.items()
+
+    def __getitem__(self, key: int | slice | str) -> Any:  # type: ignore[override]
+        if isinstance(key, str):
+            return CATALOG[key]
+        return super().__getitem__(key)
+
+
 CATALOG: dict[str, Block] = {block.key: block for block in BLOCKS}
 assert len(CATALOG) == len(BLOCKS), "duplicate block keys"
+BLOCKS = _BlockCatalogTuple(BLOCKS)
+
+MODULE_ALIASES: dict[str, str] = {}
+
+
+def blocks_of_tier(tier: int) -> list[str]:
+    """Return all block keys with rarity_tier == tier (Card A02)."""
+    raise NotImplementedError("Card A02")
+
+
+def resolve_block_key(key: str) -> str:
+    """Resolve German/legacy alias to canonical block key (Card A02)."""
+    return MODULE_ALIASES.get(key, key)
+
+
+def __getattr__(name: str) -> Any:
+    if name in ("Wand", "WandSpec"):
+        from src import wand
+
+        return getattr(wand, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
