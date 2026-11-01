@@ -25,14 +25,14 @@ Dieser Ordner enthält den **vollständigen, in 134 reine S-Karten zerlegten Imp
 
 - **Master-Spezifikation & Vertrags-Index:** [vertraege.md](vertraege.md)
 - **8 modulare Vertragsdateien (`< 10 KB` je Datei):**
-  1. [v00-migration-und-schluessel.md](vertraege/v00-migration-und-schluessel.md) — `V0a`–`V0d` (Kanonische `probe_*`- & `Region.key`-Namen, `Block.rarity_tier`, `World.take_destroyed_cells()`, Vorab-Entscheidungen)
-  2. [v01-verhalten-und-wegsuche.md](vertraege/v01-verhalten-und-wegsuche.md) — `V1`–`V4b` (`BehaviourContext`, `Ability`, Haltungen, FSM, A*-Pfadsuche, 11 Fraktionen, Status-Timer & alle 15 Flaschen-Trinkeffekte)
+  1. [v00-migration-und-schluessel.md](vertraege/v00-migration-und-schluessel.md) — `V0a`–`V0d` (Kanonische `probe_*`- & `Region.key`-Namen der 6 MVP-Universen, `Block.rarity_tier`, `World.take_destroyed_cells()`, Vorab-Entscheidungen)
+  2. [v01-verhalten-und-wegsuche.md](vertraege/v01-verhalten-und-wegsuche.md) — `V1`–`V4b` (`BehaviourContext`, `Ability`, 20 Fähigkeiten, Haltungen, FSM, A*-Pfadsuche, Fraktionen, Status-Timer & Flaschen-Trinkeffekte)
   3. [v05-sprites-und-teile.md](vertraege/v05-sprites-und-teile.md) — `V5`–`V8b` (`SheetMeta`, `Animator`, `SheetCache`, `ProcRig`/`Chain`/`Legs`/`Tentacle`, Paletten & Sprite-Regeln, Waffenteile)
-  4. [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md) — `V9`, `V10`, `V13`, `V14` (`Level`-Struktur mit `(x0, y0, x1, y1)`-Rechtecken, Generator-Helfer, 9 Sekundärereignisse, 6 Prüfungen, Playtest-Bot)
-  5. [v11-gegenstaende-und-ereignisbus.md](vertraege/v11-gegenstaende-und-ereignisbus.md) — `V11`, `V12` (14 Proben in `src/samples.py`, Inventar-Slots, einheitliches `Pickup`, `Run.emit` & Payload-Tabelle aller 24 Events)
-  6. [v15-behoerde-und-bosse.md](vertraege/v15-behoerde-und-bosse.md) — `V15`–`V17` (`Wanted` & 3 Agenten-Spezies, `BossPhase`/`BossScript`, 9 Universums-Endbosse, 3 Böse Ichs + Kaiserin-Handel, Hauptquartier & `"ober_cloita"`)
-  7. [v18-werkstatt-und-wirtschaft.md](vertraege/v18-werkstatt-und-wirtschaft.md) — `V18`–`V20` (`640×360`-Werkstatt & 10 Stationen, Preisformeln, 6 Händler inkl. Sonderregeln, Fabrikator, 4 Physik-o-Mat-Rätsel + Schießstand)
-  8. [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) — `V21`–`V23` (Klonita-Zustandsmaschine, 4 Hilfen & 3 Macken, `SpeechBubble` & Menüs, `Records.discover`, Rang-Formel, Save/Load-Schema & Alias-Tabellen)
+  4. [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md) — `V9`, `V10`, `V13`, `V14` (`Level`-Struktur mit `(x0, y0, x1, y1)`-Rechtecken, Generator-Helfer für die 6 MVP-Universen, 6 Hauptevents + Sekundärereignisse, 6 Prüfungen, Playtest-Bot)
+  5. [v11-gegenstaende-und-ereignisbus.md](vertraege/v11-gegenstaende-und-ereignisbus.md) — `V11`, `V12` (17 Proben: 12 Universums-Proben + 5 Allgemein-Proben in `src/samples.py`, Inventar-Slots, einheitliches `Pickup`, `Run.emit` & Payload-Tabelle aller 24 Events)
+  6. [v15-behoerde-und-bosse.md](vertraege/v15-behoerde-und-bosse.md) — `V15`–`V17` (`Wanted` & 4 Agenten-Spezies, `BossPhase`/`BossScript`, 6 Universums-Zwischengegner `weltenherz`..`abt_kieme`, 3 Böse Ichs + Kaiserin-Handel, Hauptquartier & `"ober_cloita"`)
+  7. [v18-werkstatt-und-wirtschaft.md](vertraege/v18-werkstatt-und-wirtschaft.md) — `V18`–`V20` (`640×360`-Werkstatt & 12 Stationen + `STATION_ALIASES`, Preisformeln, 6 Händler `Herr Pansen`..`Bruder Flosse` inkl. Sonderregeln, Fabrikator, 8 Physik-o-Mat-Rätsel + Schießstand)
+  8. [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) — `V21`–`V23` (Klonita-Zustandsmaschine, 4 Hilfen & 3 Macken, Sprüche für die 6 MVP-Universen, `SpeechBubble` & Menüs, `Records.discover`, Rang-Formel, Save/Load-Schema & Alias-Tabellen)
 
 ---
 
@@ -40,13 +40,13 @@ Dieser Ordner enthält den **vollständigen, in 134 reine S-Karten zerlegten Imp
 
 | Phase | Datei | Karten | Anzahl | Inhalt & Meilenstein |
 | --- | --- | --- | --- | --- |
-| **Phase A** | [phase-a-fundament.md](phase-a-fundament.md) | `A01`–`A26` | **26 S** | Schlüssel-Migration (`V0a`–`V0d`), Proben & Pickup-Vereinheitlichung, Event-Bus, Status-Timer & 15 Trank-Effekte, A*-Pfadsuche, Fraktionen, 10 Fähigkeiten, Kreaturen-FSM, Sprite-/Rig-/Waffenteil-/Generator-Fundament |
-| **Phase B** | [phase-b-grafik.md](phase-b-grafik.md) | `B01`–`B36` | **36 S** | Alle Sprite-Sheets + JSON-Metadaten in kleinen Paketen (`charaktere/`, `kreaturen/` je Universum, `bosse/`, `waffen/`, `zauber/`, `gegenstaende/`, `umgebung/`, `partikel/`) sowie Renderer-Integration in `src/rendering.py` |
-| **Phase C** | [phase-c-kreaturen.md](phase-c-kreaturen.md) | `C01`–`C17` | **17 S** | Alle 36 Universums-Kreaturen (in 9 Universums-Paketen), 9 Zwischenbosse, 9 Endbosse, 3 Behörden-Agenten, 3 Böse Ichs, `"ober_cloita"`, Projektil-Statuseffekte, Drops & Elementar-Resistenzen |
-| **Phase D** | [phase-d-universen.md](phase-d-universen.md) | `D01`–`D16` | **16 S** | Alle 9 Universums-Generatoren (`src/universes/gen/*.py`), `worldgen`-Dispatch, alle 9 Sekundärereignisse (`src/events.py`), alle 6 Prüfungen (`src/challenges.py`), deterministischer Playtest-Bot (`src/bot.py`) |
-| **Phase E** | [phase-e-werkstatt.md](phase-e-werkstatt.md) | `E01`–`E15` | **15 S** | `640×360`-Werkstatt & 10 Stationen, Wirtschaftsformeln & Goldader-Drops, 6 Händler mit allen Sonderregeln, Fabrikator, 4 Physik-o-Mat-Rätsel + Schießstand, Werkstatt-Menüs & Trainings-Attrappe |
-| **Phase F** | [phase-f-behoerde-bosse-klonita.md](phase-f-behoerde-bosse-klonita.md) | `F01`–`F14` | **14 S** | Fahndungssystem (`Wanted`) & Agenten-Spawns, mehrphasige Boss-Skripte für alle 9 Endbosse, 3 Böse Ichs + Kaiserin-Handel, 3-stufiges Hauptquartier & `"ober_cloita"`, Klonita-Begleiterin & Sprechblasen |
-| **Phase G** | [phase-g-abnahme.md](phase-g-abnahme.md) | `G01`–`G10` | **10 S** | HUD-Erweiterung, Sprechblasen- & Boss-Banner-Rendering, Hover-Infos, `Records` & 5-Reiter-Archiv, Endbildschirm mit Rang-Abrechnung, vollständiges Save/Load-Schema, Menü-Tastatursteuerung & Bot-Vollabnahme |
+| **Phase A** | [phase-a-fundament.md](phase-a-fundament.md) | `A01`–`A26` | **26 S** | Schlüssel-Migration (`V0a`–`V0d`), 17 Proben & Pickup-Vereinheitlichung, Event-Bus, Status-Timer & Trank-Effekte, A*-Pfadsuche, Fraktionen, Fähigkeiten, Kreaturen-FSM, Sprite-/Rig-/Waffenteil-/Generator-Fundament |
+| **Phase B** | [phase-b-grafik.md](phase-b-grafik.md) | `B01`–`B36` | **36 S** | Alle Sprite-Sheets + JSON-Metadaten in kleinen Paketen (`charaktere/`, `kreaturen/` der 6 MVP-Universen + Großkreaturen, `bosse/`, `waffen/`, `zauber/`, `gegenstaende/`, `umgebung/`, `partikel/`) sowie Renderer-Integration in `src/rendering.py` |
+| **Phase C** | [phase-c-kreaturen.md](phase-c-kreaturen.md) | `C01`–`C17` | **17 S** | Alle 24 regulären Kreaturen der 6 MVP-Universen + 2 Großkreaturen (`trampolinwal`, `kirchenkrake`), 6 Unter-Zwischenbosse, 6 Haupt-Zwischengegner (`weltenherz`..`abt_kieme`), 4 Behörden-Agenten, 3 Böse Ichs, `"ober_cloita"`, Projektil-Statuseffekte, Drops & Elementar-Resistenzen |
+| **Phase D** | [phase-d-universen.md](phase-d-universen.md) | `D01`–`D16` | **16 S** | Alle 6 MVP-Universums-Generatoren (`fleischwelt`, `aktenhalde`, `glibbria`, `kruemelreich`, `sporenklub`, `abtei`) + Pool-Generatoren, `worldgen`-Dispatch, 6 Universums-Events + Sekundärereignisse (`src/events.py`), alle 6 Prüfungen (`src/challenges.py`), deterministischer Playtest-Bot (`src/bot.py`) |
+| **Phase E** | [phase-e-werkstatt.md](phase-e-werkstatt.md) | `E01`–`E15` | **15 S** | `640×360`-Werkstatt & 12 Stationen, Wirtschaftsformeln & Goldader-Drops, 6 Händler (`Herr Pansen`..`Bruder Flosse`) mit allen Sonderregeln, Fabrikator, 8 Physik-o-Mat-Rätsel + Schießstand, Werkstatt-Menüs & Trainings-Attrappe |
+| **Phase F** | [phase-f-behoerde-bosse-klonita.md](phase-f-behoerde-bosse-klonita.md) | `F01`–`F14` | **14 S** | Fahndungssystem (`Wanted`) & Agenten-Spawns, mehrphasige Boss-Skripte für alle 6 Universums-Zwischengegner, 3 Böse Ichs + Kaiserin-Handel, 3-stufiges Hauptquartier & `"ober_cloita"`, Klonita-Begleiterin & Sprechblasen |
+| **Phase G** | [phase-g-abnahme.md](phase-g-abnahme.md) | `G01`–`G10` | **10 S** | HUD-Erweiterung, Sprechblasen- & Boss-Banner-Rendering, Hover-Infos, `Records` & 5-Reiter-Archiv, Endbildschirm mit Rang-Abrechnung, vollständiges Save/Load-Schema, Menü-Tastatursteuerung & Bot-Vollabnahme über alle 6 MVP-Universen |
 
 ---
 

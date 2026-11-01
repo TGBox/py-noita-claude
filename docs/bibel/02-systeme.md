@@ -24,11 +24,11 @@ Werkstatt → Universum A (Rang 1) → Werkstatt → Universum B (Rang 1, Zwisch
   | 3 | Ameisenkönigin (Krümelreich), Weltenherz (Fleischwelt) |
 
   Mit mehr Universen im Pool werden die freien Plätze aus allen übrigen Universen gezogen.
-- **Böses Ich:** Der Seed wählt eines der drei. Es kämpft in seinem eigenen Heimat-Universum (kleine Sonderwelt je böses Ich).
+- **Böses Ich:** Der Seed wählt eines der drei für den Endkampf. Es kämpft in seinem eigenen Heimat-Universum (kleine Sonderwelt je böses Ich). Zusätzlich können die beiden anderen Bösen Ichs als optionale Begegnungen (Echos/Späherinnen) in den versteckten Geheimräumen (`secret`) der Universen ab Rang 2 angetroffen werden (inkl. Verhandlungsoption bei der Kaiserin, Kapitel 05).
 - **Ausgang:** In jedem Universum liegt am Ende ein **Ankerpunkt**. Dort öffnet Cloitas Waffe genau ein Portal zur Werkstatt; sonst ist sie eine normale Waffe.
 - **Parallelwelten (Wackelportal):** wie bisher über eine versteckte Schatzkammer. Führt in eine gespiegelte oder dunklere, härtere Fassung desselben Laufs.
 - **„Noch einmal, nur schlimmer“** (NG+) nach dem Sieg: neue Universen-Reihenfolge, Gegnerfaktor +0,6 je Runde.
-- **Wahres Ende = die Behörde:** Wer in einem Lauf alle 6 Erinnerungssplitter findet und das böse Ich besiegt, sieht, dass dessen Waffe das Siegel der Behörde trägt. Statt des normalen Siegs öffnet sich ein Portal zum **Hauptquartier der Behörde**: ein mehrstufiger Endkampf gegen den **Rat der bösen Ichs**, die am Ende zur **Ober-Cloita** verschmelzen (Kapitel 05). Das ersetzt das bisher getrennt geplante Metaziel. Ab 3 Siegen erscheinen im Archiv Hinweise, dass die Splitter wichtig sind.
+- **Wahres Ende = die Behörde:** Wer in einem Lauf alle 6 Erinnerungssplitter findet (oder alternativ mindestens 3 Dienstausweise der Behörde erbeutet bzw. Fahndungsstufe 4+ erreicht) und das böse Ich besiegt, sieht, dass dessen Waffe das Siegel der Behörde trägt. Statt des normalen Siegs öffnet sich ein Portal zum **Hauptquartier der Behörde**: ein mehrstufiger Endkampf gegen den **Rat der bösen Ichs**, die am Ende zur **Ober-Cloita** verschmelzen (Kapitel 05). Das ersetzt das bisher getrennt geplante Metaziel. Ab 3 Siegen erscheinen im Archiv Hinweise, dass die Splitter wichtig sind.
 
 ## Weltgröße
 
@@ -111,6 +111,10 @@ Verhalten sind kombinierbare Bausteine. Eine Kreatur hat eine **Haltung** (wie s
 | `armor` | Panzer | nimmt von durchschlagenden Geschossen nur 25 % Schaden |
 | `summon` | Rufen | holt Verstärkung (Gruppe oder Behörde) |
 | `stationary` | Festsitzend | bewegt sich nicht |
+| `aura` | Aura | trägt im Umkreis periodisch einen Status- oder Heil-/Schadenseffekt auf (`slow`, `poison`, `heal_allies`, `stamp_tax`, `shock`) |
+| `teleport` | Kurzsprung | versetzt sich bei Gefahr oder nach dem Schuss auf eine nahe freie Luftzelle (`40–110 px`) |
+| `kamikaze` | Selbstsprengung | stürzt sich auf das Ziel und zündet bei Kontakt (`≤ 16 px`) eine Elementar-Explosion |
+| `burrow` | Eingraben | taucht kurzzeitig durch weiches Material ab und bricht nahe dem Ziel wieder hervor |
 
 ## **Allgemeine Regeln für alle Kreaturen**
 
@@ -130,10 +134,10 @@ Einheimische verschiedener Arten greifen sich gegenseitig an, wenn sie von fremd
 
 ## Fahndungsstufe (Behörde)
 
-- 0–5 Sterne. Steigt durch: getötete neutrale oder passive Kreaturen (+0,25), getötete Händler (+1), große Zerstörung (alle 5000 zerstörten Zellen +0,5), Diebstahl im Laden (+2).
-- Sinkt um 1 bei jedem Werkstatt-Besuch (Cloita taucht unter).
-- Ab Stufe 1 erscheinen **Agenten** in Universen (Kapitel 05): Anzahl ≈ Stufe × 2, Stärke steigt mit Stufe.
-- Anzeige: Sterne in der HUD neben dem Gold.
+- 0–5 Sterne. Steigt durch: getötete neutrale oder passive Kreaturen (+0,25), getötete Händler (+1 bis +3), verletzte Händler (+1,5), große Zerstörung (Sachbeschädigung durch zerstörte Zellen), verbotene Großzauber (+0,5) und Diebstahl im Laden (+1 bis +2).
+- Sinkt automatisch bei jedem Werkstatt-Besuch (Cloita taucht unter / Aktenablage) und kann zusätzlich gegen Gold am **Akten-Schredder** (`ws_shredder`) in der Werkstatt aktiv gesenkt werden.
+- Ab Stufe 1 erscheinen **Agenten** in Universen (Kapitel 05): Streifenagenten (`agent_streife`), Aktendrohnen (`agent_drohne`), Vollstrecker (`agent_vollstrecker`) und ab Stufe 4 Abteilungsleiter (`agent_abteilungsleiter`).
+- Anzeige: Sterne/Siegel in der HUD neben dem Gold.
 
 ## Materialien
 
@@ -211,20 +215,26 @@ Funktioniert wie das bisherige Mana (lädt von selbst nach, je Waffe). Anzeige a
   - *Tragen:* hebt Gegenstände auf, die Cloita nicht erreicht (rennt hin und bringt sie, 1 Gegenstand je 30 s).
   - *Umarmen:* passive und neutrale Kreaturen in ihrer Nähe bleiben friedlich, solange sie nicht getroffen werden.
   - *Auffangen:* fällt Cloita mehr als 120 px, fängt Klonita sie mit kleiner Chance (25 %) auf.
+  - *Aktive Kampf- & Schutzhilfen (`assist`):*
+    - `shield` (Abklingzeit 18 s): löscht ein feindliches Geschoss kurz vor Cloita (`< 28 px`) mit einem Schutzfunken.
+    - `snack` (Abklingzeit 35 s): wirft Cloita bei wenig Leben (`< 35 %`) einen Heil-Snack (`+12 HP`) zu.
+    - `spark` (Abklingzeit 4,5 s): verschießt einen kleinen lila Hilfsfunken (`6` Schaden) auf nahe Angreifer (`< 90 px`).
+    - `cleanse` (Abklingzeit 22 s): tupft Feuer, Frost oder einen negativen Stempel (`stamped_bad`) von Cloita ab.
 - **Hinderlich:**
-  - *Zu nett:* Gibt sie Händlern ungefragt Trinkgeld (selten, 5–15 Gold).
-  - *Füttern:* Bleibt sie neben einer Kreatur stehen, gibt sie ihr manchmal etwas zu essen (die Kreatur heilt sich um 20 %).
+  - *Zu nett:* Gibt sie Händlern ungefragt Trinkgeld (selten, 5–15 Gold) oder nascht bei vollem Beutel eine gewöhnliche Probe gegen 15 Gold Trostpflaster (`sample_nibble`).
+  - *Füttern / Anstupsen:* Bleibt sie neben einer Kreatur stehen, gibt sie ihr manchmal etwas zu essen (die Kreatur heilt sich um 20 %), stupst aus Neugier ein glänzendes Fass an (`shiny_poke`) oder niest Funken neben Schlafenden (`loud_sneeze`).
   - *Warnung:* Sehr selten ruft sie einem Gegner „Pass auf, sie schießt gleich!“ zu (Gegner weicht einmal aus).
-  - Die Nachteile sind selten genug, um zu schmunzeln, nicht zu frustrieren (Faustregel: höchstens einmal pro Universum je Art).
+  - Die Nachteile sind selten genug, um zu schmunzeln, nicht zu frustrieren (Faustregel: höchstens einmal pro Universum).
 - **Kommentare:** Text-Blasen über ihrem Kopf, Anlässe und Mengen in Kapitel 08.
 - **Taste „Klonita rufen / wegschicken“** (frei belegbar, Standard **K**, Controller: linker Stick drücken):
   - *Rufen:* Klonita kommt sofort her (teleportiert, wenn sie weit weg ist) und folgt wieder.
   - *Wegschicken:* Klonita winkt, sagt etwas Gekränktes und setzt sich in die Werkstatt auf die Couch. Kein Folgen, keine Sprüche, keine Vor- und Nachteile, bis man sie ruft.
 - **Von selbst erscheinen** (auch wenn sie weggeschickt ist, dann nur kurz, und sie geht danach wieder):
-  - beim ersten Betreten jedes Universums (winkt, ein Spruch),
-  - wenn Cloita unter 20 % Leben fällt (einmal je Universum: „Du siehst gar nicht gut aus!“, zeigt auf die nächste Lebenskapsel, falls bekannt),
-  - wenn ein Erinnerungssplitter in der Nähe ist (zeigt darauf),
-  - zu Beginn jedes Zwischengegner-Kampfs und des Endkampfs (feuert an),
+  - beim ersten Betreten jedes Universums (`enter_universe`: winkt, ein Spruch),
+  - wenn Cloita unter 20–25 % Leben fällt (`player_low_hp`, einmal je Universum: „Du siehst gar nicht gut aus!“, zeigt auf die nächste Lebenskapsel, falls bekannt),
+  - wenn ein Erinnerungssplitter in der Nähe ist (`memory_shard`: zeigt darauf),
+  - zu Beginn jedes Zwischengegner-Kampfs und des Endkampfs (`boss_spawn`: feuert an),
+  - wenn die Fahndungsstufe auf 3+ Sterne steigt (`wanted_high`) oder ein Universums-Ereignis startet (`event_start`),
   - wenn Cloita stirbt (sitzt neben ihr, Spruch auf dem Tod-Bildschirm).
 
 ## Status-Effekte

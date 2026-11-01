@@ -135,3 +135,6 @@ class RunPlan:
         except (KeyError, TypeError) as error:
             raise ValueError("broken run plan") from error
         return plan
+
+
+UniversePlan = RunPlan

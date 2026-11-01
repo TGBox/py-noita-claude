@@ -10,27 +10,13 @@ import pytest
 pygame.init()
 
 
-@pytest.mark.parametrize(
-    ("card_id", "u_key"),
-    [
-        ("c01", "schrott"),
-        ("c02", "myzel"),
-        ("c03", "magen"),
-        ("c04", "amt"),
-        ("c05", "kuchen"),
-        ("c06", "abtei"),
-        ("c07", "ameisen"),
-        ("c08", "spule"),
-        ("c09", "glibber"),
-    ],
-)
-def test_c01_to_c09_universe_creatures_registered_and_simulatable(card_id: str, u_key: str) -> None:
+def _check_universe_creatures(u_key: str) -> None:
     from src.enemies import SPECIES, EnemyManager
     from src.player import Player
-    from src.universes.catalog import UNIVERSES
+    from src.universes.catalog import ALL_UNIVERSES
     from src.world import World
 
-    u = UNIVERSES[u_key]
+    u = ALL_UNIVERSES[u_key]
     w = World(160, 120)
     p = Player(80.0, 60.0)
     em = EnemyManager()
@@ -38,7 +24,7 @@ def test_c01_to_c09_universe_creatures_registered_and_simulatable(card_id: str, 
     for spawn in u.creatures:
         assert spawn.species in SPECIES, f"Missing species {spawn.species} for {u_key}"
         c = em.spawn(spawn.species, 40.0, 60.0)
-        assert c.spec.drops_sample == u.sample_key
+        assert c.spec.drops_sample in (*u.samples, u.sample_key)
         if spawn.species == "blattlaus":
             assert c.giver is True
 
@@ -47,10 +33,50 @@ def test_c01_to_c09_universe_creatures_registered_and_simulatable(card_id: str, 
         em.update(1.0 / 60.0, w, p, projs)
 
 
+def test_c01_creatures_fleischwelt() -> None:
+    _check_universe_creatures("fleischwelt")
+
+
+def test_c02_creatures_aktenhalde() -> None:
+    _check_universe_creatures("aktenhalde")
+
+
+def test_c03_creatures_glibbria() -> None:
+    _check_universe_creatures("glibbria")
+
+
+def test_c04_creatures_kruemelreich() -> None:
+    _check_universe_creatures("kruemelreich")
+
+
+def test_c05_creatures_sporenklub() -> None:
+    _check_universe_creatures("sporenklub")
+
+
+def test_c06_creatures_abtei() -> None:
+    _check_universe_creatures("abtei")
+
+
+def test_c07_creatures_pool_schrott() -> None:
+    _check_universe_creatures("schrott")
+
+
+def test_c08_creatures_pool_kuchen() -> None:
+    _check_universe_creatures("kuchen")
+
+
+def test_c09_creatures_pool_spule_and_big_creatures() -> None:
+    from src.enemies import SPECIES
+
+    _check_universe_creatures("spule")
+    assert "trampolinwal" in SPECIES
+    assert "kirchenkrake" in SPECIES
+
+
 def test_c10_mid_bosses_part1() -> None:
     from src.enemies import SPECIES
 
-    for k in ("gabelstapler_krabbe", "sporenherz", "pfuetzenwurm", "aktenwolf", "marzipan_ritter"):
+    for k in ("pfuetzenwurm", "aktenwolf", "manege_clown", "harzgeneral", "sporenherz"):
         assert k in SPECIES
         assert SPECIES[k].is_mid_boss is True
         assert SPECIES[k].sample_chance == pytest.approx(1.0)
@@ -65,7 +91,7 @@ def test_c11_mid_bosses_part2() -> None:
         assert SPECIES[u.mid_boss].is_mid_boss is True
 
 
-def test_c12_and_c13_all_9_end_bosses() -> None:
+def test_c12_mvp_end_bosses() -> None:
     from src.enemies import SPECIES
     from src.universes.catalog import UNIVERSES
 
@@ -76,11 +102,23 @@ def test_c12_and_c13_all_9_end_bosses() -> None:
         assert spec.drops_sample == "probe_kern"
 
 
+def test_c13_pool_end_bosses() -> None:
+    from src.enemies import SPECIES
+
+    for k in ("schrottpresse", "hochzeitstorte", "transformator"):
+        assert k in SPECIES
+        spec = SPECIES[k]
+        assert spec.is_boss is True
+        assert spec.drops_sample == "probe_kern"
+
+
 def test_c14_agents_evil_selves_and_ober_cloita() -> None:
     from src.enemies import SPECIES
 
     for k in (
+        "agent_streife",
         "agent_sachbearbeiter",
+        "agent_drohne",
         "agent_vollstrecker",
         "agent_abteilungsleiter",
         "boese_kaiserin",

@@ -1,6 +1,6 @@
 # Verträge V21–V23: Klonita, UI/Menüs/Sprechblasen & Speicher-/Archiv-Schema
 
-> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quellen: [docs/bibel/03-klonita-und-ton.md](../../bibel/03-klonita-und-ton.md), [docs/bibel/07-ui-und-progression.md](../../bibel/07-ui-und-progression.md).
+> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quellen: [docs/bibel/02-systeme.md](../../bibel/02-systeme.md), [docs/bibel/04-figuren.md](../../bibel/04-figuren.md), [docs/bibel/08-ui-und-texte.md](../../bibel/08-ui-und-texte.md).
 
 ---
 
@@ -30,7 +30,7 @@ AUTO_TRIGGERS: tuple[str, ...] = (
     "player_low_hp",   # Wenn player.body.hp / player.body.max_hp < 0.25
     "boss_spawn",      # Wenn ein Zwischen- oder Endboss aktiviert wird
     "wanted_high",     # Wenn Wanted.stars >= 3 erreicht wird
-    "event_start",     # Wenn ein Sekundärereignis startet
+    "event_start",     # Wenn ein Universums-Ereignis startet
 )
 
 
@@ -68,6 +68,9 @@ class Klonita:
         """Zieht Schaden ab. Fällt hp <= 0, stirbt Klonita NICHT, sondern wechselt für
         5.0 s in state = 'knocked' (knocked_timer = 5.0) und gibt True zurück."""
 
+    def trigger_quirk(self, kind: str, run: Run) -> bool:
+        """Führt einmal pro Universum eine Macke ('shiny_poke', 'loud_sneeze', 'sample_nibble') aus."""
+
     def update(self, dt: float, run: Run) -> None:
         """Bewegt Klonita weich hinter der Spielerin her (Teleport zur Spielerin bei
         Distanz > 220 px), tickt Cooldowns, führt Hilfsaktionen und maximal 1× pro
@@ -97,15 +100,23 @@ class Klonita:
 
 ```python
 LINES: dict[str, tuple[str, ...]] = {
+    # Kanonische 6 MVP-Universen (Bibel Kap. 03 & 08):
+    "enter_fleischwelt": (...),
+    "enter_aktenhalde": (...),
+    "enter_glibbria": (...),
+    "enter_kruemelreich": (...),
+    "enter_sporenklub": (...),
+    "enter_abtei": (...),
+    # Pool-Universen & Aliase:
     "enter_schrott": (...),
     "enter_myzel": (...),
     "enter_magen": (...),
     "enter_amt": (...),
     "enter_kuchen": (...),
-    "enter_abtei": (...),
     "enter_ameisen": (...),
     "enter_spule": (...),
     "enter_glibber": (...),
+    # Auto-Trigger & Situationen:
     "player_low_hp": (...),
     "boss_spawn": (...),
     "wanted_high": (...),
@@ -153,7 +164,7 @@ class SpeechBubble:
 
 `Run.menu_mode: str` (Standard `""` = kein Vollbild-Submenü aktiv) steuert die neuen Werkstatt- und Begegnungs-Menüs:
 
-- `"portal_select"`: Auswahl zwischen den `2` Universums-Angeboten aus `UniversePlan.offers_for(run.depth)` (zeigt Name, Untertitel, Weltregel, Heimat-Probe, Endboss).
+- `"portal_select"`: Auswahl zwischen den `2` Universums-Angeboten aus `RunPlan.offers_for(run.depth)` (zeigt Name, Untertitel, Weltregel, Heimat-Probe, Zwischengegner).
 - `"fabricator"`: Rezeptliste aller Zauberblöcke (gruppiert nach Tier `1..3`), zeigt benötigte Proben + Gold, verbleibende Bauten (`3 - fabricator.builds_this_visit`) und Bautaste `[Enter]`/`[E]`.
 - `"trader"`: Zeigt die `4` Angebote des aktuellen Händlers, dessen `greeting_de` & `quirk_de`, Kauf per `[1]`–`[4]` (oder Auswahl + `[Enter]`).
 - `"empress_bargain"`: Dialog für den Handel mit `"boese_kaiserin"` (`[J]` Handel annehmen vs. `[N]` Kämpfen).
@@ -193,16 +204,16 @@ class Records:
     best_rank: str = "Praktikantin"                       # NEU
 ```
 
-#### Kanonische `Records.discover(self, kind: str, key: str) -> None`-Verzweigung
+#### Kanonische `Records.discover(self, kind: str, key: str = "") -> None`-Verzweigung
 
 - `kind == "block"`: fügt `key` zu `self.blocks` hinzu (falls noch nicht enthalten).
 - `kind == "blueprint"`: fügt `key` zu `self.blueprints` hinzu (falls noch nicht enthalten).
 - `kind == "universe"`: fügt `key` zu `self.universes` hinzu (falls noch nicht enthalten).
 - `kind == "evil_self"`: fügt `key` zu `self.evil_selves` hinzu (falls noch nicht enthalten).
 - `kind == "badge"`: erhöht `self.badges += 1`.
-- `kind == "creature"` (oder jeder andere Legacy-Aufruf): erhöht `self.creatures[key] = self.creatures.get(key, 0) + 1` und `self.total_kills += 1`.
+- `kind == "creature"` (oder Legacy-1-Argument-Aufruf `discover(block_key)`): bei `key == ""` wird `kind` zu `self.blocks` hinzugefügt; sonst erhöht `self.creatures[key] = self.creatures.get(key, 0) + 1` und `self.total_kills += 1`.
 
-### 2. Kanonische Rang-Berechnung (`compute_rank` in `src/records.py`)
+### 2. Kanonische Rang-Berechnung (`compute_score` & `rank_for_score` in `src/records.py`)
 
 ```python
 RANKS: tuple[tuple[int, str], ...] = (
@@ -263,7 +274,7 @@ Zusätzlich zu den bestehenden Feldern in `save_state()` / `restore()` werden im
 "samples": list(self.inventory.samples),
 "level_meta": {
     "universe_key": self.level.universe_key,
-    "Mid_boss_arena": list(self.level.mid_boss_arena),
+    "mid_boss_arena": list(self.level.mid_boss_arena),
     "boss_arena": list(self.level.boss_arena),
     "trader_nook": list(self.level.trader_nook) if self.level.trader_nook else None,
     "challenge_shrine": list(self.level.challenge_shrine) if self.level.challenge_shrine else None,
@@ -278,7 +289,7 @@ Zusätzlich zu den bestehenden Feldern in `save_state()` / `restore()` werden im
 
 ### 4. Kanonische Alias-Tabellen (`MODULE_ALIASES` & `PERK_ALIASES`)
 
-Damit sowohl die bestehenden englischen Modul-/Perk-Keys in `src/spells.py` und `src/perks.py` als auch die deutschen Bibel-Begriffe überall (Tests, Rezepte, Händler, Loot-Tabellen, Savegames) auf denselben kanonischen Schlüssel abbilden:
+Damit sowohl die bestehenden Modul-/Perk-Keys in `src/spells.py` und `src/perks.py` als auch die deutschen Bibel-Begriffe überall (Tests, Rezepte, Händler, Loot-Tabellen, Savegames) auf denselben kanonischen Schlüssel abbilden:
 
 ```python
 # In src/spells.py:

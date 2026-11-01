@@ -12,13 +12,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] `docs/bibel/02-systeme.md` dokumentiert alle 20 Fähigkeiten (`graze`..`stationary` + `aura`, `teleport`, `kamikaze`, `burrow`), Art-Streit/Blutfehden (`Grudges`), Klonitas aktive Kampf-/Schutz-Hilfen (`shield`, `snack`, `spark`, `cleanse`) und Einmal-Macken (`shiny_poke`, `loud_sneeze`, `sample_nibble`)
-- [ ] `docs/bibel/03-universen.md` führt bei den 6 MVP-Universen je 4 Einheimische, 1 Unter-Zwischenboss und die zerstörbaren Props auf und enthält im Pool die ausgearbeiteten Entwürfe für `schrott`, `kuchen` und `spule`
-- [ ] `docs/bibel/04-figuren.md` enthält `agent_abteilungsleiter` (neben `agent_streife`, `agent_vollstrecker`, `agent_drohne`)
+- [x] `docs/bibel/02-systeme.md` dokumentiert alle 20 Fähigkeiten (`graze`..`stationary` + `aura`, `teleport`, `kamikaze`, `burrow`), Art-Streit/Blutfehden (`Grudges`), Klonitas aktive Kampf-/Schutz-Hilfen (`shield`, `snack`, `spark`, `cleanse`) und Einmal-Macken (`shiny_poke`, `loud_sneeze`, `sample_nibble`)
+- [x] `docs/bibel/03-universen.md` führt bei den 6 MVP-Universen je 4 Einheimische, 1 Unter-Zwischenboss und die zerstörbaren Props auf und enthält im Pool die ausgearbeiteten Entwürfe für `schrott`, `kuchen` und `spule`
+- [x] `docs/bibel/04-figuren.md` enthält `agent_abteilungsleiter` (neben `agent_streife`, `agent_vollstrecker`, `agent_drohne`)
 
 **Verification:**
 
-- [ ] Manuelle Prüfung: Alle Verweise zwischen Kap. 02, 03 und 04 sind konsistent
+- [x] Manuelle Prüfung: Alle Verweise zwischen Kap. 02, 03 und 04 sind konsistent
 
 **Dependencies:** None
 
@@ -38,13 +38,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] `docs/bibel/05-gegner.md` enthält alle 24 regulären Einheimischen (4 je MVP-Universum), die 2 großen Kreaturen, die 6 Unter-Zwischenbosse, die 6 Haupt-Zwischengegner, die 4 Behörden-Agenten, die 3 Bösen Ichs (inkl. Geheimraum-Begegnung & Kaiserin-Handel) und den Rat / `ober_cloita`
-- [ ] `docs/bibel/07-gegenstaende-und-werkstatt.md` enthält alle 17 Proben (12 Universums-Proben + 5 allgemeine Proben), alle 12 Werkstatt-Stationen + Trainings-Attrappe, alle 8 Physik-o-Mat-Rätsel und beide Herausforderungs-Arten (6 NPC-Aufträge + 6 Schrein-Prüfungen)
-- [ ] Die 4 veralteten Dateien `docs/plan/phase-c-universen.md`, `docs/plan/phase-d-werkstatt.md`, `docs/plan/phase-e-bosse.md` und `docs/plan/phase-f-umbenennung.md` sind gelöscht
+- [x] `docs/bibel/05-gegner.md` enthält alle 24 regulären Einheimischen (4 je MVP-Universum), die 2 großen Kreaturen, die 6 Unter-Zwischenbosse, die 6 Haupt-Zwischengegner, die 4 Behörden-Agenten, die 3 Bösen Ichs (inkl. Geheimraum-Begegnung & Kaiserin-Handel) und den Rat / `ober_cloita`
+- [x] `docs/bibel/07-gegenstaende-und-werkstatt.md` enthält alle 17 Proben (12 Universums-Proben + 5 allgemeine Proben), alle 12 Werkstatt-Stationen + Trainings-Attrappe, alle 8 Physik-o-Mat-Rätsel und beide Herausforderungs-Arten (6 NPC-Aufträge + 6 Schrein-Prüfungen)
+- [x] Die 4 veralteten Dateien `docs/plan/phase-c-universen.md`, `docs/plan/phase-d-werkstatt.md`, `docs/plan/phase-e-bosse.md` und `docs/plan/phase-f-umbenennung.md` sind gelöscht
 
 **Verification:**
 
-- [ ] `Get-ChildItem docs/plan/phase-*.md` zeigt nur noch die 7 kanonischen Dateien `phase-a-fundament.md` bis `phase-g-abnahme.md`
+- [x] `Get-ChildItem docs/plan/phase-*.md` zeigt nur noch die 7 kanonischen Dateien `phase-a-fundament.md` bis `phase-g-abnahme.md`
 
 **Dependencies:** Task 1
 
@@ -61,8 +61,8 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 ## Checkpoint: Nach Tasks 1–2 (Bibel & Struktur)
 
-- [ ] Alle 6 MVP-Universen und alle erweiterten Inhalte sind in `docs/bibel/` dokumentiert
-- [ ] Keine veralteten `phase-*.md`-Dateien mehr unter `docs/plan/`
+- [x] Alle 6 MVP-Universen und alle erweiterten Inhalte sind in `docs/bibel/` dokumentiert
+- [x] Keine veralteten `phase-*.md`-Dateien mehr unter `docs/plan/`
 
 ---
 
@@ -74,13 +74,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] `docs/plan/vertraege.md` nennt die 6 MVP-Universen, 17 Proben, 12 Stationen, Python `>= 3.11` und stimmt in allen Zahlen exakt mit den Teilverträgen überein
-- [ ] `v00-migration-und-schluessel.md` verwendet keine veralteten Karten-IDs (`T5.00a` etc.) mehr, sondern `A01`–`G10`
-- [ ] `v01-verhalten-und-wegsuche.md`, `v05-sprites-und-teile.md` und `v09-universen-und-ereignisse.md` enthalten sämtliche Funktions- und Klassennamen, die in `tests/spec/` geprüft werden
+- [x] `docs/plan/vertraege.md` nennt die 6 MVP-Universen, 17 Proben, 12 Stationen, Python `>= 3.11` und stimmt in allen Zahlen exakt mit den Teilverträgen überein
+- [x] `v00-migration-und-schluessel.md` verwendet keine veralteten Karten-IDs (`T5.00a` etc.) mehr, sondern `A01`–`G10`
+- [x] `v01-verhalten-und-wegsuche.md`, `v05-sprites-und-teile.md` und `v09-universen-und-ereignisse.md` enthalten sämtliche Funktions- und Klassennamen, die in `tests/spec/` geprüft werden
 
 **Verification:**
 
-- [ ] Statischer Abgleich aller Symbolnamen in `v00`–`v09` gegen die Bibel
+- [x] Statischer Abgleich aller Symbolnamen in `v00`–`v09` gegen die Bibel
 
 **Dependencies:** Task 2
 
@@ -102,14 +102,14 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] `V11` definiert alle 17 Proben (inkl. der 12 Bibel-Proben aus `V0a`)
-- [ ] `V15`–`V17` definieren die 4 Agenten (`agent_streife`, `agent_drohne`, `agent_vollstrecker`, `agent_abteilungsleiter`), die 6 Bibel-Zwischengegner in `src/bosses/` sowie die 3 Bösen Ichs und das 3-stufige Hauptquartier
-- [ ] `V18`–`V20` definieren alle 12 Werkstatt-Stationen (mit `STATION_ALIASES`), die 6 Bibel-Händler mit ihren `home_universe`-Keys (`fleischwelt`..`abtei`), den Fabrikator (inkl. `bauplan_splitter`) und die 8 Physik-o-Mat-Rätsel
-- [ ] `V21`–`V23` definieren Klonitas Bibel-Trigger, Hilfen, Macken und Sprüche für die 6 MVP-Universen
+- [x] `V11` definiert alle 17 Proben (inkl. der 12 Bibel-Proben aus `V0a`)
+- [x] `V15`–`V17` definieren die 4 Agenten (`agent_streife`, `agent_drohne`, `agent_vollstrecker`, `agent_abteilungsleiter`), die 6 Bibel-Zwischengegner in `src/bosses/` sowie die 3 Bösen Ichs und das 3-stufige Hauptquartier
+- [x] `V18`–`V20` definieren alle 12 Werkstatt-Stationen (mit `STATION_ALIASES`), die 6 Bibel-Händler mit ihren `home_universe`-Keys (`fleischwelt`..`abtei`), den Fabrikator (inkl. `bauplan_splitter`) und die 8 Physik-o-Mat-Rätsel
+- [x] `V21`–`V23` definieren Klonitas Bibel-Trigger, Hilfen, Macken und Sprüche für die 6 MVP-Universen
 
 **Verification:**
 
-- [ ] Kein einziger Verweis auf nicht-existente MVP-Universen mehr in `v11`, `v15`, `v18`, `v21`
+- [x] Kein einziger Verweis auf nicht-existente MVP-Universen mehr in `v11`, `v15`, `v18`, `v21`
 
 **Dependencies:** Task 3
 
@@ -126,7 +126,7 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 ## Checkpoint: Nach Tasks 3–4 (Verträge)
 
-- [ ] Alle 8 Vertragsdateien + `vertraege.md` sind vollständig konsistent mit der Bibel
+- [x] Alle 8 Vertragsdateien + `vertraege.md` sind vollständig konsistent mit der Bibel
 
 ---
 
@@ -138,13 +138,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] `A01` prüft die 12 Bibel-Proben (2 je Universum) und die kanonische Region-Reihenfolge der 6 MVP-Universen
-- [ ] `phase-b-grafik.md` und `phase-c-kreaturen.md` decken alle Kreaturen, großen Kreaturen, Bosse, Waffenteile, Proben und Stationen der Bibel ab
-- [ ] Keine Karte in Phase A, B oder C hat mehr als 2 Zieldateien
+- [x] `A01` prüft die 12 Bibel-Proben (2 je Universum) und die kanonische Region-Reihenfolge der 6 MVP-Universen
+- [x] `phase-b-grafik.md` und `phase-c-kreaturen.md` decken alle Kreaturen, großen Kreaturen, Bosse, Waffenteile, Proben und Stationen der Bibel ab
+- [x] Keine Karte in Phase A, B oder C hat mehr als 2 Zieldateien
 
 **Verification:**
 
-- [ ] Prüfung aller `Ziel-Dateien:`-Zeilen in `phase-a`, `phase-b`, `phase-c` (jeweils `<= 2` Dateien)
+- [x] Prüfung aller `Ziel-Dateien:`-Zeilen in `phase-a`, `phase-b`, `phase-c` (jeweils `<= 2` Dateien)
 
 **Dependencies:** Task 4
 
@@ -165,13 +165,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] Keine Karte in Phase D, E, F oder G hat mehr als 2 Zieldateien
-- [ ] Alle Karten verweisen ausschließlich auf Symbole aus `V0`–`V23` und `docs/bibel/`
-- [ ] `docs/intent/atomarer-umsetzungsplan.md` spiegelt den aktuellen Stand (Vorab-Tests + Gerüste) korrekt wider
+- [x] Keine Karte in Phase D, E, F oder G hat mehr als 2 Zieldateien
+- [x] Alle Karten verweisen ausschließlich auf Symbole aus `V0`–`V23` und `docs/bibel/`
+- [x] `docs/intent/atomarer-umsetzungsplan.md` spiegelt den aktuellen Stand (Vorab-Tests + Gerüste) korrekt wider
 
 **Verification:**
 
-- [ ] Skript-Prüfung über alle `phase-*.md`: Jede Karte hat `1–2` Zieldateien und gültige Vertragsreferenzen
+- [x] Skript-Prüfung über alle `phase-*.md`: Jede Karte hat `1–2` Zieldateien und gültige Vertragsreferenzen
 
 **Dependencies:** Task 5
 
@@ -189,7 +189,7 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 ## Checkpoint: Nach Tasks 5–6 (Phasen-Pläne)
 
-- [ ] Alle Phasen-Pläne A–G halten die S-Regel (`<= 2` Zieldateien) und den Bibel-Kanon strikt ein
+- [x] Alle Phasen-Pläne A–G halten die S-Regel (`<= 2` Zieldateien) und den Bibel-Kanon strikt ein
 
 ---
 
@@ -201,13 +201,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] `len(UNIVERSES) == 6` mit den Schlüsseln `("fleischwelt", "aktenhalde", "glibbria", "kruemelreich", "sporenklub", "abtei")`
-- [ ] `tests/test_universes.py` läuft vollständig grün
-- [ ] `src/samples.py` enthält alle 17 Proben (12 Universums-Proben + 5 allgemeine Proben) und `SAMPLE_ALIASES`
+- [x] `len(UNIVERSES) == 6` mit den Schlüsseln `("fleischwelt", "aktenhalde", "glibbria", "kruemelreich", "sporenklub", "abtei")`
+- [x] `tests/test_universes.py` läuft vollständig grün
+- [x] `src/samples.py` enthält alle 17 Proben (12 Universums-Proben + 5 allgemeine Proben) und `SAMPLE_ALIASES`
 
 **Verification:**
 
-- [ ] `uv run pytest tests/test_universes.py -q`
+- [x] `uv run pytest tests/test_universes.py -q`
 
 **Dependencies:** Task 6
 
@@ -229,13 +229,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] Alle Kreaturen, großen Kreaturen, Zwischengegner, Agenten und Bösen Ichs der 6 MVP-Universen sind in `SPECIES` (`src/enemies.py`) enthalten
-- [ ] `src/factions.py`, `src/pathfind.py`, `src/behaviour.py` und `src/weapon_parts.py` erfüllen alle Vertrags-Signaturen aus `V1`–`V8b`
-- [ ] `tools/palette.py` und `tools/sprites*.py` unterstützen alle 6 MVP-Universen und alle Bibel-Sprites
+- [x] Alle Kreaturen, großen Kreaturen, Zwischengegner, Agenten und Bösen Ichs der 6 MVP-Universen sind in `SPECIES` (`src/enemies.py`) enthalten
+- [x] `src/factions.py`, `src/pathfind.py`, `src/behaviour.py` und `src/weapon_parts.py` erfüllen alle Vertrags-Signaturen aus `V1`–`V8b`
+- [x] `tools/palette.py` und `tools/sprites*.py` unterstützen alle 6 MVP-Universen und alle Bibel-Sprites
 
 **Verification:**
 
-- [ ] `uv run pytest tests/test_enemies.py tests/test_projectiles.py -q`
+- [x] `uv run pytest tests/test_enemies.py tests/test_projectiles.py -q`
 
 **Dependencies:** Task 7
 
@@ -257,13 +257,13 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] Alle 12 Stationen in `src/workshop.py` sind über ihre Bibel-Keys und englischen Aliase erreichbar
-- [ ] `make_boss_script` unterstützt alle 6 Bibel-Zwischengegner, die 3 Bösen Ichs und `ober_cloita`
-- [ ] Alle bestehenden Tests unter `tests/test_*.py` laufen ohne Fehler grün
+- [x] Alle 12 Stationen in `src/workshop.py` sind über ihre Bibel-Keys und englischen Aliase erreichbar
+- [x] `make_boss_script` unterstützt alle 6 Bibel-Zwischengegner, die 3 Bösen Ichs und `ober_cloita`
+- [x] Alle bestehenden Tests unter `tests/test_*.py` laufen ohne Fehler grün
 
 **Verification:**
 
-- [ ] `uv run pytest --ignore=tests/spec -q`
+- [x] `uv run pytest --ignore=tests/spec -q`
 
 **Dependencies:** Task 8
 
@@ -281,7 +281,7 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 ## Checkpoint: Nach Tasks 7–9 (Bestands-Suite & Gerüste)
 
-- [ ] `uv run pytest --ignore=tests/spec -q` läuft zu 100 % grün
+- [x] `uv run pytest --ignore=tests/spec -q` läuft zu 100 % grün
 
 ---
 
@@ -293,12 +293,12 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] Für jede Karten-ID in Phase A, B und C findet `pytest tests/spec/test_phase_<x>.py -k <id_klein>` mindestens 1 Test und läuft grün
-- [ ] Keine Sammel-Testfunktionen ohne Einzel-Funktionen pro Karte mehr vorhanden
+- [x] Für jede Karten-ID in Phase A, B und C findet `pytest tests/spec/test_phase_<x>.py -k <id_klein>` mindestens 1 Test und läuft grün
+- [x] Keine Sammel-Testfunktionen ohne Einzel-Funktionen pro Karte mehr vorhanden
 
 **Verification:**
 
-- [ ] `uv run pytest tests/spec/test_phase_a.py tests/spec/test_phase_b.py tests/spec/test_phase_c.py -q`
+- [x] `uv run pytest tests/spec/test_phase_a.py tests/spec/test_phase_b.py tests/spec/test_phase_c.py -q`
 
 **Dependencies:** Task 9
 
@@ -318,12 +318,12 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] Für jede Karten-ID in Phase D, E, F und G findet `pytest tests/spec/test_phase_<x>.py -k <id_klein>` mindestens 1 Test und läuft grün
-- [ ] Auch die 17 in `docs/critique.md` genannten fehlenden IDs (`B22`, `B23`, `B26`, `B29`, `B30`, `B33`, `B34`, `E08`, `E11`–`E14`, `F04`, `F05`, `F12`, `F13`, `G05`) haben eigene, direkt ausführbare Testfunktionen
+- [x] Für jede Karten-ID in Phase D, E, F und G findet `pytest tests/spec/test_phase_<x>.py -k <id_klein>` mindestens 1 Test und läuft grün
+- [x] Auch die 17 in `docs/critique.md` genannten fehlenden IDs (`B22`, `B23`, `B26`, `B29`, `B30`, `B33`, `B34`, `E08`, `E11`–`E14`, `F04`, `F05`, `F12`, `F13`, `G05`) haben eigene, direkt ausführbare Testfunktionen
 
 **Verification:**
 
-- [ ] `uv run pytest tests/spec/test_phase_d.py tests/spec/test_phase_e.py tests/spec/test_phase_f.py tests/spec/test_phase_g.py -q`
+- [x] `uv run pytest tests/spec/test_phase_d.py tests/spec/test_phase_e.py tests/spec/test_phase_f.py tests/spec/test_phase_g.py -q`
 
 **Dependencies:** Task 10
 
@@ -344,12 +344,12 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 **Acceptance criteria:**
 
-- [ ] Alle Karten-Einzeltests (`-k <id_klein>`), alle Spec-Tests und alle Bestandstests laufen gemeinsam grün (`uv run pytest -q`)
-- [ ] `uv run ruff check src tests tools` ist komplett sauber
+- [x] Alle Karten-Einzeltests (`-k <id_klein>`), alle Spec-Tests und alle Bestandstests laufen gemeinsam grün (`uv run pytest -q`)
+- [x] `uv run ruff check src tests tools` ist komplett sauber
 
 **Verification:**
 
-- [ ] `uv run pytest -q && uv run ruff check src tests tools`
+- [x] `uv run pytest -q && uv run ruff check src tests tools`
 
 **Dependencies:** Task 11
 
@@ -364,5 +364,5 @@ Master-Plan: [`tasks/plan.md`](plan.md) · Referenz-Kritik: [`docs/critique.md`]
 
 ## Checkpoint: Complete
 
-- [ ] Alle Akzeptanzkriterien aus `tasks/plan.md` und `tasks/todo.md` sind erfüllt
-- [ ] Bereit zur Übergabe an den Nutzer
+- [x] Alle Akzeptanzkriterien aus `tasks/plan.md` und `tasks/todo.md` sind erfüllt
+- [x] Bereit zur Übergabe an den Nutzer

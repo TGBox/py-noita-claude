@@ -93,9 +93,10 @@ Die Behörde ordnet das Multiversum – angeblich. Ihre Agenten sind identisch a
 
 | Schlüssel | Name | Größe | Aussehen | Rolle |
 | --- | --- | --- | --- | --- |
-| `agent_streife` | Streifenagent | 12×22 | grauer Anzug (`agent`), Maske mit Siegel (Kreis mit Auge), Aktenkoffer | Grundtyp, schießt Formularblitze |
-| `agent_vollstrecker` | Vollstrecker | 16×24 | breiter, Mantel, Schulterlampe, schwerer Stempel als Waffe | ab Fahndungsstufe 3, Schild aus Panzerglas |
+| `agent_streife` | Streifenagent | 12×22 | grauer Anzug (`agent`), Maske mit Siegel (Kreis mit Auge), Aktenkoffer | Grundtyp (ab Stufe 1, Alias `agent_sachbearbeiter`), schießt Formularblitze / Stempel-Projektile |
 | `agent_drohne` | Aktendrohne | 10×8 | fliegender Aktenkoffer mit Propeller und Kameraauge | ab Stufe 2, markiert Cloita (alle Agenten wissen dann, wo sie ist) |
+| `agent_vollstrecker` | Vollstrecker | 16×24 | breiter, Mantel, Schulterlampe, schwerer Stempel als Waffe | ab Fahndungsstufe 3, Schild aus Panzerglas / Aktenkoffer-Reflektor |
+| `agent_abteilungsleiter` | Abteilungsleiter | 18×26 | schwebender Oberbeamter mit Paragraphen-Krone und Doppelstempel | ab Fahndungsstufe 4, fliegt, ruft Verstärkung (`summon`), Paragraphen-Strahl |
 
 Gemeinsames Merkmal: das **Siegel der Behörde** (Kreis, darin ein Auge mit Stempelrand). Das Siegel taucht auch bei den bösen Ichs versteckt auf (Hinweis aufs wahre Ende).
 

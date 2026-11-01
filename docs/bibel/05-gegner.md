@@ -25,6 +25,21 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 - Sonderzustände `hang` (2), `latched` (2, wird auf Cloita gezeichnet).
 - Schwäche: Salz/Wasser löst ihn, Feuer.
 
+**Säurespucker (`saeurespucker`)** – 14×14
+
+- Haltung `hostile`; `ranged` (Säure-Bogenschuss), `retaliate`; immun gegen Säure.
+- Leben 32, Tempo 35, Schuss 9 (Ausholen: bläht Kehlsack grünlich auf, 0,45 s).
+- Aussehen: geschwollener Magenschleim-Polyp mit Trichtermaul und gelb-grünen Säureblasen.
+- Tod: zerplatzt zu Magensäure; lässt manchmal `probe_gallenstein` fallen.
+- Schwäche: Feuer.
+
+**Zottenwurm (`zottenwurm`)** – 20×8
+
+- Haltung `neutral`; `graze` (Fleisch), `burrow`, `melee`, `retaliate`.
+- Leben 38, Tempo 45, Biss 8 (Ausholen: richtet Vorderkörper auf, 0,4 s).
+- Aussehen: segmentierter Darmzotten-Wurm mit feinen Sinneshärchen.
+- Tod: Fleischbrocken, gelegentlich `probe_wucherung`.
+
 ### Aktenhalde
 
 **Aktenfresser (`aktenfresser`)** – 20×17
@@ -39,12 +54,26 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Stempler (`stempler`)** – 12×18
 
-- Haltung `neutral`; `melee`, `summon` (ruft bei Angriff 1 Agent), `retaliate`.
+- Haltung `neutral`; `melee`, `summon` (ruft bei Angriff 1 Agent), `retaliate`, `aura` (`stamp_tax`).
 - Leben 30, Tempo 30.
-- Verhalten: kommt auf Cloita zu, wenn sie nah ist, und stempelt sie (Ausholen: hebt den Riesenstempel, 0,6 s). Zufällig **„Genehmigt“** (Status gut) oder **„Abgelehnt“** (Status schlecht, 5 Schaden). Wird er angegriffen, stempelt er nur noch „Abgelehnt“ und ruft einen Agenten.
+- Verhalten: kommt auf Cloita zu, wenn sie nah ist, und stempelt sie (Ausholen: hebt den Riesenstempel, 0,6 s). Zufällig **„Genehmigt“** (Status gut) oder **„Abgelehnt“** (Status schlecht, 5 Schaden). Wird er angegriffen, stempelt er nur noch „Abgelehnt“ und ruft einen Agenten (Alias `stempelkaefer`).
 - Aussehen: kleines, gebücktes Wesen aus Stempelkissen mit dünnen Beinen und einem riesigen Holzstempel als Arm; Brille auf der Nasenspitze.
 - Sonderzustand `stamp` (3).
 - Tod: Stempelfarbe spritzt.
+
+**Paragraphenreiter (`paragraphenreiter`)** – 16×20
+
+- Haltung `hostile`; fliegt, `ranged` (Paragraphen-Strahl), `summon` (ruft Stempler/Streife), `retaliate`.
+- Leben 36, Tempo 55, Strahl 9 (Ausholen: paragraphenförmiges Messinghorn leuchtet auf, 0,45 s).
+- Aussehen: schwebender Bürokrat auf einem geflügelten Gesetzbuch.
+- Tod: Papierfetzen, gelegentlich `probe_formular`.
+
+**Kaffeegolem (`kaffeegolem`)** – 18×22
+
+- Haltung `neutral`; `melee`, `ranged` (heißer Dampf/Kaffeesatz), `transform` / `morph` (überkocht unter 50 % Leben: schneller), `retaliate`.
+- Leben 55, Tempo 32.
+- Aussehen: klobige Kaffeemaschine auf Aktenschrank-Beinen mit brodelndem Glaskolben-Kopf.
+- Tod: Dampf und Scherben, gelegentlich `probe_stempelkissen`.
 
 ### Glibbria
 
@@ -59,11 +88,25 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Glibberteiler (`glibberteiler`)** – 18×14 → 12×10 → 8×7
 
-- Haltung `hostile`; `melee`, `hunt`, `split` (2 Generationen), `armor` gegen durchschlagende Geschosse (gleitet um sie herum).
+- Haltung `hostile`; `melee`, `hunt`, `split` (2 Generationen), `armor` gegen durchschlagende Geschosse (gleitet um sie herum; Alias `quallenhund`).
 - Leben 40 (Teile: 20, 10), Sprungangriff 9 (Ausholen: wird flach und zittert, 0,5 s).
 - Aussehen: grimmiger, rot-grüner Geleeklumpen mit zu kleinen Zähnen und wütenden Augenbrauen.
 - Tod der kleinsten Stufe: Glibber-Fleck.
 - Schwäche: Feuer (Glibber schmilzt), Explosionen erzeugen aber neue Teile.
+
+**Zuckerwattewolke (`zuckerwatte_wolke`)** – 18×14
+
+- Haltung `passive`; fliegt, `flee`, `aura` (`slow`: verklebt Angreifer im Umkreis von 40 px).
+- Leben 24, Tempo 45.
+- Aussehen: schwebende, rosa-blaue Zuckerwatte mit verschlafenen Augen.
+- Tod: löst sich in Schaum und `probe_brauseperle` auf.
+
+**Konfettikanone (`konfetti_kanone`)** – 16×16
+
+- Haltung `hostile`; `ranged` (bunte Salve), `reflect` (`bounce`: prallt Geschosse von oben ab, Alias `trampolin_frosch`), `retaliate`.
+- Leben 38, Tempo 28, Salve 8 (Ausholen: bläst Backen auf, Lunte blitzt, 0,5 s).
+- Aussehen: laufendes Partyhütchen-Geschütz auf Gummifüßen.
+- Tod: Brausesirup und `probe_glibberkern`.
 
 ### Krümelreich
 
@@ -76,9 +119,23 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Blattlaus (`blattlaus`)** – 12×10
 
-- Haltung `passive`; `graze` (frisst Pflanzenmaterial), wird von Ameisen beschützt (greift man eine Blattlaus an, werden alle Ameisen im Umkreis feindlich).
-- Leben 10. **Treten** melkt sie: sie lässt Honigtau (Honig) fallen.
+- Haltung `passive`; `graze` (frisst Zucker/Pflanzenmaterial), wird von Ameisen beschützt (greift man eine Blattlaus an, werden alle Ameisen im Umkreis feindlich).
+- Leben 10. **Treten** melkt sie (`giver = True`): sie lässt Honigtau (Honig) fallen, ohne beim ersten Tritt zu sterben (Abklingzeit 8 s).
 - Aussehen: dicke, hellgrüne Laus mit Babyface und kleinem Melkeimer-Muster auf dem Rücken.
+
+**Arbeiterameise (`arbeiterameise`)** – 14×10
+
+- Haltung `neutral`; `pack`, `steal` (trägt lose Goldmünzen oder Proben weg), `dig` (Brösel), `retaliate`.
+- Leben 18, Tempo 65, Biss 5 (Ausholen: Mandibeln spreizen sich, 0,4 s).
+- Aussehen: flinke braun-rote Ameise mit Tragekorb aus einem Kronkorken.
+- Tod: lässt Getragenes und manchmal `probe_zuckerkristall` fallen.
+
+**Harzspucker (`harzspucker`)** – 16×14
+
+- Haltung `hostile`; `ranged` (klebriger Karamell-/Harzschuss, setzt `sticky`), `aura` (`slow`), `retaliate`.
+- Leben 34, Tempo 40, Schuss 7 (Ausholen: Hinterleib leuchtet bernsteinfarben, 0,5 s).
+- Aussehen: gedrungene Ameisen-Artillerie mit Harzdüse auf dem Rücken.
+- Tod: Karamell-Pfütze und gelegentlich `probe_ameisenduft`.
 
 ### Sporenklub
 
@@ -91,10 +148,25 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Sporenschnorrer (`sporenschnorrer`)** – 10×14
 
-- Haltung `hostile`; `steal` (Kolben in der Hand oder ein zufälliges Modul aus dem Rucksack), `flee`.
+- Haltung `hostile`; `steal` (Kolben in der Hand, Gold oder ein zufälliges Modul aus dem Rucksack), `flee`, `split` (Alias `kappenschleicher`).
 - Leben 18, sehr schnell (110). Schleicht sich an, schnappt sich etwas (Ausholen: reibt sich die Hände, 0,4 s) und rennt davon. Tötet man ihn, fällt das Gestohlene heraus; nach 30 s verschwindet er mit der Beute in einem Pilzloch.
 - Aussehen: dünner, grinsender Pilz mit Kapuze, viel zu langen Fingern und einer leuchtenden Glatze.
 - Sonderzustände `steal` (3), `carry` (4).
+
+**Sporenwerfer (`sporenwerfer`)** – 14×18
+
+- Haltung `hostile`; `ranged` (Sporenkugel), `aura` (`poison` im Umkreis von 36 px), `retaliate`.
+- Leben 32, Tempo 35, Schuss 8 (Ausholen: Hut zieht sich zusammen und glüht türkis, 0,45 s).
+- Aussehen: bauchiger Leuchtpilz mit Katapult-Lamellen.
+- Tod: Wolke aus `leuchtsporen`, gelegentlich `probe_leuchtspore`.
+- Schwäche: Feuer.
+
+**Leuchtmotte (`leuchtmotte`)** – 12×12
+
+- Haltung `passive`; fliegt, `flee`, `aura` (`heal_allies`: heilt nahe Pilz-Kreaturen leicht).
+- Leben 16, Tempo 60; spendet farbiges Club-Licht (`glow`).
+- Aussehen: flauschige Neon-Motte mit Disco-Facettenaugen.
+- Tod: Glitzerstaub und gelegentlich `probe_plattennadel`.
 
 ### Versunkene Abtei
 
@@ -107,12 +179,26 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Orgelaal (`orgelaal`)** – 28×6 (Segmente)
 
-- Haltung `hostile`; `hunt` im Wasser, `ranged` (Stromstoß im Wasser, Ausholen: Körper leuchtet von hinten nach vorne auf, 0,7 s).
+- Haltung `hostile`; `hunt` im Wasser, `ranged` (Stromstoß im Wasser, Ausholen: Körper leuchtet von hinten nach vorne auf, 0,7 s), `burrow` (Alias `weihrauch_aal`).
 - Leben 35. Schwimmt nur im Wasser; außerhalb zappelt er hilflos.
 - Aussehen: langer Aal aus Orgelpfeifen-Segmenten, Mund wie ein Blasebalg.
 - Prozedurale Segmente (5 Teile).
 
-## Große Kreaturen
+**Glockenqualle (`glockenqualle`)** – 14×18
+
+- Haltung `passive`; schwimmt, `aura` (`shock` im Radius 36 px), `retaliate`.
+- Leben 26, Tempo 30; glüht im Dunkeln (`glow`).
+- Aussehen: durchscheinende Qualle mit einem kleinen Bronze-Klöppel im Schirm.
+- Tod: lässt `probe_glockensplitter` oder Wasser fallen.
+
+**Korallenwächter (`korallenwaechter`)** – 16×20
+
+- Haltung `neutral`; `shield` / `reflect` (reflektiert Standardgeschosse an seiner Buntglas-Schale), `melee`, `retaliate`.
+- Leben 50, Tempo 28, Stoß 11 (Ausholen: hebt Buntglas-Schild, 0,5 s).
+- Aussehen: Einsiedlerkrebs in einer zerbrochenen Kirchenfenster-Rosette mit Kerzenstumpf auf dem Rücken.
+- Tod: Buntglassplitter und gelegentlich `probe_kerzenstumpf`.
+
+## Große Kreaturen & Unter-Zwischenbosse
 
 **Trampolinwal (`trampolinwal`, Glibbria)** – 56×32, aus Teilen (Kopf, Rumpf, Schwanz, Flossen)
 
@@ -128,13 +214,27 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 - Leben 350. Beute: 40 Gold, Glockensplitter.
 - Aussehen: Krake mit Glockenhelm auf dem Kopf, Tentakel halten Kerzen und Gesangbücher.
 
+### Unter-Zwischenbosse (`is_mid_boss = True`)
+
+Zusätzlich zur großen Kreatur bzw. in der Zwischen-Arena (`mid_boss_arena`) jedes Universums wacht ein schneller Unter-Zwischenboss (`hp` 140–200, garantiert 1 Probe + Zwischenboss-Gold):
+
+| Schlüssel | Name | Universum | Fähigkeiten & Angriff |
+| --- | --- | --- | --- |
+| `pfuetzenwurm` | Pfützenwurm | Fleischwelt | `burrow` (Fleisch), Säure-Salve |
+| `aktenwolf` | Aktenwolf | Aktenhalde | `transform`/`morph` (Alpha-Wut unter 50 % HP), `aura` (`stamp_tax`) |
+| `manege_clown` | Glibber-Kommandant | Glibbria | `split`, Hüpf-Bomben |
+| `harzgeneral` | Harzgeneral | Krümelreich | `summon` (`ameisenkrieger`), klebrige Harz-Salve |
+| `sporenherz` | Sporenherz | Sporenklub | `summon` (`sporenwerfer`), `aura` (`poison`) |
+| `glockenwaechter` | Glockenwächter | Versunkene Abtei | `aura` (`shock`), Schall-Nova |
+
 ## Behörden-Agenten (Kampf)
 
 | Schlüssel | Leben | Verhalten | Angriff (Ausholen) |
 | --- | --- | --- | --- |
-| `agent_streife` | 45 | `hostile`, `hunt`, `ranged`, `pack`, `retaliate` | Formularblitz 8 (zieht Klemmbrett, 0,4 s); verfolgt über Wegsuche |
-| `agent_vollstrecker` | 120 | `hostile`, `shield`, `melee`, `armor` | Stempelschlag 20 mit Druckwelle (hebt den Stempel, 0,8 s) |
+| `agent_streife` | 45 | `hostile`, `hunt`, `ranged`, `pack`, `retaliate` (Alias `agent_sachbearbeiter`) | Formularblitz / Stempel-Projektil 8 (zieht Klemmbrett, 0,4 s); verfolgt über Wegsuche |
 | `agent_drohne` | 15 | `hostile`, fliegt, `summon` | markiert Cloita 10 s (Scheinwerfer an, 0,5 s); alle Agenten kennen dann ihre Position |
+| `agent_vollstrecker` | 120 | `hostile`, `shield`, `reflect`, `melee`, `armor` | Stempelschlag 20 mit Druckwelle (hebt den Stempel, 0,8 s) |
+| `agent_abteilungsleiter` | 160 | `hostile`, fliegt, `summon` (`agent_streife`), `ranged` | Paragraphen-Strahl 14 (hebt Doppelstempel, 0,6 s), ab Fahndungsstufe 4 |
 
 Beute: Gold 15 / 40 / 5, Agenten lassen gelegentlich einen „Dienstausweis“ fallen (Archiv-Fundstück mit Hinweisen aufs wahre Ende).
 

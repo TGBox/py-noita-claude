@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.3
+
+- 2026-11-01 (840d717): fix: re-align the implementation plans from claude with the new additions that have been made by gemini - update bible to reflect and consolidate the changes into a coherent plan (hopefully - has to be double checked by claude before real implementation can begin), fix implementation cards not being within the capped scope
+
 ## SemVer v1.7.2
 
-- 2026-11-01 (36d0318): feat: add plan to align the plans
+- 2026-11-01 (5cd912e): feat: add plan to align the plans
 
 ## SemVer v1.7.1
 
@@ -12,7 +16,7 @@
 ## SemVer v1.7.0
 
 - 2026-11-01 (31a29a0): Merge pull request #21 from TGBox/develop
-- 2026-11-01 (c6cf8dc): Merge branch 'develop' of https://github.com/TGBox/py-noita-claude into develop
+- 2026-11-01 (c6cf8dc): Merge branch 'develop' of <https://github.com/TGBox/py-noita-claude> into develop
 - 2026-11-01 (ea02e5f): feat: add huge amount of connected test suite definitions to ensure that the smaller models adhere to a clear pattern that alllows everything to work in the end
 
 ## SemVer v1.6.0

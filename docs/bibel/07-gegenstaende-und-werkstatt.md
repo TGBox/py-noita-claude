@@ -36,6 +36,18 @@ Zwei je Universum. Fallen von Einheimischen, großen Kreaturen und Zwischengegne
 | `probe_glockensplitter` | Glockensplitter | Versunkene Abtei | Bronzescherbe |
 | `probe_kerzenstumpf` | Kerzenstumpf mit Gesicht | Versunkene Abtei | Wachsstumpf mit eingedrücktem Gesicht |
 
+### Allgemeine / seltene Proben (universumsübergreifend, Seltenheit 2–3)
+
+Zusätzlich zu den 12 Universums-Proben gibt es 5 allgemeine Proben für höherstufige Fabrikator-Rezepte (von starken Kreaturen, aus Geheimräumen, Goldadern und Zwischengegnern):
+
+| Schlüssel | Name | Stufe | Quelle / Aussehen |
+| --- | --- | --- | --- |
+| `probe_knochen` | Mark-Splitter | 2 | Dichter Knochensplitter starker Kreaturen |
+| `probe_aether` | Äther-Flocke | 2 | Schwereloser Rückstand aus instabilen Zaubern |
+| `probe_schatten` | Schatten-Faden | 2 | Dunkle Faser aus Geheimräumen und Verliesen |
+| `probe_gold` | Reingold-Korn | 3 | Hochreines Goldkorn aus tiefen Goldadern (`gold_vein`) |
+| `probe_kern` | Wächter-Kern | 3 | Pulsierendes Herzstück eines besiegten Zwischengegners |
+
 Rucksack: eigene Leiste mit 12 Plätzen für Proben (stapelbar bis 99), getrennt von den Modulen.
 
 ## Selbstexperimente (bisher Perks)
@@ -86,7 +98,11 @@ Eine feste, handgebaute Karte (ca. 640×360, eine Bildschirmbreite, kein Scrolle
 | `ws_automat` | Physik-o-Mat | 24×36 | Minispiel Rätsel | Spielautomat mit Glasscheibe |
 | `ws_schiessstand` | Schießstand | 64×24 | Minispiel Zielschießen | Bahn mit Pappfiguren der Behörde |
 | `ws_archiv` | Archivschrank | 24×32 | Archiv (Kodex) ansehen | Aktenschrank, eine Schublade klemmt |
-| `ws_couch` | Klonitas Couch | 40×18 | Klonita sitzt hier, wenn man in der Werkstatt ist; ansprechen = Spruch | Couch mit Kuscheltieren |
+| `ws_couch` | Klonitas Couch | 40×18 | Klonita sitzt hier, wenn man in der Werkstatt ist; ansprechen = Spruch (+ Heilung) | Couch mit Kuscheltieren |
+| `ws_shredder` | Akten-Schredder | 16×20 | Senkt die Fahndungsstufe (`Wanted`) um 1,0 gegen Gold (`40 + 25 × Sterne`) | Ratternder Behörden-Reißwolf mit Funken |
+| `ws_well` | Flaschen-Brunnen | 16×18 | Füllt den gehaltenen Kolben kostenlos mit klarem Wasser (`water`) auf | Kleines Steinbecken mit Wasserhahn |
+
+Zusätzlich steht in der Werkstatt nahe dem Schießstand eine unsterbliche **Trainings-Attrappe** (`target_dummy`, `trainings_attrappe`), an der Cloita ihre umgebauten Waffen gefahrlos testen und den verursachten Trefferschaden ablesen kann.
 
 ## Minispiele
 
@@ -94,13 +110,17 @@ Beide nutzen die vorhandene Physik. Einsatz Gold, Belohnung Gold, Proben oder Sc
 
 **Physik-o-Mat (`minigame_automat`)** – Einsatz 30 Gold
 
-- Ein kleines Feld (160×120) in einem Rahmen; Cloita hat eine feste Waffe und 10 Sekunden.
-- Rätsel (zufällig eines von):
-  1. *Füll das Glas:* Wasser in einem Becken oben soll in ein Glas unten fließen; nur durch Sprengen und Graben.
-  2. *Rette die Vase:* einen Turm sprengen, ohne dass die Vase zerbricht.
-  3. *Zünde die Kerze:* über Öl, Papier und Wasser eine Kerze entzünden.
-  4. *Ameisenstraße:* Zucker so verteilen, dass die Ameisen ins Ziel laufen.
-- Belohnung: 80 Gold oder eine Probe nach Wahl.
+- Ein kleines Feld (160×120) in einem Rahmen; Cloita hat eine feste Waffe / ein Werkzeug und 10–20 Sekunden.
+- 8 Rätsel im Pool (4 klassische Bibel-Rätsel + 4 Elementar-Rätsel, zufällig oder nach Schlüssel wählbar):
+  1. *Füll das Glas (`glas_fuellen`):* Wasser in einem Becken oben soll in ein Glas unten fließen; nur durch Sprengen und Graben.
+  2. *Rette die Vase (`vase_retten`):* einen Turm sprengen, ohne dass die Vase zerbricht.
+  3. *Zünde die Kerze (`kerze_zuenden`):* über Öl, Papier und Wasser eine Kerze entzünden.
+  4. *Ameisenstraße (`ameisenstrasse`):* Zucker so verteilen, dass die Ameisen ins Ziel laufen.
+  5. *Lava-Brücke (`lava_water`):* Wasserrinne öffnen, damit Lava zu einer tragfähigen Steinbrücke erstarrt.
+  6. *Säure-Tresor (`acid_gold`):* Säure gezielt durch Kalkstein ätzen lassen, um die Goldkammer freizulegen.
+  7. *Docht-Kette (`oil_fire`):* Ölspur legen und entzünden, sodass alle 3 Dochte brennen.
+  8. *Stromkreis (`electricity_water`):* Salzwasser-Leitung zwischen zwei Elektroden schließen, um den Empfänger unter Strom zu setzen.
+- Belohnung: Gold, eine Probe oder ein Schub (`next_boost`) für das nächste Universum.
 
 **Schießstand (`minigame_schiessstand`)** – Einsatz 20 Gold
 
@@ -117,6 +137,8 @@ Beide nutzen die vorhandene Physik. Einsatz Gold, Belohnung Gold, Proben oder Sc
 | Krümelreich | „Füttere die Blattläuse, ohne dass die Ameisen dich sehen.“ | Proben ×2 |
 | Sporenklub | „Tanz mit mir!“ (5 Sprünge genau auf dem Beat) | Neonsaft-Kolben + 80 Gold |
 | Versunkene Abtei | „Läute die Glocke dreimal, ohne den Kraken zu wecken.“ | Selbstexperiment-Neuwurf gratis |
+
+Zusätzlich kann in jedem Universum ein optionaler **Prüfungs-Schrein** (`challenge_shrine`, `pruefungs_schrein`) stehen, der eine von 6 allgemeinen Lauf-Prüfungen (`pacifist`, `no_gold`, `speed_run`, `no_damage`, `kill_streak`, `dry_feet`) gegen Gold- und Proben-Belohnung anbietet.
 
 ## Rucksack-Änderungen
 
