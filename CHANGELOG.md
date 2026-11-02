@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.5
+
+- 2026-11-02 (1ee8e7f): feat: expand bible with a phase two plan where the official wiki of noita was taken into consideration to generate new and exciting game contents
+
 ## SemVer v1.7.4
 
-- 2026-11-02 (4ea5972): fix: update gitignore to prevent reference files from getting uploaded
+- 2026-11-02 (1b68965): fix: update gitignore to prevent reference files from getting uploaded
 - 2026-11-01 (f1c6054): fix: fix github actions to prevent the temporary tests from failing the suite
 
 ## SemVer v1.7.3
