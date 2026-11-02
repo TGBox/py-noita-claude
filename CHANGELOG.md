@@ -2,7 +2,8 @@
 
 ## SemVer v1.7.4
 
-- 2026-11-01 (adcfa11): fix: fix github actions to prevent the temporary tests from failing the suite
+- 2026-11-02 (4ea5972): fix: update gitignore to prevent reference files from getting uploaded
+- 2026-11-01 (f1c6054): fix: fix github actions to prevent the temporary tests from failing the suite
 
 ## SemVer v1.7.3
 
