@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.6
+
+- 2026-11-03 (4b27659): feat: add new third implementation plan to incorporate more of the absurd and dark humor into the game
+
 ## SemVer v1.7.5
 
-- 2026-11-02 (1ee8e7f): feat: expand bible with a phase two plan where the official wiki of noita was taken into consideration to generate new and exciting game contents
+- 2026-11-02 (eef0533): feat: expand bible with a phase two plan where the official wiki of noita was taken into consideration to generate new and exciting game contents
 
 ## SemVer v1.7.4
 
