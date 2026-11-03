@@ -1,75 +1,70 @@
 # 05 – Behörden-Großalarm & Endgame-Geheimnisse
 
-Dieses Kapitel beschreibt die ultimativen Endgame-Systeme der Erweiterung (Phasen H–M): Den Behörden-Großalarm bei Beschädigung der Werkstatt (Noitas Stevari-Äquivalent), die unendlichen Wackel-Parallelwelten und die kosmische Quest zur Erschaffung der **Schwarzen Kaffee-Sonne**.
+Dieses Kapitel beschreibt die erweiterten Endgame-Systeme: Den Behörden-Großalarm bei Stations-Sabotage, die Wackel-Parallelwelten und die kosmische Quest zur Erschaffung der **Schwarzen Kaffee-Sonne**.
 
 ---
 
-## 1. Behörden-Großalarm (Die Werkstatt ist unantastbar)
+## 1. Behörden-Großalarm (Stations-Sabotage in der Werkstatt)
 
-In der interdimensionalen Werkstatt (`workshop`) herrscht absolute Neutralität – garantiert durch die interdimensionale Arbeitsstättenrichtlinie (Absatz 4, § 2).
+Die Werkstatt (`workshop`) ist aus unzerstörbarem `bedrock` gebaut. Sie gilt unter interdimensionalem Arbeitsstättenrecht als neutrale Schutzzone.
 
-### Der Frevel
+### Der Frevel: Stations-Sabotage
 
-Versucht Cloita, die verstärkten Schutzwände der Werkstatt mit destruktiven Modulen (z.B. `mod_materie_wandler`, Säure-Geschossen oder Klon-Splitter-Bomben) aufzubohren oder Händler anzugreifen:
+Versucht Cloita jedoch, die schützende Neutralität mutwillig zu verletzen:
+
+- Den Händlerplatz (`ws_haendler`) mit Waffen angreifen oder berauben,
+- Den Akten-Schredder (`ws_shredder`) mit aktiven Sprengmodulen überlasten,
+- Oder den Tresor des Archivschranks (`ws_archiv`) mit dem Bohrkopf aufbrechen:
 
 1. **Der Alarm:**
    - Rote Warnleuchten blinken synchron im Sekundentakt auf.
-   - Ein schriller Amts-Buzzer ertönt.
-   - Bildschirmeinblendung (in großen, roten Fraktur-Buchstaben):
+   - Der schrille Amts-Buzzer ertönt.
+   - Bildschirmeinblendung:
      **„VERLETZUNG DER ARBEITSSTÄTTENRICHTLINIE § 4 ABSATZ 2: DIE BEHÖRDE IST ERZÜRNT!“**
 2. **Die Vollstreckung (S.O.K.O. Paragraf):**
    - Neben dem Ausgangsportal materialisiert sich sofort der Elite-Ermittler **S.O.K.O. Paragraf** (`soko_paragraf`):
-     - **Werte:** 450 LP, reflektierender Paragraphen-Schild (wehrt frontale Geschosse ab).
-     - **Angriff:** Verschießt zielsuchende Mahnbescheide, die Cloita für 10 s mit `status_pfaendung` belegen (+50 % Flux-Kosten auf alle Waffen).
-     - **Beute:** 250 Gold und ein hochrangiger Dienstausweis.
+     - **Werte:** 350 LP, reflektierender Paragraphen-Schild (wehrt frontale Schüsse ab).
+     - **Angriff:** Verschießt zielsuchende Mahnbescheide, die Cloita für 10 s mit `status_pfaendung` belegen (+40 % Flux-Kosten auf alle Waffen).
+     - **Beute:** 200 Gold und ein hochrangiger Dienstausweis.
 3. **Der Wiederholungsfall (Chef-Prüfer):**
-   - Wird der Tempel/die Werkstatt in einem späteren Universum erneut beschädigt, erscheint der **Chef-Prüfer** (`chef_pruefer`, Noitas *Skoude*):
-     - Besitzt eine permanente Projektil-Auflösungs-Aura; kann nur im Rücken oder durch Physik-/Säure-Schaden verwundet werden!
+   - Wird in einem späteren Besuch erneut sabotiert, erscheint der **Chef-Prüfer** (`chef_pruefer`):
+     - Besitzt eine temporäre Projektil-Abwehr-Aura; kann im Rücken oder mit Säure verwundet werden.
 
 ---
 
-## 2. Wackel-Parallelwelten (East & West Worlds)
+## 2. Wackel-Parallelwelten (Über das Wackelportal)
 
-An den extremen horizontalen Kartengrenzen jedes Universums endet die bekannte Welt nicht an einer harten Wand, sondern an der **Toxischen Bürokratie-Grenze**:
+Gemäß Bibel Kap. 02 werden Parallelwelten über das **Wackelportal (`wobble_portal`)** in der verborgenen Schatzkammer betreten:
 
-- **Dicke:** Ein 300 Pixel breiter Block aus unzerstörbarem `amts_beton`, durchzogen von radioaktivem `stempel_gift` (verursacht 20 Schaden/s bei Berührung).
-- **Der Durchbruch:**
-  - Mit extremem Bohrschaden (z.B. Klon-Splitter + Phasenkonverter) oder gezielten Quanten-Teleportern kann Cloita die Barriere durchbrechen.
-
-### Jenseits der Grenze
-
-Dahinter öffnet sich die **Wackel-Parallelwelt** (Ost 1, Ost 2 ... bzw. West 1, West 2 ...):
-
-- **Zustand:** Eine spiegelverkehrte Kopie des aktuellen Universums mit leicht verzerrten Farbpaletten.
-- **Kreaturen:** Sämtliche Feinde tragen den Präfix *Parallel-* (z.B. `parallel_aktenfresser`), besitzen dreifache Lebenspunkte und schießen instabile Neon-Kugeln.
-- **Vorteil:** Volle neue Werkstätten, frische Experimentierliegen und unberührte Goldadern! Ermöglicht unendliche Perk- und Modul-Kombinationen für epische God-Runs.
+- Führt in eine gespiegelte, instabilere Fassung des aktuellen Laufs.
+- Kreaturen besitzen höhere Zähigkeit (+50 % LP) und lassen seltenere Proben und Module fallen.
+- Bietet zusätzliche Experimentierliegen und Fundkisten für ausgiebige Erkundungsläufe.
 
 ---
 
 ## 3. Die Kosmische Quest: Die Schwarze Kaffee-Sonne
 
-Das größte optionale Geheimnis des Spiels: Cloitas Plan, den Schlaf ein für alle Mal abzuschaffen und die Behörde durch die Erschaffung einer künstlichen, koffeinhaltigen Mini-Sonne ins Chaos zu stürzen.
+Cloitas ultimativer Plan, das Schlafbedürfnis abzuschaffen und der Behörde mit endloser Koffein-Energie zu trotzen.
 
 ```mermaid
 flowchart TD
     A["Finde die 4 Wachheits-Essenzen"] --> B["Bringe Essenzen zum Ur-Perkolator in der Abtei"]
-    B --> C["Flute den Perkolator mit 500 Einheiten Flüssigzeit & Wundertonikum"]
+    B --> C["Fülle den Perkolator mit je 250 Einheiten Flüssigzeit & Schutztonikum"]
     C --> D["Zünde das Gemisch mit Plasma oder Hochspannung"]
-    D --> E["Geburt der Schwarzen Kaffee-Sonne"]
-    E --> F["Kosmisches Vakuum: Behörden-Zentrale kollabiert"]
+    D --> E["Geburt der Schwarzen Kaffee-Sonne (+120 Flux/s)"]
 ```
 
 ### Die 4 Essenzen der Wachheit
 
-1. **Essenz des Espressos (`essenz_espresso`):** Versteckt im tiefen Karamell-Kern der Kuchenkruste.
-2. **Essenz des Hochspannungs-Blitzes (`essenz_blitz`):** Droppt beim Sieg über den Transformator in der Summenden Spule.
+1. **Essenz des Röstens (`essenz_roestung`):** Tief im Biskuit-Kern der Kuchenkruste.
+2. **Essenz des Blitzes (`essenz_blitz`):** Beute vom Transformator in der Summenden Spule.
 3. **Essenz des Zuckers (`essenz_zucker`):** Bewacht von der Ameisenkönigin im Krümelreich.
-4. **Essenz der Ewigen Sekunde (`essenz_zeit`):** Schwingt im Inneren des Ewigen Pendels in der Uhrwerkwüste.
+4. **Essenz der Ewigen Sekunde (`essenz_zeit`):** Schwingt im Ewigen Pendel in der Uhrwerkwüste.
 
 ### Das Ritual am Ur-Perkolator
 
-- Auf dem höchsten Dach des Glockenturms der *Versunkenen Abtei* thront der **Ur-Perkolator** – eine gigantische gläserne Brüh-Apparatur aus Messing und Buntglas.
-- Setzt Cloita alle 4 Essenzen in die Sockel ein und leitet 500 Einheiten `fluessig_zeit` sowie 500 Einheiten `wundertonikum` ein, beginnt die Maschine ohrenbetäubend zu gurgeln.
-- Ein finaler Stromschlag entfesselt die **Schwarze Kaffee-Sonne** (`kaffee_sonne`):
-  - Sie schwebt majestätisch über der Welt, zieht Feinde in ihren Gravitationsstrudel und versorgt Cloita mit permanent unendlichem Flux!
-  - **Freischaltung:** Das legendäre wahre Ende *„Die Kaffeepause der Ewigkeit“* im Archiv.
+- Im Glockenturm der *Versunkenen Abtei* steht der **Ur-Perkolator** – eine gigantische gläserne Brüh-Apparatur aus Messing und Bronze.
+- Setzt Cloita alle 4 Essenzen ein und leitet je 250 Einheiten `fluessig_zeit` und `schutztonikum` (jeweils passend in einen 300-Zellen-Kolben) hinein, beginnt die Maschine zu dampfen.
+- Ein abschließender Stromstoß entfesselt die **Schwarze Kaffee-Sonne** (`kaffee_sonne`):
+  - Sie spendet Cloita für den Rest des Laufs gewaltige **+120 Flux/Sekunde**!
+  - Schaltet den Eintrag *„Die Kaffeepause der Ewigkeit“* im Archiv frei.

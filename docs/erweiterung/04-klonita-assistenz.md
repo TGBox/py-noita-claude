@@ -1,61 +1,45 @@
 # 04 – Klonita als Labor-Assistentin
 
-Dieses Kapitel beschreibt den mechanischen und narrativen Ausbau von Cloitas misslungener Klon-Kopie **Klonita** für die Erweiterung (Phasen H–M). Aus der reinen Begleiterin wird eine voll integrierte, anpassbare Labor-Assistentin.
+Dieses Kapitel beschreibt den mechanischen und narrativen Ausbau von Klonita für die Erweiterung (Phasen H–M). Gemäß Bibel Kap. 02 und 04 bleibt Klonita **körperlich unzerstörbar, absolut einzigartig (Cloitas erster Klon) und unerschütterlich gutmütig**.
 
 ---
 
-## 1. Klonita-Selbstexperimente (Werkstatt-Liege)
+## 1. Klonita-Assistentinnen-Upgrades (Werkstatt-Liege)
 
-Neben den Experimenten an Cloita selbst schaltet die Erweiterung an der Experimentierliege (`ws_liege`) einen zweiten Reiter frei: **Assistentinnen-Modifikation**. Hier kann Cloita Klonita pro Besuch um ein Upgrade ergänzen:
+An der Experimentierliege (`ws_liege`) schaltet die Erweiterung einen zweiten Reiter frei: **Assistentinnen-Ausrüstung**. Cloita schnallt Klonita nützliche wissenschaftliche Prototypen um:
 
 | Schlüssel | Name | Mechanischer Effekt | Optische Veränderung | Klonita-Reaktion |
 | --- | --- | --- | --- | --- |
-| `klonita_schwebe` | Antigrav-Propeller | Klonita schwebt per Propeller-Rucksack; ignoriert Bodengefahren (Lava, Säure, Stacheln). | Kleiner Messing-Propeller auf dem Kopf. | „Guck mal Cloita, ich bin ein Hubschrauber! Wusch!“ |
-| `klonita_packesel` | Labor-Ranzen | Schaltet 2 zusätzliche Kolben-Plätze und 4 Proben-Plätze frei, die Klonita trägt. | Klobiger Leder-Rucksack mit klirrenden Phiolen. | „Ich passe ganz doll auf, dass nichts zerbricht! *Klirr* ... Upsi.“ |
-| `klonita_feuerwehr` | Lösch-Sprühkopf | Sobald Cloita Feuer fängt oder brennt, spritzt Klonita sofort 100 Einheiten Wasser auf sie. | Feuerwehrhelm und Mini-Gartenschlauch. | „Tatütata! Die Feuerwehr ist da!“ |
-| `klonita_funkenkamm` | Statischer Schockkamm | Alle 25 s elektrisiert Klonita den nächsten angreifenden Nahkämpfer für 2 s Lähmung. | Haare stehen wild zu allen Seiten ab. | „Bitz! Das kitzelt in den Zehen!“ |
-| `klonita_bioleuchte` | Phosphor-Dauerwelle | Klonitas Haare fluoreszieren; erhellt dunkle Biome (Abtei, Schrott) im 80-px-Radius. | Türkis leuchtende Haarpracht. | „Ich bin eine Glühbirne! Eine hübsche Glühbirne!“ |
+| `klonita_schwebe` | Mini-Propeller | Klonita schwebt per Propeller; fällt nie in Säure oder Abgründe. | Kleiner Messing-Propeller auf dem Kopf. | „Guck mal Cloita, ich bin ein Hubschrauber! Wusch!“ |
+| `klonita_packesel` | Labor-Ranzen | Klonita trägt 1 zusätzlichen Kolben und 2 zusätzliche Proben im Ranzen. | Klobiger Leder-Rucksack mit klirrenden Gläsern. | „Ich passe ganz doll auf, dass nichts zerbricht!“ |
+| `klonita_feuerwehr` | Lösch-Düse | Brennt Cloita, spritzt Klonita sofort 50 Einheiten Wasser auf sie (Abklingzeit 20 s). | Kleiner Messing-Sprühkopf am Gürtel. | „Wasser marsch! Keine Sorge, ich lösche dich!“ |
+| `klonita_funkenkamm` | Statischer Schockkamm | Alle 30 s schockt Klonita einen nahen Angreifer für 1,5 s Lähmung. | Haare stehen lustig zu allen Seiten ab. | „Bitz! Das kitzelt in den Zehen!“ |
+| `klonita_bioleuchte` | Phosphor-Schleife | Klonitas Haarschleife fluoresziert; erhellt dunkle Ecken im 60-px-Radius. | Türkis leuchtende Schleife. | „Ich leuchte wie ein Glühwürmchen! Hübsch, oder?“ |
 
 ---
 
 ## 2. Dialog- und Reaktionskaskaden
 
-Klonita reagiert über kontextuelle Sprechblasen dynamisch auf komplexe Systemzustände der Erweiterung:
+Klonita reagiert dynamisch mit Sprechblasen auf alchemistische Vorgänge und neue Universen:
 
 ### Beim Destillierkessel & Alchemie-Experimenten
 
-- **Wenn Zutaten kochen:** „Es blubbert so schön! Darf ich den Schaum löffeln?“
+- **Wenn Zutaten kochen:** „Es blubbert so schön! Riecht wie Pfefferminztee!“
 - **Bei drohender Kesselexplosion:** „Cloita? Warum wird der Kessel so rot? Soll der zittern?!“
-- **Bei geglücktem Wundertonikum:** „Ooooh, das glitzert wie Feenstaub! Schmeckt bestimmt nach Kaugummi!“
-- **Bei Midas-Schmelze:** „Alles ist Gold! Sogar der Käfer da drüben! Kann ich den behalten?“
+- **Bei Schutztonikum:** „Ooooh, das glitzert wie Limonade! Schmeckt bestimmt lecker!“
+- **Bei Golderz-Schmelze:** „Guck mal, die Steine glänzen! Können wir daraus Schmuck basteln?“
 
-### Beim Realitäts-Flimmern (Sporen-Rausch / Fungal Shift)
+### Beim Realitäts-Flimmern (Sporen-Rausch)
 
 - **Start des Shifts:** „Wooooah... Cloita! Die Decke tanzt Walzer!“
-- **Wenn Säure zu Brause wird:** „Juhu! Wir baden in Limonade! Das Leben ist schön!“
-- **Wenn Papier zu Lava wird:** „Das Büro brennt! Das ist bestimmt schlecht für den Urlaubsantrag!“
-- **Wenn Wasser zu Gift wird:** „Igitt, wer hat in die Pfütze gespuckt?!“
+- **Wenn Säure zu Wasser wird:** „Juhu! Wir können gefahrlos planschen! Das Leben ist schön!“
+- **Wenn Papier zu Aktendeckeln wird:** „Oh, die Akten sind jetzt viel stabiler! Da knickt nichts mehr um!“
 
-### In den neuen Universen
+### In den Pool-Universen
 
-- **Der Große Schrott:** „Hier liegt bestimmt mein alter Dreirad-Lenker! Ich geh mal wühlen!“
-- **Die Kuchenkruste:** „Ich hab den Boden angeleckt. Er schmeckt nach Vanille und ein ganz kleines bisschen nach Asche!“
+- **Der Große Schrott:** „Hier liegt bestimmt mein alter Dreirad-Lenker! Ich geh mal suchen!“
+- **Die Kuchenkruste:** „Ich hab an der Wand geleckt. Schmeckt nach Vanille und ein kleines bisschen nach Asche!“
 - **Die Summende Spule:** „Meine Zunge schmeckt nach 9-Volt-Batterie! Willst du mal probieren?“
 - **Die Uhrwerkwüste:** „Tick... tack... tick... Cloita, warum laufen wir auf einmal so laaaangsam?“
-- **Das Endlose Suppenmeer:** „Guck mal! Die Nudel da drüben hat ein 'H' und ein 'I' gelegt! Sie sagt Hallo!“
-- **Freizeitpark Endzeit:** „Können wir Riesenrad fahren?! Bitte, bitte, bitte! Nur drei Runden!“
-
----
-
-## 3. Begegnungen mit Parallelwelt-Klonitas
-
-In den Wackel-Parallelwelten jenseits der Universums-Barrieren existieren feindliche oder traumatisierte Doppelgängerinnen:
-
-1. **Die Bürokratie-Klonita (`klonita_akten`):**
-   - Trägt Brille und Aktenordner; verlangt von Cloita Einreiseformulare.
-   - Klonita ruft: „Oh mein Gott! Ich mit Brille! Sieht super schlau aus, aber warum schießt du mit Büroklammern auf uns?!“
-2. **Die Schatten-Klonita (`klonita_schatten`):**
-   - Korrumpiert durch dunkle Sporen; wirft explosive Füllungen.
-   - Klonita versucht, sie zu trösten: „Nicht weinen, böses Ich! Wir haben noch Kekse in der Werkstatt!“
-3. **Pazifistische Bekehrung:**
-   - Besiegt man eine Parallel-Klonita nicht mit Gewalt, sondern schüttet *Wundertonikum* über sie, beruhigt sie sich und droppt seltene Proben oder ein Kopier-Protokoll (`proto_tau`).
+- **Das Endlose Suppenmeer:** „Guck mal! Die Nudeln da drüben sagen Hallo! Ich winke zurück!“
+- **Freizeitpark Endzeit:** „Können wir Riesenrad fahren?! Bitte, bitte! Nur drei Runden!“

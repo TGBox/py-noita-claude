@@ -1,69 +1,61 @@
-# 04 – Die Revoluzzer-Klonita & der Rat der Chef-Forscherinnen
+# 04 – Die Rebellin Cloita-Null & der Rat der bösen Ichs
 
-Dieses Kapitel beschreibt den großen narrativen und spielerischen Höhepunkt der Phase 3 (Phasen N–S): Die Rebellion der Klonitas, den Rat der Chef-Forscherinnen und den epischen Bosskampf gegen die **Revoluzzer-Klonita** (inspiriert von Evil Morty).
+Dieses Kapitel beschreibt den narrativen Höhepunkt der Phase 3 (Phasen N–U): Die Rebellion gegen die bürokratische Ordnung und den Bosskampf gegen **Die Rebellin Cloita-Null (`cloita_rebellin`)**.
 
 ---
 
-## 1. Die Figur: Die Revoluzzer-Klonita (`revoluzzer_klonita`)
+## 1. Die Figur: Cloita-Null (`cloita_rebellin`)
 
-- **Hintergrund:** Sie ist Klonita Nr. 0001 – der allererste Klon, der von Cloita einst als Testobjekt in einen Säuresee gestoßen wurde. Sie überlebte, trug schwere Brandnarben davon und schwor Rache an allen Cloitas im Multiversum.
+- **Hintergrund:** Sie ist ein abtrünniges Böses Ich – die allererste Cloita, die einst versuchte, die Behörde von innen heraus zu sprengen. Verraten vom Rat der bösen Ichs, schwor sie Rache an allen bürokratischen Institutionen und Schöpferinnen des Multiversums.
 - **Erscheinung:**
-  - Schmuddeliger Laborkittel mit zerrissenen Ärmeln.
-  - Schwarze Augenklappe über dem linken Auge.
-  - Trägt einen verstärkten Aktenkoffer aus Titan, der als Waffen-Arsenal und Raketenwerfer dient.
-  - Spricht mit eiskalter, ruhiger Stimme – das genaue Gegenteil der fröhlichen Begleiter-Klonita!
+  - Zerrissener, brandfleckiger Laborkittel mit hochgekrempelten Ärmeln.
+  - Schweißerbrille auf der Stirn.
+  - Führt einen massiven, modifizierten Titan-Aktenkoffer, der als Raketenwerfer und Waffen-Arsenal dient.
+  - Bitter, zynisch und hochgefährlich – die düstere Vorschau dessen, was aus unserer Cloita werden könnte, wenn sie ihren Zynismus ungefiltert auslebt.
 
 ---
 
-## 2. Die Questreihe: Schatten über der Zitadelle
+## 2. Die Quest: Schatten über dem Patentamt
 
 ```mermaid
 sequenceDiagram
     participant C as Cloita & Klonita
-    participant Z as Zitadelle
-    participant R as Revoluzzer-Klonita
-    participant K as Rat der Chef-Forscherinnen
-    C->>Z: Betreten der Zitadelle
-    C->>R: Geheimes Treffen im Kanalisations-Unterschlupf
-    R->>C: Auftrag: Beweise für Klon-Massentötungen beschaffen
-    C->>K: Infiltration der Senatssitzung
-    K->>K: Revoluzzer-Klonita verübt Putsch / schaltet Senat aus
-    R->>C: Verrat: "Ihr seid alle gleich – Schöpferinnen des Elends!"
+    participant P as Patentamt-Basar
+    participant R as Rebellin Cloita-Null
+    participant B as Rat der bösen Ichs
+    C->>P: Betreten des Patentamts
+    C->>R: Geheimes Treffen in der Kaffeeküche
+    R->>C: Auftrag: Den Patent-Tresor des Rats knacken
+    C->>B: Infiltration der Ratssitzung
+    B->>B: Rat entzieht allen Cloitas die Forschungsgelder
+    R->>C: Showdown: "Ihr seid alle Teil dieses absurden Systems!"
     C->>R: Bosskampf im Dimensionalkern
 ```
 
-### Die 3 Etappen
-
-1. **Flugblätter im Müll:** In den Chunks der Schrotthalde und der Aktenhalde findet Cloita Flugblätter der Untergrundbewegung (*„Brecht die Klon-Ketten!“*).
-2. **Die Wahl der Ober-Cloita:** Auf der Zitadelle kandidiert die Revoluzzer-Klonita scheinheilig als „brave Dienerin des Rats“ – und gewinnt durch Wählermanipulation und Erpressung die absolute Mehrheit.
-3. **Der Staatsstreich:** Kaum an der Macht, sperrt sie die Dimensionstore, wirft den Rat der Chef-Forscherinnen in die Müllpresse und leitet die Überlastung des zentralen Portalkerns ein, um die künstliche Begrenzung des Multiversums zu sprengen.
-
 ---
 
-## 3. Bosskampf: Die Revoluzzer-Klonita
+## 3. Bosskampf: Die Rebellin Cloita-Null
 
-Der Kampf findet im **Dimensions-Reaktor** der Zitadelle statt, umgeben von instabilen Portal-Rissen und herabstürzenden Trümmern.
+Der Kampf findet im **Dimensionalkern** des Patentamts statt:
 
 ### Phase 1: Der Koffer des Zorns
 
-- **Taktik:** Sie öffnet ihren Aktenkoffer. Aus dem Koffer schießen gelenkte Mini-Raketen und Salven von Büroklammer-Geschossen.
-- **Klon-Mauer:** Sie beschwört 4 getreue Arbeits-Klonitas herbei, die sich schützend vor sie stellen.
-- **Klonitas Gewissensbisse:** Unsere Begleiter-Klonita weint im Hintergrund: *„Schwester, bitte hör auf! Wir können doch über alles reden!“*
+- **Taktik:** Sie öffnet ihren Aktenkoffer und verschießt Salven aus wärmesuchenden Büroklammer-Raketen und gezielten Säuresalven.
+- **Klonitas Rolle:** Unsere treue Klonita ruft verzweifelt dazwischen: *„Bitte hört auf zu streiten! Wir können doch zusammen Kaffee trinken!“*
 
-### Phase 2: Der Naivitäts-Inverter
+### Phase 2: Der Flux-Dämpfer
 
-- **Taktik:** Die Revoluzzer-Klonita aktiviert ein Gerät auf ihrer Brust, das Klonitas Naivitätsstrahlung absorbiert und in konzentrierte Schockwellen aus zynischer Realität umwandelt.
-- **Effekt:** Cloitas Bildschirm wird entsättigt; Treffer schwächen Cloitas Flux-Regeneration drastisch.
-- **Gegenmittel:** Cloita muss die Energie-Pylonen an den Raumrändern sprengen, um das Feld zu kollabieren.
+- **Taktik:** Cloita-Null aktiviert ein Dämpfungsfeld, das Cloitas Flux-Regeneration halbiert.
+- **Gegenmittel:** Cloita muss die vier Kondensatoren an den Ecken der Arena zerstören, um ihr volles Waffenpotenzial wieder freizusetzen.
 
-### Phase 3: Die Entfesselte Flucht
+### Phase 3: Der Portal-Riss
 
-- **Taktik:** Bei 20 % Restleben reißt sie mit einer Portal-Kanone ein klaffendes Loch in das Raum-Zeit-Gefüge. Trümmer, Schreibtische und Portalblöcke werden ins Vakuum gesaugt.
-- **Sieg:** Mit dem letzten Treffer stürzt sie nicht in den Tod, sondern springt mit einem bitteren Lächeln durch den Riss: *„Ihr könnt das Multiversum nicht ewig kontrollieren, Cloita. Wir sehen uns jenseits der Kurve.“*
+- **Taktik:** Bei 25 % Restleben feuert sie einen Dimensions-Bohrer in den Boden. Partikel und Trümmer werden in einen wirbelnden Riss gesaugt.
+- **Sieg:** Mit dem letzten Treffer stürzt sie nicht in den Abgrund, sondern wirft ihren Titan-Koffer zu Cloita: *„Nimm ihn. Du wirst ihn gegen den Hohen Rat noch brauchen…“* und springt durch das Tor in die Freiheit.
 
 ---
 
-## 4. Belohnung & Endspiel-Freischaltung
+## 4. Belohnung
 
-- **Beute:** Der legendäre **Titan-Koffer** (`waffe_revoluzzer_koffer`) – fasst 16 Module und besitzt 0 Nachladezeit.
-- **Freigabe:** Die Klon-Legebatterie wird befreit; Klonitas auf der Zitadelle laufen nun in bunten Kleidern herum, trinken Limonade und schenken Cloita bei jedem Besuch kostenlose Proben!
+- **Beute:** Der **Titan-Koffer** (`waffe_titan_koffer`) – fasst 14 Module, besitzt extrem kurze Ladeverzögerung und gewährt +20 % Projektilgeschwindigkeit.
+- **Freischaltung:** Der Schwarzmarkt im Patentamt bietet dauerhaft 20 % Rabatt auf alle Module.

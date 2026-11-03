@@ -1,91 +1,84 @@
 # 02 – Alchemie, Kessel & Realitäts-Flimmern
 
-Dieses Kapitel beschreibt das erweiterte Alchemie- und Physiksystem für die Erweiterung (Phasen H–M). Es adaptiert Noitas geheime Alchemie-Rezepte (Lively Concoction / Midas) und die unberechenbaren Realitäts-Verschiebungen (Fungal Shifts) in den Kosmos von Cloitas Labor-Chaos.
+Dieses Kapitel beschreibt das Alchemie- und Physiksystem für die Erweiterung (Phasen H–M), abgestimmt auf die harten Material- und Balancing-Grenzen der Falling-Sand-Engine.
 
 ---
 
-## 1. Seed-basierte Geheimrezepte (Alchemistische Präkursoren)
+## 1. Engine-Rahmen: 11 Grund- + 10 Universums-Materialien
 
-In jedem Durchlauf (`RunPlan.seed`) generiert die Engine zwei geheime Dreier-Kombinationen aus dem globalen Flüssigkeits- und Pulverpool:
+Die 8-Bit-Farbpalette der Engine fasst maximal 21 Materialien gleichzeitig. Daraus ergeben sich zwingende Regeln:
+
+1. **Lokale Alchemie:** Geheimrezepte basieren auf den 11 überall gültigen Grundmaterialien (`water`, `oil`, `sand`, `dirt`, `steam` etc.) kombiniert mit den bis zu 10 lokalen Materialien des gerade aktiven Universums.
+2. **Keine Heilung ohne Experiment:** Gemäß Bibel Kap. 02 heilt keine Flüssigkeit die Lebensleiste, solange kein passendes Selbstexperiment aktiv ist.
+3. **Gold ist kein Material:** Reines Gold existiert im Spiel nur als Gegenstand (`gold_muenze`). Feste Verwandlungen erzeugen daher das offizielle Bibel-Material **`gold_vein` (Golderz-Ader)**, das beim Abbau reguläre Münzen fallen lässt.
+
+---
+
+## 2. Seed-basierte Geheimrezepte
+
+In jedem Durchlauf (`RunPlan.seed`) generiert die Engine zwei geheime Dreier-Kombinationen aus den im Universum vorkommenden Stoffen:
 
 ```python
 @dataclass
 class SecretAlchemyRecipes:
-    wundertonikum_zutaten: tuple[str, str, str]  # z.B. ("blut", "brausesirup", "tinte")
-    midas_schmelze_zutaten: tuple[str, str, str] # z.B. ("magensaeure", "kaugummi", "asche")
+    schutztonikum_zutaten: tuple[str, str, str]  # z. B. ("water", "brausesirup", "oil")
+    midas_schmelze_zutaten: tuple[str, str, str] # z. B. ("sand", "tinte", "aktendeckel")
 ```
 
 ### Die zwei Elixiere
 
-1. **Wundertonikum (`wundertonikum`):**
-   - **Farbe:** Funkelndes Türkis-Cyan (#40FFE0), sprudelt sanft nach oben.
-   - **Wirkung:** Berührung heilt 4 LP pro Sekunde; Trinken heilt 25 LP und verleiht 30 Sekunden lang Lebensregeneration.
-   - **Reaktion:** Wenn alle drei geheimen Zutaten im selben Pixel-Radius (3×3) aufeinandertreffen, verwandelt sich die gesamte Flüssigkeit unter einem wohlklingenden Harfenton in Wundertonikum.
+1. **Schutztonikum (`schutztonikum`):**
+   - **Farbe:** Funkelndes Cyan (#40FFE0), sprudelt sanft nach oben.
+   - **Wirkung (Bibel-konform):** Trinken verleiht einen **temporären Energieschild (absorbiert 40 Schaden)** und verdoppelt die Flux-Regeneration für 25 Sekunden.
+   - **Synergie mit Selbstexperiment:** Hat Cloita das Experiment `blutsauger` oder `alchemie_magen` aktiv, heilt das Tonikum zusätzlich 20 Lebenspunkte!
+   - **Reaktion:** Treffen alle drei Zutaten im 3×3-Radius aufeinander, verwandelt sich die Flüssigkeit unter einem Harfenton in Schutztonikum.
 
 2. **Midas-Schmelze (`midas_schmelze`):**
-   - **Farbe:** Flammendes Reingold (#FFD700) mit goldenen Funkenpartikeln.
-   - **Wirkung:** Löst bei Kontakt jedes feste Material (Fleisch, Fels, Papier, Glibber, Knochen) innerhalb von Millisekunden in reine Goldmünzen und Goldpixel auf!
-   - **Gefahr:** Berührt Cloita die Schmelze ohne Schutzanzug, erleidet sie 50 Schaden und Klonita ruft: „Werd nicht zur Statue, wir haben keinen Platz im Regal!“
+   - **Farbe:** Flammendes Reingold (#FFD700) mit Goldpartikeln.
+   - **Wirkung:** Berührt feste Materie (Fels, Papier, Glibber, Knochen) und verwandelt sie in **`gold_vein` (Golderz-Adern)**!
+   - **Balancing:** Spielerinnen können das erzeugte Erz sprengen oder abbauen, um Goldmünzen zu gewinnen. Es entstehen keine unkontrollierten Millionen-Gegenstände, die den Speicher überlasten.
 
 ---
 
-## 2. Der Verlassene Kesselraum (`cauldron_room`)
+## 3. Der Verlassene Kesselraum (`cauldron_room`)
 
-In den Tiefen von Universen ab Rang 2 (insbesondere in geheimen Seitenkammern) kann Cloita auf den **Verlassenen Kesselraum** stoßen:
+In den Universen ab Rang 2 kann Cloita auf geheime Alchemie-Labore stoßen:
 
-- **Aussehen:** Ein uralter Kupferdestillator mit drei Trichteröffnungen und einem zapfbaren Auslasshahn über einem Feuerrost.
+- **Aussehen:** Ein uralter Kupferdestillator mit drei Einfülltrichtern über einem Feuerrost.
 - **Funktion:**
-  - Cloita kann bis zu 3 verschiedene Kolben in die Trichter entleeren.
-  - Wird der Rost darunter mit Feuer (z.B. Funken oder brennendes Papier) erhitzt, beginnt der Kessel 5 Sekunden lang bedrohlich zu pfeifen.
-  - **Erfolg:** Bei passenden Zutaten füllt der Auslasshahn automatisch einen leeren Kolben mit *Wundertonikum*, *Midas-Schmelze* oder hochreinem *Reaktions-Beschleuniger*.
-  - **Fehlschlag:** Eine gewaltige Fontäne aus ätzendem Schaum oder stinkendem Qualm schießt an die Decke. Klonita hustet: „Riecht wie Omas Keller, nur giftiger.“
+  - Cloita kann bis zu 3 verschiedene Kolben (Standard-Fassungsvermögen: je 300 Zellen) hineingießen.
+  - Wird der Rost mit Feuer erhitzt, kocht das Gemisch 5 Sekunden lang.
+  - **Erfolg:** Bei passenden Zutaten stößt der Kessel fertiges Schutztonikum, Midas-Schmelze oder seltene Proben aus.
+  - **Fehlschlag:** Eine Fontäne aus harmlos stinkendem Rauch (`smoke`) schießt an die Decke. Klonita kichert: „Das hat gekitzelt in der Nase!“
 
 ---
 
-## 3. Dynamische Kolben-Synthese & Wurfbomben
+## 4. Dynamische Kolben-Physik (300 Zellen)
 
-Kolben (`kolben`) erhalten in der Erweiterung physikalische Innenraum-Simulation:
+Kolben (`kolben`, Fassungsvermögen 300 Zellen gem. `src/flask.py`) reagieren nun dynamisch auf Druck:
 
-- **Cocktail-Mischung:** Kolben fassen bis zu 1000 Einheiten Material. Werden zwei reagierende Stoffe eingefüllt (z.B. Magensäure + Brausesirup), steigt der **Druck** im Kolben (sichtbar am pulsierenden Korken).
-- **Druckbombe:** Wird ein überdruckter Kolben geworfen (`Rechtsklick`), zerspringt er beim Aufprall in einer aerosolischen Druckwelle, die das Gemisch über 60 Pixel verteilt.
-- **Gas-Kondensation:** Werden heiße Gase (z.B. Weihrauch oder Sporendampf) unter Wasser in einen Kolben gezogen, kondensieren sie zu zähflüssigen Konzentraten.
+- **Druckaufbau:** Werden zwei unverträgliche Reagenzien (z. B. Magensäure + Brausesirup) im Kolben gemischt, beginnt der Korken zu zittern.
+- **Wurfbomben:** Ein geschüttelter oder überdruckter Kolben zerspringt beim Aufprall in einer aerosolischen Druckwelle (Radius 50 px).
+- **Trinken:** Gibt die normalen Bibel-Schübe (z. B. Wasser = Flux schneller, Öl = weniger Verzögerung).
 
 ---
 
-## 4. Realitäts-Flimmern (Fungal Reality Shifts)
+## 5. Realitäts-Flimmern (Sporen-Rausch / Transmutation)
 
-Das Realitäts-Flimmern ist die mächtigste und riskanteste Alchemie-Mechanik des Spiels.
+Das Realitäts-Flimmern ist die kontrollierte, physikalisch saubere Fassung der globalen Transmutation.
 
 ### Auslöser
 
-1. **Verzehr von Leuchtsporen:** Mehrfacher Verzehr von `probe_leuchtspore` oder Trinken von Sporenextrakt im Sporenklub.
-2. **Katalysator-Überlastung:** Sprengung eines Destillierkessels oder Kurzschluss an einer Flux-Spule.
-3. **Selbstexperiment:** Das Experiment `quanten_sinne` an der Liege.
+- Verzehr von `probe_leuchtspore` im Sporenklub oder Kesselüberlastung.
 
-### Der Shift-Prozess
+### Der Prozess
 
-1. **Die Vision (10 Sekunden):**
-   - Der Bildschirm verzieht sich in einer wellenförmigen psychedelischen Verzerrung.
-   - Alle Farbpaletten wechseln für kurze Zeit in Neon-Inversion.
-   - Ein weltweites Dröhnen ertönt.
-   - Klonita bricht in Panik oder Begeisterung aus: „Cloita! Warum riecht der Felsen nach Erdbeeren?!“
-2. **Die Transmutation:**
-   - Ein Quellmaterial $M_{\text{quelle}}$ wird global für alle existierenden und zukünftig generierten Chunks in ein Zielmaterial $M_{\text{ziel}}$ umgewandelt.
-   - **Kolben-Fokus (50 % Wahrscheinlichkeit):** Wenn Cloita während des Shifts einen Kolben in der Hand hält, wird das Material im Kolben entweder als $M_{\text{quelle}}$ oder als $M_{\text{ziel}}$ gewählt!
-
-### Transmutations-Tabelle (Beispiele)
-
-| Quellmaterial | Mögliches Zielmaterial | Spielerische Auswirkung |
-| --- | --- | --- |
-| `magensaeure` | `brausesirup` | Säureseen werden zu harmlosen Trampolin-Gewässern! |
-| `wasser` | `magensaeure` | Der Alptraum-Run: Die gesamte Abtei und alle Pfützen werden tödlich. |
-| `blut` | `wundertonikum` | Jeder Treffer an Feinden heilt die Umgebung – der Heilige Gral der Alchemie! |
-| `papier` | `lava` | Die Aktenhalde verbrennt im Bruchteil einer Sekunde in einem Armageddon. |
-| `glibber` | `gold` | Glibbria zerfällt in Milliarden schwere Goldmünzen. |
-
-> [!CAUTION] Shift-Limit & Cooldown
-> Um irreversible Spielabstürze oder sofortige Frustration zu vermeiden:
->
-> - Mindestens 180 Sekunden Abklingzeit zwischen zwei Realitäts-Flimmern.
-> - Maximal 5 globale Shifts pro Durchlauf.
-> - Verschiebungen werden im Archiv unter „Realitäts-Protokoll“ dokumentiert.
+1. **Vision (8 Sekunden):** Wellenförmige Bildverzerrung; Klonita ruft: *„Cloita! Warum tanzen die Farben?!“*
+2. **Gültige Transmutation:**
+   - Ein Quellmaterial $M_{\text{quelle}}$ wird im aktiven Universum durch ein Zielmaterial $M_{\text{ziel}}$ ersetzt.
+   - **Zulässige Paare:** Nur Stoffe, die im **aktuellen Materialsatz des Universums** oder im Grundsatz existieren!
+   - *Beispiele:*
+     - Aktenhalde: `papier` $\to$ `aktendeckel` (alles wird feuerfest)
+     - Fleischwelt: `magensaeure` $\to$ `water` (Säurebecken werden harmlos)
+     - Glibbria: `glibber` $\to$ `sand` (die Welt verliert ihre Federkraft)
+3. **Grenzen:** Maximal 3 Realitäts-Shifts pro Durchlauf; mindestens 180 Sekunden Abklingzeit.

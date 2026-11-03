@@ -1,4 +1,4 @@
-# Task List: Phase 3 »Absurdität, Zynismus & Multiversums-Satire« (Phasen N–S)
+# Task List: Phase 3 »Absurdität, Zynismus & Multiversums-Satire« (Phasen N–U)
 
 Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_absurditaet/`](../docs/phase3_absurditaet/00-uebersicht.md)
 
@@ -14,38 +14,38 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
   - Gadgets können ausgerüstet, gewechselt und per Tastendruck aktiviert werden
 - **Files touched:** `src/gadgets.py`, `tests/spec_phase3/test_phase_n.py`
 
-### Task N02: Der Gefälschte Säurebottich (`gadget_saeurebottich`)
+### Task N02: Die Notfall-Tauchkapsel (`gadget_tauchkapsel`)
 
-- **Description:** Implementiert den Säurebottich mit Schnorchel, Fake-Knochen-Partikeln, Feind-Aggro-Reset und Schleich-Modus mit kritischem Hinterhaltsschaden.
+- **Description:** Implementiert die Tauchkapsel mit Fake-Schrott-Partikeln, Feind-Aggro-Reset und Schleich-Modus mit kritischem Hinterhaltsschaden.
 - **Acceptance criteria:**
-  - Aktivierung spawnt optischen Bottich mit Schnorchel und treibenden Knochen-Pixeln
+  - Aktivierung spawnt optische Kapsel mit treibenden Schrott- und Schrauben-Pixeln
   - Feinde brechen Verfolgung ab und wechseln in IDLE-Zustand
-  - Angriff aus dem Bottich verursacht garantierten kritischen Treffer (+200 %)
+  - Angriff aus der Kapsel verursacht garantierten kritischen Treffer (+200 %)
 - **Files touched:** `src/gadgets.py`, `src/player.py`
 
-### Task N03: Die Büchse des Herrn Fleißig (`gadget_herr_fleissig`)
+### Task N03: Die Büchse des Amts-Imps (`gadget_amts_imp`)
 
-- **Description:** Implementiert den blauen Hilfsgeist mit hysterischer Sprachausgabe, Sammel-, Schalter- und Schutzschild-Verhalten sowie der Existenz-Verpuffung bei Erfolg.
+- **Description:** Implementiert den kleinen koboldartigen Beamten-Geist mit bürokratischer Sprachausgabe, Sammel-, Schalter- und Schutzschild-Verhalten sowie der Existenz-Verpuffung bei erledigtem Antrag.
 - **Acceptance criteria:**
-  - Spawnt `HerrFleissig`-Entität mit hoher blauer Silhouette
+  - Spawnt `AmtsImp`-Entität mit winziger Aktentasche und Brille
   - Erledigt die nächstgelegene Aufgabe (Gold sammeln, Hebel drücken oder Schutzschild sein)
-  - Löst sich bei Aufgabenerfüllung in Glitzer auf; eskaliert nach 25 Sekunden Kampf in Panik
+  - Löst sich bei Aufgabenerfüllung in Formularschnipsel auf; eskaliert nach 25 Sekunden Kampf in bürokratische Panik
 - **Files touched:** `src/gadgets.py`, `src/behaviour.py`
 
-### Task N04: Kaffee-Drohne & Mikro-Universums-Batterie
+### Task N04: Pipetten-Libelle & Schwungscheiben-Batterie
 
-- **Description:** Implementiert die melancholische Kolben-Drohne (`gadget_kaffee_drohne`) und die streikende Mini-Galaxie-Batterie (`gadget_mikro_batterie`).
+- **Description:** Implementiert die fliegende Kolben-Libelle (`gadget_kolben_libelle`) und die kinetische Schwungscheiben-Batterie (`gadget_schwungscheibe`).
 - **Acceptance criteria:**
-  - Kaffee-Drohne holt selbstständig Flüssigkeiten und reicht Kolben
-  - Mikro-Batterie spendet +60 Flux/s; Streik alle 120 s erfordert Schütteln oder Klonita-Zuspruch
+  - Pipetten-Libelle holt selbstständig Flüssigkeiten und reicht Kolben
+  - Schwungscheibe spendet +60 Flux/s; Überhitzung alle 120 s erfordert Abkühlung oder Klonita-Zuspruch
 - **Files touched:** `src/gadgets.py`, `src/flask.py`
 
-### Task N05: Die Gurken-Notfallmutation (`mod_gurken_flucht`)
+### Task N05: Die Schaben-Notfallmutation (`mod_schaben_flucht`)
 
-- **Description:** Implementiert das Überlebensmodul, das Cloita bei lethalem Schaden in die 8×14 Pixel kleine Salzgurke verwandelt.
+- **Description:** Implementiert das Überlebensmodul, das Cloita bei lethalem Schaden in die winzige Küchenschabe verwandelt.
 - **Acceptance criteria:**
-  - Bei LP <= 0 verwandelt sich Cloita in `salzgurke_cloita` mit Kakerlaken-Beinen
-  - Gurke kann durch 2-Pixel-Schlitze kriechen und Schrauben verschießen
+  - Bei LP <= 0 verwandelt sich Cloita in `kuechenschabe_cloita` mit Fühlern und Chitin-Panzer
+  - Schabe kann durch 2-Pixel-Schlitze kriechen und Chitin-Stacheln verschießen
   - Erreichen des Werkstatt-Portals stellt die menschliche Form vollständig wieder her
 - **Files touched:** `src/gadgets.py`, `src/player.py`
 
@@ -61,9 +61,9 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
   - Umschalten zwischen Kanälen 1 bis 12 mit Soundeffekt
 - **Files touched:** `src/tv_engine.py`, `src/workshop.py`
 
-### Task O02: Die 12 Fernsehkanäle mit surrealen Skripten
+### Task O02: Die 12 Fernsehkanäle mit originären Cloita-Skripten
 
-- **Description:** Integriert die 12 kanonischen Sendungen (Plümpel-Herstellung, Zwei Schwestern im Lieferwagen, Ameisen-Müller, Kochen mit Lava etc.) als animierte Text-/Pixel-Sequenzen.
+- **Description:** Integriert die 12 originären Fernsehsendungen (Plümpel-Herstellung, Das Interdimensionale Kaffeekränzchen, Ameisen-Müller, Kochen mit Lava etc.) als animierte Text-/Pixel-Sequenzen.
 - **Acceptance criteria:**
   - Alle 12 Kanäle aus Bibel Kap. 02 sind abspielbar und besitzen eigene Farb-/Tonmuster
 - **Files touched:** `src/tv_engine.py`, `src/tv_channels.py`
@@ -77,105 +77,105 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
 
 ### Task O04: Zuschauer-Buffs nach 15 Sekunden Verweildauer
 
-- **Description:** Verleiht dem Spieler nach mindestens 15 Sekunden Zuschauen je nach Kanal temporäre Buffs (Adrenalin, Schnäppchen-Fieber, Gute Laune).
+- **Description:** Verleiht der Spielerin nach mindestens 15 Sekunden Zuschauen je nach Kanal temporäre Buffs (Adrenalin, Schnäppchen-Fieber, Fokus).
 - **Acceptance criteria:**
   - Timer prüft ununterbrochenes Zuschauen und aktiviert den entsprechenden Statuseffekt
 - **Files touched:** `src/tv_engine.py`, `src/player.py`
 
 ---
 
-## Phase P: Die Zitadelle der Cloitas & Klon-Legebatterie
+## Phase P: Das Interdimensionale Patentamt
 
-### Task P01: Zitadellen-Hub Kartengenerierung & Viertel
+### Task P01: Patentamt-Hub Kartengenerierung & Sektoren
 
-- **Description:** Implementiert das Raumstations-Szenario `citadel_hub` mit Oberstadt, Schrott-Basar und Klon-Legebatterie.
+- **Description:** Implementiert das Szenario `patentamt_hub` mit Oberamt, Schrott-Basar und Endlosem Patent-Archiv.
 - **Acceptance criteria:**
-  - Eigener Weltaufbau mit futuristisch-schrottiger Ästhetik und interdimensionalem Portalzugang
-- **Files touched:** `src/citadel/hub.py`, `src/citadel/generator.py`
+  - Eigener Weltaufbau mit futuristisch-bürokratischer Ästhetik und interdimensionalem Portalzugang
+- **Files touched:** `src/patentamt/hub.py`, `src/patentamt/generator.py`
 
 ### Task P02: Alternative Cloita-NPCs
 
-- **Description:** Implementiert Cowboy-Cloita, Fabrik-Cloita, Gurken-Cloita und Snob-Cloita mit eigenen Animationen und Dialogen.
+- **Description:** Implementiert Bürokratie-Cloita, Quanten-Cloita, Steampunk-Cloita und Snob-Cloita mit eigenen Animationen und Dialogen.
 - **Acceptance criteria:**
-  - NPCs bevölkern die Zitadelle und interagieren zynisch mit der Spielerin
-- **Files touched:** `src/citadel/npcs.py`, `tools/sprites_citadel.py`
+  - NPCs bevölkern das Amt und interagieren zynisch mit der Spielerin
+- **Files touched:** `src/patentamt/npcs.py`, `tools/sprites_patentamt.py`
 
-### Task P03: Naivitäts-Tarnfeld-Mechanik
+### Task P03: Patent-Alibi-Mechanik
 
-- **Description:** Verknüpft Klonitas Anwesenheit mit dem behördlichen Fahndungssystem.
+- **Description:** Verknüpft Klonitas Anwesenheit und ihr Patent-Zertifikat mit dem behördlichen Fahndungssystem.
 - **Acceptance criteria:**
-  - Solange Klonita lebt, sinkt der Fahndungs-Zuwachs um 50 %
-  - Fällt Klonita, spawnen sofort doppelt so viele Behörden-Agenten
+  - Solange Klonita aktiv an Cloitas Seite ist, sinkt der Fahndungs-Zuwachs um 50 %
+  - Geht Klonita k.o., erlischt das Tarnfeld bis zu ihrer Reaktivierung nach 5 Sekunden
 - **Files touched:** `src/authority.py`, `src/klonita.py`
 
-### Task P04: Die Klon-Legebatterie mit Zucht-Bottichen
+### Task P04: Das Endlose Patent-Archiv
 
-- **Description:** Generiert die industrielle Klon-Fabrik mit Glaszylindern, Förderbändern und zynischen Propaganda-Plakaten.
+- **Description:** Generiert die monumentale Archiv-Halle mit gigantischen Aktenschränken, Förderbändern und satirischen Paragraphen-Plakaten.
 - **Acceptance criteria:**
-  - Begehbare Industrie-Halle mit animierten Klon-Embryos und interaktiven Schildern
-- **Files touched:** `src/citadel/hatchery.py`, `src/citadel/hub.py`
+  - Begehbare Halle mit animierten Aktenströmen und interaktiven Informationstafeln
+- **Files touched:** `src/patentamt/archive.py`, `src/patentamt/hub.py`
 
 ---
 
-## Phase Q: Der Rat der Chef-Forscherinnen & die Revoluzzer-Klonita
+## Phase Q: Die Rebellin Cloita-Null & der Koffer-Staatsstreich
 
-### Task Q01: Quest-Reihe »Schatten über der Zitadelle«
+### Task Q01: Quest-Reihe »Schatten über dem Patentamt«
 
-- **Description:** Implementiert die 3-teilige Quest mit Untergrund-Flugblättern, Senats-Infiltration und dem Staatsstreich der Klonitas.
+- **Description:** Implementiert die 3-teilige Quest mit Untergrund-Flugblättern, Ausschuss-Infiltration und dem versuchten Staatsstreich von Cloita-Null.
 - **Acceptance criteria:**
-  - Flugblätter spawnen zufällig in den Müll-Biomen und schalten geheime Dialoge frei
-  - Senatssitzung gipfelt im dramatischen Putsch der Revoluzzer-Klonita
-- **Files touched:** `src/quest_citadel.py`, `src/citadel/hub.py`
+  - Flugblätter spawnen zufällig in den Schrott-Biomen und schalten geheime Dialoge frei
+  - Senatssitzung gipfelt im dramatischen Putsch der abtrünnigen Cloita-Null
+- **Files touched:** `src/quest_patentamt.py`, `src/patentamt/hub.py`
 
-### Task Q02: Bosskampf: Die Revoluzzer-Klonita
+### Task Q02: Bosskampf: Die Rebellin Cloita-Null
 
-- **Description:** Implementiert den 3-Phasen-Bosskampf (Aktenkoffer-Raketen, Naivitäts-Inverter, Dimensionalkern-Riss).
+- **Description:** Implementiert den 3-Phasen-Bosskampf gegen das böse Ich (Aktentaschen-Raketen, Paragraphen-Inverter, Dimensionalkern-Riss).
 - **Acceptance criteria:**
-  - Phase 1: Koffer-Raketen und Klon-Schutzmauer
-  - Phase 2: Naivitäts-Inverter entsättigt den Bildschirm und lähmt Flux
+  - Phase 1: Koffer-Raketen und Akten-Schutzmauer
+  - Phase 2: Paragraphen-Inverter entsättigt den Bildschirm und lähmt Flux
   - Phase 3: Vakuum-Riss saugt Partikel an; Sieg schaltet Flucht-Zwischensequenz frei
-- **Files touched:** `src/bosses/revoluzzer_klonita.py`, `tests/spec_phase3/test_phase_q.py`
+- **Files touched:** `src/bosses/cloita_null.py`, `tests/spec_phase3/test_phase_q.py`
 
-### Task Q03: Belohnung: Titan-Koffer & Klon-Befreiung
+### Task Q03: Belohnung: Titan-Aktentasche & Amts-Befriedung
 
-- **Description:** Schaltet die Waffe `waffe_revoluzzer_koffer` frei und verwandelt die Zitadelle in eine befreite Klon-Oase.
+- **Description:** Schaltet die Waffe `waffe_patent_koffer` frei und befriedet das Patentamt.
 - **Acceptance criteria:**
-  - Titan-Koffer besitzt 16 Slots und 0 Nachladezeit
-  - Klonitas laufen glücklich in bunten Kitteln umher und verteilen Gratis-Proben
-- **Files touched:** `src/weapon_parts.py`, `src/citadel/hub.py`
+  - Titan-Aktentasche besitzt 16 Slots und 0 Nachladezeit
+  - Beamte arbeiten wieder in geregelten Bahnen und bieten seltene Bausätze an
+- **Files touched:** `src/weapon_parts.py`, `src/patentamt/hub.py`
 
 ---
 
-## Phase R: Sechs handgefertigte Satire-Universen
+## Phase R: Sechs handgefertigte Satire-Universen Teil 1
 
 ### Task R01: Universum `anatomie_park` (Der Beamten-Park)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`speisebrei`, `gallenstein_beton`, `nervenstrang`, `magensaft_limo`), Regel `rule_peristaltik`, Kreaturen, Boss Dr. Pfortader und Event Akutes Sodbrennen.
+- **Description:** Implementiert Universumsdaten, Materialien (`speisebrei`, `gallenstein_beton`, `nervenstrang`, `magensaft_limo`), Regel `rule_peristaltik` (Strömungswinde), Kreaturen, Boss Dr. Pfortader, Event Akutes Sodbrennen und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/anatomie_park.py`, `tools/sprites_anatomie_park.py`
 
 ### Task R02: Universum `pastell_hoelle` (Klonitas Pastell-Hölle)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`schaumstoff`, `erdbeermilch`, `zuckerglas_scherbe`, `honigkleber`), Regel `rule_kitsch_carnage`, Plüsch-Kreaturen, Boss Ur-Kuscheltier und Event Kuschel-Alarm.
+- **Description:** Implementiert Universumsdaten, Materialien (`schaumstoff`, `erdbeernektar`, `zuckerglas_scherbe`, `honigkleber`), Regel `rule_kitsch_carnage`, Plüsch-Kreaturen, Boss Ur-Kuscheltier, Event Kuschel-Alarm und Rang 1–3 Skalierung. Erdbeernektar verleiht temporäre Schilde (keine direkte HP-Heilung).
 - **Files touched:** `src/universes/pastell_hoelle.py`, `tools/sprites_pastell_hoelle.py`
 
 ### Task R03: Universum `klonenberg_welt` (Das Klonenberg-Desaster)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`mutagen_schleim`, `wucherndes_fleisch`, `augen_fett`, `knochen_dorn`), Regel `rule_mutation_ooze`, Gen-Mutationen, Boss Klonenberg-Monstrum und Event Zellteilungs-Welle.
+- **Description:** Implementiert Universumsdaten, Materialien (`mutagen_schleim`, `wucherndes_fleisch`, `augen_fett`, `knochen_dorn`), Regel `rule_mutation_ooze`, Gen-Mutationen, Boss Klonenberg-Monstrum, Event Zellteilungs-Welle und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/klonenberg_welt.py`, `tools/sprites_klonenberg.py`
 
 ### Task R04: Universum `talent_kosmos` (Der Kosmische Talentwettbewerb)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`buehnen_gold`, `schall_kristall`, `applaus_nebel`, `jury_plasma`), Regel `rule_show_me`, Hype-Check, Boss Jury-Kopf und Event RICHTERSPRUCH-Laser.
+- **Description:** Implementiert Universumsdaten, Materialien (`buehnen_gold`, `schall_kristall`, `applaus_nebel`, `jury_plasma`), Regel `rule_show_me`, Hype-Check, Boss Jury-Kopf, Event RICHTERSPRUCH-Laser und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/talent_kosmos.py`, `tools/sprites_talent_kosmos.py`
 
-### Task R05: Universum `spaghetti_dimension` (Die Teigwaren-Trauerweide)
+### Task R05: Universum `antrags_labyrinth` (Das Pneumatische Antrags-Labyrinth)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`bolognese`, `parmesan_staub`, `hartweizen_stein`, `basilikum_oel`), Regel `rule_delicious_despair`, Nudel-Dropraten, Boss Nudelpresse und Event Mittagspause.
-- **Files touched:** `src/universes/spaghetti_dimension.py`, `tools/sprites_spaghetti.py`
+- **Description:** Implementiert Universumsdaten, Materialien (`formular_wand`, `toner_staub`, `siegelwachs`, `papierkorb_asche`), Regel `rule_pneumatic_flow`, Rohrpost-Winde, Boss Bürokraten-Minotaurus, Event Aktensturz und Rang 1–3 Skalierung.
+- **Files touched:** `src/universes/antrags_labyrinth.py`, `tools/sprites_antrags_labyrinth.py`
 
 ### Task R06: Universum `krawatten_planet` (Das Krawatten-Imperium)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`panzer_seide`, `zeitreise_treibstoff`, `manschetten_chrom`, `buegel_dampf`), Regel `rule_temporal_ties`, Terminator-Krawatten-Spawn, Boss Kragen-Tribunal und Event Zeitschleife.
+- **Description:** Implementiert Universumsdaten, Materialien (`panzer_seide`, `zeitreise_treibstoff`, `manschetten_chrom`, `buegel_dampf`), Regel `rule_temporal_ties`, Zeitreise-Beamte, Boss Kragen-Tribunal, Event Zeitschleife und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/krawatten_planet.py`, `tools/sprites_krawatten.py`
 
 ---
@@ -184,32 +184,32 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
 
 ### Task S01: Universum `klo_paradies` (Das Heilige Sanitärium)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`zen_kies`, `porzellan_edel`, `heilquell_wasser`, `laser_beton`), Regel `rule_sanctuary_retribution`, Boss Thron-Abwehrsystem und Event Hologramm-Spott.
+- **Description:** Implementiert Universumsdaten, Materialien (`zen_kies`, `porzellan_edel`, `heilquell_wasser`, `laser_beton`), Regel `rule_sanctuary_retribution`, Boss Thron-Abwehrsystem, Event Hologramm-Spott und Rang 1–3 Skalierung. Heilquell-Wasser spendet Schild-Buffs statt direkter HP.
 - **Files touched:** `src/universes/klo_paradies.py`, `tools/sprites_sanitaer.py`
 
 ### Task S02: Universum `matroschka_simulation` (Die Simulations-Schachtel)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`wireframe_wand`, `glitch_pixel`, `hologramm_nebel`, `server_kupfer`), Regel `rule_low_cpu_glitch`, Boss Zigerion-Chef und Event Speichermangel.
+- **Description:** Implementiert Universumsdaten, Materialien (`wireframe_wand`, `glitch_pixel`, `hologramm_nebel`, `server_kupfer`), Regel `rule_low_cpu_glitch`, Boss Zigerion-Chef, Event Speichermangel und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/matroschka_simulation.py`, `tools/sprites_simulation.py`
 
-### Task S03: Universum `kollektiv_buerokratie` (Das Büro-Kollektiv Einheit 404)
+### Task S03: Universum `kollektiv_buerokratie` (Das Büro-Kollektiv 404)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`synapsen_kabel`, `kamillentee`, `linoleum_grau`, `aktenstapel_rein`), Regel `rule_hive_mind`, Boss Synapsen-Gehirn und Event Kollektiver Seufzer.
+- **Description:** Implementiert Universumsdaten, Materialien (`synapsen_kabel`, `kamillentee`, `linoleum_grau`, `aktenstapel_rein`), Regel `rule_hive_mind`, Boss Synapsen-Gehirn, Event Kollektiver Seufzer und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/kollektiv_buerokratie.py`, `tools/sprites_kollektiv.py`
 
 ### Task S04: Universum `unsterblichkeits_resort` (Das Unsterblichkeits-Resort)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`feld_grenze`, `thermal_wasser`, `marmor_gold`, `zerfalls_sand`), Regel `rule_immortality_field`, Schadens-Stapelung, Boss Resort-Direktor und Event Feld-Flackern.
+- **Description:** Implementiert Universumsdaten, Materialien (`feld_grenze`, `thermal_wasser`, `marmor_gold`, `zerfalls_sand`), Regel `rule_immortality_field`, Schadens-Stapelung, Boss Resort-Direktor, Event Feld-Flackern und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/unsterblichkeits_resort.py`, `tools/sprites_resort.py`
 
 ### Task S05: Universum `schroedinger_kammer` (Das Quanten-Scherbenmeer)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`quanten_glas`, `tachyonen_schleim`, `unschaerfe_staub`, `zeitpolizei_stahl`), Regel `rule_split_timeline`, Boss Zeit-Polizist und Event Quanten-Kollaps.
+- **Description:** Implementiert Universumsdaten, Materialien (`quanten_glas`, `tachyonen_schleim`, `unschaerfe_staub`, `zeitpolizei_stahl`), Regel `rule_quantum_phase` (Phasenecho-Geschosse), Boss Zeit-Polizist, Event Quanten-Kollaps und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/schroedinger_kammer.py`, `tools/sprites_quanten.py`
 
 ### Task S06: Universum `kater_bunker` (Der Kater-Bunker)
 
-- **Description:** Implementiert Universumsdaten, Materialien (`kater_beton`, `starkbier`, `demuetigungs_glas`, `kater_giftgas`), Regel `rule_drunk_puzzles`, Zeitdruck-Rätsel, Boss Betrunkene-Cloita-KI und Event Peinliche Rückblende.
+- **Description:** Implementiert Universumsdaten, Materialien (`kater_beton`, `starkbier`, `demuetigungs_glas`, `kater_giftgas`), Regel `rule_drunk_puzzles`, Zeitdruck-Rätsel, Boss Kater-Cloita-Projektion, Event Peinliche Rückblende und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/kater_bunker.py`, `tools/sprites_kater_bunker.py`
 
 ---
@@ -218,14 +218,14 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
 
 ### Task T01: Parasiten-Invasions-Event in der Werkstatt
 
-- **Description:** Implementiert den Zufallsausbruch von `event_falsche_freunde` in der Werkstatt oder Aufenthaltsräumen mit 4–6 bizarren Gestalten (Kühlschrank-Klaus, Onkel Büroklammer etc.).
+- **Description:** Implementiert den Zufallsausbruch von `event_falsche_freunde` in der Werkstatt mit 4–6 bizarren Gestalten (Thermoskanne Theobald, Onkel Locher etc.).
 - **Acceptance criteria:**
-  - Event spawnt bunte, fröhliche Gestalten, die Cloita und Klonita umarmen wollen
+  - Event spawnt bunte, kumpelhafte Gestalten, die Cloita und Klonita schmeicheln wollen
 - **Files touched:** `src/events_parasites.py`, `src/workshop.py`
 
 ### Task T02: Soziales Deduktions-System
 
-- **Description:** Baut das Fragesystem auf: Figuren, die nur zuckersüße Erinnerungen teilen, sind Parasiten und müssen exekutiert werden.
+- **Description:** Baut das Fragesystem auf: Figuren, die ausschließlich zuckersüße Erinnerungen teilen, sind Parasiten und müssen exekutiert werden.
 - **Acceptance criteria:**
   - Dialogabfrage deckt parasitäre Kitsch-Erinnerungen auf
   - Erschießen des Parasiten spuckt Gedächtnis-Essenz aus; Fehltritte verfluchen Cloita
@@ -240,9 +240,9 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
 
 ### Task T04: Fallblatt-Statistikanzeige im Pausenraum
 
-- **Description:** Platziert die dynamische Fallblatt-Tafel `ws_statistik_wand` in der Werkstatt mit Klonita-Verschleißzähler und gepfändetem Steuer-Gold.
+- **Description:** Platziert die dynamische Fallblatt-Tafel `ws_statistik_wand` in der Werkstatt mit Cloita-Totalschäden, Kaffee-Verbrauch und gepfändetem Steuer-Gold (keine Klonita-Todeszähler).
 - **Acceptance criteria:**
-  - Interaktives Schild zählt Klonita-Tode, Cloita-Totalschäden und verschütteten Kaffee pro Lauf
+  - Interaktives Schild zählt K.o.-Reaktivierungen, Totalschäden und verschütteten Kaffee pro Lauf
 - **Files touched:** `src/workshop_stats.py`, `src/workshop.py`
 
 ---
@@ -251,7 +251,7 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
 
 ### Task U01: Gadget- & Zaubermathematik-Integrationstest
 
-- **Description:** Stellt sicher, dass Gadgets harmonisch mit den Noita-Zauberkaskaden aus Phase 2 zusammenspielen.
+- **Description:** Stellt sicher, dass Gadgets harmonisch mit den Zauberkaskaden aus Phase 2 zusammenspielen.
 - **Files touched:** `tests/spec_phase3/test_phase_u_integration.py`
 
 ### Task U02: Satire- und Dialog-Audit
@@ -259,9 +259,9 @@ Master-Plan: [`tasks/plan_phase3.md`](plan_phase3.md) · Bibel: [`docs/phase3_ab
 - **Description:** Prüft alle deutschen Spieltexte auf fehlerfreie Typografie, Wortwitz und Einhaltung der Lore.
 - **Files touched:** `tests/spec_phase3/test_phase_u_dialogues.py`
 
-### Task U03: Performance- & Render-Check der Zitadelle und aller 12 Satire-Biome
+### Task U03: Performance- & Render-Check des Patentamts und aller 12 Satire-Biome
 
-- **Description:** Validiert stabile 60 FPS im Zitadellen-Hub, während des Scanline-CRT-Modus und in den neuen Biomen.
+- **Description:** Validiert stabile 60 FPS im Patentamt-Hub, während des Scanline-CRT-Modus und in den neuen Biomen.
 - **Files touched:** `tests/spec_phase3/test_phase_u_perf.py`
 
 ### Task U04: Gesamtabnahme Phase 3

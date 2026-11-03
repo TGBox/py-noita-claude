@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.7
+
+- 2026-11-03 (f2c9e58): fix: adjust phase 2 and phase 3 plans to align with the current bible implementation
+
 ## SemVer v1.7.6
 
-- 2026-11-03 (4b27659): feat: add new third implementation plan to incorporate more of the absurd and dark humor into the game
+- 2026-11-03 (b0613e8): feat: add new third implementation plan to incorporate more of the absurd and dark humor into the game
 
 ## SemVer v1.7.5
 

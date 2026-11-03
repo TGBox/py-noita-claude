@@ -1,159 +1,183 @@
-# 03 – Die sechs Erweiterungs-Universen
+# 03 – Die sechs Pool-Universen der Erweiterung
 
-Dieses Kapitel definiert die sechs neuen, vollwertigen Universen der Erweiterung (Phasen H–M). Jedes Universum folgt exakt der kanonischen Schnittstelle von `docs/bibel/03-universen.md` und verdoppelt den Gesamtkatalog des Spiels auf 12 Welten.
+Dieses Kapitel definiert die sechs vollwertigen Pool-Universen der Phase 2 (`schrott`, `kuchen`, `spule`, `uhrwerkwueste`, `suppenmeer`, `freizeitpark`). Sie nutzen die vier kanonischen Bibel-Weltformen und besitzen eine verbindliche **Rang-Steigerung für Ränge 1 bis 3**.
 
 ---
 
 ## 1. Der Große Schrott (`schrott`)
 
 - **Pitch:** „Ein endloser Friedhof interdimensionaler Maschinen. Alles rostet, knistert und zieht magnetisch an.“
-- **Regel:** `rule_magnet` – Metallische Geschosse und Trümmer werden von Schrottmagneten und Eisenerzadern angezogen; Roststaub explodiert bei Funkenflug.
-- **Form:** Breit, 3072×1024: meterhohe Schrottberge, Förderbänder, Schreddergruben.
-- **Licht:** 0,42, staubig-rostiges Dämmerlicht mit gelben Scheinwerfer-Kegeln.
-- **Teilgebiete:** Schrotthalde (lockere Trümmer, Schrottberge), Schmelze (Flüssigeisen-Kanäle), Kernwerk (rotierende Magnetkräne und Transformatoren).
+- **Regel:** `rule_magnet` – Metall zieht Geschosse und Trümmer an; Roststaub brennt explosionsartig.
+- **Form:** Breit, 3072×1024. **Licht:** 0,42.
+- **Teilgebiete:** Schrotthalde (lockeres Altmetall), Schmelze (Flüssigeisen-Rinnen), Kernwerk (rotierende Magnetspulen).
 - **Materialien:**
 
   | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
   | --- | --- | --- | --- | --- | --- |
-  | `schrott` | Altmetall | fest | hart | #706558 | leitend, reflektiert Querschläger |
-  | `roststaub` | Roststaub | Pulver | weich | #B55030 | brennt explosionsartig bei Funken |
-  | `fluessigeisen` | Flüssigeisen | flüssig, heiß | – | #FF7020 | schmilzt Feststoffe; verbrennt organisches Gewebe sofort |
-  | `magnetit` | Magnetiterz | fest | sehr hart | #303038 | zieht Projektile im 30-px-Radius an |
+  | `altmetall` | Altmetall | fest | hart | #706558 | leitend, reflektiert Querschläger |
+  | `roststaub` | Roststaub | Pulver | weich | #B55030 | brennt blitzartig bei Funken |
+  | `fluessigeisen` | Flüssigeisen | flüssig, heiß | – | #FF7020 | schmilzt weiche Feststoffe; verbrennt Fleisch |
+  | `magnetit` | Magnetiterz | fest | sehr hart | #303038 | zieht Projektile im 32-px-Radius an |
+
+- **Rang-Steigerung von `rule_magnet`:**
+
+  | Rang 1 | Rang 2 | Rang 3 |
+  | --- | --- | --- |
+  | Magnetkraft schwach (15 px) | Magnetkraft verdoppelt (30 px) | Magnetkraft 45 px; Waffen werden magnetisch angezogen |
 
 - **Einheimische:** Rostkäfer (`rostkaefer`), Schweiß-Imp (`schweissimp`), Magnetwurm (`magnetwurm`), Schrottgolem (`schrottgolem`).
-- **Unter-Zwischenboss:** Gabelstapler-Krabbe (`gabelstapler_krabbe`).
-- **Hauptboss:** Die Schrottpresse (`schrottpresse`).
-- **Zerstörbare Props:** Magnetkran (`magnet_kran`), Batteriesäule (`batterie_saeule`).
-- **Ereignis „Magnetsturm“:** alle 90 s werden alle metallischen Partikel und Waffen für 15 s mit hoher Wucht quer durch den Bildschirm geschleudert.
+- **Unter-Zwischenboss:** Gabelstapler-Krabbe (`gabelstapler_krabbe`). **Hauptboss:** Die Schrottpresse (`schrottpresse`).
+- **Props:** Magnetkran (`magnet_kran`), Batteriesäule (`batterie_saeule`).
+- **Ereignis „Magnetsturm“:** Alle 90 s werden Metallpartikel für 15 s quer über den Schirm geweht.
 - **Proben:** Rostprobe (`probe_rost`), Magnetit-Splitter (`probe_magnetit`).
-- **Arena:** Rechteckige Stahlhalle mit zwei gigantischen Schrottpressen an den Seiten.
+- **Arena:** Rechteckige Stahlhalle mit zwei beweglichen Pressblöcken.
 
 ---
 
 ## 2. Die Kuchenkruste (`kuchen`)
 
-- **Pitch:** „Gebacken vor einer Million Jahren. Oben knusprige Baisers, unten kochende Karamell-Lava.“
+- **Pitch:** „Gebacken vor einer Million Jahren. Oben knusprige Baisers, unten kochendes Karamell.“
 - **Regel:** `rule_hot` – Dauerhitze; weiche Substanzen schmelzen; Zucker karamellisiert bei Brand.
-- **Form:** Schichten, 2048×1536: Biskuit-Terrassen, Zuckerglasur-Plateaus, tiefes Karamell.
-- **Licht:** 0,65, warm-goldener Backofen-Glow.
-- **Teilgebiete:** Glasur-Kamm (weißer Puderzucker, Baisers), Biskuit-Höhlen (poröser Teig, Krumen-Tunnel), Karamell-Tiefe (heiß, zäh, kochend).
+- **Form:** Quadrat, 2048×1536. **Licht:** 0,65.
+- **Teilgebiete:** Glasur-Kamm (Puderzucker, Baisers), Biskuit-Höhlen (poröser Teig), Karamell-Tiefe (heiß und zäh).
 - **Materialien:**
 
   | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
   | --- | --- | --- | --- | --- | --- |
-  | `biskuit` | Biskuitteig | fest | weich | #E8C07A | saugt Flüssigkeiten wie Schwamm auf |
-  | `zuckerglasur` | Zuckerglasur | fest | hart | #FFF5EA | schmilzt bei Feuer zu süßem Sirup |
-  | `karamell` | Kochendes Karamell | flüssig, zäh | – | #B86014 | brennt lang, klebt an Füßen |
-  | `puderzucker` | Puderzucker | Pulver | weich | #FFFFFF | erzeugt bei Explosion gewaltige Mehlstaub-Detonation |
+  | `biskuit` | Biskuitteig | fest | weich | #E8C07A | saugt Flüssigkeiten wie ein Schwamm auf |
+  | `zuckerglasur` | Zuckerglasur | fest | hart | #FFF5EA | schmilzt bei Feuer zu Sirup |
+  | `karamell_kuchen` | Kochendes Karamell | flüssig, zäh | – | #B86014 | brennt lang, klebt an den Füßen |
+  | `puderzucker` | Puderzucker | Pulver | weich | #FFFFFF | Mehlstaub-Detonation bei Funken |
+
+- **Rang-Steigerung von `rule_hot`:**
+
+  | Rang 1 | Rang 2 | Rang 3 |
+  | --- | --- | --- |
+  | Entzündungs-Chance 1 % | Chance 3 %; Karamell kocht heißer | Chance 5 %; Puderzucker explodiert doppelt so groß |
 
 - **Einheimische:** Zuckerspinne (`zuckerspinne`), Kerzenkobold (`kerzenkobold`), Marzipanschwein (`marzipanschwein`), Baiser-Geist (`baiser_geist`).
-- **Unter-Zwischenboss:** Marzipanritter (`marzipan_ritter`).
-- **Hauptboss:** Die Mehrstöckige Hochzeitstorte (`hochzeitstorte`).
-- **Zerstörbare Props:** Riesenkerze (`riesen_kerze`), Keksrad (`keks_rad`).
-- **Ereignis „Karamell-Ausbruch“:** alle 80 s schießen heiße Geysire aus flüssigem Karamell aus dem Boden.
+- **Unter-Zwischenboss:** Marzipanritter (`marzipan_ritter`). **Hauptboss:** Die Hochzeitstorte (`hochzeitstorte`).
+- **Props:** Riesenkerze (`riesen_kerze`), Keksrad (`keks_rad`).
+- **Ereignis „Karamell-Geysir“:** Alle 80 s schießen heiße Karamell-Fontänen empor.
 - **Proben:** Zuckerkruste (`probe_zucker`), Marzipan-Nase (`probe_marzipan`).
-- **Arena:** Runde Tortenplatte; herabfallende Baiser-Brocken dienen als Deckung.
+- **Arena:** Runde Tortenplatte; herabfallende Baiser-Brocken bieten Schutz.
 
 ---
 
 ## 3. Die Summende Spule (`spule`)
 
 - **Pitch:** „Ein Alptraum aus blanken Kupferdrähten und permanenten Hochspannungs-Entladungen.“
-- **Regel:** `rule_electric` – Elektrische Ströme leiten 3× weiter; Funken laden Schutzschilde auf; Kurzschlüsse entzünden Gas.
-- **Form:** Hoch, 1280×2560: endlose vertikale Spulentürme, gigantische Kondensatoren.
-- **Licht:** 0,38, zuckende blaue Lichtbögen erhellen die Dunkelheit.
-- **Teilgebiete:** Spulenwald (dichte Kupferwicklungen), Kondensatordeck (Spannungs-Kammern), Plasmakern (extreme Hitze und Strahlung).
+- **Regel:** `rule_electric` – Ströme leiten 2× weiter; Funken laden Schilde; Kurzschlüsse entzünden Gas.
+- **Form:** Hoch, 1280×2560. **Licht:** 0,38.
+- **Teilgebiete:** Spulenwald (vertikale Kupferwicklungen), Kondensatordeck (Spannungskammern), Plasmakern (Hitzezone).
 - **Materialien:**
 
   | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
   | --- | --- | --- | --- | --- | --- |
   | `kupfer` | Kupferdraht | fest | hart | #C87540 | leitet Strom widerstandsfrei weiter |
-  | `isolator` | Isolierkeramik | fest | hart | #4A5568 | blockiert jeglichen Stromfluss |
+  | `isolator` | Isolierkeramik | fest | hart | #4A5568 | blockiert jeden Stromfluss |
   | `plasma` | Plasmagas | Gas, glühend | – | #70E0FF | verbrennt Projektile und Fleisch |
-  | `elektrolyt` | Elektrolytlösung | flüssig | – | #40FFA0 | explodiert in Schockwelle bei Stromeinleitung |
+  | `elektrolyt` | Elektrolytlösung | flüssig | – | #40FFA0 | erzeugt Schockwellen bei Stromschlag |
+
+- **Rang-Steigerung von `rule_electric`:**
+
+  | Rang 1 | Rang 2 | Rang 3 |
+  | --- | --- | --- |
+  | Strom leitet +50 % weiter | Strom leitet +100 %; Funken springen weiter | Ströme springen durch die Luft auf nahe Feinde |
 
 - **Einheimische:** Funkenhornisse (`funkenhornisse`), Spulenkrabbe (`spulenkrabbe`), Kupferschlange (`kupferschlange`), Kondensator-Geist (`kondensator_geist`).
-- **Unter-Zwischenboss:** Spulenmeister (`spulenmeister`).
-- **Hauptboss:** Der Kolossale Transformator (`transformator`).
-- **Zerstörbare Props:** Trafo-Kasten (`trafo_kasten`), Blitzableiter (`blitzableiter`).
-- **Ereignis „Kurzschluss“:** alle 70 s zucken gewaltige Blitz-Kaskaden quer durch alle Kupferleitungen.
+- **Unter-Zwischenboss:** Spulenmeister (`spulenmeister`). **Hauptboss:** Der Transformator (`transformator`).
+- **Props:** Trafo-Kasten (`trafo_kasten`), Blitzableiter (`blitzableiter`).
+- **Ereignis „Kurzschluss“:** Alle 70 s zucken Blitz-Kaskaden quer durch die Kupferleitungen.
 - **Proben:** Kupferspule (`probe_spule`), Kondensator-Zelle (`probe_kondensator`).
-- **Arena:** Faraday-Käfig mit beweglichen Elektroden-Armen.
+- **Arena:** Faraday-Käfig mit beweglichen Elektroden.
 
 ---
 
 ## 4. Die Uhrwerkwüste (`uhrwerkwueste`)
 
-- **Pitch:** „Ein Meer aus tickendem Zahnradsand. Zeit ist hier keine Konstante, sondern eine klebrige Flüssigkeit.“
-- **Regel:** `rule_slowtime` – Die Zeit pulsiert im Sekunden-Takt; Projektile ziehen Zeit-Schleppen hinter sich her.
-- **Form:** Weitläufiges Plateau, 2560×1536: riesige halb versunkene Ziffernblätter, Pendelgruben.
-- **Licht:** 0,50, mattes Messing-Glänzen unter sepiafarbenem Himmel.
-- **Teilgebiete:** Zahnrad-Dünen (Dünen aus feinem Messinggrieß), Gruft der Sekunden (tickende Pendel), Chrono-Oase (flüssige Zeit-Teiche).
+- **Pitch:** „Ein Meer aus tickendem Zahnradsand. Zeit ist hier eine zähe Flüssigkeit.“
+- **Regel:** `rule_slowtime` – Zeit pulsiert im Takt; Geschosse ziehen Verzögerungs-Echos hinter sich her.
+- **Form:** Breit, 3072×1024. **Licht:** 0,50.
+- **Teilgebiete:** Zahnrad-Dünen (Messingsand), Gruft der Sekunden (tickende Pendel), Chrono-Oase (Zeit-Teiche).
 - **Materialien:**
 
   | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
   | --- | --- | --- | --- | --- | --- |
-  | `chrono_sand` | Zeitensand | Pulver | weich | #E0C070 | rieselt träge; verlangsamt Fußgänger |
-  | `messing` | Zahnradmessing | fest | sehr hart | #D4AF37 | extrem stabil; reflektiert Energiestrahlen |
-  | `fluessig_zeit` | Flüssige Zeit | flüssig | – | #C0D8E8 | bremst alles darin auf 15 % Geschwindigkeit |
+  | `chrono_sand` | Zeitensand | Pulver | weich | #E0C070 | rieselt träge; dämpft Stürze |
+  | `messing` | Zahnradmessing | fest | sehr hart | #D4AF37 | extrem stabil; reflektiert Funken |
+  | `fluessig_zeit` | Flüssige Zeit | flüssig | – | #C0D8E8 | bremst alles darin auf 25 % Tempo |
   | `unruh_fett` | Uhrenöl | flüssig | – | #8A7030 | extrem rutschig; entflammbar |
 
+- **Rang-Steigerung von `rule_slowtime`:**
+
+  | Rang 1 | Rang 2 | Rang 3 |
+  | --- | --- | --- |
+  | Tempo pulsiert 80–100 % | Tempo pulsiert 60–100 % | Tempo pulsiert 40–100 %; Projektile frieren kurz ein |
+
 - **Einheimische:** Zecken-Uhr (`zecken_uhr`), Pendel-Schreiter (`pendel_schreiter`), Chrono-Wächter (`chrono_waechter`), Sanduhr-Skarabäus (`sanduhr_skarabaeus`).
-- **Unter-Zwischenboss:** Der Unruh-Vogel (`unruh_vogel`).
-- **Hauptboss:** Das Ewige Pendel (`ewiges_pendel`).
-- **Zerstörbare Props:** Standuhr (`stand_uhr`), Federwerk (`feder_werk`).
-- **Ereignis „Zeitsprung“:** alle 100 s werden alle Projektile und Figuren für 3 Sekunden eingefroren, gefolgt von einer Geschwindigkeits-Eruption.
+- **Unter-Zwischenboss:** Der Unruh-Vogel (`unruh_vogel`). **Hauptboss:** Das Ewige Pendel (`ewiges_pendel`).
+- **Props:** Standuhr (`stand_uhr`), Federwerk (`feder_werk`).
+- **Ereignis „Zeitsprung“:** Alle 90 s werden alle Projektile für 2 Sekunden eingefroren.
 - **Proben:** Unruh-Feder (`probe_unruh`), Chrono-Tropfen (`probe_chrono`).
-- **Arena:** Innenraum einer gigantischen Kirchenuhr mit rotierenden Zahnrädern als beweglichen Plattformen.
+- **Arena:** Großes Ziffernblatt mit rotierenden Messing-Zeigern als Plattformen.
 
 ---
 
 ## 5. Das Endlose Suppenmeer (`suppenmeer`)
 
-- **Pitch:** „Ein siedender Ozean aus Gemüsesuppe. Buchstabennudeln versuchen verzweifelt, Warnungen zu formulieren.“
-- **Regel:** `rule_flooded_soup` – Hoher Auftrieb; Suppenfett schwimmt oben und brennt; heißer Dampf benebelt die Sicht.
-- **Form:** Tiefsee, 1536×2560: senkrechter Topf mit Brühe, Gemüseriffen und dunklem Hefe-Bodensatz.
-- **Licht:** 0,35, trübes Bernsteingelb mit aufsteigenden Dampfblasen.
-- **Teilgebiete:** Brühe-Spiegel (schwimmende Kräuterinseln, Fettaugen), Sellerie-Riff (massives Suppengemüse als Wände), Tiefer Topf (dunkler, dichter Bodensatz).
+- **Pitch:** „Ein siedender Ozean aus Gemüsesuppe. Buchstabennudeln formen verzweifelte Worte.“
+- **Regel:** `rule_flooded` (Sonderform Suppe) – Hoher Auftrieb; Suppenfett brennt oben; Atemleiste greift.
+- **Form:** Hoch, 1280×2560. **Licht:** 0,35.
+- **Teilgebiete:** Brühe-Spiegel (schwimmende Kräuterinseln), Sellerie-Riff (massives Gemüse als Wände), Tiefer Topf (dunkler Bodensatz).
 - **Materialien:**
 
   | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
   | --- | --- | --- | --- | --- | --- |
-  | `bouillon` | Fleischbrühe | flüssig | – | #E5C158 | dämpft Stürze; verleiht leichten Auftrieb |
+  | `bouillon` | Fleischbrühe | flüssig | – | #E5C158 | verleiht Auftrieb; trinken erfrischt Flux |
   | `suppenfett` | Suppenfett | flüssig, leicht | – | #FFF090 | schwimmt immer oben; brennt heiß |
-  | `nudel_teig` | Nudelteig | fest | weich | #F5E0A0 | federt Stöße ab; löst sich nach 60 s in Suppe auf |
-  | `pfefferdampf` | Pfeffergas | Gas | – | #4A4030 | blendet Feinde (-40 % Zielgenauigkeit) |
+  | `nudel_teig` | Nudelteig | fest | weich | #F5E0A0 | federt Stöße ab; löst sich in kochendem Wasser |
+  | `pfefferdampf` | Pfeffergas | Gas | – | #4A4030 | blendet Feinde (-30 % Trefferchance) |
+
+- **Rang-Steigerung:**
+
+  | Rang 1 | Rang 2 | Rang 3 |
+  | --- | --- | --- |
+  | Atem 16 s | Atem 12 s | Atem 9 s; Brühe kocht periodisch auf |
 
 - **Einheimische:** Suppenlaus (`suppenlaus`), Buchstaben-Krake (`buchstaben_krake`), Karotten-Aal (`karotten_aal`), Markbällchen-Krabbe (`markbaellchen_krabbe`).
-- **Unter-Zwischenboss:** Der Chefkoch-Ghul (`chefkoch_ghul`).
-- **Hauptboss:** Der Kellen-Leviathan (`kellen_leviathan`).
-- **Zerstörbare Props:** Suppenschüssel (`suppen_schuessel`), Nudelholz (`nudel_holz`).
-- **Ereignis „Wallendes Kochen“:** alle 75 s kocht die Brühe auf – riesige Dampfblasen reißen Cloita und Feinde mit hoher Wucht nach oben.
+- **Unter-Zwischenboss:** Der Chefkoch-Ghul (`chefkoch_ghul`). **Hauptboss:** Der Kellen-Leviathan (`kellen_leviathan`).
+- **Props:** Suppenschüssel (`suppen_schuessel`), Nudelholz (`nudel_holz`).
+- **Ereignis „Wallendes Kochen“:** Alle 75 s reißen aufsteigende Dampfblasen Entitäten nach oben.
 - **Proben:** Buchstabennudel A (`probe_nudel_a`), Getrocknete Nelke (`probe_nelke`).
-- **Arena:** Der Boden einer gewaltigen Emaille-Kasserolle mit aufsteigenden Hitzeventilen.
+- **Arena:** Emaille-Kasserolle mit seitlichen Hitzeventilen.
 
 ---
 
 ## 6. Freizeitpark Endzeit (`freizeitpark`)
 
-- **Pitch:** „Seit dreihundert Jahren geschlossen. Die Maskottchen haben Hunger und die Achterbahn fährt noch immer.“
-- **Regel:** `rule_momentum` – Nahezu reibungsfreie Schienen; extreme Fluggeschwindigkeiten; bunte Ballons erzeugen Schwerelosigkeit.
-- **Form:** Horizontales Band, 3584×1024: verschlungene Achterbahnschienen, Geisterbahn-Grotten, Wurfbuden.
-- **Licht:** 0,55, flackernde Neon-Reklamen in Pink, Cyan und giftigem Grün.
-- **Teilgebiete:** Geisterbahn (enge schwarze Tunnel mit Grusel-Mechanismen), Kirmesplatz (zerstörte Pavillons, Wurfbuden), Achterbahn-Looping (schwindelerregende Schienen über dem Abgrund).
+- **Pitch:** „Seit Jahrhunderten geschlossen. Die Maskottchen haben Hunger und die Achterbahn fährt noch immer.“
+- **Regel:** `rule_bounce` (Sonderform Dynamik) – Extrem rutschige Schienen; Projektile federn stark ab.
+- **Form:** Breit, 3072×1024. **Licht:** 0,55.
+- **Teilgebiete:** Geisterbahn (schwarze Tunnel), Kirmesplatz (Wurfbuden), Achterbahn-Looping (Schienen im Himmel).
 - **Materialien:**
 
   | Schlüssel | Name | Art | Härte | Farbe | Wirkung |
   | --- | --- | --- | --- | --- | --- |
-  | `rost_schiene` | Achterbahnschiene | fest | hart | #805040 | beschleunigt darauf rutschende Figuren um 100 % |
-  | `zuckerwatte_rot` | Zuckerwatte | Pulver, leicht | weich | #FF80A0 | explodiert in rosafarbene Rauchwand |
-  | `helium_gas` | Helium | Gas | – | #E0FFFF | hebt alles an; ändert Klonitas Sprachfrequenz (hoch!) |
-  | `spiegel_glas` | Spiegelglas | fest | spröde | #B0C4DE | splittert in tausend Scherben; reflektiert Licht |
+  | `rost_schiene` | Achterbahnschiene | fest | hart | #805040 | beschleunigt rutschende Figuren um 60 % |
+  | `zuckerwatte_rot` | Zuckerwatte | Pulver, leicht | weich | #FF80A0 | explodiert in rosa Rauchwand |
+  | `helium_gas` | Helium | Gas | – | #E0FFFF | hebt Objekte an |
+  | `spiegel_glas` | Spiegelglas | fest | spröde | #B0C4DE | zerspringt in schneidende Scherben |
+
+- **Rang-Steigerung:**
+
+  | Rang 1 | Rang 2 | Rang 3 |
+  | --- | --- | --- |
+  | +2 Abpraller | +3 Abpraller; Schienen schneller | +4 Abpraller; leere Loren rasen durch die Gänge |
 
 - **Einheimische:** Geisterbahn-Clown (`geisterbahn_clown`), Leer-Kostüm (`leer_kostuem`), Popcorn-Drohne (`popcorn_drohne`), Autoscooter-Käfer (`autoscooter_kaefer`).
-- **Unter-Zwischenboss:** Der Losverkäufer (`los_verkaeufer`).
-- **Hauptboss:** Der Mechanische Achterbahn-Drache (`achterbahn_drache`).
-- **Zerstörbare Props:** Karussellpferd (`karussell_pferd`), Popcorn-Maschine (`popcorn_maschine`).
-- **Ereignis „Freie Fahrt“:** alle 90 s heulen alte Sirenen auf, und leere Achterbahnwagen rasen im Tiefflug quer durch den Raum.
+- **Unter-Zwischenboss:** Der Losverkäufer (`los_verkaeufer`). **Hauptboss:** Der Achterbahn-Drache (`achterbahn_drache`).
+- **Props:** Karussellpferd (`karussell_pferd`), Popcorn-Maschine (`popcorn_maschine`).
+- **Ereignis „Freie Fahrt“:** Alle 90 s heulen Sirenen auf und leere Loren rasen durch Schienenabschnitte.
 - **Proben:** Kirmes-Chip (`probe_kirmes_chip`), Glasierter Apfel (`probe_apfel`).
-- **Arena:** Ein dreidimensionales Looping-Geflecht mit frei schwingenden Gondeln als Plattformen.
+- **Arena:** Looping-Geflecht mit schwingenden Gondeln als Deckung.
