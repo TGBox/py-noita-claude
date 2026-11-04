@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 WORKSHOP_SIZE: tuple[int, int] = (640, 360)  # Zellen (Breite, Höhe)
 
-
 @dataclass(frozen=True)
 class Station:
     key: str             # "ws_portal", "ws_fabrikator", ...
@@ -25,7 +24,6 @@ class Station:
     rect: tuple[int, int, int, int]  # (x0, y0, x1, y1) in Welt-Zellen
     prompt_de: str       # Interaktionshinweis für Hover/HUD, z. B. "[E] Fabrikator öffnen"
     sprite_key: str      # Schlüssel in umgebung/ ("portal_stein", "fabrikator", ...)
-
 
 @dataclass(frozen=True)
 class WorkshopLayout:
@@ -90,35 +88,28 @@ from __future__ import annotations
 
 import random
 
-
 def creature_gold(max_hp: float, depth: int, rng: random.Random) -> int:
     """Gold-Drop einer Kreatur:
     base = max(1, int(round(max_hp / 12.0)))
     scale = 1.0 + 0.18 * max(0, depth - 1)
     return max(1, int(round(base * scale * rng.uniform(0.85, 1.15))))"""
 
-
 def pile_gold(depth: int, rng: random.Random) -> int:
     """Goldhaufen in der Welt: round((8 + 4 * depth) * rng.uniform(0.8, 1.25))."""
-
 
 def crate_gold(depth: int, rng: random.Random) -> int:
     """Beutekiste: round((18 + 7 * depth) * rng.uniform(0.85, 1.2))."""
 
-
 def mid_boss_gold(depth: int) -> int:
     """Zwischenboss-Fixbetrag: 45 + 15 * depth."""
-
 
 def module_price(rarity_tier: int, depth: int, price_factor: float = 1.0) -> int:
     """Basispreis nach Tier (1 -> 25, 2 -> 55, 3 -> 110),
     skaliert mit (1.0 + 0.12 * max(0, depth - 1)) * price_factor, mindestens 5."""
 
-
 def weapon_price(wand_tier: int, depth: int, price_factor: float = 1.0) -> int:
     """Basispreis nach Tier (1 -> 65, 2 -> 125, 3 -> 210),
     skaliert mit (1.0 + 0.15 * max(0, depth - 1)) * price_factor, mindestens 15."""
-
 
 def reroll_price(reroll_index: int, price_factor: float = 1.0) -> int:
     """Kosten für Angebots-Erneuerung: int(round((20 * (2 ** max(0, reroll_index))) * price_factor))."""
@@ -135,7 +126,6 @@ class TraderOffer:
     sample_cost: tuple[tuple[str, int], ...] = ()  # Optionaler Proben-Tauschpreis (für Krümel-Karl)
     blessed: bool = False  # Küster-Segen auf Zauberstäben
 
-
 @dataclass(frozen=True)
 class TraderSpec:
     key: str             # "npc_magenhaendler", ...
@@ -151,12 +141,12 @@ class TraderSpec:
 
 | `key` | `name` (Bibel Kap. 07) | `home_universe` | Verbindliche Sonderregel (`generate_offers` & `buy_offer`) |
 | --- | --- | --- | --- |
-| `"npc_magenhaendler"` | `"Herr Pansen"` | `"fleischwelt"` | Verkauft bevorzugt organische Payloads (`"spore"`, `"acid_orb"`, `"slime_arc"`, `"heal"`, `"blood_pact"`) + 1 Lebenskapsel (`"heart"`). |
-| `"npc_sachbearbeiterin"` | `"Frau Abheft"` | `"aktenhalde"` | Erhebt auf **jedes** Angebot pauschal `+10` Gold Bearbeitungsgebühr (`flat_fee = 10`). Beim Kauf wird `player.body.stamped_good = 30.0` gesetzt (`-20 %` Preise, keine Agenten-Aggro). |
-| `"npc_glibberhaendler"` | `"Wobbel"` | `"glibbria"` | Verkauft ausschließlich Flugbahn-/Modifikator-Module (`"bounce"`, `"split_cast"`, `"orbit"`, `"spiral"`, `"chaos"`, `"homing"`) und bunte Flaschen (`"brausesirup"`, `"kaugummi"`, `"jelly"`, `"honey"`). |
-| `"npc_ameisenhehler"` | `"Krümel-Karl"` | `"kruemelreich"` | `price_multiplier = 0.75` (`25 %` Rabatt auf Goldpreise). Zusätzlich kann jedes Modul alternativ ohne Gold gegen **`2` Proben des aktuellen Universums** (`sample_cost`) eingetauscht werden! |
-| `"npc_dj"` | `"DJ Lamelle"` | `"sporenklub"` | Verkauft Blitz-/Klang-Module (`"chain"`, `"lightning"`, `"beam"`, `"nova"`, `"echo"`). **Takt-Pflicht:** Ein Kauf in einem Universum mit aktivem Beat (`rule.beat_interval > 0`) ist nur während `rule.on_beat == True` möglich (sonst Rückgabe `False` + Sprechblase *"Nicht im Takt!"*); in der Werkstatt pulsiert ein eigener `0.75 s`-Takt (`int(run.time / 0.75) % 2 == 0`). |
-| `"npc_kuester"` | `"Bruder Flosse"` | `"abtei"` | Verkauft geweihte Zauberstäbe und Schutz-Module (`"shield"`, `"heal"`, `"ice_lance"`). Jeder bei ihm gekaufte Zauberstab ist **gesegnet** (`blessed = True`: `mana_max` wird um `+10 %` erhöht und `recharge` um `-10 %` gesenkt). |
+| `"npc_magenhaendler"` | `"Herr Pansen"` | `"fleischwelt"` | Verkauft Füllungen (`Category.PAYLOAD`), deren Material zur Fleischwelt gehört (`block.material` im Satz `"fleischwelt"`). |
+| `"npc_sachbearbeiterin"` | `"Frau Abheft"` | `"aktenhalde"` | Erhebt auf **jedes** Angebot pauschal `+10` Gold Bearbeitungsgebühr (`flat_fee = 10`). Verkauft Zünder (`Category.TRIGGER`). |
+| `"npc_glibberhaendler"` | `"Wobbel"` | `"glibbria"` | Verkauft Aufsätze (`Category.MODIFIER`). |
+| `"npc_ameisenhehler"` | `"Krümel-Karl"` | `"kruemelreich"` | `price_multiplier = 0.75` (`25 %` Rabatt auf Goldpreise). Verkauft Module aller Kategorien („billige gestohlene Module“). Zusätzlich kann jedes Modul alternativ ohne Gold gegen **`2` Proben des aktuellen Universums** (`sample_cost`) eingetauscht werden! |
+| `"npc_dj"` | `"DJ Lamelle"` | `"sporenklub"` | Verkauft Geschosse (`Category.FORM`). **Takt-Pflicht:** Ein Kauf in einem Universum mit aktivem Beat (`rule.beat_interval > 0`) ist nur während `rule.on_beat == True` möglich (sonst Rückgabe `False` + Sprechblase *"Nicht im Takt!"*); in der Werkstatt pulsiert ein eigener `0.75 s`-Takt (`int(run.time / 0.75) % 2 == 0`). |
+| `"npc_kuester"` | `"Bruder Flosse"` | `"abtei"` | Verkauft Waffen (`WandSpec`). Jede bei ihm gekaufte Waffe ist **gesegnet** (`blessed = True`: `mana_max` wird um `+10 %` erhöht und `recharge` um `-10 %` gesenkt). |
 
 ```python
 def pick_trader_for_universe(universe_key: str, rng: random.Random) -> TraderSpec:
@@ -200,7 +190,6 @@ if TYPE_CHECKING:
 
 MAX_BUILDS_PER_VISIT: int = 3
 
-
 @dataclass(frozen=True)
 class Recipe:
     block_key: str
@@ -208,13 +197,11 @@ class Recipe:
     samples: tuple[tuple[str, int], ...]  # ((sample_key, count), ...)
     gold: int
 
-
 def build_cost(block_key: str) -> Recipe:
     """Deterministisches Rezept für jeden Zauberblock in src/spells.py (BLOCKS):
     - Tier 1: 2× Universums-Probe (aus den 12 kanonischen MVP-Proben) + 15 Gold
     - Tier 2: 3× Universums-Probe + 1× Tier-2-Probe ('probe_knochen'/'probe_aether'/'probe_schatten') + 35 Gold
     - Tier 3: 4× Universums-Probe + 1× Tier-3-Probe ('probe_gold'/'probe_kern') + 75 Gold"""
-
 
 class Fabricator:
     def __init__(self) -> None:
@@ -247,7 +234,6 @@ NEXT_BOOST_KEYS: tuple[str, ...] = (
     "discount",     # -20 % Händlerpreise im nächsten Universum
 )
 
-
 @dataclass
 class MinigameResult:
     completed: bool
@@ -256,7 +242,6 @@ class MinigameResult:
     reward_sample: str = ""
     next_boost: str = ""
     message_de: str = ""
-
 
 class Minigame:
     key: str = ""

@@ -78,6 +78,7 @@ Phase M: Abnahme, Balance & Synergie-Polishing
 - **J04:** Universum `uhrwerkwueste` (Die Uhrwerkwüste - `chrono_sand`, `messing_zahnrad`, `fluessig_zeit`, `unruh_fett`)
 - **J05:** Universum `suppenmeer` (Das Endlose Suppenmeer - `bouillon`, `suppenfett`, `nudel_teig`, `pfefferdampf`)
 - **J06:** Universum `freizeitpark` (Freizeitpark Endzeit - `rost_schiene`, `zuckerwatte_rot`, `helium_gas`, `spiegel_glas`)
+- **J07:** 8 sekundäre Zufallsereignisse (aus dem MVP verschoben; Werte vor Umsetzung in der Bibel festlegen)
 
 ### Phase K: Klonita-Laborassistenz
 

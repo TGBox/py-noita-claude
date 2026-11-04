@@ -39,13 +39,10 @@ PIERCING_FORMS: frozenset[str] = frozenset({
     "nadelregen", "knochensaege", "kreissaege",
 })
 
-GRAZE_MATERIAL: dict[str, str] = {
+GRAZE_MATERIAL: dict[str, str] = {   # Kreatur -> Materialschlüssel aus src/materials.py
     "huepfling": "zuckerguss",
     "blattlaus": "zucker",
-    "rostkaefer": "rust",
     "zottenwurm": "flesh",
-    "aktenfresser": "paper",
-    "marzipanschwein": "dough",
 }
 
 SPLIT_SIZES: tuple[tuple[float, float], ...] = (
@@ -54,13 +51,11 @@ SPLIT_SIZES: tuple[tuple[float, float], ...] = (
     (0.5, 0.30),
 )
 
-
 @dataclass(frozen=True)
 class Ability:
     kind: str
     param: str = ""
     param_float: float = 0.0
-
 
 @dataclass
 class BehaviourContext:
@@ -74,7 +69,6 @@ class BehaviourContext:
     on_beat: bool = True
     rng: random.Random = field(default_factory=random.Random)
     out_events: list[tuple[str, dict[str, object]]] = field(default_factory=list)
-
 
 def handle_split_on_death(
     creature: Creature,
@@ -193,7 +187,10 @@ Alle neuen Felder besitzen Standardwerte, sodass bestehende `CreatureSpec`-Eintr
     windup_time: float = 0.40
     group_size: tuple[int, int] = (1, 1)
     abilities: tuple[Ability, ...] = ()
-    sample_drop: tuple[str, float] | None = None
+    drops_sample: str = ""          # Probenschlüssel (leer = Universums-Probe sample_key)
+    sample_chance: float = 0.35     # Bosse und Unter-Zwischenbosse: 1.0
+    weak_material: str = ""         # Geschoss-trail mit diesem Material: Schaden × 1.5
+    resist_material: str = ""       # Geschoss-trail mit diesem Material: Schaden × 0.5
     is_mid_boss: bool = False
     is_boss: bool = False
 ```
@@ -218,6 +215,11 @@ Alle neuen Felder besitzen Standardwerte, sodass bestehende `CreatureSpec`-Eintr
     anim_time: float = 0.0
     pending_shot: tuple[float, float] | None = None
 ```
+
+Bestehende Hilfen, die Tests und Karten voraussetzen (bereits im Gerüst vorhanden):
+
+- `Body.body -> Body` gibt `self` zurück, damit `player.body.hp` und `creature.body.hp` gleichwertig zu `player.hp` / `creature.hp` funktionieren.
+- `Creature.species: str` ist ein Feld mit dem Artschlüssel (`spec.key`, beim Spawnen gesetzt).
 
 Signatur von `EnemyManager.update` bleibt abwärtskompatibel über optionale Keyword-Only-Parameter:
 
@@ -245,13 +247,11 @@ def update(
 PATH_CACHE_TTL: float = 0.4
 MAX_PATH_EXPANSIONS: int = 160
 
-
 @dataclass
 class PathCacheEntry:
     path: list[tuple[int, int]] = field(default_factory=list)
     goal: tuple[int, int] = (0, 0)
     updated_at: float = -999.0
-
 
 def find_path(
     world: World,
@@ -262,7 +262,6 @@ def find_path(
 ) -> list[tuple[int, int]]:
     """Compute a coarse grid path from start to goal cell for loco ('walk', 'fly', 'swim')."""
     ...
-
 
 def next_waypoint(
     world: World,
@@ -276,7 +275,6 @@ def next_waypoint(
 ) -> tuple[float, float]:
     """Return the next world-pixel waypoint towards (goal_x, goal_y), updating cache if stale."""
     ...
-
 
 class PathFollower:
     def __init__(self, repath_interval: float = PATH_CACHE_TTL) -> None: ...
@@ -293,63 +291,78 @@ class PathFollower:
 
 ## V4 Fraktionen (`src/factions.py`)
 
+Grundlage: Bibel 02 „Fraktionen“. Fraktionen regeln **nur Kreatur gegen Kreatur** (und Agenten/böse Ichs gegen die Spielerin). Ob eine Einheimische die Spielerin angreift, entscheidet allein ihre Haltung (`V1a`), nicht die Fraktion.
+
 ```python
-FACTIONS: tuple[str, ...] = (
-    "spieler",
-    "wildnis",
-    "fleischwelt",
-    "aktenhalde",
-    "glibbria",
-    "kruemelreich",
-    "sporenklub",
-    "abtei",
-    "schrott",
-    "pilze",
-    "parasiten",
-    "behoerde",
-    "backwerk",
-    "tiefsee",
-    "insekten",
-    "automaten",
-    "zirkus",
-    "haendler",
-    "boese_ichs",
-)
+from __future__ import annotations
 
-HATE_MATRIX: dict[str, frozenset[str]] = {...}
+# 5 Kern-Fraktionen + 6 Universums-Fraktionen (MVP) = 11.
+SPIELER = "spieler"
+WILDNIS = "wildnis"          # Standard für Kreaturen ohne Universum (Sandbox, Alt-Kreaturen)
+HAENDLER = "haendler"
+BEHOERDE = "behoerde"        # Agenten, Ober-Cloita, Rat
+BOESE_ICHS = "boese_ichs"
 
+UNIVERSE_FACTIONS: dict[str, str] = {   # Universum -> Fraktion seiner Einheimischen
+    "fleischwelt": "parasiten",
+    "aktenhalde": "akten",
+    "glibbria": "gelee",
+    "kruemelreich": "insekten",
+    "sporenklub": "pilze",
+    "abtei": "tiefsee",
+}
+NATIVE_FACTIONS: tuple[str, ...] = tuple(UNIVERSE_FACTIONS.values())
+
+FACTIONS: tuple[str, ...] = (SPIELER, WILDNIS, HAENDLER, BEHOERDE, BOESE_ICHS, *NATIVE_FACTIONS)
+
+_EVERYONE = frozenset(FACTIONS)
+HATE_MATRIX: dict[str, frozenset[str]] = {
+    SPIELER: frozenset({BEHOERDE, BOESE_ICHS}),
+    WILDNIS: frozenset({BEHOERDE, BOESE_ICHS}),
+    HAENDLER: frozenset({BEHOERDE, BOESE_ICHS}),
+    BEHOERDE: _EVERYONE - {BEHOERDE, BOESE_ICHS},
+    BOESE_ICHS: _EVERYONE - {BOESE_ICHS, BEHOERDE},
+    **{
+        f: frozenset({BEHOERDE, BOESE_ICHS, *(set(NATIVE_FACTIONS) - {f})})
+        for f in NATIVE_FACTIONS
+    },
+}
 
 def are_hostile(
     faction_a: str,
     faction_b: str,
     grudges: set[tuple[str, str]] | None = None,
 ) -> bool:
-    """Return True if faction_a and faction_b are hostile by default or via grudges."""
+    """True if a and b fight each other by default (HATE_MATRIX) or via a recorded grudge."""
     ...
-
 
 def record_grudge(
     grudges: set[tuple[str, str]],
     faction_a: str,
     faction_b: str,
 ) -> None:
-    """Record a symmetric blood feud between faction_a and faction_b."""
+    """Record a symmetric grudge: adds (a, b) and (b, a); ignores a == b."""
     ...
 
-
-class Grudges:
-    """Objektorientierter Wrapper um ein symmetrisches Blutfehden-Set."""
-    def __init__(self) -> None: ...
-    def add(self, faction_a: str, faction_b: str) -> None: ...
-    def has(self, faction_a: str, faction_b: str) -> bool: ...
-    def to_data(self) -> list[list[str]]: ...
-    @classmethod
-    def from_data(cls, data: list[list[str]]) -> Grudges: ...
+def hostile(a: Creature, b: Creature, grudges: set[tuple[str, str]] | None = None) -> bool:
+    """Creature vs. creature: faction rule, plus species-level grudges (collateral damage)."""
+    ...
 ```
 
-- `"haendler"` ist von Natur aus gegen **niemanden** feindselig (wird erst durch `record_grudge` nach Angriff feindselig).
-- `"behoerde"` ist standardmäßig feindselig gegenüber `"spieler"` und Wildnis-/Universums-Fraktionen.
-- `record_grudge(grudges, a, b)` trägt `(a, b)` und `(b, a)` symmetrisch ein (ignoriert `a == b`).
+Regeln (verbindlich, ein Test je Zeile in `tests/spec/test_phase_a.py -k a11`):
+
+- `are_hostile(f, f)` ist immer `False`.
+- `are_hostile(a, b)` ist `True`, wenn `b in HATE_MATRIX.get(a, ∅)` **oder** `a in HATE_MATRIX.get(b, ∅)`, sonst `True` nur, wenn `(a, b) in grudges`.
+- Unbekannte Fraktionsschlüssel verhalten sich wie `"wildnis"`.
+- Folgen aus der Matrix (Bibel 02):
+  - Einheimische **desselben** Universums sind untereinander friedlich.
+  - Einheimische **verschiedener** Universen bekämpfen sich (sie treffen sich nur in Parallelwelten, Minispielen oder durch Beschwörungen), z. B. `are_hostile("pilze", "insekten")`.
+  - Die Behörde ist mit allen verfeindet außer mit den bösen Ichs; die bösen Ichs sind mit allen verfeindet außer mit der Behörde (sie gehören zum Rat).
+  - Händler und Wildnis sind von sich aus mit niemandem außer Behörde und bösen Ichs verfeindet; `are_hostile("haendler", "spieler")` wird erst nach `record_grudge` wahr.
+- `hostile(a, b, grudges)`: `False`, wenn `a is b`, eine Seite `spec.prop` ist oder eine Seite die Haltung `"trader"` hat; sonst `are_hostile(a.spec.faction, b.spec.faction, grudges)` **oder** `(a.spec.key, b.spec.key) in grudges` (Streit zwischen Arten nach Kollateraltreffer, Bibel 02).
+- `Run.grudges: set[tuple[str, str]]` enthält Fraktions- **und** Artenpaare (beide Schlüsselräume sind disjunkt); gespeichert als sortierte Liste von `[a, b]`-Paaren (V23).
+- In `src/projectiles.py` trägt `Projectile` neu `owner_species: str = ""` und `source_pos: tuple[float, float] | None = None`. Trifft ein Gegnergeschoss eine andere Kreatur als den Schützen (`owner_species != victim.spec.key`), ruft `Run` `record_grudge(run.grudges, owner_species, victim.spec.key)` auf.
+- Pool-Universen (Phase J, `docs/erweiterung/03`) ergänzen `UNIVERSE_FACTIONS` erst, wenn sie gebaut werden.
 
 ---
 
@@ -369,26 +382,33 @@ Alle als `float = 0.0` (Restdauer in Sekunden), in `Body.place` mit `0.0` initia
 | `frozen: float = 0.0` | Unterkühlt: Bewegung `× 0.6` |
 | `charged: float = 0.0` | Elektrisch geladen: nächster Kontakt/Treffer entlädt Stromschaden |
 | `befogged: float = 0.0` | Benebelt (`weihrauch`): Zielstreuung von Kreaturen `× 2.0` |
+| `refresh_time: float = 0.0` | Erfrischt (Wasser): Flux lädt `× 1.2` schneller |
+| `lubed_time: float = 0.0` | Geschmiert (Öl, Talg): Zauber-Verzögerung `× 0.85` |
+| `fizzy_time: float = 0.0` | Sprudelnd (Brausesirup): Sprungkraft `× 1.5` |
+| `haste_time: float = 0.0` | Aufgedreht (Neonsaft): Lauftempo `× 1.3` |
+| `ink_sight: float = 0.0` | Tintenblick (Tinte): Kreaturen werden durch Wände gezeichnet |
+
+`Body.damage_factor() -> float` liefert den Faktor für **verursachten** Schaden: `1.2` bei `stamped_good > 0`, `0.8` bei `stamped_bad > 0`, sonst `1.0` (Bibel 02 „Status-Effekte“). Erlittener Schaden wird durch keinen dieser Timer verändert.
 
 ### 2. Trink-Schübe (`Flask.drink` in `src/flask.py`)
 
-`Flask.drink(target: Body | Player, blood_heals: bool = False) -> str` unterstützt sowohl die kanonischen Bibel-Flüssigkeiten als auch die allgemeinen Flüssigkeits-Schlüssel:
+`Flask.drink(body: Body, blood_heals: bool = False) -> str` setzt genau die Schübe aus Bibel 06 („Flüssigkeiten: Schübe beim Trinken“). Ein Schluck sind `SIP = 30` Zellen; bei weniger Inhalt wirken Schaden und Flux anteilig, Timer voll. **Keine Flüssigkeit heilt** – einzige Ausnahme: `"blood"` mit `blood_heals=True` (Selbstexperiment „Blutsauger“).
 
-| Material-Key | Sofortwirkung auf `body` / `player` |
+| Material-Key | Wirkung |
 | --- | --- |
-| `"water"` | `burning = 0.0`, `wet = max(wet, 3.0)`, heilt leicht / setzt `refresh_time = 15.0` |
-| `"blood"` | heilt `+6.0..15.0 HP` (mit `blood_heals` oder direkt), löscht `poisoned = 0.0` |
-| `"acid"` | verursacht Säureschaden (`hurt`) |
-| `"oil"`, `"tallow"` | setzt `oily = 8.0`, `lubed_time = 15.0` |
-| `"lava"`, `"magma"` | verursacht Feuerschaden (`hurt`) und setzt `burning > 0` |
-| `"slime"`, `"mucus"` | löscht `burning = 0.0`, setzt `sticky` / milde Heilung |
-| `"pus"` | setzt `poisoned = 8.0` |
-| `"fluxschnaps"`, `"broth"` | setzt `drunk > 0` (und heilt bei `"broth"`) |
-| `"tinte"`, `"ink"` | setzt `marked_time > 0` / `ink_sight = 20.0` |
-| `"stempelfarbe"` | setzt `stamped_good = 15.0`, `stamped_bad = 0.0` |
-| `"siegellack"` | verursacht Schaden und setzt `sticky = 5.0` |
-| `"brausesirup"` | setzt `fizzy_time = 20.0` |
-| `"kaugummi"`, `"jelly"` | setzt `sticky > 0` |
-| `"honig"`, `"honey"` | heilt / gewährt `instant_flux += 100.0` und setzt `sticky = 3.0` |
-| `"karamell"` | verursacht leichten Schaden und setzt `sticky = 5.0` |
-| `"neonsaft"`, `"milk"`, `"wax"`, `"brine"`, `"sap"`, `"mercury"` | gewährt den jeweiligen Spezialschub (`haste_time`, Heilung, Rüstung, `charged`, `sticky`, `frozen`) |
+| `"water"` | `burning = 0.0`, `refresh_time = 15.0` |
+| `"oil"` | `oily = 8.0`, `lubed_time = 15.0` |
+| `"tallow"` | `oily = 8.0`, `lubed_time = 15.0` |
+| `"fluxschnaps"` | `drunk = 20.0` |
+| `"acid"` | `hurt(25.0)` |
+| `"blood"` | nichts; mit `blood_heals=True`: `hp += BLOOD_HEAL` (höchstens `max_hp`) |
+| `"tinte"` | `ink_sight = 20.0` |
+| `"stempelfarbe"` | `stamped_good = 15.0`, `stamped_bad = 0.0` |
+| `"siegellack"` | `hurt(15.0)` |
+| `"brausesirup"` | `fizzy_time = 20.0` |
+| `"kaugummi"` | `sticky = 5.0` |
+| `"honig"` | Spieler: `mana = min(max_mana, mana + 100.0)` (Flux sofort +100) |
+| `"karamell"` | `sticky = 5.0`, `hurt(10.0)` |
+| `"neonsaft"` | `haste_time = 20.0` |
+
+Jede andere Flüssigkeit: Meldung „Es schmeckt nach nichts.“, keine Wirkung. Leuchtsporen werden nicht getrunken, sondern eingeatmet (`drunk`, bei Gaskontakt in `Body.apply_environment`).

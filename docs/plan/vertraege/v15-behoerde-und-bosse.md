@@ -29,7 +29,6 @@ AGENT_ALIASES: dict[str, str] = {
     "agent_sachbearbeiter": "agent_streife",
 }
 
-
 @dataclass
 class Wanted:
     level: float = 0.0
@@ -75,10 +74,8 @@ class Wanted:
     @classmethod
     def from_data(cls, data: dict[str, object] | None) -> Wanted: ...
 
-
 def agent_species_for_stars(stars: int) -> list[str]:
     """Deterministische Liste der zu spawnenden Agenten-Spezies für gegebene Sterne (0..5)."""
-
 
 def spawn_agents(run: Run, count: int | None = None) -> list[Creature]:
     """Spawnt Behörden-Agenten in der Nähe von run.level.spawn (Mindestabstand 48 px,
@@ -112,7 +109,6 @@ if TYPE_CHECKING:
     from ..enemies import Creature
     from ..run import Run
 
-
 @dataclass(frozen=True)
 class BossPhase:
     index: int
@@ -123,8 +119,7 @@ class BossPhase:
     speed_scale: float = 1.0
     summon_species: str = ""
     summon_count: int = 0
-    arena_hazard: str = ""       # "", "acid_rain", "steam_vents", "stamp_barrage", "frost_floor", "electric_arcs", "jelly_bounce"
-
+    arena_hazard: str = ""       # "" oder einer der Schlüssel in ARENA_HAZARDS (unten)
 
 class BossScript:
     """Basisklasse für alle 6 Universums-Zwischengegner, 3 Bösen Ichs und Ober-Cloita."""
@@ -145,10 +140,10 @@ class BossScript:
     def tick_phase(self, dt: float, run: Run) -> None: ...
     def on_death(self, run: Run) -> None: ...
 
+ARENA_HAZARDS: tuple[str, ...] = ("acid_rain", "magma_veins", "sealing_wax", "closing_walls", "rising_water", "electric_water", "bass_drop", "spore_cloud")
 
 def apply_arena_hazard(hazard: str, dt: float, boss: Creature, run: Run) -> None:
     """Wendet periodische Arena-Gefahren während eines Bosskampfs an."""
-
 
 def make_boss_script(boss: Creature) -> BossScript | None:
     """Fabrikfunktion: liefert die passende BossScript-Instanz für boss.species
@@ -169,16 +164,16 @@ def make_boss_script(boss: Creature) -> BossScript | None:
 
 ### Die 6 kanonischen Universums-Zwischengegner in `src/bosses/` (Bibel Kap. 03 & 05)
 
-| `boss_key` | Universum | Deutscher Name | Phasen-Kernthema (`arena_hazard` / Summons) |
-| --- | --- | --- | --- |
-| `"weltenherz"` | `fleischwelt` | `"Das Weltenherz"` | `"acid_rain"`, Blutpuls, ruft `zottenwurm` / `saeurespucker` |
-| `"oberstempler"` | `aktenhalde` | `"Der Oberstempler"` | `"stamp_barrage"`, Stempel-Schockwellen, ruft `aktenfresser` / `agent_streife` |
-| `"mutter_glibber"` | `glibbria` | `"Mutter Glibber"` | `"jelly_bounce"`, Brause-Eruptionen, teilt `glibberteiler` |
-| `"ameisenkoenigin"` | `kruemelreich` | `"Die Ameisenkönigin"` | `"steam_vents"`, Pheromon-Fokus, ruft `ameisenkrieger` |
-| `"dj_myzel"` | `sporenklub` | `"DJ Myzel"` | `"electric_arcs"`, Bass-Schallwellen im Takt, ruft `sporentraeger` |
-| `"abt_kieme"` | `abtei` | `"Abt Kieme"` | `"frost_floor"`, Glocken-Schallwellen, ruft `moenchsfisch`-Chor |
+Phasen genau nach Bibel 05 („Zwischengegner“); Phase 1 gilt ab 100 %, Phase 2 ab 66 %, Phase 3 ab 33 % Leben. Zuordnung der Arena-Gefahren: Weltenherz P2 `magma_veins`; Oberstempler P1 `sealing_wax`, P3 `closing_walls`; Ameisenkönigin P3 `acid_rain`; DJ Myzel P2 `bass_drop`, P3 `spore_cloud`; Abt Kieme P2 `rising_water`, P3 `electric_water`. Mutter Glibber nutzt keine Arena-Gefahr.
 
-*(Zusätzlich akzeptiert `make_boss_script` als Rückwärtskompatibilitäts-Aliase auch die Pool-/Legacy-Schlüssel `"pfuetzenkoenig"`, `"oberamtsrat"`, `"zirkusdirektor"`, `"koenigin_mandibula"`, `"muttermyzel"`, `"abt_nautilus"`, `"schrottpresse"`, `"hochzeitstorte"`, `"transformator"`).*
+| `boss_key` | Universum | Deutscher Name | Phase 1 | Phase 2 | Phase 3 |
+| --- | --- | --- | --- | --- | --- |
+| `"weltenherz"` | `fleischwelt` | `"Das Weltenherz"` | Blutfontänen im Herzschlag | Glutblut-Adern (`"magma"`) brechen auf, Fleisch wächst schneller nach | reißt sich los, rollt; ruft `fleischmade` |
+| `"oberstempler"` | `aktenhalde` | `"Der Oberstempler"` | Stempelschläge (Ausholen 0,8 s), `"siegellack"`-Pfützen | verfolgende Formular-Geschosse; ruft 2 `agent_streife` | Aktendeckel-Wände fahren von beiden Seiten heran |
+| `"mutter_glibber"` | `glibbria` | `"Mutter Glibber"` | Sprung mit Druckwelle (Ausholen 0,7 s) | teilt sich bei großem Treffer (bis 4 Kinder à 80 Leben) | zieht die Kinder ein und rollt |
+| `"ameisenkoenigin"` | `kruemelreich` | `"Die Ameisenkönigin"` | legt Eier (→ `ameisenkrieger`), Säurestrahl | gräbt sich um, taucht nach Bodenbeben wieder auf | fliegt, Säureregen |
+| `"dj_myzel"` | `sporenklub` | `"DJ Myzel"` | Schallringe im Takt | alle 8 Beats Bass-Drop, Tanzschwarm als Schild | zerstört das Pult, Sporenwolken (`drunk`) |
+| `"abt_kieme"` | `abtei` | `"Abt Kieme"` | Orgelstöße durch Wasser, `moenchsfisch`-Chor | flutet die Arena schrittweise | Glockenschläge elektrisieren das Wasser |
 
 ---
 

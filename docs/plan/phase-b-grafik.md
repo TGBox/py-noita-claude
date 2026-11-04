@@ -1,9 +1,11 @@
-# Phase B — Prozedurale Grafik & Sprite-Sheets (36 atomare S-Karten: `B01`–`B36`)
+# Phase B — Prozedurale Grafik & Sprite-Sheets (33 atomare S-Karten: `B01`–`B36`; `B06`, `B10`, `B13` entfallen)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_b.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Grafik-Karten halten die Qualitätsregeln aus [v05-sprites-und-teile.md](vertraege/v05-sprites-und-teile.md) (`V8`) ein: mindestens 5 Farbtöne pro Sprite, dunkle Kontur `OUTLINE_DARK`, `> 20 %` nicht-transparente Pixel, `.png` + `.json` Paar.
 
 ---
+
+> `B06`, `B10`, `B13` (Kreaturen der Pool-Universen `schrott`, `kuchen`, `spule`) sind nach Phase J verschoben. Die frei gewordenen IDs werden nicht neu vergeben.
 
 ## B01 — Spielerin-Sprite-Sheet (`charaktere/spielerin`) (`V5`, `V8`)
 
@@ -76,352 +78,313 @@
 
 ---
 
-## B06 — Kreaturen-Sheets Universum 1 (`schrott`: 4 Spezies) (`V8`)
+## B07 — Kreaturen-Sheets Sporenklub (`sporenklub`: 4 Einheimische) (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A22`
 - **Ziel-Dateien:** `tools/sprites_creatures.py`, `tools/sprites.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`schrott`), `tests/spec/test_phase_b.py` (`-k b06`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` (Abschnitt „Sporenklub“), `src/universes/catalog.py` (`sporenklub`), `tests/spec/test_phase_b.py` (`-k b07`)
 - **Aufgabe:**
-  1. Erstelle `tools/sprites_creatures.py` (und binde es in `tools/sprites.py` ein) mit den 4 Kreaturen-Sheets für `schrott` unter `kreaturen/`: `"rostkaefer"`, `"schweissimp"`, `"magnetwurm"`, `"schrottgolem"` (inkl. `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"` und Glühpunkten für Schweißflamme/Magnetkern).
+  1. Erstelle `tools/sprites_creatures.py` mit `build_creature_sheets(out_dir, universe_key=None)` (und binde es in `tools/sprites.py` ein). die 4 Kreaturen-Sheets für `sporenklub` unter `kreaturen/`: `"tuersteherpilz"`, `"sporenschnorrer"`, `"sporenwerfer"`, `"leuchtmotte"` (Zustände `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`; Leuchtpunkte (`glow`) bei `"leuchtmotte"` und `"sporenwerfer"`). Aussehen und Größe nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Alle 4 Sheets unter `kreaturen/` existieren und bestehen den `V8`-Qualitätstest.
-- **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b06 -q && uv run pytest --ignore=tests/spec -q`
-
----
-
-## B07 — Kreaturen-Sheets Universum 2 (`myzel`: 4 Spezies) (`V8`)
-
-- **Größe:** S
-- **Abhängigkeiten:** `B06`
-- **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`myzel`), `tests/spec/test_phase_b.py` (`-k b07`)
-- **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `myzel`: `"sporenwerfer"`, `"leuchtmotte"`, `"kappenschleicher"`, `"tuersteherpilz"` (inkl. Biolumineszenz-`glow` bei `"leuchtmotte"` und `"sporenwerfer"`).
-- **Akzeptanzkriterien:**
-  - Alle 4 `myzel`-Sheets unter `kreaturen/` existieren, `"leuchtmotte"` hat `len(meta.glow) >= 1`, und alle erfüllen `V8`.
+  - Für jede Art in `UNIVERSES["sporenklub"].creatures` existiert `kreaturen/<key>.png` + `.json` und erfüllt `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b07 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B08 — Kreaturen-Sheets Universum 3 (`magen`: 4 Spezies) (`V8`)
+## B08 — Kreaturen-Sheets Fleischwelt (`fleischwelt`: 4 Einheimische) (`V8`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `B06`
+- **Abhängigkeiten:** `B07`
 - **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`magen`), `tests/spec/test_phase_b.py` (`-k b08`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` (Abschnitt „Fleischwelt“), `src/universes/catalog.py` (`fleischwelt`), `tests/spec/test_phase_b.py` (`-k b08`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `magen`: `"saeurespucker"`, `"zottenwurm"`, `"gallenblase"`, `"bandwurm_kopf"`.
+  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `fleischwelt` unter `kreaturen/`: `"fleischmade"`, `"blutegel"`, `"saeurespucker"`, `"zottenwurm"` (Zustände `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`; Sonderzustände `"hang"`/`"latched"` beim `"blutegel"`, `"burrow_out"` bei der `"fleischmade"`). Aussehen und Größe nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Alle 4 `magen`-Sheets unter `kreaturen/` existieren und erfüllen `V8`.
+  - Für jede Art in `UNIVERSES["fleischwelt"].creatures` existiert `kreaturen/<key>.png` + `.json` und erfüllt `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b08 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B09 — Kreaturen-Sheets Universum 4 (`amt`: 4 Spezies) (`V8`)
+## B09 — Kreaturen-Sheets Aktenhalde (`aktenhalde`: 4 Einheimische) (`V8`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `B06`
+- **Abhängigkeiten:** `B07`
 - **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`amt`), `tests/spec/test_phase_b.py` (`-k b09`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` (Abschnitt „Aktenhalde“), `src/universes/catalog.py` (`aktenhalde`), `tests/spec/test_phase_b.py` (`-k b09`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `amt`: `"stempelkaefer"`, `"aktenfresser"`, `"paragraphenreiter"`, `"kaffeegolem"`.
+  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `aktenhalde` unter `kreaturen/`: `"aktenfresser"`, `"stempler"`, `"paragraphenreiter"`, `"kaffeegolem"` (Zustände `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`; Sonderzustände `"dig"` (Aktenfresser) und `"stamp"` (Stempler)). Aussehen und Größe nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Alle 4 `amt`-Sheets unter `kreaturen/` existieren und erfüllen `V8`.
+  - Für jede Art in `UNIVERSES["aktenhalde"].creatures` existiert `kreaturen/<key>.png` + `.json` und erfüllt `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b09 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B10 — Kreaturen-Sheets Universum 5 (`kuchen`: 4 Spezies) (`V8`)
+## B11 — Kreaturen-Sheets Versunkene Abtei (`abtei`: 4 Einheimische) (`V8`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `B06`
+- **Abhängigkeiten:** `B07`
 - **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`kuchen`), `tests/spec/test_phase_b.py` (`-k b10`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` (Abschnitt „Versunkene Abtei“), `src/universes/catalog.py` (`abtei`), `tests/spec/test_phase_b.py` (`-k b11`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `kuchen`: `"zuckerspinne"`, `"kerzenkobold"` (mit Kerzenflammen-`glow`), `"marzipanschwein"`, `"baiser_geist"`.
+  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `abtei` unter `kreaturen/`: `"moenchsfisch"`, `"orgelaal"`, `"glockenqualle"`, `"korallenwaechter"` (Zustände `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`; Leuchtpunkte bei `"glockenqualle"`; der `"orgelaal"` als Segment-Sheet für `Chain`). Aussehen und Größe nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Alle 4 `kuchen`-Sheets unter `kreaturen/` existieren, `"kerzenkobold"` hat `glow`, und alle erfüllen `V8`.
-- **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b10 -q && uv run pytest --ignore=tests/spec -q`
-
----
-
-## B11 — Kreaturen-Sheets Universum 6 (`abtei`: 4 Spezies) (`V8`)
-
-- **Größe:** S
-- **Abhängigkeiten:** `B06`
-- **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`abtei`), `tests/spec/test_phase_b.py` (`-k b11`)
-- **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `abtei`: `"moenchsfisch"`, `"glockenqualle"` (mit Biolumineszenz-`glow`), `"korallenwaechter"`, `"weihrauch_aal"`.
-- **Akzeptanzkriterien:**
-  - Alle 4 `abtei`-Sheets unter `kreaturen/` existieren und erfüllen `V8`.
+  - Für jede Art in `UNIVERSES["abtei"].creatures` existiert `kreaturen/<key>.png` + `.json` und erfüllt `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b11 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B12 — Kreaturen-Sheets Universum 7 (`ameisen`: 4 Spezies) (`V8`)
+## B12 — Kreaturen-Sheets Krümelreich (`kruemelreich`: 4 Einheimische) (`V8`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `B06`
+- **Abhängigkeiten:** `B07`
 - **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`ameisen`), `tests/spec/test_phase_b.py` (`-k b12`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` (Abschnitt „Krümelreich“), `src/universes/catalog.py` (`kruemelreich`), `tests/spec/test_phase_b.py` (`-k b12`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `ameisen`: `"arbeiterameise"`, `"ameisensoldat"`, `"harzspucker"`, `"blattlaus"`.
+  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `kruemelreich` unter `kreaturen/`: `"ameisenkrieger"`, `"blattlaus"`, `"arbeiterameise"`, `"harzspucker"` (Zustände `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`; bernsteinfarbener Leuchtakzent im Ausholen des `"harzspucker"`). Aussehen und Größe nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Alle 4 `ameisen`-Sheets unter `kreaturen/` existieren und erfüllen `V8`.
+  - Für jede Art in `UNIVERSES["kruemelreich"].creatures` existiert `kreaturen/<key>.png` + `.json` und erfüllt `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b12 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B13 — Kreaturen-Sheets Universum 8 (`spule`: 4 Spezies) (`V8`)
+## B14 — Kreaturen-Sheets Glibbria (`glibbria`: 4 Einheimische) (`V8`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `B06`
+- **Abhängigkeiten:** `B07`
 - **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`spule`), `tests/spec/test_phase_b.py` (`-k b13`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` (Abschnitt „Glibbria“), `src/universes/catalog.py` (`glibbria`), `tests/spec/test_phase_b.py` (`-k b14`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `spule`: `"funkenhornisse"`, `"spulenkrabbe"`, `"kupferschlange"`, `"kondensator_geist"` (mit Elektro-`glow`).
+  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `glibbria` unter `kreaturen/`: `"huepfling"`, `"glibberteiler"`, `"zuckerwatte_wolke"`, `"konfetti_kanone"` (Zustände `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"`; Sonderzustand `"squash"` beim `"huepfling"`; `"glibberteiler"` in den 3 Größen aus `SPLIT_SIZES`). Aussehen und Größe nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Alle 4 `spule`-Sheets unter `kreaturen/` existieren, `"funkenhornisse"` und `"kondensator_geist"` besitzen `glow`, und alle erfüllen `V8`.
-- **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b13 -q && uv run pytest --ignore=tests/spec -q`
-
----
-
-## B14 — Kreaturen-Sheets Universum 9 (`glibber`: 4 Spezies) + Legacy-Kreaturen (`V8`)
-
-- **Größe:** S
-- **Abhängigkeiten:** `B06`
-- **Ziel-Dateien:** `tools/sprites_creatures.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py` (`glibber`), `src/enemies.py`, `tests/spec/test_phase_b.py` (`-k b14`)
-- **Aufgabe:**
-  1. Ergänze in `tools/sprites_creatures.py` die 4 Kreaturen-Sheets für `glibber`: `"quallenhund"`, `"zuckerwatte_wolke"`, `"trampolin_frosch"`, `"konfetti_kanone"` sowie kompakte Sheets für die 9 bestehenden Basis-Spezies aus `src/enemies.py` (`"beetle"`, `"moth"`, `"imp"`, `"leech"`, `"crawler"`, `"golem"`, `"wisp"`, `"turret"`, `"weaver"`).
-- **Akzeptanzkriterien:**
-  - Alle 36 Universums-Kreaturen + 9 Basis-Spezies existieren als `.png`/`.json` unter `kreaturen/` und erfüllen `V8`.
+  - Für jede Art in `UNIVERSES["glibbria"].creatures` existiert `kreaturen/<key>.png` + `.json` und erfüllt `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b14 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B15 — Zwischenboss-Sheets Teil 1 (`schrott`, `myzel`, `magen`, `amt`, `kuchen`) (`V8`)
+## B15 — Unter-Zwischenboss-Sheets Teil 1 (`pfuetzenwurm`, `aktenwolf`, `manege_clown`) (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A22`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`, `tools/sprites.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py`, `tests/spec/test_phase_b.py` (`-k b15`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` („Unter-Zwischenbosse“), `tests/spec/test_phase_b.py` (`-k b15`)
 - **Aufgabe:**
-  1. Erstelle `tools/sprites_bosses.py` (und binde es in `tools/sprites.py` ein) mit den ersten 5 Zwischenboss-Sheets (`28×28` bis `32×32` px) unter `bosse/`: `"gabelstapler_krabbe"` (`schrott`), `"sporenherz"` (`myzel`), `"pfuetzenwurm"` (`magen`), `"aktenwolf"` (`amt`), `"marzipan_ritter"` (`kuchen`).
+  1. Erstelle `tools/sprites_bosses.py` mit `build_mid_boss_sheets(out_dir)` (und binde es in `tools/sprites.py` ein) und den Sheets (`28×28` bis `32×32` px) unter `bosse/` für `"pfuetzenwurm"` (Fleischwelt), `"aktenwolf"` (Aktenhalde) und `"manege_clown"` (Glibbria).
 - **Akzeptanzkriterien:**
-  - Alle 5 Zwischenboss-Sheets existieren unter `bosse/`, haben `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"` und erfüllen `V8`.
+  - Alle 3 Sheets existieren unter `bosse/`, haben `"idle"`, `"walk"`, `"windup"`, `"attack"`, `"hurt"` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b15 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B16 — Zwischenboss-Sheets Teil 2 (`abtei`, `ameisen`, `spule`, `glibber` + `"warden"`) (`V8`)
+## B16 — Unter-Zwischenboss-Sheets Teil 2 (`harzgeneral`, `sporenherz`, `glockenwaechter`) + `warden` (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B15`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/universes/catalog.py`, `tests/spec/test_phase_b.py` (`-k b16`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/05-gegner.md` („Unter-Zwischenbosse“), `tests/spec/test_phase_b.py` (`-k b16`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_bosses.py` die restlichen 4 Zwischenboss-Sheets unter `bosse/`: `"glockenwaechter"` (`abtei`), `"harzgeneral"` (`ameisen`), `"spulenmeister"` (`spule`), `"manege_clown"` (`glibber`) sowie das Sheet für den Legacy-Boss `"warden"`.
+  1. Ergänze in `build_mid_boss_sheets` die Sheets unter `bosse/` für `"harzgeneral"` (Krümelreich), `"sporenherz"` (Sporenklub), `"glockenwaechter"` (Versunkene Abtei) sowie für den Bestands-Boss `"warden"`.
 - **Akzeptanzkriterien:**
-  - Alle 9 Zwischenbosse aus `[u.mid_boss for u in UNIVERSES.values()]` + `"warden"` existieren unter `bosse/` und erfüllen `V8`.
+  - Alle 6 `u.mid_boss` aus `UNIVERSES` und `"warden"` haben ein Sheet unter `bosse/`, das `V8` erfüllt.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b16 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B17 — Zwischengegner- & Endboss-Sheets Teil 1 (`weltenherz`, `oberstempler`, `mutter_glibber` + Pool-Bosse) (`V7`, `V8`)
+## B17 — Zwischengegner-Sheets (`weltenherz`, `oberstempler`) (`V7`, `V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A20`, `B15`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`, `src/procbody.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `tests/spec/test_phase_b.py` (`-k b17`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/bibel/05-gegner.md` („Zwischengegner“, „Große Kreaturen“), `tests/spec/test_phase_b.py` (`-k b17`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets (`36×36` bis `48×48` px) unter `bosse/` für `"weltenherz"` / `"pfuetzenkoenig"`, `"oberstempler"` / `"oberamtsrat"`, `"mutter_glibber"` / `"zirkusdirektor"`, `"schrottpresse"` und `"muttermyzel"` und trage ihre `PartLayout`-Definitionen in `RIG_LAYOUTS` (`src/procbody.py`) ein.
+  1. Ergänze in `tools/sprites_bosses.py` die Funktion `build_end_boss_sheets(out_dir)` mit den Haupt- und Körperteil-Sheets (`36×36` bis `96×64` px) unter `bosse/` für `"weltenherz"`, `"oberstempler"` und trage ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`) ein. Aussehen, Größe und Teile nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Sheets und `RIG_LAYOUTS`-Einträge für die genannten Bosse existieren und bestehen den `V8`-Qualitätstest.
+  - Für `"weltenherz"`, `"oberstempler"` existieren `bosse/<key>`-Sheets nach `V8` und Einträge in `RIG_LAYOUTS`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b17 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B18 — Zwischengegner- & Endboss-Sheets Teil 2 (`ameisenkoenigin`, `dj_myzel`, `abt_kieme` + Pool-Bosse) (`V7`, `V8`)
+## B18 — Zwischengegner-Sheets (`mutter_glibber`, `dj_myzel`) (`V7`, `V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B17`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`, `src/procbody.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `tests/spec/test_phase_b.py` (`-k b18`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/bibel/05-gegner.md` („Zwischengegner“, „Große Kreaturen“), `tests/spec/test_phase_b.py` (`-k b18`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets unter `bosse/` für `"ameisenkoenigin"` / `"koenigin_mandibula"`, `"dj_myzel"`, `"abt_kieme"` / `"abt_nautilus"` und `"hochzeitstorte"` (3 abschmelzbare Torten-Etagen) und registriere ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`).
+  1. Ergänze in `build_end_boss_sheets` die Haupt- und Körperteil-Sheets (`36×36` bis `96×64` px) unter `bosse/` für `"mutter_glibber"`, `"dj_myzel"` und trage ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`) ein. Aussehen, Größe und Teile nach Bibel 04/05.
 - **Akzeptanzkriterien:**
-  - Sheets und `RIG_LAYOUTS`-Einträge für `"oberstempler"`/`"oberamtsrat"`, `"hochzeitstorte"` (mit 3 Etagen-Teilen) und `"abt_kieme"`/`"abt_nautilus"` existieren und erfüllen `V8`.
+  - Für `"mutter_glibber"`, `"dj_myzel"` existieren `bosse/<key>`-Sheets nach `V8` und Einträge in `RIG_LAYOUTS`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b18 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B19 — Zwischengegner-, Großkreaturen- & Endboss-Sheets Teil 3 (`trampolinwal`, `kirchenkrake`, `transformator`, `zirkusdirektor`) (`V7`, `V8`)
+## B19 — Zwischengegner-Sheets (`ameisenkoenigin`, `abt_kieme` + Großkreaturen) (`V7`, `V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B18`
 - **Ziel-Dateien:** `tools/sprites_bosses.py`, `src/procbody.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `tests/spec/test_phase_b.py` (`-k b19`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V7`, `V8`), `docs/bibel/05-gegner.md` („Zwischengegner“, „Große Kreaturen“), `tests/spec/test_phase_b.py` (`-k b19`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_bosses.py` die Haupt- und Körperteil-Sheets unter `bosse/` bzw. `kreaturen/` für die Großkreaturen `"trampolinwal"` und `"kirchenkrake"` sowie `"koenigin_mandibula"`, `"transformator"` und `"zirkusdirektor"` und registriere ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`).
+  1. Ergänze in `build_end_boss_sheets` die Haupt- und Körperteil-Sheets (`36×36` bis `96×64` px) unter `bosse/` für `"ameisenkoenigin"`, `"abt_kieme"` und trage ihre `PartLayout`-Einträge in `RIG_LAYOUTS` (`src/procbody.py`) ein. Aussehen, Größe und Teile nach Bibel 04/05.
+  2. Erzeuge außerdem die Teil-Sheets der Großkreaturen `"trampolinwal"` (Kopf, Rumpf, Schwanz, Flossen) und `"kirchenkrake"` (Mantel, 6 Tentakel, Augen) unter `kreaturen/` und ihre `RIG_LAYOUTS`-Einträge.
 - **Akzeptanzkriterien:**
-  - Alle 6 MVP-Bosse aus `[u.boss for u in UNIVERSES.values()]` (`weltenherz`, `oberstempler`, `mutter_glibber`, `ameisenkoenigin`, `dj_myzel`, `abt_kieme`) sowie die Pool-Bosse haben gültige Sheets unter `bosse/` und `PartLayout`-Einträge in `RIG_LAYOUTS`.
+  - Für `"ameisenkoenigin"`, `"abt_kieme"` existieren `bosse/<key>`-Sheets nach `V8` und Einträge in `RIG_LAYOUTS`.
+  - `kreaturen/trampolinwal` und `kreaturen/kirchenkrake` existieren nach `V8` und haben `RIG_LAYOUTS`-Einträge.
+  - Damit haben alle 6 `u.boss` aus `UNIVERSES` Sheet und Rig.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b19 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B20 — Die 10 Waffenteil-Sprites (`waffen/*`) (`V8`, `V8b`)
+## B20 — Die 20 Waffenteil-Sprites (`waffen/*`) (`V8`, `V8b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A22`, `A23`
 - **Ziel-Dateien:** `tools/sprites_items.py`, `tools/sprites.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`, `V8b`), `src/weapon_parts.py`, `tests/spec/test_phase_b.py` (`-k b20`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`, `V8b`), `docs/bibel/06-waffen-und-module.md` („Aussehen aus Teilen“), `tests/spec/test_phase_b.py` (`-k b20`)
 - **Aufgabe:**
-  1. Erstelle `tools/sprites_items.py` (und binde es in `tools/sprites.py` ein) mit `build_weapon_part_sheets(out_dir)`, das für alle 10 Schlüssel in `WEAPON_PART_KEYS` (`griff_holz`, `griff_eisen`, `griff_knochen`, `kern_rubin`, `kern_spule`, `kern_auge`, `kern_leere`, `spitz_prisma`, `spitz_gabel`, `spitz_zahn`) ein `12×8`-Sprite-Sheet + `.json` unter `waffen/` erzeugt (mit `glow`-Punkt auf den Spitzen und Kernen).
+  1. Erstelle `tools/sprites_items.py` (und binde es in `tools/sprites.py` ein) mit `build_weapon_part_sheets(out_dir)`, das für jeden der 20 Schlüssel in `WEAPON_PART_KEYS` ein kleines Teil-Sprite (2–12 px breit, `idle` 1 Frame) + `.json` unter `waffen/` erzeugt; die Tanks bekommen einen `glow`-Punkt in `flux`. Gleiche Gruppen dürfen sich eine Zeichenfunktion mit Parametern teilen.
 - **Akzeptanzkriterien:**
   - Für jeden Schlüssel in `WEAPON_PART_KEYS` existiert `waffen/<key>.{png,json}` und erfüllt `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b20 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B21 — Zauber-Icons Pack 1: Formen & Payloads Teil 1 (9 Icons in `zauber/`) (`V8`)
+## B21 — Modul-Icons: Geschosse (`zauber/`) (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B20`
 - **Ziel-Dateien:** `tools/sprites_items.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/spells.py`, `tests/spec/test_phase_b.py` (`-k b21`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/06-waffen-und-module.md` („Kategorien“, „Icons“), `src/spells.py` (`Category`, `BLOCKS`), `tests/spec/test_phase_b.py` (`-k b21`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` die ersten 9 `12×12`-Zauberblock-Icons unter `zauber/`: `"spark"`, `"bolt"`, `"orb"`, `"lance"`, `"laser"`, `"burst"`, `"nova"`, `"beam"`, `"fire"`.
+  1. Ergänze in `tools/sprites_items.py` die Funktion `build_spell_icon_sheets(out_dir)` und erzeuge für **jeden** Block in `BLOCKS` mit `block.category == Category.FORM` ein `12×12`-Icon unter `zauber/<key>` (Geschosse, Motiv nach Bibel 06 „Icon-Idee“, Rahmenfarbe nach Kategorie).
 - **Akzeptanzkriterien:**
-  - Alle 9 Icons existieren unter `zauber/<key>.{png,json}`, haben `frame_size == (12, 12)` und erfüllen `V8`.
+  - Für alle Blöcke mit `category == Category.FORM` existiert `zauber/<key>` nach `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b21 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B22 — Zauber-Icons Pack 2: Payloads Teil 2 (9 Icons in `zauber/`) (`V8`)
+## B22 — Modul-Icons: Aufsätze (`zauber/`) (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B21`
 - **Ziel-Dateien:** `tools/sprites_items.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/spells.py`, `tests/spec/test_phase_b.py` (`-k b22`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/06-waffen-und-module.md` („Kategorien“, „Icons“), `src/spells.py` (`Category`, `BLOCKS`), `tests/spec/test_phase_b.py` (`-k b22`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` die nächsten 9 `12×12`-Zauberblock-Icons unter `zauber/`: `"ice"`, `"acid_orb"`, `"spore"`, `"lightning"`, `"plasma"`, `"dig"`, `"saw"`, `"black_hole"`, `"nuke"`.
+  1. Ergänze in `tools/sprites_items.py` (`build_spell_icon_sheets(out_dir)`) für **jeden** Block in `BLOCKS` mit `block.category == Category.MODIFIER` ein `12×12`-Icon unter `zauber/<key>` (Aufsätze, Motiv nach Bibel 06 „Icon-Idee“, Rahmenfarbe nach Kategorie).
 - **Akzeptanzkriterien:**
-  - Alle 9 Icons existieren unter `zauber/<key>.{png,json}` und erfüllen `V8`.
+  - Für alle Blöcke mit `category == Category.MODIFIER` existiert `zauber/<key>` nach `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b22 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B23 — Zauber-Icons Pack 3: Modifikatoren Teil 1 (9 Icons in `zauber/`) (`V8`)
+## B23 — Modul-Icons: Füllungen (`zauber/`) (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B22`
 - **Ziel-Dateien:** `tools/sprites_items.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/spells.py`, `tests/spec/test_phase_b.py` (`-k b23`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/06-waffen-und-module.md` („Kategorien“, „Icons“), `src/spells.py` (`Category`, `BLOCKS`), `tests/spec/test_phase_b.py` (`-k b23`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` 9 Modifikator-Icons (`12×12`) unter `zauber/`: `"bounce"`, `"pierce"`, `"homing"`, `"split_cast"`, `"heavy"`, `"speed"`, `"orbit"`, `"spiral"`, `"chaos"`.
+  1. Ergänze in `tools/sprites_items.py` (`build_spell_icon_sheets(out_dir)`) für **jeden** Block in `BLOCKS` mit `block.category == Category.PAYLOAD` ein `12×12`-Icon unter `zauber/<key>` (Füllungen, Motiv nach Bibel 06 „Icon-Idee“, Rahmenfarbe nach Kategorie).
 - **Akzeptanzkriterien:**
-  - Alle 9 Icons existieren unter `zauber/<key>.{png,json}` und erfüllen `V8`.
+  - Für alle Blöcke mit `category == Category.PAYLOAD` existiert `zauber/<key>` nach `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b23 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B24 — Zauber-Icons Pack 4: Restliche Blöcke aus `BLOCKS` (alle verbleibenden Icons in `zauber/`) (`V8`)
+## B24 — Modul-Icons: Zünder & alle übrigen Blöcke (`zauber/`) (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B23`
 - **Ziel-Dateien:** `tools/sprites_items.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `src/spells.py`, `tests/spec/test_phase_b.py` (`-k b24`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/bibel/06-waffen-und-module.md` („Kategorien“, „Icons“), `src/spells.py` (`Category`, `BLOCKS`), `tests/spec/test_phase_b.py` (`-k b24`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` die Icons für alle verbleibenden Schlüssel in `src/spells.py` (`BLOCKS`), darunter `"chain"`, `"echo"`, `"trigger"`, `"timer"`, `"heal"`, `"shield"`, `"mana_charge"`, `"blood_pact"`, `"omega"` sowie eventuelle weitere Schlüssel in `BLOCKS`.
+  1. Ergänze die Icons für alle restlichen Blöcke in `BLOCKS` (`Category.TRIGGER` und die Familien-Blöcke aus `_families()`).
 - **Akzeptanzkriterien:**
-  - Für **jeden** Schlüssel `k in BLOCKS` existiert `zauber/{k}.{png,json}` und erfüllt `V8`.
+  - Für **jeden** Schlüssel in `BLOCKS` existiert `zauber/<key>` nach `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b24 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B25 — Gegenstands-Icons Pack 1: Die 12 Universums-Proben (`gegenstaende/probe_*`) (`V8`, `V11`)
+## B25 — Gegenstands-Icons Teil 1: Gold & Grundgegenstände (`gegenstaende/`) (`V8`, `V11`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `A04`, `B20`
+- **Abhängigkeiten:** `A05`, `B20`
 - **Ziel-Dateien:** `tools/sprites_items.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`), `tests/spec/test_phase_b.py` (`-k b25`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`, `pickup_sprite_key`), `docs/bibel/07-gegenstaende-und-werkstatt.md` („Gegenstände in der Welt“), `tests/spec/test_phase_b.py` (`-k b25`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` `12×12`-Sprites unter `gegenstaende/` für alle 12 kanonischen Universums-Proben aus `SAMPLES` (`"probe_gallenstein"`, `"probe_wucherung"`, `"probe_stempelkissen"`, `"probe_formular"`, `"probe_glibberkern"`, `"probe_brauseperle"`, `"probe_zuckerkristall"`, `"probe_ameisenduft"`, `"probe_leuchtspore"`, `"probe_plattennadel"`, `"probe_glockensplitter"`, `"probe_kerzenstumpf"`) sowie die Pool-Proben-Aliase.
+  1. Ergänze in `tools/sprites_items.py` die Funktion `build_item_icon_sheets(out_dir)` mit `12×12`-Sprites unter `gegenstaende/` für `"gold_klein"`, `"gold_mittel"`, `"gold_gross"`, `"stab"`, `"modul"`, `"gabe"`, `"flasche_voll"`, `"flasche_leer"`, `"lebenskapsel"`, `"kokon"`.
 - **Akzeptanzkriterien:**
-  - Alle 12 Universums-Proben-Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
+  - Alle 10 Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b25 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B26 — Gegenstands-Icons Pack 2: 5 seltene Proben & 3 Gold-Größen (`gegenstaende/`) (`V8`, `V11`)
+## B26 — Gegenstands-Icons Teil 2: Sammel- und Quest-Gegenstände (`gegenstaende/`) (`V8`, `V11`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B25`
 - **Ziel-Dateien:** `tools/sprites_items.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`), `tests/spec/test_phase_b.py` (`-k b26`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`, `pickup_sprite_key`), `docs/bibel/07-gegenstaende-und-werkstatt.md` („Gegenstände in der Welt“), `tests/spec/test_phase_b.py` (`-k b26`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` die `12×12`-Sprites unter `gegenstaende/` für die 5 seltenen Proben (`"probe_knochen"`, `"probe_aether"`, `"probe_schatten"`, `"probe_gold"`, `"probe_kern"`) sowie die 3 Gold-Größen (`"gold_klein"`, `"gold_mittel"`, `"gold_gross"`).
+  1. Ergänze in `build_item_icon_sheets` `12×12`-Sprites unter `gegenstaende/` für `"auge"`, `"wuerfel"`, `"erinnerungssplitter"`, `"bauplan_splitter"`, `"beutekiste"`, `"dienstmarke"`, `"formular_stempel"`, `"portal_stein"`.
 - **Akzeptanzkriterien:**
-  - Alle 17 Proben aus `SAMPLES` und alle 3 Gold-Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
+  - Alle 8 Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b26 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B27 — Gegenstands-Icons Pack 3: Pickups & Sammelobjekte (12 Icons in `gegenstaende/`) (`V8`, `V11`)
+## B27 — Gegenstands-Icons Teil 3: alle 17 Proben (`gegenstaende/probe_*`) (`V8`, `V11`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `B26`
+- **Abhängigkeiten:** `A04`, `B26`
 - **Ziel-Dateien:** `tools/sprites_items.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`), `tests/spec/test_phase_b.py` (`-k b27`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`, `SAMPLES`), `docs/bibel/07-gegenstaende-und-werkstatt.md` („Proben“), `tests/spec/test_phase_b.py` (`-k b27`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` die restlichen 12 Pickup-Sprites unter `gegenstaende/`: `"stab"`, `"modul"`, `"gabe"`, `"flasche_voll"`, `"flasche_leer"`, `"lebenskapsel"`, `"kokon"`, `"auge"`, `"wuerfel"`, `"erinnerungssplitter"`, `"bauplan_splitter"`, `"beutekiste"`, `"dienstmarke"`, `"formular_stempel"`, `"portal_stein"`.
+  1. Ergänze in `build_item_icon_sheets` je ein `12×12`-Sprite unter `gegenstaende/` für **jede** Probe in `SAMPLES` (12 Universums-Proben + 5 seltene Proben), Aussehen nach Bibel 07.
 - **Akzeptanzkriterien:**
-  - Jeder in der `V11`-Pickup-Tabelle referenzierte Sprite-Schlüssel existiert unter `gegenstaende/` und erfüllt `V8`.
+  - Für jeden Schlüssel in `SAMPLES` existiert `gegenstaende/<key>` nach `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b27 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B28 — Umgebungs-Props Pack 1: Die 12 Werkstatt-Stationen (`umgebung/`) (`V8`, `V18`)
+## B28 — Werkstatt-Stationen Teil 1 (`umgebung/`) (`V8`, `V18`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A22`
 - **Ziel-Dateien:** `tools/sprites_env.py`, `tools/sprites.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`), `tests/spec/test_phase_b.py` (`-k b28`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`, Spalte `sprite_key`), `docs/bibel/07-gegenstaende-und-werkstatt.md` („Die Werkstatt“), `tests/spec/test_phase_b.py` (`-k b28`)
 - **Aufgabe:**
-  1. Erstelle `tools/sprites_env.py` (und binde es in `tools/sprites.py` ein) mit den 12 Stations-Sprites (`24×24` bis `32×32` px) unter `umgebung/` gemäß `V18`: `"portal_stein"`, `"fabrikator"`, `"haendler_stand"`, `"physik_o_mat"`, `"schiessstand"`, `"archiv_pult"`, `"klonita_sofa"`, `"akten_schredder"`, `"flaschen_brunnen"`, `"werkbank"`, `"experimentier_liege"`, `"zapfhahn"` sowie `"portal_headquarters"` und `"trainings_attrappe"`.
+  1. Erstelle `tools/sprites_env.py` mit `build_env_prop_sheets(out_dir)` (und binde es in `tools/sprites.py` ein) und den Stations-Sprites (`24×24` bis `48×48` px, `idle` 2–4 und `use` 2–4 Frames) unter `umgebung/` für die `sprite_key`s `"portal_stein"`, `"werkbank"`, `"fabrikator"`, `"experimentier_liege"`, `"haendler_stand"`, `"zapfhahn"`.
 - **Akzeptanzkriterien:**
-  - Alle 12 `station.sprite_key` aus `V18` + `"portal_headquarters"` + `"trainings_attrappe"` existieren unter `umgebung/` und erfüllen `V8`.
+  - Alle 6 Sprites existieren unter `umgebung/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b28 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B29 — Umgebungs-Props Pack 2: Schreine, Behälter & Gefahren (`umgebung/`) (`V8`)
+## B29 — Werkstatt-Stationen Teil 2 + Hauptquartier-Portal & Attrappe (`umgebung/`) (`V8`, `V18`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B28`
 - **Ziel-Dateien:** `tools/sprites_env.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `tests/spec/test_phase_b.py` (`-k b29`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`, Spalte `sprite_key`), `tests/spec/test_phase_b.py` (`-k b29`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_env.py` 8 interaktive/zerstörbare Umgebungs-Props (`16×16` bis `24×24` px) unter `umgebung/`: `"pruefungs_schrein"`, `"geheim_altar"`, `"explosionsfass"`, `"saeure_behaelter"`, `"sporen_knolle"`, `"gold_statue"`, `"akten_regal"`, `"kuchen_kerze"`.
+  1. Ergänze in `build_env_prop_sheets` die Sprites unter `umgebung/` für `"physik_o_mat"`, `"schiessstand"`, `"archiv_pult"`, `"klonita_sofa"`, `"akten_schredder"`, `"flaschen_brunnen"`, `"portal_headquarters"`, `"trainings_attrappe"`.
 - **Akzeptanzkriterien:**
-  - Alle 8 Props existieren unter `umgebung/` und erfüllen `V8`.
+  - Zusammen mit `B28` hat jede Station in `STATIONS` ein Sprite `umgebung/<station.sprite_key>` nach `V8`; dazu `"portal_headquarters"` und `"trainings_attrappe"`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b29 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## B30 — Umgebungs-Props Pack 3: Universums-Dekorationen (`umgebung/`) (`V8`)
+## B30 — Umgebungs-Props der 6 Universen (`umgebung/`) (`V8`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `B29`
 - **Ziel-Dateien:** `tools/sprites_env.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `tests/spec/test_phase_b.py` (`-k b30`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v09-universen-und-ereignisse.md` (`Level.destructible_props`), `tests/spec/test_phase_b.py` (`-k b30`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_env.py` 8 thematische Dekor-Props unter `umgebung/`: `"schrott_ventil"`, `"pilz_laterne"`, `"magen_zotte"`, `"amt_uhr"`, `"abtei_glocke"`, `"ameisen_kokon"`, `"spule_isolator"`, `"glibber_ballon"`.
+  1. Ergänze in `build_env_prop_sheets` 13 interaktive bzw. zerstörbare Props (`16×16` bis `24×24` px) unter `umgebung/`: `"explosionsfass"`, `"saeure_behaelter"`, `"magen_zotte"`, `"akten_regal"`, `"amt_uhr"`, `"glibber_ballon"`, `"ameisen_kokon"`, `"sporen_knolle"`, `"pilz_laterne"`, `"abtei_glocke"`, `"pruefungs_schrein"`, `"geheim_altar"`, `"gold_statue"`. Die universumsbezogenen Props gehören zu: Fleischwelt (`saeure_behaelter`, `magen_zotte`), Aktenhalde (`akten_regal`, `amt_uhr`), Glibbria (`glibber_ballon`), Krümelreich (`ameisen_kokon`), Sporenklub (`sporen_knolle`, `pilz_laterne`), Abtei (`abtei_glocke`).
 - **Akzeptanzkriterien:**
-  - Alle 8 Dekor-Props existieren unter `umgebung/` und erfüllen `V8`.
+  - Alle 13 Props existieren unter `umgebung/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b30 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -447,9 +410,10 @@
 - **Ziel-Dateien:** `src/rendering.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V6`), `src/rendering.py`, `src/sprite_render.py`, `tests/spec/test_phase_b.py` (`-k b32`)
 - **Aufgabe:**
-  1. Binde `SheetCache` in `Renderer` (`src/rendering.py`) ein und zeichne die Spielerin über `charaktere/spielerin` (passend zu Bewegungszustand `idle`/`walk`/`jump`/`fall`/`hurt`, Blickrichtung `facing` und `glow_points`) sowie Klonita (falls auf `Run` vorhanden und `state != "dismissed"`) über `charaktere/klonita`.
+  1. Implementiere die Fassade `Renderer` in `src/rendering.py` laut `V6` („Renderer“): `__init__` legt `self.sheet_cache = SheetCache()` an; `draw(run)` zeichnet Welt, Kreaturen, Pickups und Spielerin über die vorhandenen Zeichenfunktionen und ruft danach `draw_hud` auf.
+  2. Zeichne in `Renderer.draw` die Spielerin über `charaktere/spielerin` (passend zu Bewegungszustand `idle`/`walk`/`jump`/`fall`/`hurt`, Blickrichtung `facing` und `glow_points`) sowie Klonita (falls auf `Run` vorhanden und `state != "dismissed"`) über `charaktere/klonita`.
 - **Akzeptanzkriterien:**
-  - `Renderer` rendert Spielerin und Klonita über `blit_frame` fehlerfrei auf ein Offscreen-Surface (getestet im Headless-Modus).
+  - `Renderer(screen).sheet_cache` ist ein `SheetCache`; `Renderer(screen).draw(Run(seed=1))` läuft headless fehlerfrei und zeichnet Spielerin und Klonita über `blit_frame`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b32 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

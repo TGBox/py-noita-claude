@@ -11,8 +11,6 @@ from src.universes.catalog import (
     BY_KEY,
     EVIL_SELVES,
     MID_BOSSES,
-    POOL_UNIVERSES,
-    UNIVERSE_ALIASES,
     UNIVERSES,
 )
 from src.universes.model import RANK_LOOT, RANK_POWER, RANKS, Region, Universe
@@ -23,12 +21,10 @@ __all__ = [
     "BY_KEY",
     "EVIL_SELVES",
     "MID_BOSSES",
-    "POOL_UNIVERSES",
     "RANKS",
     "RANK_LOOT",
     "RANK_POWER",
     "UNIVERSES",
-    "UNIVERSE_ALIASES",
     "Offer",
     "Region",
     "RunPlan",

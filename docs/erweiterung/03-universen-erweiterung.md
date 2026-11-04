@@ -2,6 +2,8 @@
 
 Dieses Kapitel definiert die sechs vollwertigen Pool-Universen der Phase 2 (`schrott`, `kuchen`, `spule`, `uhrwerkwueste`, `suppenmeer`, `freizeitpark`). Sie nutzen die vier kanonischen Bibel-Weltformen und besitzen eine verbindliche **Rang-Steigerung für Ränge 1 bis 3**.
 
+Dieses Kapitel ist die **einzige Quelle** für diese sechs Universen (Bibel 03 verweist nur hierher). Sie gehören nicht zum MVP (Phasen A–G) und werden in Phase J gebaut. Die Regel `rule_electric` (Spule) ist neu und wird in Phase J in die Regelbibliothek (Bibel 02) aufgenommen; ihre Universums-Fraktionen ergänzen `UNIVERSE_FACTIONS` (Vertrag V4) erst dann.
+
 ---
 
 ## 1. Der Große Schrott (`schrott`)

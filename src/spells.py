@@ -648,3 +648,16 @@ def __getattr__(name: str) -> Any:
         return getattr(wand, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+
+FLASK_PAYLOAD_CELLS = 10  # cells of the held flask one "Kolbenfüllung" shot uses (Contract V0e)
+
+
+def resolve_payload_material(
+    block: Block,
+    flask: Any,
+    set_keys: tuple[str, ...],
+    base_keys: tuple[str, ...],
+    rng: Any,
+) -> str | None:
+    """Material key a payload block delivers for one cast (Contract V0e)."""
+    raise NotImplementedError("Card A28")

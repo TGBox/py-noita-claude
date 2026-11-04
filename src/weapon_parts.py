@@ -6,42 +6,31 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .spells import Wand
+    from .wand import Wand
 
 WEAPON_PART_KEYS: tuple[str, ...] = (
-    "gehaeuse_holz",
-    "gehaeuse_knochen",
-    "gehaeuse_messing",
-    "gehaeuse_kristall",
-    "gehaeuse_akustik",
-    "lauf_kurz",
-    "lauf_lang",
-    "lauf_gabel",
-    "lauf_spirale",
-    "muendung_trichter",
-    "muendung_prisma",
-    "muendung_klinge",
+    "griff_pistole",
+    "griff_kurbel",
+    "griff_handschuh",
+    "gehaeuse_kurz",
+    "gehaeuse_mittel",
+    "gehaeuse_lang",
     "tank_klein",
+    "tank_mittel",
     "tank_gross",
-    "tank_leuchtend",
-    "griff_leder",
-    "griff_zahn",
-    "griff_samt",
-    "griff_holz",
-    "griff_eisen",
-    "griff_knochen",
-    "kern_rubin",
-    "kern_spule",
-    "kern_auge",
-    "kern_leere",
-    "spitz_prisma",
-    "spitz_gabel",
-    "spitz_zahn",
-    "zier_auge",
-    "zier_stempel",
-    "zier_pilz",
-    "zier_krone",
+    "lauf_einfach",
+    "lauf_doppel",
+    "lauf_dreifach",
+    "muendung_spitz",
+    "muendung_trichter",
+    "muendung_sieb",
+    "zier_klebeband",
+    "zier_antenne",
+    "zier_wackelauge",
+    "zier_gluehbirne",
+    "zier_schraubenzieher",
 )
+PART_ORDER: tuple[str, ...] = ("griff", "gehaeuse", "tank", "zier", "lauf", "muendung")
 
 
 @dataclass(frozen=True)

@@ -1,12 +1,12 @@
 # Atomarer Umsetzungsplan (`py-noita-claude`)
 
-Dieser Ordner enthält den **vollständigen, in 134 reine S-Karten zerlegten Implementierungsplan** für die Fertigstellung von `py-noita-claude` gemäß der Design-Bibel ([docs/bibel/00-uebersicht.md](../bibel/00-uebersicht.md)) und dem [ADR zu atomaren Aufgabenkarten](../adr/2026-11-01-atomare-aufgabenkarten.md).
+Dieser Ordner enthält den **vollständigen, in 147 reine S-Karten zerlegten Implementierungsplan** für die Fertigstellung von `py-noita-claude` gemäß der Design-Bibel ([docs/bibel/00-uebersicht.md](../bibel/00-uebersicht.md)) und dem [ADR zu atomaren Aufgabenkarten](../adr/2026-11-01-atomare-aufgabenkarten.md).
 
 ---
 
 ## 1. Grundprinzipien für ausführende Modelle
 
-1. **Nur Größe S & schreibgeschützte Vorab-Tests (`tests/spec/`):** Jede der **134 Karten** (`A01`–`G10`) ist so zugeschnitten, dass ein einzelnes kostengünstiges Modell sie in einem Durchgang fehlerfrei umsetzen kann:
+1. **Nur Größe S & schreibgeschützte Vorab-Tests (`tests/spec/`):** Jede der **147 Karten** (`A01`–`G13`; die IDs `B06`, `B10`, `B13`, `C07`, `C08`, `C13`, `D07`–`D09` sind entfallen) ist so zugeschnitten, dass ein einzelnes kostengünstiges Modell sie in einem Durchgang fehlerfrei umsetzen kann:
    - **Umfang:** maximal `60–80` geänderte/neue Code-Zeilen pro Karte.
    - **Dateien:** `1–2` Zieldateien ausschließlich unter `src/` oder `tools/`.
    - **Vorab geschriebene Abnahmetests:** Alle Abnahmetests für sämtliche Karten (`A01`–`G10`) existieren bereits vorab unter [`tests/spec/`](../../tests/spec) (`test_phase_a.py` bis `test_phase_g.py`). Ausführende Modelle schreiben **keine** eigenen Tests und dürfen Dateien unter `tests/` **niemals** editieren!
@@ -36,17 +36,19 @@ Dieser Ordner enthält den **vollständigen, in 134 reine S-Karten zerlegten Imp
 
 ---
 
-## 3. Phasen-Übersicht & Karten-Zählung (134 S-Karten)
+## 3. Phasen-Übersicht & Karten-Zählung (147 S-Karten)
+
+Die Pool-Universen `schrott`, `kuchen` und `spule` gehören nicht zum MVP; sie werden in Phase J der Erweiterung gebaut (`docs/erweiterung/03-universen-erweiterung.md`).
 
 | Phase | Datei | Karten | Anzahl | Inhalt & Meilenstein |
 | --- | --- | --- | --- | --- |
-| **Phase A** | [phase-a-fundament.md](phase-a-fundament.md) | `A01`–`A26` | **26 S** | Schlüssel-Migration (`V0a`–`V0d`), 17 Proben & Pickup-Vereinheitlichung, Event-Bus, Status-Timer & Trank-Effekte, A*-Pfadsuche, Fraktionen, Fähigkeiten, Kreaturen-FSM, Sprite-/Rig-/Waffenteil-/Generator-Fundament |
-| **Phase B** | [phase-b-grafik.md](phase-b-grafik.md) | `B01`–`B36` | **36 S** | Alle Sprite-Sheets + JSON-Metadaten in kleinen Paketen (`charaktere/`, `kreaturen/` der 6 MVP-Universen + Großkreaturen, `bosse/`, `waffen/`, `zauber/`, `gegenstaende/`, `umgebung/`, `partikel/`) sowie Renderer-Integration in `src/rendering.py` |
-| **Phase C** | [phase-c-kreaturen.md](phase-c-kreaturen.md) | `C01`–`C17` | **17 S** | Alle 24 regulären Kreaturen der 6 MVP-Universen + 2 Großkreaturen (`trampolinwal`, `kirchenkrake`), 6 Unter-Zwischenbosse, 6 Haupt-Zwischengegner (`weltenherz`..`abt_kieme`), 4 Behörden-Agenten, 3 Böse Ichs, `"ober_cloita"`, Projektil-Statuseffekte, Drops & Elementar-Resistenzen |
-| **Phase D** | [phase-d-universen.md](phase-d-universen.md) | `D01`–`D16` | **16 S** | Alle 6 MVP-Universums-Generatoren (`fleischwelt`, `aktenhalde`, `glibbria`, `kruemelreich`, `sporenklub`, `abtei`) + Pool-Generatoren, `worldgen`-Dispatch, 6 Universums-Events + Sekundärereignisse (`src/events.py`), alle 6 Prüfungen (`src/challenges.py`), deterministischer Playtest-Bot (`src/bot.py`) |
+| **Phase A** | [phase-a-fundament.md](phase-a-fundament.md) | `A01`–`A29` | **29 S** | Schlüssel-Migration (`V0a`–`V0e`), 8 neue Füllungen, 9 ausgemusterte Alt-Füllungen, 17 Proben & Pickup-Vereinheitlichung, Event-Bus, Status-Timer & Trank-Effekte, A*-Pfadsuche, Fraktionen, Fähigkeiten, Kreaturen-FSM, Sprite-/Rig-/Waffenteil-/Generator-Fundament |
+| **Phase B** | [phase-b-grafik.md](phase-b-grafik.md) | `B01`–`B36` | **33 S** | Alle Sprite-Sheets + JSON-Metadaten in kleinen Paketen (`charaktere/`, `kreaturen/` der 6 MVP-Universen + Großkreaturen, `bosse/`, `waffen/`, `zauber/`, `gegenstaende/`, `umgebung/`, `partikel/`) sowie Renderer-Integration in `src/rendering.py` |
+| **Phase C** | [phase-c-kreaturen.md](phase-c-kreaturen.md) | `C01`–`C17` | **14 S** | Alle 24 regulären Kreaturen der 6 MVP-Universen + 2 Großkreaturen (`trampolinwal`, `kirchenkrake`), 6 Unter-Zwischenbosse, 6 Haupt-Zwischengegner (`weltenherz`..`abt_kieme`), 4 Behörden-Agenten, 3 Böse Ichs, `"ober_cloita"`, Projektil-Statuseffekte, Drops & Elementar-Resistenzen |
+| **Phase D** | [phase-d-universen.md](phase-d-universen.md) | `D01`–`D29` | **26 S** | Materialsätze (`D17`–`D21`) und alle 6 MVP-Universums-Generatoren (`fleischwelt`, `aktenhalde`, `glibbria`, `kruemelreich`, `sporenklub`, `abtei`), `worldgen`-Dispatch, 6 Universums-Events (`src/events.py`; Sekundärereignisse → Phase 2, J07), alle 6 Prüfungen + 6 Universums-Herausforderungen (`src/challenges.py`, `D22`–`D29`), deterministischer Playtest-Bot (`src/bot.py`) |
 | **Phase E** | [phase-e-werkstatt.md](phase-e-werkstatt.md) | `E01`–`E15` | **15 S** | `640×360`-Werkstatt & 12 Stationen, Wirtschaftsformeln & Goldader-Drops, 6 Händler (`Herr Pansen`..`Bruder Flosse`) mit allen Sonderregeln, Fabrikator, 8 Physik-o-Mat-Rätsel + Schießstand, Werkstatt-Menüs & Trainings-Attrappe |
-| **Phase F** | [phase-f-behoerde-bosse-klonita.md](phase-f-behoerde-bosse-klonita.md) | `F01`–`F14` | **14 S** | Fahndungssystem (`Wanted`) & Agenten-Spawns, mehrphasige Boss-Skripte für alle 6 Universums-Zwischengegner, 3 Böse Ichs + Kaiserin-Handel, 3-stufiges Hauptquartier & `"ober_cloita"`, Klonita-Begleiterin & Sprechblasen |
-| **Phase G** | [phase-g-abnahme.md](phase-g-abnahme.md) | `G01`–`G10` | **10 S** | HUD-Erweiterung, Sprechblasen- & Boss-Banner-Rendering, Hover-Infos, `Records` & 5-Reiter-Archiv, Endbildschirm mit Rang-Abrechnung, vollständiges Save/Load-Schema, Menü-Tastatursteuerung & Bot-Vollabnahme über alle 6 MVP-Universen |
+| **Phase F** | [phase-f-behoerde-bosse-klonita.md](phase-f-behoerde-bosse-klonita.md) | `F01`–`F17` | **17 S** | Fahndungssystem (`Wanted`) & Agenten-Spawns, mehrphasige Boss-Skripte für alle 6 Universums-Zwischengegner, 3 Böse Ichs + Kaiserin-Handel, 3-stufiges Hauptquartier & `"ober_cloita"`, Klonita-Begleiterin (Hilfen + Bibel-Aktionen Zeigen/Tragen/Umarmen, 6 Macken) & Sprechblasen |
+| **Phase G** | [phase-g-abnahme.md](phase-g-abnahme.md) | `G01`–`G13` | **13 S** | HUD-Erweiterung, Sprechblasen- & Boss-Banner-Rendering, Hover-Infos, `Records` & 5-Reiter-Archiv, Endbildschirm mit Rang-Abrechnung, vollständiges Save/Load-Schema, Menü-Tastatursteuerung & Bot-Vollabnahme über alle 6 MVP-Universen, Modul-Anzeigenamen nach Bibel 06 (`G11`–`G13`) |
 
 ---
 
@@ -54,13 +56,13 @@ Dieser Ordner enthält den **vollständigen, in 134 reine S-Karten zerlegten Imp
 
 ```mermaid
 flowchart TD
-    A["Phase A: Fundament (A01–A26)"]
+    A["Phase A: Fundament (A01–A29)"]
     B["Phase B: Prozedurale Grafik (B01–B36)"]
     C["Phase C: Kreaturen & Boss-Specs (C01–C17)"]
-    D["Phase D: Universen, Events, Challenges & Bot (D01–D16)"]
+    D["Phase D: Materialsätze, Universen, Events, Challenges & Bot (D01–D29)"]
     E["Phase E: Werkstatt, Wirtschaft, Händler & Minispiele (E01–E15)"]
-    F["Phase F: Behörde, Boss-Phasen, Böse Ichs, HQ & Klonita (F01–F14)"]
-    G["Phase G: HUD, Archiv, Save/Load & Vollabnahme (G01–G10)"]
+    F["Phase F: Behörde, Boss-Phasen, Böse Ichs, HQ & Klonita (F01–F17)"]
+    G["Phase G: HUD, Archiv, Save/Load & Vollabnahme (G01–G13)"]
 
     A --> B
     A --> C
@@ -77,11 +79,11 @@ flowchart TD
 
 ### Empfohlene Abarbeitungsreihenfolge
 
-1. **Sequentieller Start in Phase A (`A01`–`A26`):** Schafft alle Schnittstellen, Datenklassen und Migrations-Anpassungen.
+1. **Sequentieller Start in Phase A (`A01`–`A29`):** Schafft alle Schnittstellen, Datenklassen und Migrations-Anpassungen.
 2. **Parallele Stränge nach Phase A:**
    - **Grafik-Strang (`B01`–`B36`)** kann nach `A22`/`A23` komplett unabhängig abgearbeitet werden.
    - **Kreaturen-Strang (`C01`–`C17`)** startet direkt nach `A15`.
-   - **Universen-Strang (`D01`–`D16`)** startet direkt nach `A25`.
+   - **Universen-Strang (`D01`–`D21`)** startet nach `A25`; jeder Generator braucht vorher seinen Materialsatz (`D17`–`D21`, Aktenhalde hat ihn schon).
    - **Werkstatt-Grundlagen (`E01`–`E09`)** starten direkt nach `A04`.
-3. **Integration (`E10`–`E15` und `F01`–`F14`):** Verbindet Werkstatt, Händler, Fahndung, mehrphasige Bosse, Böse Ichs, Hauptquartier und Klonita mit `Run`.
-4. **Abschluss & Abnahme (`G01`–`G10`):** Vervollständigt UI, Archiv, Save/Load und führt in `G10` die End-to-End-Vollabnahme über alle 9 Universen durch.
+3. **Integration (`E10`–`E15` und `F01`–`F17`):** Verbindet Werkstatt, Händler, Fahndung, mehrphasige Bosse, Böse Ichs, Hauptquartier und Klonita mit `Run`.
+4. **Abschluss & Abnahme (`G01`–`G10`):** Vervollständigt UI, Archiv, Save/Load und führt in `G10` die End-to-End-Vollabnahme über alle 6 MVP-Universen durch.

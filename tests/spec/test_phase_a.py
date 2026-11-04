@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import random
@@ -29,18 +30,22 @@ def test_a01_catalog_keys_and_region_order() -> None:
         "abtei": ("probe_glockensplitter", "probe_kerzenstumpf"),
     }
     expected_regions = {
-        "fleischwelt": ["schlund", "zotten", "pfuetze"],
-        "aktenhalde": ["wartezone", "registratur", "chefbueros"],
-        "glibbria": ["zelt", "backstage", "manege"],
-        "kruemelreich": ["oberbau", "gaenge", "thronsaal"],
-        "sporenklub": ["kappenwald", "sporennebel", "wurzelherz"],
-        "abtei": ["schiff", "kreuzgang", "krypta"],
+        "fleischwelt": ["schlund", "magen", "knochenmark"],
+        "aktenhalde": ["registratur", "grossraumbuero", "archivkeller"],
+        "glibbria": ["gelee_huegel", "kaugummi_hoehlen", "sirupkueste"],
+        "kruemelreich": ["fliesenwueste", "unter_kuehlschrank", "ameisenbau"],
+        "sporenklub": ["lautsprechertuerme", "tanzflaeche", "hinterzimmer"],
+        "abtei": ["glockenturm", "kirchenschiff", "krypta"],
     }
     for u_key, sample_pair in expected_samples.items():
         u = UNIVERSES[u_key]
         assert u.samples == sample_pair, f"{u_key}.samples mismatch"
         assert u.sample_key == sample_pair[0], f"{u_key}.sample_key mismatch"
         assert [r.key for r in u.regions] == expected_regions[u_key]
+
+    from src.universes.catalog import ALL_UNIVERSES
+
+    assert set(ALL_UNIVERSES) == set(expected_samples)
 
     krypta = UNIVERSES["abtei"].regions[2]
     assert krypta.key == "krypta"
@@ -63,9 +68,12 @@ def test_a02_spells_rarity_tiers_and_aliases() -> None:
     assert t1.isdisjoint(t2) and t1.isdisjoint(t3) and t2.isdisjoint(t3)
     assert (t1 | t2 | t3) == set(BLOCKS.keys())
 
-    assert MODULE_ALIASES["funken"] == "spark"
-    assert resolve_block_key("funken") == "spark"
-    assert resolve_block_key("spark") == "spark"
+    assert MODULE_ALIASES["flux_funke"] == "funke"
+    assert MODULE_ALIASES["nadelschuss"] == "nadel"
+    block_keys = set(BLOCKS.keys())  # BLOCKS is a tuple subclass: compare keys explicitly
+    assert all(target in block_keys for target in MODULE_ALIASES.values())
+    assert resolve_block_key("flux_funke") == "funke"
+    assert resolve_block_key("funke") == "funke"
 
 
 # ---------------------------------------------------------------------------
@@ -129,16 +137,16 @@ def test_a04_samples_and_inventory_slots() -> None:
 def test_a05_unified_pickup_and_sprite_keys() -> None:
     from src.loot import Pickup, pickup_sprite_key
 
-    p_legacy_block = Pickup(10.0, 20.0, block="spark")
+    p_legacy_block = Pickup(10.0, 20.0, block="funke")
     assert p_legacy_block.kind == "block"
-    assert p_legacy_block.item_key == "spark"
+    assert p_legacy_block.item_key == "funke"
     assert pickup_sprite_key(p_legacy_block) == "modul"
 
-    p_new_block = Pickup(10.0, 20.0, kind="block", item_key="orb")
-    assert p_new_block.block == "orb"
+    p_new_block = Pickup(10.0, 20.0, kind="block", item_key="nadel")
+    assert p_new_block.block == "nadel"
 
-    p_sample = Pickup(0.0, 0.0, kind="sample", item_key="probe_rost", amount=3)
-    assert pickup_sprite_key(p_sample) == "probe_rost"
+    p_sample = Pickup(0.0, 0.0, kind="sample", item_key="probe_gallenstein", amount=3)
+    assert pickup_sprite_key(p_sample) == "probe_gallenstein"
 
     assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=5)) == "gold_klein"
     assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=15)) == "gold_mittel"
@@ -159,9 +167,9 @@ def test_a06_run_pick_up_new_kinds() -> None:
     assert run.gold == 25
 
     assert run._pick_up(
-        Pickup(run.player.x, run.player.y, kind="sample", item_key="probe_rost", amount=4)
+        Pickup(run.player.x, run.player.y, kind="sample", item_key="probe_gallenstein", amount=4)
     )
-    assert run.inventory.sample_count("probe_rost") == 4
+    assert run.inventory.sample_count("probe_gallenstein") == 4
 
     assert run._pick_up(Pickup(run.player.x, run.player.y, kind="blueprint_shard", amount=3))
     assert run.blueprint_shards == 0
@@ -199,9 +207,7 @@ def test_a08_body_status_timers_and_player_modifiers() -> None:
     from src.player import Player
     from src.world import World
 
-    world = World(64, 64)
-    p = Player(32.0, 32.0)
-    for attr in (
+    timers = (
         "drunk",
         "sticky",
         "stamped_good",
@@ -210,61 +216,92 @@ def test_a08_body_status_timers_and_player_modifiers() -> None:
         "frozen",
         "charged",
         "befogged",
-    ):
+        "refresh_time",
+        "lubed_time",
+        "fizzy_time",
+        "haste_time",
+        "ink_sight",
+    )
+    world = World(64, 64)
+    p = Player(32.0, 32.0)
+    for attr in timers:
+        assert getattr(p.body, attr) == 0.0
         setattr(p.body, attr, 2.0)
 
     p.body.step_timers(0.5, world)
     assert p.body.frozen == pytest.approx(1.5)
+    p.body.step_timers(5.0, world)
+    for attr in timers:
+        assert getattr(p.body, attr) == 0.0
 
-    hp_before = p.body.hp
-    p.body.take_damage(10.0)
-    assert (hp_before - p.body.hp) == pytest.approx(12.5)
+    assert p.body.damage_factor() == pytest.approx(1.0)
+    p.body.stamped_good = 3.0
+    assert p.body.damage_factor() == pytest.approx(1.2)
+    p.body.stamped_good = 0.0
+    p.body.stamped_bad = 3.0
+    assert p.body.damage_factor() == pytest.approx(0.8)
 
 
 # ---------------------------------------------------------------------------
-# A09 — Alle 15 Flaschen-Trinkeffekte in src/flask.py (V4b)
+# A09 — Die 14 Trink-Schübe aus Bibel 06 in src/flask.py (V4b)
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize(
-    "liquid",
-    [
-        "water",
-        "heal",
-        "slime",
-        "oil",
-        "lava",
-        "acid",
-        "blood",
-        "milk",
-        "mana",
-        "mud",
-        "alcohol",
-        "jelly",
-        "steam",
-        "spore",
-        "honey",
-    ],
-)
-def test_a09_all_15_flask_drink_effects(liquid: str) -> None:
-    from src.flask import Flask
+# liquid -> (attribute, expected value) or ("hp", expected hp) or ("mana", expected mana)
+DRINKS = {
+    "water": ("refresh_time", 15.0),
+    "oil": ("lubed_time", 15.0),
+    "tallow": ("lubed_time", 15.0),
+    "fluxschnaps": ("drunk", 20.0),
+    "acid": ("hp", 25.0),
+    "blood": ("hp", 50.0),
+    "tinte": ("ink_sight", 20.0),
+    "stempelfarbe": ("stamped_good", 15.0),
+    "siegellack": ("hp", 35.0),
+    "brausesirup": ("fizzy_time", 20.0),
+    "kaugummi": ("sticky", 5.0),
+    "honig": ("mana", 100.0),
+    "karamell": ("hp", 40.0),
+    "neonsaft": ("haste_time", 20.0),
+}
+
+
+@pytest.mark.parametrize("liquid", sorted(DRINKS))
+def test_a09_flask_drink_effects(liquid: str) -> None:
+    from src.flask import SIP, Flask
     from src.player import Player
 
     p = Player(20.0, 20.0)
     p.body.hp = 50.0
     p.body.burning = 3.0
-    p.body.poisoned = 3.0
     p.mana = 10.0
+    p.max_mana = 100.0
 
     f = Flask(liquid=liquid, amount=50.0, capacity=100.0)
     msg = f.drink(p)
     assert isinstance(msg, str) and len(msg) > 0
-    assert f.amount < 50.0
+    assert f.amount == 50 - SIP
 
-    if liquid == "alcohol":
-        assert p.body.drunk >= 10.0
-    elif liquid == "honey":
-        assert p.body.sticky >= 5.0 and p.body.regen > 0.0
-    elif liquid == "milk":
-        assert p.body.poisoned == 0.0 and p.body.burning == 0.0
+    attr, expected = DRINKS[liquid]
+    if attr == "hp":
+        assert p.body.hp == pytest.approx(expected)
+    elif attr == "mana":
+        assert p.mana == pytest.approx(expected)
+    else:
+        assert getattr(p.body, attr) == pytest.approx(expected)
+    assert p.body.hp <= 50.0  # no liquid heals
+    if liquid == "water":
+        assert p.body.burning == 0.0
+    if liquid == "karamell":
+        assert p.body.sticky == pytest.approx(5.0)
+
+
+def test_a09_blood_heals_only_with_experiment() -> None:
+    from src.flask import Flask
+    from src.player import Player
+
+    p = Player(20.0, 20.0)
+    p.body.hp = 50.0
+    Flask(liquid="blood", amount=60.0, capacity=100.0).drink(p, blood_heals=True)
+    assert p.body.hp > 50.0
 
 
 # ---------------------------------------------------------------------------
@@ -297,22 +334,51 @@ def test_a10_pathfind_walk_fly_swim() -> None:
 # A11 — Fraktions-Matrix & Blutfehden (src/factions.py) (V4)
 # ---------------------------------------------------------------------------
 def test_a11_factions_and_grudges() -> None:
-    from src.factions import FACTIONS, are_hostile, record_grudge
+    from src.factions import (
+        FACTIONS,
+        HATE_MATRIX,
+        NATIVE_FACTIONS,
+        UNIVERSE_FACTIONS,
+        are_hostile,
+        record_grudge,
+    )
     from src.projectiles import Projectile
 
-    assert len(FACTIONS) >= 11
+    assert len(FACTIONS) == 11
+    assert set(UNIVERSE_FACTIONS) == {
+        "fleischwelt",
+        "aktenhalde",
+        "glibbria",
+        "kruemelreich",
+        "sporenklub",
+        "abtei",
+    }
+    assert set(HATE_MATRIX) == set(FACTIONS)
+    for f in FACTIONS:
+        assert not are_hostile(f, f)
+    for a in NATIVE_FACTIONS:
+        for b in NATIVE_FACTIONS:
+            assert are_hostile(a, b) is (a != b)
+        assert are_hostile(a, "behoerde") and are_hostile(a, "boese_ichs")
+        assert not are_hostile(a, "spieler") and not are_hostile(a, "haendler")
     assert are_hostile("pilze", "insekten")
     assert are_hostile("behoerde", "spieler")
-    assert not are_hostile("pilze", "pilze")
+    assert are_hostile("boese_ichs", "spieler")
+    assert not are_hostile("behoerde", "boese_ichs")
+    assert not are_hostile("wildnis", "spieler")
+    assert not are_hostile("unbekannt", "spieler")
 
     grudges: set[tuple[str, str]] = set()
     assert not are_hostile("haendler", "spieler", grudges)
     record_grudge(grudges, "haendler", "spieler")
     assert are_hostile("haendler", "spieler", grudges)
     assert are_hostile("spieler", "haendler", grudges)
+    record_grudge(grudges, "pilze", "pilze")
+    assert not are_hostile("pilze", "pilze", grudges)
 
     proj = Projectile(x=0.0, y=0.0, vx=1.0, vy=0.0, owner_species="sporenwerfer")
     assert proj.owner_species == "sporenwerfer"
+    assert proj.source_pos is None
 
 
 # ---------------------------------------------------------------------------
@@ -346,7 +412,7 @@ def test_a12_behaviour_part1_abilities() -> None:
     handle_split_on_death(c, Ability("split", "beetle"), out)
     assert any(ev[0] == "split" for ev in out)
 
-    p = Projectile(x=22.0, y=20.0, vx=-50.0, vy=0.0, from_player=True, form="spark")
+    p = Projectile(x=22.0, y=20.0, vx=-50.0, vy=0.0, from_player=True, form="funke")
     handle_reflect_projectiles(c, [p], out)
     assert p.vx > 0
 
@@ -467,14 +533,16 @@ def test_a16_bribe_and_milk_interactions() -> None:
     run = Run(seed=16)
     run.enemies.creatures.clear()
 
-    laus = run.enemies.spawn("beetle", run.player.x + 8.0, run.player.y)
+    # Stand-in creatures: the real species come in C04/C05, A16 only keys on the flags.
+    laus = run.enemies.spawn("made", run.player.x + 8.0, run.player.y)
+    laus.species = "blattlaus"
     laus.giver = True
     hp_before = laus.body.hp
     run._kick()
     assert laus.body.hp == hp_before
-    assert laus.ability_cooldowns.get("milk", 0.0) > 0.0
+    assert laus.ability_cooldowns.get("milk", 0.0) == pytest.approx(8.0)
 
-    pilz = run.enemies.spawn("golem", run.player.x + 12.0, run.player.y)
+    pilz = run.enemies.spawn("made", run.player.x + 12.0, run.player.y)
     pilz.species = "tuersteherpilz"
     pilz.bribed = False
     run.gold = 25
@@ -627,17 +695,36 @@ def test_a22_sprite_builder_core(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 def test_a23_weapon_parts_layout() -> None:
     from src.wand import Wand, WandSpec
-    from src.weapon_parts import WEAPON_PART_KEYS, layout_for, parts_for
+    from src.weapon_parts import PART_ORDER, WEAPON_PART_KEYS, layout_for, parts_for
 
-    assert len(WEAPON_PART_KEYS) >= 10
-    w = Wand(WandSpec("Test", 4, 100.0, 30.0, 0.1, 0.2, 0.0), ["chain", "spark"])
-    parts = parts_for(w)
-    assert len(parts) >= 3
+    assert len(WEAPON_PART_KEYS) == 20
+    small = Wand(WandSpec("Test", 4, 100.0, 30.0, 0.1, 0.2, 0.0), ["funke", "doppel"])
+    parts = parts_for(small)
+    assert [p.split("_")[0] for p in parts] == list(PART_ORDER)
     assert all(p in WEAPON_PART_KEYS for p in parts)
+    assert set(parts) >= {
+        "griff_kurbel",
+        "gehaeuse_kurz",
+        "tank_klein",
+        "lauf_einfach",
+        "muendung_spitz",
+    }
+    assert "zier_klebeband" not in parts
 
-    placements = layout_for(w)
+    big = Wand(WandSpec("Gross", 10, 400.0, 30.0, 0.3, 0.2, 0.2, casts=3, shuffle=True), ["funke"])
+    assert set(parts_for(big)) >= {
+        "griff_handschuh",
+        "gehaeuse_lang",
+        "tank_gross",
+        "lauf_dreifach",
+        "muendung_sieb",
+        "zier_klebeband",
+    }
+
+    placements = layout_for(small)
+    assert [pl.part_key for pl in placements] == parts
     xs = [pl.offset_x for pl in placements]
-    assert xs == sorted(xs)
+    assert all(a < b for a, b in itertools.pairwise(xs))
 
 
 # ---------------------------------------------------------------------------
@@ -658,7 +745,7 @@ def test_a24_level_struct_and_mirror() -> None:
         boss_arena=(50, 60, 80, 90),
         trader_nook=(12, 12, 22, 22),
         challenge_shrine=(32, 32, 42, 42),
-        regions=[("kappenwald", (0, 0, 50, 50))],
+        regions=[("tanzflaeche", (0, 0, 50, 50))],
         destructible_props=[("pilz_laterne", 15, 25)],
     )
     run = Run(seed=24)
@@ -708,3 +795,96 @@ def test_a26_region_lookup_and_current_vx() -> None:
     vx_before = run.player.body.vx
     apply_player_rules(run.player, run.world, run.universe.rule, 0.1, region=krypta)
     assert run.player.body.vx > vx_before
+
+
+# ---------------------------------------------------------------------------
+# A27 / A28 — Füllungen aus Bibel 06 (V0e)
+# ---------------------------------------------------------------------------
+NEW_PAYLOADS = {
+    "fuellung_wasser": "water",
+    "fuellung_oel": "oil",
+    "fuellung_dampf": "steam",
+    "fuellung_sand": "sand",
+    "fuellung_erde": "dirt",
+    "fuellung_fels": "rock",
+}
+
+
+def test_a27_new_payload_blocks() -> None:
+    from src.spells import BLOCKS, Category, resolve_block_key
+
+    for key, material in NEW_PAYLOADS.items():
+        block = BLOCKS[key]
+        assert block.category == Category.PAYLOAD and block.material == material
+    assert BLOCKS["fuellung_kolben"].from_flask is True
+    assert BLOCKS["fuellung_lokal"].local_material is True
+    assert resolve_block_key("fuellung_feuer") == "sekret_feuer"
+    assert resolve_block_key("fuellung_rauch") == "sekret_rauch"
+
+
+def test_a28_special_payloads() -> None:
+    from src.flask import Flask
+    from src.materials import BASE_KEYS
+    from src.spells import BLOCKS, FLASK_PAYLOAD_CELLS, resolve_payload_material
+
+    rng = random.Random(28)
+    flask = Flask(liquid="oil", amount=50.0, capacity=100.0)
+    assert (
+        resolve_payload_material(BLOCKS["fuellung_kolben"], flask, BASE_KEYS, BASE_KEYS, rng)
+        == "oil"
+    )
+    assert flask.amount == 50 - FLASK_PAYLOAD_CELLS
+    assert (
+        resolve_payload_material(BLOCKS["fuellung_kolben"], None, BASE_KEYS, BASE_KEYS, rng)
+        == "water"
+    )
+
+    set_keys = (*BASE_KEYS, "papier", "tinte")
+    for _ in range(10):
+        got = resolve_payload_material(BLOCKS["fuellung_lokal"], None, set_keys, BASE_KEYS, rng)
+        assert got in ("papier", "tinte")
+    assert (
+        resolve_payload_material(BLOCKS["fuellung_lokal"], None, BASE_KEYS, BASE_KEYS, rng)
+        == "water"
+    )
+    assert (
+        resolve_payload_material(BLOCKS["fuellung_wasser"], None, BASE_KEYS, BASE_KEYS, rng)
+        == "water"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A29 — Organische Alt-Füllungen (V0e)
+# ---------------------------------------------------------------------------
+RETIRED_PAYLOADS = (
+    "sekret_talg",
+    "sekret_sporen",
+    "sekret_schleim",
+    "sekret_eiter",
+    "sekret_aetzdampf",
+    "sekret_staub",
+    "sekret_sehnen",
+    "sekret_knochen",
+    "sekret_wucherung",
+)
+KEPT_PAYLOADS = {
+    "sekret_blut": "Blutfüllung",
+    "sekret_saeure": "Säurefüllung",
+    "sekret_glut": "Glutfüllung",
+}
+
+
+def test_a29_retired_organic_payloads() -> None:
+    from src.loot import random_block
+    from src.spells import BLOCKS, Category, blocks_of_tier
+
+    for key in RETIRED_PAYLOADS:
+        assert BLOCKS[key].retired is True
+    for key, name in KEPT_PAYLOADS.items():
+        assert BLOCKS[key].retired is False and BLOCKS[key].name_de == name
+    tiered = {b.key for tier in (1, 2, 3) for b in blocks_of_tier(tier)}
+    assert not tiered & set(RETIRED_PAYLOADS)
+    rng = random.Random(29)
+    drawn = {random_block(rng, Category.PAYLOAD) for _ in range(2000)}
+    assert not drawn & set(RETIRED_PAYLOADS)
+    assert set(KEPT_PAYLOADS) <= drawn

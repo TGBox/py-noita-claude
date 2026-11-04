@@ -1,4 +1,4 @@
-# Phase A — Fundament (26 atomare S-Karten: `A01`–`A26`)
+# Phase A — Fundament (29 atomare S-Karten: `A01`–`A29`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_a.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md).
@@ -12,7 +12,7 @@
 - **Ziel-Dateien:** `src/universes/catalog.py`, `src/universes/model.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0a`), `src/universes/catalog.py`, `tests/spec/test_phase_a.py` (`-k a01`)
 - **Aufgabe:**
-  1. Stelle sicher, dass `UNIVERSES` in `src/universes/catalog.py` exakt die **6 MVP-Universen** (`"fleischwelt"`, `"aktenhalde"`, `"glibbria"`, `"kruemelreich"`, `"sporenklub"`, `"abtei"`) enthält (`len(UNIVERSES) == 6`) und die 3 Pool-Universen (`"schrott"`, `"kuchen"`, `"spule"`) in `POOL_UNIVERSES` liegen.
+  1. Stelle sicher, dass `UNIVERSES` in `src/universes/catalog.py` exakt die **6 MVP-Universen** (`"fleischwelt"`, `"aktenhalde"`, `"glibbria"`, `"kruemelreich"`, `"sporenklub"`, `"abtei"`) enthält (`len(UNIVERSES) == 6`) und `ALL_UNIVERSES` nur diese 6 enthält (Pool-Universen kommen erst in Phase J).
   2. Aktualisiere die `samples`-Tupel (je 2 `probe_*`-Schlüssel pro Universum) und `sample_key` (`samples[0]`) gemäß `V0a` (`("probe_gallenstein", "probe_wucherung")`, `("probe_stempelkissen", "probe_formular")`, `("probe_glibberkern", "probe_brauseperle")`, `("probe_zuckerkristall", "probe_ameisenduft")`, `("probe_leuchtspore", "probe_plattennadel")`, `("probe_glockensplitter", "probe_kerzenstumpf")`).
   3. Stelle sicher, dass die 3 `Region`-Einträge jedes der 6 MVP-Universen exakt die Schlüssel und die Reihenfolge `(regions[0], regions[1], regions[2])` aus der Tabelle in `V0a` tragen und `abtei` in `regions[2]` (`"krypta"`) `params=(("ambient", 0.15), ("current_vx", 28.0))` erhält.
 - **Akzeptanzkriterien:**
@@ -35,7 +35,7 @@
 - **Akzeptanzkriterien:**
   - Jeder Eintrag in `BLOCKS.values()` hat `rarity_tier in (1, 2, 3)`.
   - `blocks_of_tier(1)`, `blocks_of_tier(2)` und `blocks_of_tier(3)` sind jeweils nicht leer und disjunkt; ihre Vereinigung umfasst alle `BLOCKS`-Schlüssel.
-  - `resolve_block_key("funken") == "spark"` und `resolve_block_key("spark") == "spark"`.
+  - `MODULE_ALIASES` bildet jeden Bibel-06-Schlüssel mit „Bisher“-Eintrag auf einen Schlüssel in `BLOCKS` ab, z. B. `resolve_block_key("flux_funke") == "funke"`; unbekannte Schlüssel bleiben unverändert.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a02 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -81,7 +81,7 @@
 - **Ziel-Dateien:** `src/loot.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`), `src/loot.py`, `tests/spec/test_phase_a.py` (`-k a05`)
 - **Aufgabe:**
-  1. Erweitere `Pickup` in `src/loot.py` um `kind: str = ""`, `item_key: str = ""`, `amount: int = 0` und implementiere `__post_init__`, sodass alte Konstruktor-Aufrufe (`Pickup(x, y, pearls=5)`, `Pickup(x, y, block="spark")`, `Pickup(x, y, heart=25)`) automatisch `kind`, `item_key`, `amount` setzen und umgekehrt neue Aufrufe (`Pickup(x, y, kind="block", item_key="spark")`, `Pickup(x, y, kind="sample", item_key="probe_rost", amount=2)`, `Pickup(x, y, kind="gold", amount=15)`) die Legacy-Felder synchron halten.
+  1. Erweitere `Pickup` in `src/loot.py` um `kind: str = ""`, `item_key: str = ""`, `amount: int = 0` und implementiere `__post_init__`, sodass alte Konstruktor-Aufrufe (`Pickup(x, y, pearls=5)`, `Pickup(x, y, block="funke")`, `Pickup(x, y, heart=25)`) automatisch `kind`, `item_key`, `amount` setzen und umgekehrt neue Aufrufe (`Pickup(x, y, kind="block", item_key="funke")`, `Pickup(x, y, kind="sample", item_key="probe_gallenstein", amount=2)`, `Pickup(x, y, kind="gold", amount=15)`) die Legacy-Felder synchron halten.
   2. Ergänze eine Hilfsfunktion `pickup_sprite_key(p: Pickup) -> str`, die den Sprite-Schlüssel aus der Tabelle in `V11` liefert.
 - **Akzeptanzkriterien:**
   - Alle bestehenden Pickup-Tests laufen unverändert grün.
@@ -130,25 +130,26 @@
 - **Ziel-Dateien:** `src/body.py`, `src/player.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V4b`), `src/body.py`, `src/player.py`, `tests/spec/test_phase_a.py` (`-k a08`)
 - **Aufgabe:**
-  1. Füge auf `Body` in `src/body.py` die 8 neuen Timer-Felder `drunk`, `sticky`, `stamped_good`, `stamped_bad`, `marked_time`, `frozen`, `charged`, `befogged` (jeweils `float = 0.0`) hinzu und dekrementiere sie in `Body.step_timers(dt, world)`.
-  2. Berücksichtige in `Body.take_damage` den Multiplikator `+25 %` bei `stamped_bad > 0` und in `Player.update` (`src/player.py`) die Geschwindigkeits-/Sprung-Modifikatoren für `frozen > 0` (keine Bewegung, `0.3×` Fallgeschwindigkeit), `sticky > 0` (`0.55×` Lauf, `0.65×` Sprung) und `drunk > 0` (leichtes Wanken + Streuung).
+  1. Füge auf `Body` in `src/body.py` die 13 Timer-Felder aus `V4b` Abschnitt 1 hinzu (`drunk`, `sticky`, `stamped_good`, `stamped_bad`, `marked_time`, `frozen`, `charged`, `befogged`, `refresh_time`, `lubed_time`, `fizzy_time`, `haste_time`, `ink_sight`; jeweils `float = 0.0`) und dekrementiere sie in `Body.step_timers(dt, world)` bis `0.0`.
+  2. Ergänze `Body.damage_factor()` laut `V4b` und in `Player.update` (`src/player.py`) die Modifikatoren für `frozen > 0` (keine Bewegung, `0.3×` Fallgeschwindigkeit), `sticky > 0` (`0.55×` Lauf, `0.65×` Sprung), `fizzy_time > 0` (`1.5×` Sprung), `haste_time > 0` (`1.3×` Lauf) und `drunk > 0` (leichtes Wanken).
 - **Akzeptanzkriterien:**
-  - Alle 8 Timer laufen über `step_timers(1.0, world)` sauber bis `0.0` ab.
-  - Bei `frozen > 0` bewegt sich `Player` horizontal nicht; bei `sticky > 0` ist die Horizontalgeschwindigkeit reduziert; bei `stamped_bad > 0` erhöht sich eingehender Schaden um `25 %`.
+  - Alle 13 Timer laufen über `step_timers` sauber bis `0.0` ab.
+  - `damage_factor()` ist `1.2` bei `stamped_good`, `0.8` bei `stamped_bad`, sonst `1.0`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a08 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## A09 — Alle 15 Flaschen-Trinkeffekte in `src/flask.py` (`V4b`)
+## A09 — Die 14 Trink-Schübe aus Bibel 06 in `src/flask.py` (`V4b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A08`
 - **Ziel-Dateien:** `src/flask.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V4b`), `src/flask.py`, `tests/spec/test_phase_a.py` (`-k a09`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V4b`), `docs/bibel/06-waffen-und-module.md` („Flüssigkeiten: Schübe beim Trinken“), `src/flask.py`, `tests/spec/test_phase_a.py` (`-k a09`)
 - **Aufgabe:**
-  1. Erweitere `Flask.drink(self, player: Player) -> str | None` in `src/flask.py` so, dass alle 15 Flüssigkeiten der Tabelle in `V4b` (`"water"`, `"heal"`, `"slime"`, `"oil"`, `"lava"`, `"acid"`, `"blood"`, `"milk"`, `"mana"`, `"mud"`, `"alcohol"`, `"jelly"`, `"steam"`, `"spore"`, `"honey"`) exakt ihre spezifizierten Heil-, Schaden-, Mana- und Status-Timer-Effekte auf `player` und `player.body` anwenden und den deutschen Statustext zurückgeben.
+  1. Ersetze in `src/flask.py` die Trink-Wirkungen (`DRINK_EFFECTS`, `Flask.drink`) durch genau die 14 Einträge der Tabelle in `V4b` Abschnitt 2. Keine Flüssigkeit heilt; Blut heilt nur mit `blood_heals=True`.
 - **Akzeptanzkriterien:**
-  - Ein parametrisierter Test über alle 15 Flüssigkeits-Schlüssel bestätigt für jede Flüssigkeit den Rückgabetext und die exakte Änderung an `hp`, `mana` bzw. den Status-Timern aus `V4b`.
+  - Für jeden der 14 Schlüssel setzt `drink` exakt den Timer bzw. Schaden aus `V4b`, gibt einen nicht leeren deutschen Text zurück und verbraucht einen Schluck.
+  - `hp` steigt nach keinem Trank, außer bei `"blood"` mit `blood_heals=True`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a09 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -176,11 +177,12 @@
 - **Ziel-Dateien:** `src/factions.py`, `src/projectiles.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V4`), `src/projectiles.py`, `tests/spec/test_phase_a.py` (`-k a11`)
 - **Aufgabe:**
-  1. Erstelle `src/factions.py` mit `FACTIONS` (alle 11 Fraktionen), `HATE_MATRIX`, `are_hostile(f_a, f_b, grudges=None)` und `record_grudge(grudges, f_a, f_b)` gemäß `V4`.
-  2. Ergänze auf `Projectile` in `src/projectiles.py` das optionale Feld `owner_species: str = ""` (abwärtskompatibel mit Default `""`).
+  1. Erstelle `src/factions.py` mit den Konstanten `SPIELER` … `BOESE_ICHS`, `UNIVERSE_FACTIONS`, `NATIVE_FACTIONS`, `FACTIONS` (genau 11) und `HATE_MATRIX` **wörtlich aus `V4`** sowie `are_hostile`, `record_grudge` und `hostile` nach den Regeln in `V4`.
+  2. Ergänze auf `Projectile` in `src/projectiles.py` die optionalen Felder `owner_species: str = ""` und `source_pos: tuple[float, float] | None = None` (abwärtskompatibel).
 - **Akzeptanzkriterien:**
-  - `are_hostile("pilze", "insekten")` und `are_hostile("behoerde", "spieler")` sind `True`; `are_hostile("haendler", "spieler")` ist ohne Fehde `False` und nach `record_grudge(grudges, "haendler", "spieler")` `True`.
-  - Gleich-Fraktions-Aufrufe `are_hostile(f, f, grudges)` sind immer `False`.
+  - `len(FACTIONS) == 11`; Einheimische desselben Universums sind friedlich, verschiedener Universen verfeindet (`are_hostile("pilze", "insekten")`).
+  - `are_hostile("behoerde", "spieler")` ist `True`, `are_hostile("behoerde", "boese_ichs")` ist `False`.
+  - `are_hostile("haendler", "spieler")` ist ohne Groll `False` und nach `record_grudge(grudges, "haendler", "spieler")` in beide Richtungen `True`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a11 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -370,13 +372,12 @@
 - **Größe:** S
 - **Abhängigkeiten:** `A02`
 - **Ziel-Dateien:** `src/weapon_parts.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8b`), `src/spells.py`, `tests/spec/test_phase_a.py` (`-k a23`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8b`), `docs/bibel/06-waffen-und-module.md` („Aussehen aus Teilen“), `src/wand.py` (`WandSpec`), `tests/spec/test_phase_a.py` (`-k a23`)
 - **Aufgabe:**
-  1. Erstelle `src/weapon_parts.py` mit `WEAPON_PART_KEYS` (alle 10 Schlüssel aus `V8b`), `WeaponPartPlacement`, `parts_for(wand: Wand) -> list[str]` und `layout_for(wand: Wand) -> list[WeaponPartPlacement]` gemäß `V8b`.
+  1. Implementiere in `src/weapon_parts.py` `parts_for(wand)` und `layout_for(wand)` nach der Regel-Tabelle in `V8b` (`WEAPON_PART_KEYS` und `PART_ORDER` stehen schon im Gerüst).
 - **Akzeptanzkriterien:**
-  - `parts_for(wand)` liefert für jeden Zauberstab mindestens `[griff_*, kern_*, spitz_*]` (nur Schlüssel aus `WEAPON_PART_KEYS`).
-  - Ein Zauberstab mit `chain`/`lightning` wählt `"spitz_gabel"` bzw. `"kern_spule"`; ein Stab mit `spore`/`acid_orb` wählt `"griff_knochen"` bzw. `"kern_auge"`.
-  - `layout_for(wand)` liefert aufsteigende `offset_x`-Werte vom Griff über den Kern bis zur Spitze.
+  - `parts_for` liefert genau 6 Teile, je eins pro Gruppe in `PART_ORDER`, alle aus `WEAPON_PART_KEYS`, gewählt nach den Schwellen in `V8b`.
+  - `layout_for` liefert die Teile in derselben Reihenfolge mit streng aufsteigendem `offset_x`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a23 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -388,7 +389,7 @@
 - **Ziel-Dateien:** `src/worldgen.py`, `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v09-universen-und-ereignisse.md` (`V9`), `src/worldgen.py` (Zeilen 1–40), `src/run.py` (Zeilen 495–525), `tests/spec/test_phase_a.py` (`-k a24`)
 - **Aufgabe:**
-  1. Erweitere `Level` in `src/worldgen.py` mit Default-Werten um `universe_key: str = "schrott"`, `mid_boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)`, `boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)`, `trader_nook: tuple[int, int, int, int] | None = None`, `challenge_shrine: tuple[int, int, int, int] | None = None`, `regions: list[tuple[str, tuple[int, int, int, int]]] = field(default_factory=list)` und `destructible_props: list[tuple[str, int, int]] = field(default_factory=list)` gemäß `V9`.
+  1. Erweitere `Level` in `src/worldgen.py` mit Default-Werten um `universe_key: str = "fleischwelt"`, `mid_boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)`, `boss_arena: tuple[int, int, int, int] = (0, 0, 0, 0)`, `trader_nook: tuple[int, int, int, int] | None = None`, `challenge_shrine: tuple[int, int, int, int] | None = None`, `regions: list[tuple[str, tuple[int, int, int, int]]] = field(default_factory=list)` und `destructible_props: list[tuple[str, int, int]] = field(default_factory=list)` gemäß `V9`.
   2. Aktualisiere `Run._mirror_level` in `src/run.py`, sodass alle neuen `(x0, y0, x1, y1)`-Rechtecke (`arena`, `secret`, `vault`, `mid_boss_arena`, `boss_arena`, `trader_nook`, `challenge_shrine`, `regions`) sowie `destructible_props` horizontal an `w = self.world.width` gespiegelt werden (`(w - 1 - x1, y0, w - 1 - x0, y1)`).
 - **Akzeptanzkriterien:**
   - Bestehende `Level(...)`-Aufrufe mit nur 5 Positions-Argumenten funktionieren unverändert.
@@ -426,3 +427,46 @@
   - In der Region `"krypta"` (`abtei`) erfährt eine Spielerin im Wasser eine positive Horizontalbeschleunigung durch `current_vx == 28.0`.
   - `Run._region_at` findet über `level.regions` auch für `"horizontal"`-, `"concentric"`- und `"islands"`-Topologien die korrekte `Region`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a26 -q && uv run pytest --ignore=tests/spec -q`
+
+## A27 — Die 8 neuen Füllungen aus Bibel 06 in `src/spells.py` (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A02`
+- **Ziel-Dateien:** `src/spells.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` („Füllungen“), `tests/spec/test_phase_a.py` (`-k a27`)
+- **Aufgabe:**
+  1. Ergänze auf `Block` die Felder `from_flask: bool = False` und `local_material: bool = False` und lege die 8 neuen Füllungen aus der Tabelle in `V0e` an (Mana und Werte wie die vorhandenen `sekret_*`-Blöcke, Beschreibung aus Bibel 06). Trage `fuellung_feuer` und `fuellung_rauch` als Aliase in `MODULE_ALIASES` ein.
+- **Akzeptanzkriterien:**
+  - Alle 10 Bibel-Füllungen lassen sich über `resolve_block_key` als `Category.PAYLOAD`-Block finden; die 6 Material-Füllungen tragen das Material aus `V0e`.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a27 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## A28 — Sonderfüllungen „Kolbenfüllung“ & „Lokalkolorit“ (`resolve_payload_material`) (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A27`
+- **Ziel-Dateien:** `src/spells.py`, `src/wand.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `src/wand.py`, `src/flask.py`, `tests/spec/test_phase_a.py` (`-k a28`)
+- **Aufgabe:**
+  1. Implementiere `resolve_payload_material` in `src/spells.py` laut `V0e` und rufe sie in `src/wand.py` beim Zusammenstellen eines Schusses statt `block.material` auf (Kolben in der Hand und aktiver Materialsatz werden durchgereicht).
+- **Akzeptanzkriterien:**
+  - Kolbenfüllung liefert das Kolbenmaterial und verbraucht 10 Zellen; ohne Kolben `"water"`.
+  - Lokalkolorit liefert ein Universumsmaterial des aktiven Satzes, nie ein Grundmaterial.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a28 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## A29 — Organische Alt-Füllungen: 3 behalten, 9 ausmustern (`Block.retired`) (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A02`
+- **Ziel-Dateien:** `src/spells.py`, `src/loot.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`, „Organische Alt-Füllungen“), `docs/bibel/06-waffen-und-module.md` („Organische Füllungen“), `tests/spec/test_phase_a.py` (`-k a29`)
+- **Aufgabe:**
+  1. Ergänze `Block.retired: bool = False`, setze es bei den 9 Blöcken aus der Tabelle und gib `sekret_blut`, `sekret_saeure`, `sekret_glut` Namen und Beschreibung aus Bibel 06. Lass `blocks_of_tier` (`src/spells.py`) und `random_block` (`src/loot.py`) `retired`-Blöcke überspringen.
+- **Akzeptanzkriterien:**
+  - Die 9 ausgemusterten Blöcke stehen weiter in `BLOCKS`, kommen aber in 2000 Zügen von `random_block` und in `blocks_of_tier` nie vor; die 3 behaltenen kommen weiter vor.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a29 -q && uv run pytest --ignore=tests/spec -q`
+
+---

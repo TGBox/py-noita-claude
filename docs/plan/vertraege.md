@@ -34,14 +34,14 @@ Um das Kontextbudget kleiner/kostengünstiger Sprachmodelle (`< 15 KB` pro Aufga
 src/
 ├── universes/
 │   ├── model.py          # Universe, Region, RuleEffect, CreatureSpawn, UniverseTheme
-│   ├── catalog.py        # Die 6 MVP-Universen (V0a: kanonische probe_*-Keys & Region-Order) + POOL_UNIVERSES
+│   ├── catalog.py        # Die 6 MVP-Universen (V0a: kanonische probe_*-Keys & Region-Order), ALL_UNIVERSES
 │   ├── plan.py           # RunPlan (Alias UniversePlan: 6-Universen-Abfolge mit 2er-Portalwahl)
 │   └── gen/              # NEU (V9): __init__.py, common.py + 6 MVP-Universums-Generatoren
 ├── bosses/               # NEU (V16–V17): __init__.py (6 Universums-Zwischengegner), evil_selves.py, headquarters.py
 ├── minigames/            # NEU (V20): __init__.py, physik_o_mat.py, schiessstand.py
 ├── behaviour.py          # NEU (V1): BehaviourContext, Ability, 20 Fähigkeiten & Handler
 ├── pathfind.py           # NEU (V3): A*-Pfadsuche (walk, fly, swim) mit Budget, PathFollower & Cache
-├── factions.py           # NEU (V4): Fraktionen, Hass-Matrix, Blutfehden (Grudges, hostile, are_hostile)
+├── factions.py           # NEU (V4): 11 Fraktionen, Hass-Matrix, Groll (are_hostile, record_grudge, hostile)
 ├── sprites.py            # NEU (V5): SheetMeta, Animator, JSON-Metadaten-Loader (load_meta / load_sheet_meta)
 ├── sprite_render.py      # NEU (V6): SheetCache, blit_frame, glow_points
 ├── procbody.py           # NEU (V7): Chain, Legs, Tentacle, PartSpec, PartLayout, ProcRig
@@ -74,7 +74,6 @@ src/
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 
 @dataclass(frozen=True)
 class ChallengeSpec:
@@ -129,7 +128,7 @@ Jede Vertragsdatei ist unter `10 KB` groß und definiert alle Typen, Signaturen,
 | Datei | Enthaltene Verträge | Abgedeckte Module & Schnittstellen |
 | --- | --- | --- |
 | [v00-migration-und-schluessel.md](vertraege/v00-migration-und-schluessel.md) | `V0a`, `V0b`, `V0c`, `V0d` | Kanonische `probe_*`-Keys & `Region.key`-Reihenfolge der 6 MVP-Universen in `src/universes/catalog.py`; `Block.rarity_tier` (`1..3`) in `src/spells.py`; `World.take_destroyed_cells()` & `gold_vein` in `src/world.py`; Vorab-Entscheidungen (`blattlaus` → `"zucker"` + Honig-Drop, `krypta`-Strömung, `glow`-JSON-Schema, `tuersteherpilz`-Bestechung, `moenchsfisch`-Chor) |
-| [v01-verhalten-und-wegsuche.md](vertraege/v01-verhalten-und-wegsuche.md) | `V1`, `V1a`, `V1b`, `V1c`, `V2`, `V3`, `V4`, `V4b` | `src/behaviour.py` (`BehaviourContext`, `Ability`, 20 Fähigkeiten & Handler); 4 Haltungen (`hostile`, `neutral`, `passive`, `trader` + Aliase); erweiterte `CreatureSpec` & `Creature` + abwärtskompatibles `EnemyManager.update`; Zustandsmaschine & Telegrafie; `src/pathfind.py` (A*, `PathFollower`, `next_waypoint`); `src/factions.py` (Fraktionen & Blutfehden `Grudges`); alle Status-Timer auf `Body` & alle Flaschen-Trinkeffekte in `src/flask.py` |
+| [v01-verhalten-und-wegsuche.md](vertraege/v01-verhalten-und-wegsuche.md) | `V1`, `V1a`, `V1b`, `V1c`, `V2`, `V3`, `V4`, `V4b` | `src/behaviour.py` (`BehaviourContext`, `Ability`, 20 Fähigkeiten & Handler); 4 Haltungen (`hostile`, `neutral`, `passive`, `trader` + Aliase); erweiterte `CreatureSpec` & `Creature` + abwärtskompatibles `EnemyManager.update`; Zustandsmaschine & Telegrafie; `src/pathfind.py` (A*, `PathFollower`, `next_waypoint`); `src/factions.py` (11 Fraktionen, `HATE_MATRIX`, Groll); alle Status-Timer auf `Body` & alle Flaschen-Trinkeffekte in `src/flask.py` |
 | [v05-sprites-und-teile.md](vertraege/v05-sprites-und-teile.md) | `V5`, `V6`, `V7`, `V8`, `V8b` | `src/sprites.py` (`SheetMeta`, `Animator`, `load_meta` / `load_sheet_meta`); `src/sprite_render.py` (`SheetCache`, `blit_frame`, `glow_points`); `src/procbody.py` (`Chain`, `Legs`, `Tentacle`, `PartSpec`, `PartLayout`, `ProcRig`); `tools/palette.py` & `tools/sprites.py`; `src/weapon_parts.py` (`WeaponPartPlacement`, `parts_for`, `layout_for`) |
 | [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md) | `V9`, `V10`, `V13`, `V14` | `Level`-Erweiterung (inkl. `(x0, y0, x1, y1)`-Konvention & `Run._mirror_level`), `src/universes/gen/__init__.py` & `common.py` (inkl. `"top_split"` & `"islands"` für die 6 MVP-Universen); `src/events.py` (6 Hauptevents + Sekundärereignisse); `src/challenges.py` (6 Universums-Aufträge + 6 Schrein-Prüfungen); `src/bot.py` (`BotReport`, `run_bot`, `run_full`) |
 | [v11-gegenstaende-und-ereignisbus.md](vertraege/v11-gegenstaende-und-ereignisbus.md) | `V11`, `V12` | `src/samples.py` (`Sample`, `SAMPLES`, 17 Proben: 12 Universums-Proben + 5 Allgemein-Proben + `SAMPLE_ALIASES`), Proben-Slots in `src/inventory.py`, vereinheitlichtes `Pickup` (`kind`, `item_key`, `amount`) in `src/loot.py`; `Run.emit(name, **data)` & vollständige Payload-Tabelle aller 24 Gameplay-Ereignisse |

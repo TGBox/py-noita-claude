@@ -70,7 +70,7 @@ Jedes Universum ist eine Datendatei (`src/universes/<key>.py` oder JSON) mit all
 ## 3. Glibbria (`glibbria`)
 
 - **Pitch:** „Ein Planet aus Wackelpudding. Alles federt. Niemand stirbt am Fall – nur an allem anderen.“
-- **Regel:** `rule_bounce` – Geschosse prallen zweimal öfter ab, kein Fallschaden, Sprünge federn (Sprungkraft +30 % nach Landung aus großer Höhe).
+- **Regel:** `rule_bounce` – Geschosse prallen zweimal öfter ab, Sprünge federn (Sprungkraft +30 % nach Landung aus großer Höhe).
 - **Form:** Inseln, 2560×1280: schwebende Glibber-Inseln über einem Brausesirup-Meer.
 - **Licht:** 0,6, warm-bunt.
 - **Teilgebiete:** Gelee-Hügel, Sirupküste, Kaugummi-Höhlen.
@@ -179,7 +179,7 @@ Kurzbeschreibungen, damit nichts verloren geht. Jedes wird später nach demselbe
 
 | Schlüssel | Name | Regel | Idee |
 | --- | --- | --- | --- |
-| `freizeitpark` | Freizeitpark Endzeit | `rule_magnet` | Ein Vergnügungspark nach dem Weltuntergang, Achterbahnschienen als Wege, Maskottchen-Kostüme ohne Inhalt, Zuckerwatte brennt. |
+| `freizeitpark` | Freizeitpark Endzeit | `rule_bounce` | Ein Vergnügungspark nach dem Weltuntergang, Achterbahnschienen als Wege, Maskottchen-Kostüme ohne Inhalt, Zuckerwatte brennt. |
 | `gerichtssaal` | Gerichtsdimension | `rule_transmute` | Alles wird verhandelt; Urteile verwandeln Materie. Richterhämmer als Gegner. |
 | `spiegelwelt` | Spiegelwelt | `rule_reverse_gravity` | Alles ist Glas und Spiegel, Geschosse spiegeln, dein Spiegelbild läuft verzögert mit. |
 | `tiefkuehltruhe` | Tiefkühltruhe | `rule_cold` | Gefrorene Lebensmittel, Eis, rutschige Böden, Fischstäbchen-Schwärme. |
@@ -197,8 +197,10 @@ Kurzbeschreibungen, damit nichts verloren geht. Jedes wird später nach demselbe
 | `nebelwald` | Nebelwald | `rule_darkness` | Leuchtende Pilze, Pflanzen, die sich bewegen, wenn man nicht hinsieht. |
 | `zahnarztpraxis` | Wartezimmer der Ewigkeit | `rule_slowtime` | Nummer ziehen, warten, Bohrer als Gegner. |
 | `biohorror_plus` | Fleischwelt (Spätstadium) | `rule_living_walls` + `rule_darkness` | Härtere Fassung der Fleischwelt mit den übrigen alten Biomen (Leber, Lunge, Herzkammer). |
-| `schrott` | Der Große Schrott | `rule_magnet` | Ausgearbeitetes Pool-Universum: Regionen `halde`, `schmelze`, `kernwerk`; Kreaturen `rostkaefer`, `schweissimp`, `magnetwurm`, `schrottgolem`; Zwischenboss `gabelstapler_krabbe`; Endboss `schrottpresse`; Probe `probe_rost`. |
-| `kuchen` | Die Kuchenkruste | `rule_hot` | Ausgearbeitetes Pool-Universum: Regionen `glasur`, `biskuit`, `boden`; Kreaturen `zuckerspinne`, `kerzenkobold`, `marzipanschwein`, `baiser_geist`; Zwischenboss `marzipan_ritter`; Endboss `hochzeitstorte`; Probe `probe_zucker`. |
-| `spule` | Die Summende Spule | `rule_magnet` | Ausgearbeitetes Pool-Universum: Regionen `spulenwald`, `kondensator`, `kern`; Kreaturen `funkenhornisse`, `spulenkrabbe`, `kupferschlange`, `kondensator_geist`; Zwischenboss `spulenmeister`; Endboss `transformator`; Probe `probe_spule`. |
+| `schrott` | Der Große Schrott | `rule_magnet` | Rostige Zahnräder, tropfendes Öl, ewige Funken. **Phase 2**, Details in `docs/erweiterung/03`. |
+| `kuchen` | Die Kuchenkruste | `rule_hot` | Zuckerguss-Brücken über heißen Karamell-Seen. **Phase 2**, Details in `docs/erweiterung/03`. |
+| `spule` | Die Summende Spule | `rule_electric` | Kupfertürme, Kondensatoren, wandernde Lichtbögen. **Phase 2**, Details in `docs/erweiterung/03`. |
+
+Die sechs Pool-Universen der Erweiterung (`schrott`, `kuchen`, `spule`, `uhrwerkwueste`, `suppenmeer`, `freizeitpark`) sind in `docs/erweiterung/03-universen-erweiterung.md` vollständig ausgearbeitet; dort stehen Teilgebiete, Kreaturen, Bosse und Proben. Bei Abweichungen gilt jenes Kapitel. Sie werden erst in Phase J gebaut und sind nicht Teil des MVP.
 
 Die 32 alten Biome (Schlund, Magen, …) gehen als Teilgebiete in Fleischwelt und „Fleischwelt (Spätstadium)“ auf.

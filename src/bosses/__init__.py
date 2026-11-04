@@ -52,6 +52,18 @@ class BossScript:
         raise NotImplementedError("Card F03")
 
 
+ARENA_HAZARDS: tuple[str, ...] = (
+    "acid_rain",
+    "magma_veins",
+    "sealing_wax",
+    "closing_walls",
+    "rising_water",
+    "electric_water",
+    "bass_drop",
+    "spore_cloud",
+)
+
+
 def apply_arena_hazard(hazard: str, dt: float, boss: Creature, run: Run) -> None:
     """Apply periodic arena hazard effect during a boss fight."""
     raise NotImplementedError("Card F03")

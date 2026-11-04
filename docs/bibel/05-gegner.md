@@ -88,11 +88,17 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Glibberteiler (`glibberteiler`)** – 18×14 → 12×10 → 8×7
 
-- Haltung `hostile`; `melee`, `hunt`, `split` (2 Generationen), `armor` gegen durchschlagende Geschosse (gleitet um sie herum; Alias `quallenhund`).
+- Haltung `hostile`; `melee`, `hunt`, `split` (2 Generationen), `armor` gegen durchschlagende Geschosse (gleitet um sie herum).
 - Leben 40 (Teile: 20, 10), Sprungangriff 9 (Ausholen: wird flach und zittert, 0,5 s).
 - Aussehen: grimmiger, rot-grüner Geleeklumpen mit zu kleinen Zähnen und wütenden Augenbrauen.
 - Tod der kleinsten Stufe: Glibber-Fleck.
 - Schwäche: Feuer (Glibber schmilzt), Explosionen erzeugen aber neue Teile.
+
+**Glibberkuh (`glibberkuh`)** – 16×12
+
+- Haltung `passive`; nur für die Herausforderung „Bring meine Kuh heil über den Sirupsee“ (Kapitel 07).
+- Leben 30, Tempo 40; folgt Cloita, solange der Auftrag läuft. Löst sich nach 3 s in Brausesirup auf.
+- Aussehen: gefleckte Wackelpudding-Kuh mit Glöckchen, wabbelt beim Laufen.
 
 **Zuckerwattewolke (`zuckerwatte_wolke`)** – 18×14
 
@@ -103,7 +109,7 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Konfettikanone (`konfetti_kanone`)** – 16×16
 
-- Haltung `hostile`; `ranged` (bunte Salve), `reflect` (`bounce`: prallt Geschosse von oben ab, Alias `trampolin_frosch`), `retaliate`.
+- Haltung `hostile`; `ranged` (bunte Salve), `reflect` (`bounce`: prallt Geschosse von oben ab), `retaliate`.
 - Leben 38, Tempo 28, Salve 8 (Ausholen: bläst Backen auf, Lunte blitzt, 0,5 s).
 - Aussehen: laufendes Partyhütchen-Geschütz auf Gummifüßen.
 - Tod: Brausesirup und `probe_glibberkern`.
@@ -148,7 +154,7 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Sporenschnorrer (`sporenschnorrer`)** – 10×14
 
-- Haltung `hostile`; `steal` (Kolben in der Hand, Gold oder ein zufälliges Modul aus dem Rucksack), `flee`, `split` (Alias `kappenschleicher`).
+- Haltung `hostile`; `steal` (Kolben in der Hand, Gold oder ein zufälliges Modul aus dem Rucksack), `flee`, `split`.
 - Leben 18, sehr schnell (110). Schleicht sich an, schnappt sich etwas (Ausholen: reibt sich die Hände, 0,4 s) und rennt davon. Tötet man ihn, fällt das Gestohlene heraus; nach 30 s verschwindet er mit der Beute in einem Pilzloch.
 - Aussehen: dünner, grinsender Pilz mit Kapuze, viel zu langen Fingern und einer leuchtenden Glatze.
 - Sonderzustände `steal` (3), `carry` (4).
@@ -179,7 +185,7 @@ Jede Kreatur braucht: Sprite mit den Zuständen aus Kapitel 01 plus Sonderzustä
 
 **Orgelaal (`orgelaal`)** – 28×6 (Segmente)
 
-- Haltung `hostile`; `hunt` im Wasser, `ranged` (Stromstoß im Wasser, Ausholen: Körper leuchtet von hinten nach vorne auf, 0,7 s), `burrow` (Alias `weihrauch_aal`).
+- Haltung `hostile`; `hunt` im Wasser, `ranged` (Stromstoß im Wasser, Ausholen: Körper leuchtet von hinten nach vorne auf, 0,7 s), `burrow`.
 - Leben 35. Schwimmt nur im Wasser; außerhalb zappelt er hilflos.
 - Aussehen: langer Aal aus Orgelpfeifen-Segmenten, Mund wie ein Blasebalg.
 - Prozedurale Segmente (5 Teile).

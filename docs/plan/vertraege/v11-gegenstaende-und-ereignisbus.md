@@ -16,7 +16,6 @@ from dataclasses import dataclass
 SAMPLE_SLOTS: int = 12
 SAMPLE_STACK: int = 99
 
-
 @dataclass(frozen=True)
 class Sample:
     key: str            # "probe_gallenstein", "probe_wucherung", ... (exakt wie in V0a)
@@ -25,7 +24,6 @@ class Sample:
     tier: int           # 1 = gewöhnlich, 2 = selten, 3 = rar
     color: tuple[int, int, int]
     description: str
-
 
 SAMPLES: dict[str, Sample] = {
     # 12 Universums-Proben (je 2 pro MVP-Universum, exakt nach Bibel Kap. 07 & V0a):
@@ -113,15 +111,6 @@ SAMPLE_ALIASES: dict[str, str] = {
     "plattennadel": "probe_plattennadel",
     "glockensplitter": "probe_glockensplitter",
     "kerzenstumpf": "probe_kerzenstumpf",
-    "probe_saft": "probe_gallenstein",
-    "probe_papier": "probe_stempelkissen",
-    "probe_bunt": "probe_glibberkern",
-    "probe_zucker": "probe_zuckerkristall",
-    "probe_harz": "probe_ameisenduft",
-    "probe_pilz": "probe_leuchtspore",
-    "probe_spule": "probe_plattennadel",
-    "probe_salz": "probe_glockensplitter",
-    "probe_rost": "probe_stempelkissen",
 }
 ```
 
@@ -253,7 +242,7 @@ Jeder Aufruf von `self.emit(name, **data)` stellt die folgenden Schlüssel im `p
 | `"trader_hurt"` | `trader_key: str`, `amount: float` | Spieler-Projektil oder Kick trifft Händler | `Wanted.add(1.5, "Händler angegriffen")`, Händler wird feindlich |
 | `"trader_killed"` | `trader_key: str`, `x: float`, `y: float` | Händler stirbt | `Wanted.add(3.0, "Händler getötet")`, Drop des Händler-Inventars |
 | `"steal"` | `item_key: str`, `value: int` | Spieler nimmt unbezahltes Händler-Item mit | `Wanted.add(1.0, "Ladendiebstahl")`, Klonita |
-| `"steal_return"` | `species: str`, `kind: str`, `x: float`, `y: float` | Dieb-Kreatur (`gabelstapler_krabbe`) stirbt mit Beute | `Run` spawnt gestohlenes Pickup am Todesort |
+| `"steal_return"` | `species: str`, `kind: str`, `x: float`, `y: float` | Dieb-Kreatur (`sporenschnorrer`, `arbeiterameise`) stirbt mit Beute | `Run` spawnt gestohlenes Pickup am Todesort |
 | `"split"` | `species: str`, `x: float`, `y: float`, `generation: int` | Kreatur mit `Ability("split", ...)` stirbt und `generation < 2` | `Run` spawnt 2 kleinere Nachkommen (`generation + 1`) |
 | `"reflect"` | `species: str`, `x: float`, `y: float` | Kreatur mit `Ability("reflect", ...)` reflektiert Projektil | Partikel-/Audio-Effekt |
 | `"summon"` | `species: str`, `target_species: str`, `x: float`, `y: float`, `count: int` | Kreatur oder Boss wirkt Beschwörung | `Run` spawnt `count` Kreaturen vom Typ `target_species` |
@@ -264,3 +253,11 @@ Jeder Aufruf von `self.emit(name, **data)` stellt die folgenden Schlüssel im `p
 | `"station"` | `station_key: str` | Spieler aktiviert Werkstatt-Station (`E`) | Werkstatt-Menüs / Minispiele / Couch |
 | `"bribe"` | `species: str`, `cost: int` | Spieler besticht `tuersteherpilz` mit `E` | Zieht `20` Gold ab, setzt `creature.bribed = True` |
 | `"noise"` | `x: float`, `y: float`, `radius: float` | Explosion oder lauter Zauber | Weckt schlafende Kreaturen im Radius `radius` |
+| `"event_warn"` | `key: str`, `seconds: float` | `Run` erreicht `warn` Sekunden vor dem Start des Universums-Ereignisses | HUD-Banner, Kamerawackeln, Klonita |
+| `"quest_accepted"` | `key: str` | Spielerin nimmt die Herausforderung beim Auftraggeber an (`E`) | HUD, Klonita |
+| `"quest_done"` | `key: str`, `success: bool` | Herausforderung abgeschlossen oder gescheitert | Auszahlung, HUD, Klonita |
+| `"form_stamped"` | `x: float`, `y: float` | Spielerin stempelt ein Formular (`formular_stempel`) mit `E` | Herausforderung Aktenhalde |
+| `"aphid_fed"` | `x: float`, `y: float` | `"zucker"` landet in `<= 20 px` Abstand einer `blattlaus` | Herausforderung Krümelreich |
+| `"bell_rung"` | `x: float`, `y: float` | Treffer auf die Glocke (`abtei_glocke`) | Herausforderung Abtei, emittiert zusätzlich `"noise"` |
+| `"creature_woke"` | `species: str` | Schlafende Kreatur wacht auf (`kirchenkrake`) | Herausforderung Abtei, Klonita |
+| `"jump"` (Zusatz) | `on_beat: bool` | wie oben, mit `rule.on_beat` im Moment des Absprungs | Herausforderung Sporenklub |

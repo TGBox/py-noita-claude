@@ -46,7 +46,10 @@ def test_g03_hover_inspection_for_samples_stations_and_stances() -> None:
     run = Run(seed=3)
     run.enter_workshop()
     assert run.workshop_layout is not None
-    st = run.workshop_layout.stations.get("ws_fabrikator") or run.workshop_layout.stations["ws_fabricator"]
+    st = (
+        run.workshop_layout.stations.get("ws_fabrikator")
+        or run.workshop_layout.stations["ws_fabricator"]
+    )
     cx = (st.rect[0] + st.rect[2]) // 2
     cy = (st.rect[1] + st.rect[3]) // 2
     st_info = inspect_world(
@@ -65,19 +68,19 @@ def test_g04_records_discover_and_ranks() -> None:
     from src.records import Records, compute_score, rank_for_score
 
     rec = Records()
-    rec.discover("block", "spark")
-    rec.discover("blueprint", "orb")
+    rec.discover("block", "funke")
+    rec.discover("blueprint", "nadel")
     rec.discover("universe", "sporenklub")
     rec.discover("evil_self", "boese_kaiserin")
     rec.discover("badge", "dienstmarke")
-    rec.discover("creature", "madenwurm")
+    rec.discover("creature", "fleischmade")
 
-    assert "spark" in rec.blocks
-    assert "orb" in rec.blueprints
+    assert "funke" in rec.blocks
+    assert "nadel" in rec.blueprints
     assert "sporenklub" in rec.universes
     assert "boese_kaiserin" in rec.evil_selves
     assert rec.badges == 1
-    assert rec.creatures["madenwurm"] == 1
+    assert rec.creatures["fleischmade"] == 1
     assert "sporenklub" not in rec.creatures
 
     score = compute_score(
@@ -170,3 +173,95 @@ def test_g10_full_acceptance_bot_across_all_6_mvp_universes() -> None:
         rep = run_bot(u.key, seed=42, max_seconds=8.0)
         assert rep.errors == [], f"Errors in {u.key}: {rep.errors}"
         assert rep.stuck_ratio < 0.85, f"Bot stuck in {u.key}: {rep.stuck_ratio}"
+
+
+# ---------------------------------------------------------------------------
+# G11–G13 — Anzeigenamen der Module nach Bibel 06 (V0e). Schlüssel = heutiger Code-Schlüssel.
+# ---------------------------------------------------------------------------
+FORM_NAMES = {
+    "funke": (
+        "Flux-Funke",
+        "Schneller Funke, kleine Explosion. Das Brot und Butter jeder Wissenschaftlerin.",
+    ),
+    "nadel": ("Nadelschuss", "Sehr schnell, kratzt kaum an Wänden."),
+    "gallenblase": ("Hüpfgranate", "Prallt ab und platzt nach kurzer Zeit gewaltig."),
+    "klumpen": ("Matschbatzen", "Fliegt im Bogen und zerplatzt zu einer Pfütze (Wasser)."),
+    "knochensplitter": ("Schrotladung", "Fünf Kugeln auf kurze Distanz."),
+    "zahnbohrer": ("Bohrkopf", "Frisst sich ein Stück weit durch Weiches und Hartes."),
+    "blutegel": ("Lebenssauger", "Langsam; heilt dich um die Hälfte seines Schadens."),
+    "teleportbolzen": ("Sprungbolzen (L15)", "Wo er einschlägt, reißt er dich hin."),
+    "knochensaege": ("Kreissäge", "Prallt oft ab und schneidet durch alles Lebendige."),
+    "sporenmine": ("Haftmine", "Bleibt liegen und platzt, wenn etwas naht."),
+    "fressgeschwuer": ("Tunnelfresser (L6)", "Träge Kugel, frisst einen breiten Gang."),
+    "knochenspeer": ("Durchschlagbolzen", "Spießt alles in seiner Bahn auf."),
+    "mikrofunke": ("Mikrofunke", "Winzig, billig, schnell."),
+    "feuerball": ("Feuerball", "Glühender Klumpen, brennende Explosion."),
+    "knochenbombe": ("Kraterbombe (L8)", "Prallt einmal ab, dann ein riesiger Krater."),
+    "nadelregen": ("Nadelregen", "Acht Nadeln auf einmal."),
+    "schleimkugel": ("Klebekugel", "Macht Gegner klebrig, löscht Brände."),
+    "nervenstrom": ("Stromstoß", "Ein Blitz; in Wasser und Metall läuft er weiter."),
+    "wandlungsdruese": ("Wandelstrahl (L5)", "Wen er trifft, der wird zu etwas anderem."),
+    "tauschdruese": ("Tauschstrahl (L15)", "Du tauschst den Platz mit dem Getroffenen."),
+    "kettenfunke": ("Kettenblitz", "Springt auf bis zu drei weitere Kreaturen."),
+    "leuchtkugel": ("Leuchtfackel", "Schwebt lange und erhellt die Dunkelheit."),
+    "zahnrad": ("Mahlwerk", "Ein Zahnrad, das lange durch Wände mahlt."),
+    "gelenkkugel": ("Flummi", "Prallt immer wieder ab."),
+}
+
+MODIFIER_NAMES = {
+    "beschleunigung": ("Turbo", "Nächstes Geschoss fliegt schneller."),
+    "beschleunigung_stark": ("Überturbo", "Zweieinhalbmal so schnell. Hält nicht lange."),
+    "sprengkraft": ("Sprengladung", "Größere Explosion."),
+    "sprengkern": ("Taschen-Atomkern", "Viel größere Explosion. Nicht schütteln."),
+    "umkehr": ("Antigrav", "Nächstes Geschoss fällt nach oben."),
+    "schwerelos": ("Schwebefeld", "Nächstes Geschoss fällt gar nicht."),
+    "schwere_ladung": ("Bleimantel", "Mehr Schaden, aber langsamer."),
+    "zielsuche": ("Zielsuchkopf", "Lenkt zum Mauszeiger."),
+    "doppel": ("Doppellauf", "Zwei Gruppen auf einmal."),
+    "dreifach": ("Dreifachlauf", "Drei Gruppen auf einmal."),
+    "achterkreis": ("Rundumschlag (L15)", "Acht Gruppen im Kreis um dich."),
+    "faecher": ("Fächerdüse", "Fünf Gruppen, weit aufgefächert."),
+    "vorne_hinten": ("Rückspiegel", "Eine Gruppe nach vorn, eine nach hinten."),
+    "durchbohren": ("Panzerbrechend", "Fliegt durch Kreaturen hindurch."),
+    "abprall": ("Gummierung", "Prallt dreimal von Wänden ab."),
+    "brandbeschleuniger": ("Brandsatz", "Getroffene fangen Feuer."),
+    "langlebigkeit": ("Langstrecke", "Fliegt doppelt so lange, aber langsamer."),
+    "kurzlebig": ("Kurzstrecke", "Vergeht nach halber Zeit, dafür schneller schießen."),
+    "giftzahn": ("Wucht", "Trifft deutlich härter."),
+    "blutpreis": ("Fluxpumpe", "Gibt 60 Flux, kostet eine längere Pause."),
+    "dauerladung": ("Schnelllader", "Lädt nach diesem Durchgang fast sofort."),
+    "hast": ("Abzugsfeder", "Kürzere Pause bis zum nächsten Schuss."),
+}
+
+TRIGGER_NAMES = {
+    "nerv_aufprall": ("Aufschlagzünder", "Setzt die nächste Gruppe beim Aufprall frei."),
+    "nerv_zeit": ("Zeitzünder", "Nach kurzer Zeit."),
+    "nerv_ende": ("Endzünder", "Am Ende des Flugs."),
+    "nerv_naesse": ("Nässezünder", "Sobald das Geschoss in Flüssigkeit eintaucht."),
+}
+
+
+def _check_names(table: dict[str, tuple[str, str]]) -> None:
+    from src.spells import BLOCKS
+
+    for key, (name, description) in table.items():
+        block = BLOCKS[key]
+        assert block.key == key
+        assert block.name_de == name, key
+        assert block.description_de == description, key
+
+
+def test_g11_form_names() -> None:
+    _check_names(FORM_NAMES)
+
+
+def test_g12_modifier_names() -> None:
+    _check_names(MODIFIER_NAMES)
+
+
+def test_g13_trigger_and_payload_names() -> None:
+    from src.spells import BLOCKS
+
+    _check_names(TRIGGER_NAMES)
+    assert BLOCKS["sekret_feuer"].name_de == "Feuerfüllung"
+    assert BLOCKS["sekret_rauch"].name_de == "Rauchfüllung"

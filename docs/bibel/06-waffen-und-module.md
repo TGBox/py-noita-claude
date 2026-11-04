@@ -134,6 +134,14 @@ Füllungen müssen in jedem Universum funktionieren; deshalb nur Grundmaterialie
 | `fuellung_kolben` | Kolbenfüllung | Inhalt des Kolbens in der Hand | Verbraucht 10 Zellen deines Kolbens je Schuss. Ohne Kolben: Wasser. |
 | `fuellung_lokal` | Lokalkolorit | zufälliges Universumsmaterial | Etwas, das es nur hier gibt. Überraschung! |
 
+**Organische Füllungen (3):** Diese Füllungen gibt es zusätzlich, weil Blut, Säure und Glut in vielen Universen vorkommen. Fehlt das Material im aktiven Universum, nimmt das Spiel dessen Ersatzmaterial.
+
+| Schlüssel | Name | Material | Beschreibung |
+| --- | --- | --- | --- |
+| `sekret_blut` | Blutfüllung | Blut | Macht alles rot und glitschig. |
+| `sekret_saeure` | Säurefüllung | Säure | Frisst sich durch fast alles. |
+| `sekret_glut` | Glutfüllung | Magma | Heiß, langsam, sehr endgültig. |
+
 ## Familien
 
 Wie bisher erzeugt der Code weitere Module: **jede Grundform in jedem Element**, Aufsatz-Stufen I–IV, Ringformationen, Zeitzünder-Varianten. Neue Element-Liste: Wasser, Öl, Feuer, Rauch, Dampf, Sand, Erde, Fels, Flux (statt der 14 Biohorror-Elemente). Namen nach dem Schema „Wasser-Tropfen“, „Öl-Bombe“, „Sand-Säge“; Beschreibungstexte wie bisher mit `{n}`.

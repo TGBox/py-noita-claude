@@ -14,7 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 @dataclass(frozen=True)
 class AnimSpec:
     row: int
@@ -23,13 +22,11 @@ class AnimSpec:
     loop: bool = True
     next_anim: str = "idle"
 
-
 @dataclass(frozen=True)
 class GlowPoint:
     offset: tuple[int, int]
     color: tuple[int, int, int]
     radius: int = 12
-
 
 @dataclass(frozen=True)
 class SheetMeta:
@@ -38,11 +35,9 @@ class SheetMeta:
     anims: dict[str, AnimSpec] = field(default_factory=dict)
     glow: tuple[GlowPoint, ...] = ()
 
-
 def load_sheet_meta(json_path: Path) -> SheetMeta:
     """Load SheetMeta from a JSON sidecar file."""
     ...
-
 
 class Animator:
     def __init__(self, meta: SheetMeta, initial: str = "idle") -> None:
@@ -94,7 +89,6 @@ from .sprites import Animator, SheetMeta
 
 ASSET_ROOT: Path = Path(__file__).resolve().parent.parent / "assets" / "sprites"
 
-
 class SheetCache:
     def __init__(self, root: Path = ASSET_ROOT) -> None:
         self.root: Path = root
@@ -103,7 +97,6 @@ class SheetCache:
     def get(self, category: str, name: str) -> tuple[pygame.Surface, SheetMeta]:
         """Return cached (Surface, SheetMeta) for category/name, with headless fallback."""
         ...
-
 
 def blit_frame(
     target: pygame.Surface,
@@ -123,7 +116,6 @@ def blit_frame(
     """Blit the current animator frame anchored at (world_x - cam_x, world_y - cam_y)."""
     ...
 
-
 def glow_points(
     meta: SheetMeta,
     world_x: float,
@@ -138,13 +130,22 @@ def glow_points(
 
 ---
 
+### Renderer-Fassade (`src/rendering.py`)
+
+```python
+class Renderer:
+    def __init__(self, screen: pygame.Surface) -> None: ...   # setzt self.sheet_cache = SheetCache()
+    def draw(self, run: Run) -> None: ...                     # Welt, Kreaturen, Pickups, Spielerin, Klonita, dann draw_hud
+```
+
+`Renderer.draw` entsteht in `B32`; `B33`–`B35` ergänzen Waffe, Kreaturen-Rigs und Props, `G01`/`G02` erweitern nur `draw_hud` bzw. die Sprechblasen in `src/hud.py`.
+
 ## V7 Prozedurale Körper aus Teilen (`src/procbody.py`, headless)
 
 ```python
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
 
 @dataclass
 class Chain:
@@ -154,7 +155,6 @@ class Chain:
     def update(self, head_x: float, head_y: float) -> list[tuple[float, float]]:
         """Pull chain segments towards (head_x, head_y) keeping spacing distance."""
         ...
-
 
 @dataclass
 class Legs:
@@ -173,7 +173,6 @@ class Legs:
         """Return (hip_x, hip_y, foot_x, foot_y) tuples for each leg."""
         ...
 
-
 @dataclass
 class Tentacle:
     segments: int = 5
@@ -186,7 +185,6 @@ class Tentacle:
         """Return segments + 1 points starting at (root_x, root_y)."""
         ...
 
-
 @dataclass(frozen=True)
 class PartSpec:
     key: str
@@ -197,11 +195,9 @@ class PartSpec:
     bob_freq: float = 2.5
     destructible: bool = False
 
-
 @dataclass(frozen=True)
 class PartLayout:
     parts: tuple[PartSpec, ...] = ()
-
 
 class ProcRig:
     def __init__(self, layout: PartLayout) -> None:
@@ -222,7 +218,6 @@ class ProcRig:
         """Return z-ordered (part_key, wx, wy, sheet_name) for all non-destroyed parts."""
         ...
 
-
 RIG_LAYOUTS: dict[str, PartLayout] = {}
 ```
 
@@ -235,7 +230,6 @@ RIG_LAYOUTS: dict[str, PartLayout] = {}
 ```python
 OUTLINE_DARK: tuple[int, int, int, int] = (18, 14, 24, 255)
 
-
 @dataclass(frozen=True)
 class PaletteRamp:
     shadow: tuple[int, int, int, int]
@@ -244,15 +238,13 @@ class PaletteRamp:
     highlight: tuple[int, int, int, int]
     rim: tuple[int, int, int, int]
 
-
 def make_ramp(base_rgb: tuple[int, int, int]) -> PaletteRamp:
     """Create a 5-stop PaletteRamp from base_rgb with monotonically increasing brightness."""
     ...
 
-
 UNIVERSE_PALETTES: dict[str, dict[str, PaletteRamp]] = {
-    # Enthält mindestens alle 6 MVP-Universen ("fleischwelt", "aktenhalde", "glibbria",
-    # "kruemelreich", "sporenklub", "abtei") sowie die Pool-Universen ("schrott", "kuchen", "spule")
+    # Genau die 6 MVP-Universen ("fleischwelt", "aktenhalde", "glibbria", "kruemelreich",
+    # "sporenklub", "abtei"); Farben aus der Teilpalette in Bibel 03. Pool-Universen: Phase J.
     ...
 }
 
@@ -294,49 +286,41 @@ def build_all(out_dir: Path = ASSET_ROOT) -> list[Path]: ...
 
 ## V8b Waffenteile & Zusammenbau (`src/weapon_parts.py`, headless)
 
+Grundlage: Bibel 06 „Aussehen aus Teilen“. Genau diese 20 Teile, keine weiteren.
+
 ```python
 from __future__ import annotations
 
+import zlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .spells import Wand
+    from .wand import Wand
 
 WEAPON_PART_KEYS: tuple[str, ...] = (
-    # Kanonische Bibel-Waffenteile (Kap. 06) + kompakte Stab-Teile:
-    "griff_holz",
-    "griff_eisen",
-    "griff_knochen",
     "griff_pistole",
     "griff_kurbel",
     "griff_handschuh",
     "gehaeuse_kurz",
     "gehaeuse_mittel",
     "gehaeuse_lang",
-    "kern_rubin",
-    "kern_spule",
-    "kern_auge",
-    "kern_leere",
+    "tank_klein",
+    "tank_mittel",
+    "tank_gross",
     "lauf_einfach",
     "lauf_doppel",
     "lauf_dreifach",
     "muendung_spitz",
     "muendung_trichter",
     "muendung_sieb",
-    "spitz_prisma",
-    "spitz_gabel",
-    "spitz_zahn",
-    "tank_klein",
-    "tank_mittel",
-    "tank_gross",
+    "zier_klebeband",
     "zier_antenne",
     "zier_wackelauge",
     "zier_gluehbirne",
     "zier_schraubenzieher",
-    "zier_klebeband",
 )
-
+PART_ORDER: tuple[str, ...] = ("griff", "gehaeuse", "tank", "zier", "lauf", "muendung")  # hinten -> vorn
 
 @dataclass(frozen=True)
 class WeaponPartPlacement:
@@ -344,13 +328,22 @@ class WeaponPartPlacement:
     offset_x: int
     offset_y: int
 
-
 def parts_for(wand: Wand) -> list[str]:
-    """Select >= 3 valid WEAPON_PART_KEYS for wand based on its stats and blocks."""
+    """Genau ein Teil je Gruppe, in PART_ORDER-Reihenfolge, aus wand.spec abgeleitet."""
     ...
-
 
 def layout_for(wand: Wand) -> list[WeaponPartPlacement]:
-    """Return ordered WeaponPartPlacement entries with ascending offset_x."""
+    """Placements in PART_ORDER-Reihenfolge mit streng aufsteigendem offset_x."""
     ...
 ```
+
+Auswahlregeln (`spec = wand.spec`, `slots = spec.capacity or len(spec.blocks)`):
+
+| Gruppe | Regel |
+| --- | --- |
+| `gehaeuse` | `slots <= 4` → `kurz`, `<= 8` → `mittel`, sonst `lang` |
+| `lauf` | `spec.casts == 1` → `einfach`, `== 2` → `doppel`, sonst `dreifach` |
+| `muendung` | `spec.spread < 0.05` → `spitz`, `< 0.12` → `trichter`, sonst `sieb` |
+| `tank` | `spec.mana_max < 150` → `klein`, `< 300` → `mittel`, sonst `gross` (leuchtet in `flux`) |
+| `griff` | `spec.cast_delay < 0.1` → `pistole`, `< 0.25` → `kurbel`, sonst `handschuh` |
+| `zier` | `spec.shuffle` → `klebeband`; sonst `("antenne", "wackelauge", "gluehbirne", "schraubenzieher")[zlib.crc32(spec.name_de.encode()) % 4]` |

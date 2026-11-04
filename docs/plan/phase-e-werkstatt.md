@@ -152,7 +152,7 @@
 ## E10 — Werkstatt-Modus & Direkt-Stationen (`ws_couch`, `ws_liege`, `ws_well`, `ws_zapfhahn`, `ws_werkbank`/`ws_workbench`) in `Run` (`V18`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `E01`, `E06`
+- **Abhängigkeiten:** `E01`, `E06`, `E02`
 - **Ziel-Dateien:** `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`, `V20`), `src/workshop.py`, `src/run.py`, `tests/spec/test_phase_e.py` (`-k e10`)
 - **Aufgabe:**
@@ -194,7 +194,7 @@
   1. Ergänze in `src/menus.py` `draw_fabricator_menu(surface, font, small_font, run, selected_index)` (zeigt alle Blöcke mit Tier, Rezeptkosten in Proben + Gold, Status aus `fabricator.can_build` und verbleibende Bauten `3 - builds_this_visit`).
   2. Ergänze auf `Run` `craft_selected_recipe(self, block_key: str) -> tuple[bool, str]`, das `self.fabricator.craft(self, block_key)` aufruft und den gebauten Zauberblock ins Inventar legt (oder als Pickup vor die Spielerin spawnt, falls die Modul-Leiste voll ist).
 - **Akzeptanzkriterien:**
-  - `craft_selected_recipe("spark")` zieht Proben und Gold ab, legt `"spark"` ins Inventar und erhöht `fabricator.builds_this_visit` um `1`.
+  - `craft_selected_recipe("funke")` zieht Proben und Gold ab, legt `"funke"` ins Inventar und erhöht `fabricator.builds_this_visit` um `1`.
   - `draw_fabricator_menu` rendert fehlerfrei auf ein Offscreen-Surface.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_e.py -k e12 -q && uv run pytest --ignore=tests/spec -q`
 

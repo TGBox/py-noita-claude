@@ -1,165 +1,134 @@
-# Phase C — Kreaturen, Bosse & Agenten-Grundkörper (17 atomare S-Karten: `C01`–`C17`)
+# Phase C — Kreaturen, Bosse & Agenten-Grundkörper (14 atomare S-Karten: `C01`–`C17`; `C07`, `C08`, `C13` entfallen)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_c.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Kreaturen-Einträge folgen `V1`–`V4` aus [v01-verhalten-und-wegsuche.md](vertraege/v01-verhalten-und-wegsuche.md) und `V0d` aus [v00-migration-und-schluessel.md](vertraege/v00-migration-und-schluessel.md).
 
 ---
 
-## C01 — Kreaturen Universum 1 (`fleischwelt`: 4 reguläre Spezies) in `src/enemies.py` (`V1b`)
+> Die Pool-Universen `schrott`, `kuchen` und `spule` (früher `C07`, `C08`, `C13` und Teile von `C09`/`C11`) sind nach Phase J verschoben (`docs/erweiterung/03-universen-erweiterung.md`, `tasks/todo_erweiterung.md` J01–J03). Die frei gewordenen IDs werden nicht neu vergeben.
+
+## C01 — Kreaturen Fleischwelt (`fleischwelt`: 4 Einheimische) in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A15`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `docs/bibel/05-gegner.md`, `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c01`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V4`), `docs/bibel/05-gegner.md` (Abschnitt „Fleischwelt“), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c01`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 regulären Kreaturen für `fleischwelt` (`faction="fleischwelt"` / `"parasiten"`, `drops_sample="probe_gallenstein"` bzw. `"probe_wucherung"`):
-     - `"madenwurm"` / `"zottenwurm"` (`walk`/`swim`, `hostile`, `Ability("split", "worm")`, `Ability("eat_material", "flesh")`)
-     - `"blutfliege"` / `"gallenblase"` (`fly`, `hostile`, `Ability("suicide_explosion", "acid", 16.0)`)
-     - `"saeurespucker"` (`walk`, `hostile`, `Ability("spit_material", "acid")`)
-     - `"bandwurm_kopf"` (`walk`, `hostile`, `Ability("split", "worm")`)
+  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Einheimischen von `fleischwelt` mit `faction="parasiten"` (`UNIVERSE_FACTIONS`, `V4`) und `drops_sample` abwechselnd "probe_gallenstein" / "probe_wucherung". Leben, Tempo, Schaden und Ausholzeit (`windup_time`) stehen in Bibel 05:
+     - `"fleischmade"` (`walk`, `hostile`, `Ability("melee")`, `Ability("hunt")`; springt Hindernisse an)
+     - `"blutegel"` (`walk`, `hostile`, `Ability("melee")`, `Ability("hunt")`; `hangs=True`, saugt 2/s solange festgesaugt)
+     - `"saeurespucker"` (`walk`, `hostile`, `Ability("ranged", "acid")`; `resist_material="acid"`, `weak_material="fire"`)
+     - `"zottenwurm"` (`walk`, `neutral`, `Ability("graze", "flesh")`, `Ability("burrow", "flesh")`, `Ability("melee")`)
 - **Akzeptanzkriterien:**
-  - Alle `fleischwelt`-Spezies aus `UNIVERSES["fleischwelt"].creatures` sind in `SPECIES` vorhanden, lassen sich über `EnemyManager.spawn` erzeugen und überstehen 60 Simulations-Ticks in `EnemyManager.update` ohne Fehler.
+  - Alle 4 Spezies aus `UNIVERSES["fleischwelt"].creatures` sind in `SPECIES` registriert, lassen sich über `EnemyManager.spawn` erzeugen und überstehen 20 Simulations-Ticks ohne Fehler.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c01 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## C02 — Kreaturen Universum 2 (`aktenhalde`: 4 reguläre Spezies) in `src/enemies.py` (`V1b`)
+## C02 — Kreaturen Aktenhalde (`aktenhalde`: 4 Einheimische) in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C01`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c02`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V4`), `docs/bibel/05-gegner.md` (Abschnitt „Aktenhalde“), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c02`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 regulären Kreaturen für `aktenhalde` (`faction="aktenhalde"` / `"behoerde"`, `drops_sample="probe_stempelkissen"` bzw. `"probe_formular"`):
-     - `"papierfresser"` / `"aktenfresser"` (`walk`, `neutral`/`peaceful`, `Ability("eat_cells", "paper")`)
-     - `"heftklammer_krabbe"` / `"stempelkaefer"` (`walk`, `hostile`, `Ability("shield_front", "shield")`, `Ability("aura", "stamp_tax", 32.0)`)
-     - `"paragraphenreiter"` (`fly`, `hostile`, `Ability("summon", "stempelkaefer", 2.0)`)
-     - `"kaffeegolem"` (`walk`, `hostile`, `Ability("morph", "enraged", 0.5)`)
+  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Einheimischen von `aktenhalde` mit `faction="akten"` (`UNIVERSE_FACTIONS`, `V4`) und `drops_sample` abwechselnd "probe_stempelkissen" / "probe_formular". Leben, Tempo, Schaden und Ausholzeit (`windup_time`) stehen in Bibel 05:
+     - `"aktenfresser"` (`walk`, `neutral`, `Ability("dig", "papier")`, `Ability("melee")`, `Ability("pack")`; `weak_material="fire"`)
+     - `"stempler"` (`walk`, `neutral`, `Ability("melee")`, `Ability("summon", "agent_streife", 1.0)`, `Ability("aura", "stamp_tax", 32.0)`)
+     - `"paragraphenreiter"` (`fly`, `hostile`, `Ability("ranged", "paragraph")`, `Ability("summon", "stempler", 1.0)`)
+     - `"kaffeegolem"` (`walk`, `neutral`, `Ability("melee")`, `Ability("ranged", "steam")`, `Ability("morph", "enraged", 0.5)`)
 - **Akzeptanzkriterien:**
-  - Alle `aktenhalde`-Spezies aus `UNIVERSES["aktenhalde"].creatures` existieren in `SPECIES` mit den spezifizierten Haltungen und Fähigkeiten.
+  - Alle 4 Spezies aus `UNIVERSES["aktenhalde"].creatures` sind in `SPECIES` registriert, lassen sich über `EnemyManager.spawn` erzeugen und überstehen 20 Simulations-Ticks ohne Fehler.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c02 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## C03 — Kreaturen Universum 3 (`glibbria`: 4 reguläre Spezies) in `src/enemies.py` (`V1b`)
+## C03 — Kreaturen Glibbria (`glibbria`: 4 Einheimische) in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C02`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c03`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V4`), `docs/bibel/05-gegner.md` (Abschnitt „Glibbria“), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c03`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 regulären Kreaturen für `glibbria` (`faction="glibbria"` / `"zirkus"`, `drops_sample="probe_glibberkern"` bzw. `"probe_brauseperle"`):
-     - `"glibber_slime"` / `"quallenhund"` (`walk`, `hostile`, `Ability("split", "jelly")`, `Ability("leave_trail", "jelly")`)
-     - `"brause_geist"` / `"zuckerwatte_wolke"` (`fly`, `passive`/`shy`, `Ability("suicide_explosion", "jelly", 16.0)`, `Ability("aura", "slow", 40.0)`)
-     - `"trampolin_frosch"` (`walk`, `neutral`, `Ability("reflect", "bounce")`)
-     - `"konfetti_kanone"` (`walk`, `hostile`, Salven-Schuss im Takt)
+  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Einheimischen von `glibbria` mit `faction="gelee"` (`UNIVERSE_FACTIONS`, `V4`) und `drops_sample` abwechselnd "probe_glibberkern" / "probe_brauseperle". Leben, Tempo, Schaden und Ausholzeit (`windup_time`) stehen in Bibel 05:
+     - `"huepfling"` (`walk`, `passive`, `Ability("flee")`, `Ability("graze", "zuckerguss")`; `group_size=(3, 6)`)
+     - `"glibberteiler"` (`walk`, `hostile`, `Ability("melee")`, `Ability("hunt")`, `Ability("split", "glibber")`, `Ability("armor")`; Größen aus `SPLIT_SIZES`)
+     - `"zuckerwatte_wolke"` (`fly`, `passive`, `Ability("flee")`, `Ability("aura", "slow", 40.0)`)
+     - `"konfetti_kanone"` (`walk`, `hostile`, `Ability("ranged", "confetti")`, `Ability("reflect", "bounce")`)
 - **Akzeptanzkriterien:**
-  - Alle `glibbria`-Spezies aus `UNIVERSES["glibbria"].creatures` existieren in `SPECIES` und funktionieren im 60-Tick-Simulationstest.
+  - Alle 4 Spezies aus `UNIVERSES["glibbria"].creatures` sind in `SPECIES` registriert, lassen sich über `EnemyManager.spawn` erzeugen und überstehen 20 Simulations-Ticks ohne Fehler.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c03 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## C04 — Kreaturen Universum 4 (`kruemelreich`: 4 reguläre Spezies) in `src/enemies.py` (`V0d`, `V1b`)
+## C04 — Kreaturen Krümelreich (`kruemelreich`: 4 Einheimische) in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C03`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c04`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V4`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `docs/bibel/05-gegner.md` (Abschnitt „Krümelreich“), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c04`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 regulären Kreaturen für `kruemelreich` (`faction="kruemelreich"` / `"insekten"`, `drops_sample="probe_zuckerkristall"` bzw. `"probe_ameisenduft"`):
-     - `"ameisen_soldat"` / `"ameisensoldat"` (`walk`, `hostile`, `Ability("call_reinforcements", "ameisen")`, `Ability("shield_front", "shield")`)
-     - `"blattlaus"` (`walk`, `passive`/`peaceful`, `Ability("eat_material", "sugar")`, setzt beim Spawn `giver = True` gemäß `V0d`)
-     - `"arbeiterameise"` (`walk`, `neutral`, `Ability("steal", "gold")`)
-     - `"harzspucker"` (`walk`, `hostile`, `Ability("spit_material", "resin")`, `Ability("aura", "slow", 32.0)`)
+  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Einheimischen von `kruemelreich` mit `faction="insekten"` (`UNIVERSE_FACTIONS`, `V4`) und `drops_sample` abwechselnd "probe_zuckerkristall" / "probe_ameisenduft". Leben, Tempo, Schaden und Ausholzeit (`windup_time`) stehen in Bibel 05:
+     - `"ameisenkrieger"` (`walk`, `hostile`, `Ability("pack")`, `Ability("hunt")`, `Ability("melee")`, `Ability("dig", "brosel")`, `Ability("ranged", "acid")`; `group_size=(4, 8)`)
+     - `"blattlaus"` (`walk`, `passive`, `Ability("graze", "zucker")`; setzt beim Spawn `giver = True` gemäß `V0d`)
+     - `"arbeiterameise"` (`walk`, `neutral`, `Ability("pack")`, `Ability("steal", "gold")`, `Ability("dig", "brosel")`)
+     - `"harzspucker"` (`walk`, `hostile`, `Ability("ranged", "resin")`, `Ability("aura", "slow", 32.0)`)
 - **Akzeptanzkriterien:**
-  - Alle `kruemelreich`-Spezies aus `UNIVERSES["kruemelreich"].creatures` existieren in `SPECIES`; eine gespawnte `"blattlaus"` hat `giver == True`.
+  - Alle 4 Spezies aus `UNIVERSES["kruemelreich"].creatures` sind in `SPECIES` registriert, lassen sich über `EnemyManager.spawn` erzeugen und überstehen 20 Simulations-Ticks ohne Fehler.
+  - Eine gespawnte `"blattlaus"` hat `giver == True`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c04 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## C05 — Kreaturen Universum 5 (`sporenklub`: 4 reguläre Spezies) in `src/enemies.py` (`V0d`, `V1b`)
+## C05 — Kreaturen Sporenklub (`sporenklub`: 4 Einheimische) in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C04`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c05`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V4`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `docs/bibel/05-gegner.md` (Abschnitt „Sporenklub“), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c05`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 regulären Kreaturen für `sporenklub` (`faction="sporenklub"` / `"pilze"`, `drops_sample="probe_leuchtspore"` bzw. `"probe_plattennadel"`):
-     - `"bass_pilz"` / `"tuersteherpilz"` (`walk`, `neutral`/`territorial`, `Ability("pulse_shockwave", "spore", 36.0)`, bestechbar für 20 Gold gemäß `V0d`)
-     - `"sporen_motte"` / `"leuchtmotte"` (`fly`, `passive`/`peaceful`, `Ability("leave_trail", "spore")`, `Ability("aura", "heal_allies", 44.0)`)
-     - `"sporenwerfer"` (`walk`, `hostile`, `Ability("aura", "poison", 36.0)`)
-     - `"kappenschleicher"` (`walk`, `passive`/`shy`, `Ability("split", "myzel")`)
+  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Einheimischen von `sporenklub` mit `faction="pilze"` (`UNIVERSE_FACTIONS`, `V4`) und `drops_sample` abwechselnd "probe_leuchtspore" / "probe_plattennadel". Leben, Tempo, Schaden und Ausholzeit (`windup_time`) stehen in Bibel 05:
+     - `"tuersteherpilz"` (`walk`, `neutral`, `Ability("stationary")`, `Ability("shield", "front")`, `Ability("melee")`; bestechbar für 20 Gold gemäß `V0d`)
+     - `"sporenschnorrer"` (`walk`, `hostile`, `Ability("steal", "flask")`, `Ability("flee")`, `Ability("split", "spore")`)
+     - `"sporenwerfer"` (`walk`, `hostile`, `Ability("ranged", "spore")`, `Ability("aura", "poison", 36.0)`; `weak_material="fire"`)
+     - `"leuchtmotte"` (`fly`, `passive`, `Ability("flee")`, `Ability("aura", "heal_allies", 44.0)`; leuchtet)
 - **Akzeptanzkriterien:**
-  - Alle `sporenklub`-Spezies aus `UNIVERSES["sporenklub"].creatures` existieren in `SPECIES` und funktionieren im Simulationstest.
+  - Alle 4 Spezies aus `UNIVERSES["sporenklub"].creatures` sind in `SPECIES` registriert, lassen sich über `EnemyManager.spawn` erzeugen und überstehen 20 Simulations-Ticks ohne Fehler.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c05 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## C06 — Kreaturen Universum 6 (`abtei`: 4 reguläre Spezies) in `src/enemies.py` (`V0d`, `V1b`)
+## C06 — Kreaturen Versunkene Abtei (`abtei`: 4 Einheimische) in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C05`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c06`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V4`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `docs/bibel/05-gegner.md` (Abschnitt „Versunkene Abtei“), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c06`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 regulären Kreaturen für `abtei` (`faction="abtei"` / `"tiefsee"`, `drops_sample="probe_glockensplitter"` bzw. `"probe_kerzenstumpf"`):
-     - `"chor_fisch"` / `"moenchsfisch"` (`swim`, `neutral`/`territorial`, Schall-Projektil, profitiert ab 3 Fischen vom Chor-Buff gemäß `V0d`)
-     - `"kerzen_qualle"` / `"glockenqualle"` (`swim`, `passive`/`peaceful`, `Ability("aura", "shock", 36.0)`)
-     - `"korallenwaechter"` (`walk`, `neutral`, `Ability("reflect", "shell")`)
-     - `"weihrauch_aal"` (`swim`, `hostile`, `Ability("burrow", "sand")`)
+  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Einheimischen von `abtei` mit `faction="tiefsee"` (`UNIVERSE_FACTIONS`, `V4`) und `drops_sample` abwechselnd "probe_glockensplitter" / "probe_kerzenstumpf". Leben, Tempo, Schaden und Ausholzeit (`windup_time`) stehen in Bibel 05:
+     - `"moenchsfisch"` (`swim`, `neutral`, `Ability("pack")`, `Ability("ranged", "bubble")`; Chor-Buff ab 3 Fischen gemäß `V0d`)
+     - `"orgelaal"` (`swim`, `hostile`, `Ability("hunt")`, `Ability("ranged", "shock")`, `Ability("burrow", "sand")`; außerhalb von Wasser zappelt er hilflos)
+     - `"glockenqualle"` (`swim`, `passive`, `Ability("aura", "shock", 36.0)`; leuchtet)
+     - `"korallenwaechter"` (`walk`, `neutral`, `Ability("shield", "front")`, `Ability("reflect", "shell")`, `Ability("melee")`)
 - **Akzeptanzkriterien:**
-  - Alle 24 regulären Kreaturen-Schlüssel der 6 MVP-Universen (`UNIVERSES`) existieren in `SPECIES` und funktionieren im Simulationstest.
+  - Alle 4 Spezies aus `UNIVERSES["abtei"].creatures` sind in `SPECIES` registriert, lassen sich über `EnemyManager.spawn` erzeugen und überstehen 20 Simulations-Ticks ohne Fehler.
+  - Damit sind alle 24 Einheimischen der 6 MVP-Universen registriert.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c06 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## C07 — Pool-Kreaturen 1 (`schrott`: 4 Spezies) in `src/enemies.py` (`V1b`)
+## C09 — Großkreaturen `trampolinwal` & `kirchenkrake` in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C06`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c07`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `docs/plan/vertraege/v09-universen-und-ereignisse.md` (`V13b`, Kirchenkrake), `docs/bibel/05-gegner.md`, `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c09`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Kreaturen des Pool-Universums `schrott` (`faction="schrott"`, `drops_sample="probe_rost"`):
-     - `"rostkaefer"` (`walk`, `territorial`, `Ability("eat_material", "rust")`)
-     - `"schweissimp"` (`fly`, `hostile`, Feuer-Schuss, `Ability("teleport", "fire")`)
-     - `"magnetwurm"` (`walk`, `hostile`, `Ability("burrow", "")`)
-     - `"schrottgolem"` (`walk`, `territorial`, `Ability("reflect", "shield")`)
+  1. Registriere die 2 Großkreaturen aus der Bibel (`docs/bibel/05-gegner.md` §3): `"trampolinwal"` (`glibbria`, `passive`, prallt Projektile nach oben ab) und `"kirchenkrake"` (`abtei`, `swim`, `hostile`, `Ability("grab_pull", "tentacle")`).
+  2. Ergänze den Lärmzähler der `"kirchenkrake"` laut `V13b`: `Creature.noise_level: float = 0.0`, `EnemyManager.on_noise(x, y, radius, out_events)` (+40 für schlafende Kraken im Umkreis `200 px`), Abbau um `10` pro Sekunde in `EnemyManager.update`, Aufwachen bei `>= 100` mit Ereignis `("creature_woke", {"species": "kirchenkrake"})`.
 - **Akzeptanzkriterien:**
-  - Alle 4 `schrott`-Spezies existieren in `SPECIES` und funktionieren im 60-Tick-Simulationstest.
-- **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c07 -q && uv run pytest --ignore=tests/spec -q`
-
----
-
-## C08 — Pool-Kreaturen 2 (`kuchen`: 4 Spezies) in `src/enemies.py` (`V1b`)
-
-- **Größe:** S
-- **Abhängigkeiten:** `C07`
-- **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c08`)
-- **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Kreaturen des Pool-Universums `kuchen` (`faction="backwerk"`, `drops_sample="probe_zucker"`):
-     - `"zuckerspinne"` (`walk`, `hostile`, verschießt klebrigen Sirup, `Ability("aura", "slow", 30.0)`)
-     - `"kerzenkobold"` (`walk`, `hostile`, Feuerball-Schuss, `Ability("kamikaze", "fire", 14.0)`)
-     - `"marzipanschwein"` (`walk`, `shy`, `Ability("eat_material", "dough")`)
-     - `"baiser_geist"` (`fly`, `territorial`, `Ability("teleport", "blink")`)
-- **Akzeptanzkriterien:**
-  - Alle 4 `kuchen`-Spezies existieren in `SPECIES` und funktionieren im Simulationstest.
-- **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c08 -q && uv run pytest --ignore=tests/spec -q`
-
----
-
-## C09 — Pool-Kreaturen 3 (`spule`: 4 Spezies) & 2 Großkreaturen (`trampolinwal`, `kirchenkrake`) (`V1b`)
-
-- **Größe:** S
-- **Abhängigkeiten:** `C08`
-- **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`–`V2`), `docs/bibel/05-gegner.md`, `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c09`)
-- **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 4 Kreaturen des Pool-Universums `spule` (`faction="automaten"`, `drops_sample="probe_spule"`): `"funkenhornisse"`, `"spulenkrabbe"`, `"kupferschlange"`, `"kondensator_geist"`.
-  2. Registriere außerdem die 2 Großkreaturen aus der Bibel (`docs/bibel/05-gegner.md` §3): `"trampolinwal"` (`glibbria`, `passive`, prallt Projektile nach oben ab) und `"kirchenkrake"` (`abtei`, `swim`, `hostile`, `Ability("grab_pull", "tentacle")`).
-- **Akzeptanzkriterien:**
-  - Alle Kreaturen-Schlüssel aus `UNIVERSES` und `POOL_UNIVERSES` sowie `"trampolinwal"` und `"kirchenkrake"` sind vollständig in `SPECIES` registriert.
+  - `"trampolinwal"` (`faction="gelee"`) und `"kirchenkrake"` (`faction="tiefsee"`) sind in `SPECIES` registriert und lassen sich spawnen.
+  - Drei Lärm-Ereignisse kurz hintereinander wecken die Krake, drei Ereignisse mit je 5 s Pause nicht.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c09 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -175,7 +144,7 @@
      - `"pfuetzenwurm"` (`fleischwelt`, `Ability("burrow", "flesh")`, Säure-Salve)
      - `"aktenwolf"` (`aktenhalde`, `Ability("morph", "alpha", 0.5)`, `Ability("aura", "stamp_tax", 42.0)`)
      - `"manege_clown"` (`glibbria`, `Ability("split", "clown")`, Hüpf-Bomben)
-     - `"harzgeneral"` (`kruemelreich`, `Ability("summon", "ameisensoldat", 2.0)`, Harz-Salve)
+     - `"harzgeneral"` (`kruemelreich`, `Ability("summon", "ameisenkrieger", 2.0)`, Harz-Salve)
      - `"sporenherz"` (`sporenklub`, `Ability("summon", "sporenwerfer", 2.0)`, `Ability("aura", "poison", 48.0)`)
 - **Akzeptanzkriterien:**
   - Alle 5 Zwischenbosse sind mit `is_mid_boss == True` in `SPECIES` registriert und überstehen 60 Simulations-Ticks.
@@ -183,20 +152,17 @@
 
 ---
 
-## C11 — Zwischenbosse Teil 2 (`abtei` & Pool-Universen `schrott`, `kuchen`, `spule`) in `src/enemies.py` (`V1b`)
+## C11 — Unter-Zwischenboss Teil 2 (`glockenwaechter`) & Vollständigkeitsprüfung in `src/enemies.py` (`V1b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C10`
 - **Ziel-Dateien:** `src/enemies.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1b`), `src/universes/catalog.py`, `tests/spec/test_phase_c.py` (`-k c11`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die restlichen 4 Zwischenbosse (`is_mid_boss=True`, `sample_chance=1.0`):
+  1. Registriere in `SPECIES` (`src/enemies.py`) den letzten Unter-Zwischenboss (`is_mid_boss=True`, `sample_chance=1.0`):
      - `"glockenwaechter"` (`abtei`, `Ability("aura", "shock", 50.0)`, Schall-Nova)
-     - `"gabelstapler_krabbe"` (`schrott`, `Ability("steal", "wand")`, `Ability("reflect", "shield")`)
-     - `"marzipan_ritter"` (`kuchen`, `Ability("reflect", "sugar_shield")`, Lanzen-Stoß)
-     - `"spulenmeister"` (`spule`, `Ability("teleport", "spark")`, Kettenblitz-Schuss)
 - **Akzeptanzkriterien:**
-  - Alle `u.mid_boss`-Schlüssel aus `UNIVERSES` und `POOL_UNIVERSES` sind in `SPECIES` vorhanden und haben `is_mid_boss == True`.
+  - Alle 6 `u.mid_boss`-Schlüssel aus `UNIVERSES` sind in `SPECIES` vorhanden und haben `is_mid_boss == True`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c11 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -209,36 +175,22 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1b`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/universes/catalog.py`, `tests/spec/test_phase_c.py` (`-k c12`)
 - **Aufgabe:**
   1. Registriere in `SPECIES` (`src/enemies.py`) die 6 kanonischen MVP-Universums-Hauptbosse (`is_boss=True`, `hp` im Bereich `320..460`, `drops_sample="probe_kern"`, `sample_chance=1.0`):
-     - `"weltenherz"` (Alias `"pfuetzenkoenig"`, `fleischwelt`)
-     - `"oberstempler"` (Alias `"oberamtsrat"`, `aktenhalde`)
-     - `"mutter_glibber"` (Alias `"zirkusdirektor"`, `glibbria`)
-     - `"ameisenkoenigin"` (Alias `"koenigin_mandibula"`, `kruemelreich`)
-     - `"dj_myzel"` (Alias `"muttermyzel"`, `sporenklub`)
-     - `"abt_kieme"` (Alias `"abt_nautilus"`, `abtei`)
+     - `"weltenherz"` (`fleischwelt`)
+     - `"oberstempler"` (`aktenhalde`)
+     - `"mutter_glibber"` (`glibbria`)
+     - `"ameisenkoenigin"` (`kruemelreich`)
+     - `"dj_myzel"` (`sporenklub`)
+     - `"abt_kieme"` (`abtei`)
 - **Akzeptanzkriterien:**
-  - Alle 6 `u.boss`-Schlüssel aus `UNIVERSES.values()` (sowie ihre Aliase) sind mit `is_boss == True` und `drops_sample == "probe_kern"` in `SPECIES` registriert.
+  - Alle 6 `u.boss`-Schlüssel aus `UNIVERSES.values()` sind mit `is_boss == True` und `drops_sample == "probe_kern"` in `SPECIES` registriert.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c12 -q && uv run pytest --ignore=tests/spec -q`
-
----
-
-## C13 — Universums-Hauptbosse Teil 2 (Pool-Bosse `schrottpresse`, `hochzeitstorte`, `transformator`) (`V1b`, `V16`)
-
-- **Größe:** S
-- **Abhängigkeiten:** `C12`
-- **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1b`), `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/universes/catalog.py`, `tests/spec/test_phase_c.py` (`-k c13`)
-- **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`) die 3 Pool-Universums-Endbosse (`is_boss=True`, `drops_sample="probe_kern"`, `sample_chance=1.0`): `"schrottpresse"`, `"hochzeitstorte"`, `"transformator"`.
-- **Akzeptanzkriterien:**
-  - Alle `u.boss`-Schlüssel aus `UNIVERSES` und `POOL_UNIVERSES` sind in `SPECIES` vorhanden und haben `is_boss == True`.
-- **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c13 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
 ## C14 — Behörden-Agenten, Böse Ichs & `"ober_cloita"` in `src/enemies.py` (`V15`, `V17`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `C13`
+- **Abhängigkeiten:** `C12`
 - **Ziel-Dateien:** `src/enemies.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`, `V17`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c14`)
 - **Aufgabe:**
@@ -252,7 +204,7 @@
 
 ---
 
-## C15 — Kreaturen-Projektil-Effekte (Stempel, Sirup, Harz, Schall, Blitz) in `src/projectiles.py` (`V4b`)
+## C15 — Kreaturen-Projektil-Effekte (Stempel, Harz, Strom) in `src/projectiles.py` (`V4b`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `A08`, `C14`
@@ -260,9 +212,9 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V4b`), `src/projectiles.py`, `tests/spec/test_phase_c.py` (`-k c15`)
 - **Aufgabe:**
   1. Erweitere die Treffer-Behandlung feindlicher Projektile in `src/projectiles.py`:
-     - Projektile von `"stempelkaefer"`, `"agent_streife"`, `"agent_sachbearbeiter"`, `"oberstempler"` oder `"oberamtsrat"` setzen auf dem getroffenen Ziel `body.stamped_bad = max(body.stamped_bad, 10.0)`.
-     - Projektile von `"zuckerspinne"` oder `"harzspucker"` setzen `body.sticky = max(body.sticky, 5.0)`.
-     - Projektile von `"funkenhornisse"`, `"spulenmeister"` oder `"transformator"` setzen `body.charged = max(body.charged, 4.0)`.
+     - Projektile von `"stempler"`, `"agent_streife"`, `"agent_sachbearbeiter"` oder `"oberstempler"` setzen auf dem getroffenen Ziel `body.stamped_bad = max(body.stamped_bad, 10.0)`.
+     - Projektile von `"harzspucker"` oder `"harzgeneral"` setzen `body.sticky = max(body.sticky, 5.0)`.
+     - Projektile von `"orgelaal"`, `"glockenqualle"` oder `"glockenwaechter"` setzen `body.charged = max(body.charged, 4.0)`.
 - **Akzeptanzkriterien:**
   - Treffer durch ein Projektil mit `owner_species="agent_sachbearbeiter"` setzt `player.body.stamped_bad >= 10.0`; Treffer mit `owner_species="harzspucker"` setzt `player.body.sticky >= 5.0`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c15 -q && uv run pytest --ignore=tests/spec -q`
@@ -293,8 +245,8 @@
 - **Ziel-Dateien:** `src/enemies.py`, `src/projectiles.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1b`), `src/enemies.py`, `src/projectiles.py`, `tests/spec/test_phase_c.py` (`-k c17`)
 - **Aufgabe:**
-  1. Hinterlege sinnvolle `weak_material`- und `resist_material`-Einträge auf den Kreaturen-Spezifikationen in `src/enemies.py` (z. B. `fleischwelt` resistent gegen `"acid"`; `aktenhalde` schwach gegen `"fire"`; `sporenklub`/`myzel` schwach gegen `"fire"`, resistent gegen `"spore"`).
+  1. Prüfe bzw. ergänze `weak_material` / `resist_material` auf den Spezifikationen in `src/enemies.py` nach Bibel 05 („Schwäche“, „immun“): u. a. `saeurespucker` `resist_material="acid"`; `fleischmade`, `aktenfresser`, `sporenwerfer`, `glibberteiler` `weak_material="fire"`. Nur Materialschlüssel aus `src/materials.py` verwenden.
   2. Wende beim Projektil-Treffer (`src/projectiles.py`) und Welt-Kontakt (`src/enemies.py`) `1.5×` Schaden bei `trail == spec.weak_material` und `0.5×` Schaden bei `trail == spec.resist_material` an.
 - **Akzeptanzkriterien:**
-  - Ein Feuer-Projektil (`trail="fire"`) verursacht an `"kerzenkobold"` (`resist_material="fire"`) `0.5×` Schaden und an `"sporenwerfer"` (`weak_material="fire"`) `1.5×` Schaden.
+  - Ein Feuer-Projektil (`trail="fire"`) verursacht an `"sporenwerfer"` (`weak_material="fire"`) `1.5×` Schaden; ein Säure-Projektil (`trail="acid"`) an `"saeurespucker"` (`resist_material="acid"`) `0.5×` Schaden.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c17 -q && uv run pytest --ignore=tests/spec -q`

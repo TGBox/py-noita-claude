@@ -132,6 +132,13 @@ Verhalten sind kombinierbare Bausteine. Eine Kreatur hat eine **Haltung** (wie s
 
 Einheimische verschiedener Arten greifen sich gegenseitig an, wenn sie von fremden Geschossen getroffen werden (Kollateralschaden erzeugt Streit).
 
+Im Code (Vertrag V4) hat jedes Universum eine eigene Einheimischen-Fraktion: Fleischwelt `parasiten`, Aktenhalde `akten`, Glibbria `gelee`, Krümelreich `insekten`, Sporenklub `pilze`, Versunkene Abtei `tiefsee`. Dazu kommen `spieler`, `wildnis` (Kreaturen ohne Universum), `haendler`, `behoerde` und `boese_ichs`.
+
+- Einheimische verschiedener Universen sind verfeindet (sie begegnen sich nur in Parallelwelten, Minispielen oder durch Beschwörungen).
+- Die bösen Ichs gehören zum Rat der Behörde: Behörde und böse Ichs greifen sich nicht an.
+- Händler sind von sich aus mit niemandem verfeindet außer der Behörde und den bösen Ichs; erst ein Angriff erzeugt Groll.
+- Ob eine Kreatur Cloita angreift, entscheidet ihre Haltung, nicht ihre Fraktion.
+
 ## Fahndungsstufe (Behörde)
 
 - 0–5 Sterne. Steigt durch: getötete neutrale oder passive Kreaturen (+0,25), getötete Händler (+1 bis +3), verletzte Händler (+1,5), große Zerstörung (Sachbeschädigung durch zerstörte Zellen), verbotene Großzauber (+0,5) und Diebstahl im Laden (+1 bis +2).
@@ -174,6 +181,7 @@ Gold ist **kein** Material, sondern ein Gegenstand (Münzen, Haufen), damit es n
 - **Werkstatt:** volle Heilung bei jedem Besuch.
 - **Lebenskapsel:** +20 maximales Leben und volle Heilung (1 pro Universum, versteckt).
 - **Selbstexperimente** mit Heilwirkung (Kapitel 07).
+- **Klonitas Snack:** +15 Leben unter 35 % Leben, alle 45 s, nicht im Bosskampf.
 - Keine Flüssigkeit heilt ohne Selbstexperiment.
 
 ## Flux (Mana)
@@ -214,17 +222,16 @@ Funktioniert wie das bisherige Mana (lädt von selbst nach, je Waffe). Anzeige a
   - *Zeigen:* steht sie still und zeigt in eine Richtung, liegt dort ein Geheimnis, eine Lebenskapsel oder ein Erinnerungssplitter (Abklingzeit 60 s).
   - *Tragen:* hebt Gegenstände auf, die Cloita nicht erreicht (rennt hin und bringt sie, 1 Gegenstand je 30 s).
   - *Umarmen:* passive und neutrale Kreaturen in ihrer Nähe bleiben friedlich, solange sie nicht getroffen werden.
-  - *Auffangen:* fällt Cloita mehr als 120 px, fängt Klonita sie mit kleiner Chance (25 %) auf.
-  - *Aktive Kampf- & Schutzhilfen (`assist`):*
+  - *Snack:* fällt Cloita unter 35 % Leben, steckt Klonita ihr einen Snack zu: +15 Leben, höchstens alle 45 s, nie im Kampf gegen einen Zwischengegner oder ein böses Ich. Ein Grund, sie dabeizuhaben.
+  - *Aktive Kampf- & Schutzhilfen (`assist`, zusätzlich zu den Aktionen oben und dem Snack):*
     - `shield` (Abklingzeit 18 s): löscht ein feindliches Geschoss kurz vor Cloita (`< 28 px`) mit einem Schutzfunken.
-    - `snack` (Abklingzeit 35 s): wirft Cloita bei wenig Leben (`< 35 %`) einen Heil-Snack (`+12 HP`) zu.
     - `spark` (Abklingzeit 4,5 s): verschießt einen kleinen lila Hilfsfunken (`6` Schaden) auf nahe Angreifer (`< 90 px`).
     - `cleanse` (Abklingzeit 22 s): tupft Feuer, Frost oder einen negativen Stempel (`stamped_bad`) von Cloita ab.
 - **Hinderlich:**
   - *Zu nett:* Gibt sie Händlern ungefragt Trinkgeld (selten, 5–15 Gold) oder nascht bei vollem Beutel eine gewöhnliche Probe gegen 15 Gold Trostpflaster (`sample_nibble`).
   - *Füttern / Anstupsen:* Bleibt sie neben einer Kreatur stehen, gibt sie ihr manchmal etwas zu essen (die Kreatur heilt sich um 20 %), stupst aus Neugier ein glänzendes Fass an (`shiny_poke`) oder niest Funken neben Schlafenden (`loud_sneeze`).
   - *Warnung:* Sehr selten ruft sie einem Gegner „Pass auf, sie schießt gleich!“ zu (Gegner weicht einmal aus).
-  - Die Nachteile sind selten genug, um zu schmunzeln, nicht zu frustrieren (Faustregel: höchstens einmal pro Universum).
+  - Die Nachteile sind selten genug, um zu schmunzeln, nicht zu frustrieren: alle Macken zusammen höchstens einmal pro Universum.
 - **Kommentare:** Text-Blasen über ihrem Kopf, Anlässe und Mengen in Kapitel 08.
 - **Taste „Klonita rufen / wegschicken“** (frei belegbar, Standard **K**, Controller: linker Stick drücken):
   - *Rufen:* Klonita kommt sofort her (teleportiert, wenn sie weit weg ist) und folgt wieder.

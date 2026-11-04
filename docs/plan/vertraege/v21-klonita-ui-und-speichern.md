@@ -25,6 +25,16 @@ KLONITA_STATES: tuple[str, ...] = (
     "knocked",    # Für 5.0 s benommen am Boden (unsterblich, steht danach wieder auf)
 )
 
+HELPERS: tuple[str, ...] = ("point", "carry", "hug")
+QUIRKS: tuple[str, ...] = (
+    "shiny_poke", "loud_sneeze", "sample_nibble",  # F13
+    "tip_trader", "feed_creature", "warn_enemy",   # F17
+)
+QUIRK_CHANCE_PER_S = 0.02
+POINT_RADIUS = 240.0
+CARRY_MIN_RISE = 40.0
+HUG_RADIUS = 80.0
+
 AUTO_TRIGGERS: tuple[str, ...] = (
     "enter_universe",  # Beim Eintritt in ein neues Universum
     "player_low_hp",   # Wenn player.body.hp / player.body.max_hp < 0.25
@@ -32,7 +42,6 @@ AUTO_TRIGGERS: tuple[str, ...] = (
     "wanted_high",     # Wenn Wanted.stars >= 3 erreicht wird
     "event_start",     # Wenn ein Universums-Ereignis startet
 )
-
 
 @dataclass
 class Klonita:
@@ -51,9 +60,13 @@ class Klonita:
             "snack": 0.0,
             "spark": 0.0,
             "cleanse": 0.0,
+            "point": 0.0,
+            "carry": 0.0,
         }
     )
     facing: int = 1
+    pointing: tuple[float, float] | None = None
+    point_timer: float = 0.0
 
     def toggle(self) -> str:
         """Schaltet per Taste [K] ('klonita'-Aktion in keybinds.py) zwischen 'dismissed'
@@ -69,7 +82,11 @@ class Klonita:
         5.0 s in state = 'knocked' (knocked_timer = 5.0) und gibt True zurück."""
 
     def trigger_quirk(self, kind: str, run: Run) -> bool:
-        """Führt einmal pro Universum eine Macke ('shiny_poke', 'loud_sneeze', 'sample_nibble') aus."""
+        """Führt einmal pro Universum eine der 6 QUIRKS aus (Abschnitt 3)."""
+
+    def helper_point(self, run: Run) -> tuple[float, float] | None: ...  # Abschnitt 2b
+    def helper_carry(self, run: Run) -> Pickup | None: ...               # Abschnitt 2b
+    def helper_hug(self, run: Run) -> int: ...                           # Abschnitt 2b
 
     def update(self, dt: float, run: Run) -> None:
         """Bewegt Klonita weich hinter der Spielerin her (Teleport zur Spielerin bei
@@ -86,15 +103,36 @@ class Klonita:
 | Schlüssel | Cooldown | Bedingung | Wirkung |
 | --- | --- | --- | --- |
 | `"shield"` | `18.0 s` | Feindliches Projektil näher als `28 px` an der Spielerin | Löscht das Projektil und erzeugt einen kurzen Schild-Funken |
-| `"snack"` | `35.0 s` | `player.body.hp / player.body.max_hp < 0.35` | Wirft eine Mini-Heilbeere (`+12 HP`) zur Spielerin |
+| `"snack"` | `45.0 s` | `player.body.hp / player.body.max_hp < 0.35` **und** kein Bosskampf aktiv (`run.boss_script is None`) | Gibt der Spielerin einen Snack: `+15 HP` (höchstens `max_hp`), Sprechblase |
 | `"spark"` | `4.5 s` | Feind näher als `90 px` | Verschießt einen schwachen lila Hilfsfunken (`6.0` Schaden) |
 | `"cleanse"` | `22.0 s` | Spielerin brennt, ist gefroren oder hat `stamped_bad > 0` | Löscht Feuer/Frost bzw. setzt `stamped_bad = 0.0` |
 
-### 3. Die 3 Einmal-pro-Universum-Macken (`quirk`, max. `1×` je Universum wenn `quirk_used_in_universe == False`)
+### 2b. Die 4 Bibel-Aktionen (`helper`, Bibel 02 „Nützlich“) — Karten `F15`, `F16`
 
-1. `"shiny_poke"`: Stupst eine explosive Kiste oder ein instabiles Fass an (*"Oh, glänzt das?"*).
-2. `"loud_sneeze"`: Niest Funken in der Nähe schlafender Kreaturen (`run.emit("noise", x=self.x, y=self.y, radius=90.0)`).
-3. `"sample_nibble"`: Nascht bei `>= 5` Proben im Inventar `1` Tier-1-Probe weg, lässt dafür aber sofort `15` Gold fallen (*"Schmeckt nach Wissenschaft!"*).
+Entscheidung (2026-11-04): Klonita kombiniert die Bibel-Aktionen mit den 4 Hilfsaktionen aus Abschnitt 2. Das Spiel hat keinen Fallschaden, deshalb entfällt „Auffangen“. `cooldowns` erhält zusätzlich `"point"` und `"carry"`.
+
+| Schlüssel | Cooldown | Bedingung | Wirkung | Methode |
+| --- | --- | --- | --- | --- |
+| `"point"` | `60.0 s` | Ziel näher als `POINT_RADIUS = 240 px` an Klonita: `run.level.secret` oder ein `Pickup` mit `kind` in `("life_capsule", "heart", "memory_shard")` | `self.pointing = (x, y)`, `self.point_timer = 3.0`, `run.emit("klonita_point", x=…, y=…)`; Klonita bleibt stehen, bis `point_timer` abgelaufen ist | `helper_point(run) -> tuple[float, float] \| None` |
+| `"carry"` | `30.0 s` | Ein `Pickup` (nicht `kind="portal"`) liegt mehr als `CARRY_MIN_RISE = 40 px` über der Spielerin und horizontal näher als `200 px` | Setzt `pickup.x, pickup.y` auf die Position der Spielerin | `helper_carry(run) -> Pickup \| None` |
+| `"hug"` | — (passiv, jedes `update`) | Kreatur mit `spec.stance` in `("peaceful", "passive", "territorial", "neutral")` näher als `HUG_RADIUS = 80 px` an Klonita | `creature.calmed = 0.5` (s); Rückgabe = Anzahl beruhigter Kreaturen | `helper_hug(run) -> int` |
+
+Kreaturen-Felder (Karte `F15`, `src/enemies.py`): `Creature.calmed: float = 0.0` (zählt in `Creature.update` auf `0` herunter) und `Creature.dodge_charges: int = 0`. `evaluate_stance` (`src/enemies.py`): Kreaturen mit `territorial`/`neutral` und `calmed > 0` werden **nicht** durch Nähe der Spielerin aggressiv; Treffer (`was_hit`) und Gruppen-Aggro wirken weiter.
+
+Während `state == "dismissed"` oder `"knocked"` laufen keine Aktionen.
+
+### 3. Die 6 Macken (`quirk`) — Karten `F13`, `F17`
+
+Alle Macken teilen sich `quirk_used_in_universe`: höchstens **eine** Macke je Universum (Bibel 02, Faustregel). `trigger_quirk(kind, run)` führt die Macke sofort aus und liefert `True`, wenn sie ausgelöst hat. Automatisch prüft `update` jede Sekunde jede Macke, deren Bedingung erfüllt ist, mit `QUIRK_CHANCE_PER_S = 0.02` (`run.rng`).
+
+| Schlüssel | Bedingung | Wirkung | Karte |
+| --- | --- | --- | --- |
+| `"shiny_poke"` | explosive Kiste oder instabiles Fass näher als `40 px` | stupst es an (*„Oh, glänzt das?“*) | `F13` |
+| `"loud_sneeze"` | schlafende Kreatur näher als `90 px` | `run.emit("noise", x=self.x, y=self.y, radius=90.0)` | `F13` |
+| `"sample_nibble"` | `>= 5` Proben im Inventar | nascht `1` Tier-1-Probe, lässt sofort `15` Gold fallen (*„Schmeckt nach Wissenschaft!“*) | `F13` |
+| `"tip_trader"` | Kreatur mit `spec.stance == "trader"` näher als `60 px` und `run.gold >= 5` | `run.gold -= min(run.gold, run.rng.randint(5, 15))` (*„Für Ihre Mühe!“*) | `F17` |
+| `"feed_creature"` | Kreatur mit `spec.stance` in `("peaceful", "passive", "territorial", "neutral")` näher als `24 px` | Kreatur heilt `20 %` ihres `max_hp` (höchstens bis `max_hp`) | `F17` |
+| `"warn_enemy"` | Kreatur mit `spec.stance == "hostile"` näher als `120 px` | `creature.dodge_charges += 1`; das nächste Geschoss der Spielerin, das diese Kreatur treffen würde, fliegt durch (`dodge_charges -= 1`, kein Schaden) (*„Pass auf, sie schießt gleich!“*) | `F17` |
 
 ### 4. Kommentar-Datenbank (`src/klonita_lines.py`)
 
@@ -107,15 +145,6 @@ LINES: dict[str, tuple[str, ...]] = {
     "enter_kruemelreich": (...),
     "enter_sporenklub": (...),
     "enter_abtei": (...),
-    # Pool-Universen & Aliase:
-    "enter_schrott": (...),
-    "enter_myzel": (...),
-    "enter_magen": (...),
-    "enter_amt": (...),
-    "enter_kuchen": (...),
-    "enter_ameisen": (...),
-    "enter_spule": (...),
-    "enter_glibber": (...),
     # Auto-Trigger & Situationen:
     "player_low_hp": (...),
     "boss_spawn": (...),
@@ -123,6 +152,11 @@ LINES: dict[str, tuple[str, ...]] = {
     "event_start": (...),
     "couch": (...),
     "memory_shard": (...),
+    "helper_point": (...),
+    "helper_carry": (...),
+    "quirk_tip_trader": (...),
+    "quirk_feed_creature": (...),
+    "quirk_warn_enemy": (...),
 }
 
 def line_for(topic: str, rng: random.Random) -> str:
@@ -289,27 +323,21 @@ Zusätzlich zu den bestehenden Feldern in `save_state()` / `restore()` werden im
 
 ### 4. Kanonische Alias-Tabellen (`MODULE_ALIASES` & `PERK_ALIASES`)
 
-Damit sowohl die bestehenden Modul-/Perk-Keys in `src/spells.py` und `src/perks.py` als auch die deutschen Bibel-Begriffe überall (Tests, Rezepte, Händler, Loot-Tabellen, Savegames) auf denselben kanonischen Schlüssel abbilden:
+Im MVP bleiben die heutigen Code-Schlüssel in `BLOCKS` kanonisch (eine Umbenennung auf die Bibel-06-Schlüssel ist nicht Teil von A–G). Damit die Bibel-Schlüssel trotzdem überall (Tests, Rezepte, Händler, Loot-Tabellen, Savegames) auf denselben kanonischen Schlüssel abbilden:
 
 ```python
 # In src/spells.py:
 MODULE_ALIASES: dict[str, str] = {
-    "funken": "spark",
-    "bolzen": "bolt",
-    "kugel": "orb",
-    "lanze": "lance",
-    "sporen": "spore",
-    "saeure": "acid_orb",
-    "schleim": "slime_arc",
-    "kette": "chain",
-    "blitz": "lightning",
-    "strahl": "beam",
-    "eislanze": "ice_lance",
-    "spaltung": "split_cast",
-    "abprall": "bounce",
-    "zielsuche": "homing",
-    "heilung": "heal",
-    "schild": "shield",
+    # Bibel-06-Schlüssel -> heutiger Code-Schlüssel, aus der Spalte „Bisher“ in Bibel 06
+    # (nur Zeilen, deren „Bisher“-Wert ein Schlüssel in BLOCKS ist), z. B.:
+    "flux_funke": "funke",
+    "nadelschuss": "nadel",
+    "huepfgranate": "gallenblase",
+    "matschbatzen": "klumpen",
+    "fuellung_feuer": "sekret_feuer",
+    "fuellung_rauch": "sekret_rauch",
+    # … alle übrigen Zeilen der Tabellen Geschosse, Aufsätze, Zünder in Bibel 06 nach demselben Muster
+    # (die acht neuen Füllungen aus V0e tragen ihren Bibel-Schlüssel direkt und brauchen keinen Alias)
 }
 
 def resolve_block_key(key: str) -> str:

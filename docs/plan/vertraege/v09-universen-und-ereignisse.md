@@ -24,9 +24,12 @@ class Level:
     challenge_shrine: tuple[int, int, int, int] | None = None      # (x0, y0, x1, y1) Herausforderungs-Schrein
     regions: list[tuple[str, tuple[int, int, int, int]]] = field(default_factory=list)  # [(region_key, (x0, y0, x1, y1)), ...]
     destructible_props: list[tuple[str, int, int]] = field(default_factory=list)        # [(prop_key, x, y), ...]
+    quest_giver: tuple[int, int] | None = None                     # Standplatz des Auftraggebers (V13b)
+    quest_target: tuple[int, int] | None = None                    # Ziel der Kuh-Eskorte (V13b, nur Glibbria)
 ```
 
 - **Rechteck-Konvention (`(x0, y0, x1, y1)`):** Alle Rechtecke im gesamten Projekt haben `0 <= x0 < x1 <= width` und `0 <= y0 < y1 <= height`.
+- **Bossplatz:** `Run(seed, …, universe_key=k, boss_slot=False)`. Der Unter-Zwischenboss (`universe.mid_boss`) erscheint in jedem Universum in `mid_boss_arena`; der Zwischengegner (`universe.boss`) nur bei `boss_slot=True` in `boss_arena` (Bibel 02: zweites Universum jedes Rangs). Im Lauf setzt `RunPlan.boss_slot` den Wert.
 - **Abwärtskompatibilität:** Bestehende Aufrufe `Level(spawn, exit_point, arena, secret, vault)` funktionieren dank der Default-Parameter für alle neuen Felder unverändert weiter.
 
 ### 2. Registry in `src/universes/gen/__init__.py`
@@ -43,7 +46,6 @@ if TYPE_CHECKING:
     from ..model import Universe
 
 GENERATORS: dict[str, Callable[[World, Universe, int, int], Level]] = {}
-
 
 def generate_universe(world: World, universe: Universe, depth: int, seed: int) -> Level:
     """Generate a universe level using the registered generator for universe.key."""
@@ -131,15 +133,15 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .run import Run
 
-
 @dataclass(frozen=True)
 class EventSpec:
     key: str
     name: str
     description: str
-    duration: float
+    duration: float                       # Sekunden aktiv
     preferred_universes: tuple[str, ...] = ()
-
+    interval: float = 0.0                 # Sekunden zwischen zwei Starts (Bibel 03)
+    warn: float = 0.0                     # Sekunden Ankündigung vor dem Start
 
 @dataclass
 class Event:
@@ -155,28 +157,25 @@ class Event:
     @classmethod
     def from_data(cls, data: dict[str, object] | None) -> Event | None: ...
 
-
 EVENTS: dict[str, EventSpec] = {...}
 
-
 def pick_event(universe_key: str, depth: int, rng: random.Random) -> Event | None:
-    """Roll (35% chance) and return an Event for universe_key, or None."""
+    """Return a fresh Event for the universe's own event (UNIVERSES[key].event), or None."""
     ...
 ```
 
-### Kanonische Ereignisse in `EVENTS` (6 Bibel-Hauptevents + 3 Sekundärereignisse)
+### Kanonische Ereignisse in `EVENTS` (genau die 6 Universums-Ereignisse aus Bibel 03)
 
-| `key` | `name` | `preferred_universes` | Wirkung (`on_start` / `tick` / `on_end`) |
-| --- | --- | --- | --- |
-| `"verdauung"` | `"Verdauungsschub"` | `("fleischwelt",)` | Magensäure sprudelt in Becken auf, Wände kontrahieren leicht |
-| `"pruefung"` | `"Steuerprüfung"` | `("aktenhalde",)` | Stempeldrohne erscheint, Stempelfarbe/Formulare regnen herab |
-| `"brauseregen"` | `"Brauseregen"` | `("glibbria",)` | Brausesirup regnet von oben, Sprungkraft erhöht |
-| `"riesenschritt"` | `"Riesenschritt"` | `("kruemelreich",)` | Erdstoß schüttelt Krümel und Zucker von der Decke |
-| `"bass_drop"` | `"Bass-Drop"` | `("sporenklub",)` | Druckwelle alle paar Takte, Sporenwirbel leuchten |
-| `"glockenschlag"` | `"Glockenschlag"` | `("abtei",)` | Schallwelle im Wasser, lose Steine bröckeln |
-| `"schrottregen"` | `"Schrott-Schauer"` | `("aktenhalde",)` | Metallteile und Büroklammern regnen herab |
-| `"zuckersturm"` | `"Puderzucker-Böe"` | `("kruemelreich",)` | Puderzucker-Wirbel mit erhöhter Beweglichkeit |
-| `"sporenregen"` | `"Leuchtsporen-Nebel"` | `("sporenklub",)` | Heilender/leuchtender Sporenteppich |
+Jedes Universum hat genau ein wiederkehrendes Ereignis (`Universe.event`). `Run` zählt `interval` herunter, kündigt `warn` Sekunden vorher an und startet dann das Ereignis für `duration` Sekunden. Zufällige Zusatzereignisse gibt es im MVP nicht (nach Phase 2 verschoben, `tasks/todo_erweiterung.md`).
+
+| `key` | `name` | `preferred_universes` | `interval` / `warn` / `duration` | Wirkung (Bibel 03) |
+| --- | --- | --- | --- | --- |
+| `"verdauung"` | `"Verdauung"` | `("fleischwelt",)` | `90` / `3` / `20` | Säurespiegel in Region `"magen"` +30 px; Kamerawackeln bei Ankündigung |
+| `"pruefung"` | `"Prüfung"` | `("aktenhalde",)` | `120` / `3` / `1` | Durchsage „Bitte halten Sie Ihre Unterlagen bereit.“; 2 `agent_streife` erscheinen |
+| `"brauseregen"` | `"Brauseregen"` | `("glibbria",)` | `100` / `3` / `15` | `"brausesirup"` regnet am oberen Rand der Simulationszone |
+| `"riesenschritt"` | `"Riesenschritt"` | `("kruemelreich",)` | `80` / `3` / `1` | 120 px breiter Streifen der Oberfläche wird zusammengedrückt; Schatten als Ankündigung |
+| `"bass_drop"` | `"Bass-Drop"` | `("sporenklub",)` | `60` / `1` / `1` | alle Körper und losen Gegenstände +40 px hoch, Pulver hüpft |
+| `"glockenschlag"` | `"Glockenschlag"` | `("abtei",)` | `75` / `2` / `1` | Stromschlag für alle Körper im Wasser; leises Vorläuten als Ankündigung |
 
 ---
 
@@ -192,7 +191,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .run import Run
 
-
 @dataclass(frozen=True)
 class ChallengeSpec:
     key: str
@@ -202,7 +200,6 @@ class ChallengeSpec:
     reward_samples: int = 2
     reward_perk: bool = False
     time_limit: float = 0.0
-
 
 @dataclass
 class Challenge:
@@ -222,9 +219,7 @@ class Challenge:
     @classmethod
     def from_data(cls, data: dict[str, object] | None) -> Challenge | None: ...
 
-
 CHALLENGES: dict[str, ChallengeSpec] = {...}
-
 
 def pick_challenge(universe_key: str, depth: int, rng: random.Random) -> Challenge:
     """Pick a deterministic Challenge instance for universe_key and depth."""
@@ -242,13 +237,68 @@ def pick_challenge(universe_key: str, depth: int, rng: random.Random) -> Challen
 
 ---
 
+## V13b Universums-Herausforderungen (`src/challenges.py`)
+
+Die sechs Herausforderungen aus Bibel 07 („Herausforderungen in Universen“). Anders als die Schrein-Prüfungen (V13) vergibt sie ein Einheimischer (Auftraggeber), man nimmt sie mit `E` an, und die Belohnung kommt beim Auftraggeber.
+
+```python
+@dataclass(frozen=True)
+class QuestSpec:
+    key: str                  # "challenge_<universum>"
+    universe: str
+    giver: str                # Art des Auftraggebers (wird friedlich gespawnt, giver=True)
+    text_de: str              # Sprechblase beim Ansprechen
+    goal: int                 # benötigter Fortschritt
+    reward: tuple[str, int]   # (Art, Menge), siehe Tabelle
+
+@dataclass
+class Quest:
+    spec: QuestSpec
+    accepted: bool = False
+    progress: int = 0
+    done: bool = False
+    failed: bool = False
+    reward_paid: bool = False
+
+    def accept(self, run: Run) -> None: ...                                  # accepted=True, emit("quest_accepted")
+    def on_event(self, name: str, data: dict[str, object], run: Run) -> None: ...
+    def tick(self, dt: float, run: Run) -> None: ...
+    def turn_in(self, run: Run) -> bool: ...                                 # beim Auftraggeber mit E; zahlt aus
+    def to_data(self) -> dict[str, object]: ...
+    @classmethod
+    def from_data(cls, data: dict[str, object] | None) -> Quest | None: ...
+
+QUESTS: dict[str, QuestSpec] = {...}          # genau 6, Schlüssel = QuestSpec.key
+def quest_for(universe_key: str) -> Quest: ...   # neue Quest-Instanz des Universums
+```
+
+Regeln: Vor `accept` werden Ereignisse ignoriert. Nach `failed` oder `reward_paid` ändert sich nichts mehr. `turn_in` gelingt nur bei `progress >= goal` und nicht `failed`, zahlt genau einmal aus und feuert `emit("quest_done", key=…, success=True)`; Scheitern feuert `quest_done` mit `success=False`.
+
+| `key` | Auftraggeber | `goal` | Fortschritt / Scheitern | `reward` | Auszahlung in `turn_in` |
+| --- | --- | --- | --- | --- | --- |
+| `challenge_fleischwelt` | `fleischmade` | `3` | Fortschritt = `run.inventory.sample_count("probe_gallenstein")` (in `tick`); `turn_in` zieht 3 ab | `("life_capsule", 1)` | Pickup `kind="life_capsule"` beim Auftraggeber |
+| `challenge_aktenhalde` | `stempler` | `5` | `+1` je `"form_stamped"`; scheitert bei `"event_start"` mit `key == "pruefung"` | `("gold", 150)` | `run.gold += 150` |
+| `challenge_glibbria` | `huepfling` | `1` | `+1`, wenn die `glibberkuh` die Zielzone (`Level.quest_target`) erreicht; scheitert, wenn sie stirbt (`"kill"` mit `species == "glibberkuh"`) | `("module_tier", 3)` | Pickup `kind="block"` mit `rng.choice(blocks_of_tier(3))` |
+| `challenge_kruemelreich` | `blattlaus` | `3` | `+1` je `"aphid_fed"`; scheitert, sobald ein `ameisenkrieger` die Spielerin sieht (`can_see`, in `tick`) | `("samples", 2)` | `run.inventory.add_sample(universe.sample_key, 2)` |
+| `challenge_sporenklub` | `leuchtmotte` | `5` | `+1` je `"jump"` mit `on_beat == True`; ein Sprung neben dem Beat setzt `progress = 0` | `("neonsaft_gold", 80)` | Kolben mit `"neonsaft"` (voll) als Pickup + `run.gold += 80` |
+| `challenge_abtei` | `moenchsfisch` | `3` | `+1` je `"bell_rung"`; scheitert bei `"creature_woke"` mit `species == "kirchenkrake"` | `("reroll", 1)` | `run.inventory.rerolls += 1` |
+
+Ergänzend:
+
+- `Level.quest_giver` – freier Bodenplatz für den Auftraggeber, von jedem Generator gesetzt.
+- `Level.quest_target: tuple[int, int] | None = None` – Zielpunkt der Kuh-Eskorte (Glibbria, gegenüberliegende Küste des Sirupsees); die Zielzone ist ein Kreis mit Radius `24 px`.
+- `glibberkuh` (Bibel 05, Glibbria): `passive`, folgt der Spielerin, solange die Quest angenommen ist und der Abstand `< 120 px` ist; löst sich nach `3 s` ununterbrochenem Kontakt mit `"brausesirup"` auf (stirbt).
+- `kirchenkrake` schläft mit einem Lärmzähler: jedes `"noise"` im Umkreis `200 px` addiert `40`, der Zähler sinkt um `10` pro Sekunde, bei `>= 100` wacht sie auf (`emit("creature_woke", species="kirchenkrake")`). Jeder Glockenschlag (`"bell_rung"`) erzeugt ein `"noise"`. Wer zu schnell läutet, weckt sie.
+- `Run.quest: Quest | None` wird beim Betreten eines Universums mit `quest_for(universe.key)` belegt; der Auftraggeber erscheint an `Level.quest_giver`. `Run.try_interact_creature()` ruft beim Auftraggeber `accept` bzw. `turn_in` auf.
+
+---
+
 ## V14 Bot-Lauf (`src/bot.py`, headless)
 
 ```python
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
 
 @dataclass
 class BotReport:
@@ -264,7 +314,6 @@ class BotReport:
     min_hp_ratio: float = 1.0
     errors: list[str] = field(default_factory=list)
 
-
 def run_bot(
     universe_key: str,
     seed: int = 1,
@@ -272,7 +321,6 @@ def run_bot(
 ) -> BotReport:
     """Run deterministic bot in a single MVP universe and return BotReport."""
     ...
-
 
 def run_full(
     seed: int = 1,

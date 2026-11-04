@@ -1,4 +1,4 @@
-# Phase F — Behörde, Mehrphasige Bosse, Böse Ichs, Hauptquartier & Klonita (14 atomare S-Karten: `F01`–`F14`)
+# Phase F — Behörde, Mehrphasige Bosse, Böse Ichs, Hauptquartier & Klonita (17 atomare S-Karten: `F01`–`F17`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_f.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Module folgen `V15`–`V17` aus [v15-behoerde-und-bosse.md](vertraege/v15-behoerde-und-bosse.md) und `V21`–`V22` aus [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md).
@@ -42,11 +42,11 @@
 ## F03 — Mehrphasiges Boss-Framework (`src/bosses/__init__.py`) (`V16`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `C13`
+- **Abhängigkeiten:** `C12`
 - **Ziel-Dateien:** `src/bosses/__init__.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/enemies.py`, `tests/spec/test_phase_f.py` (`-k f03`)
 - **Aufgabe:**
-  1. Erstelle `src/bosses/__init__.py` mit `BossPhase`, `BossScript` (`update`, `phase_change`, `tick_phase`, `on_death`), der Arena-Gefahren-Hilfe `apply_arena_hazard(hazard: str, dt: float, boss: Creature, run: Run)` (`"acid_rain"`, `"steam_vents"`, `"stamp_barrage"`, `"frost_floor"`, `"electric_arcs"`, `"jelly_bounce"`) und der Fabrikfunktion `make_boss_script(boss: Creature) -> BossScript | None` gemäß `V16`.
+  1. Erstelle `src/bosses/__init__.py` mit `BossPhase`, `BossScript` (`update`, `phase_change`, `tick_phase`, `on_death`), der Arena-Gefahren-Hilfe `apply_arena_hazard(hazard: str, dt: float, boss: Creature, run: Run)` (alle 8 Schlüssel aus `ARENA_HAZARDS` in `V16`) und der Fabrikfunktion `make_boss_script(boss: Creature) -> BossScript | None` gemäß `V16`.
 - **Akzeptanzkriterien:**
   - Sinkt `boss.body.hp / boss.body.max_hp` auf `<= 0.66` bzw. `<= 0.33`, wechselt `BossScript.phase` auf `1` bzw. `2`, setzt `invuln_timer = 1.0` und feuert `run.emit("boss_phase", ...)`.
   - Während `invuln_timer > 0` wird eingehender Schaden am Boss blockiert.
@@ -54,45 +54,45 @@
 
 ---
 
-## F04 — Boss-Skripte Paket 1: `weltenherz`/`pfuetzenkoenig`, `dj_myzel`/`muttermyzel`, `schrottpresse` (`V16`)
+## F04 — Boss-Skripte Paket 1: `weltenherz`, `dj_myzel` (`V16`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `F03`
 - **Ziel-Dateien:** `src/bosses/__init__.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/bosses/__init__.py`, `tests/spec/test_phase_f.py` (`-k f04`)
 - **Aufgabe:**
-  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte (`1.0`, `0.66`, `0.33`) für `"weltenherz"` (sowie Alias `"pfuetzenkoenig"`), `"dj_myzel"` (sowie Alias `"muttermyzel"`) und `"schrottpresse"` mit ihren deutschen Phasen-Ansagen, Summons und Arena-Gefahren aus `V16` und registriere sie in `make_boss_script`.
+  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte (`1.0`, `0.66`, `0.33`) für `"weltenherz"` und `"dj_myzel"` mit ihren deutschen Phasen-Ansagen, Summons und Arena-Gefahren aus `V16` und registriere sie in `make_boss_script`.
 - **Akzeptanzkriterien:**
   - `make_boss_script` liefert für alle genannten Bosse eine `BossScript`-Instanz mit `len(script.phases) == 3`, die bei HP `60 %` und `30 %` die Phasen `1` und `2` inkl. Summons/Hazards auslöst.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f04 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F05 — Boss-Skripte Paket 2: `oberstempler`/`oberamtsrat`, `abt_kieme`/`abt_nautilus`, `hochzeitstorte` (`V16`)
+## F05 — Boss-Skripte Paket 2: `oberstempler`, `abt_kieme` (`V16`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `F04`
 - **Ziel-Dateien:** `src/bosses/__init__.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/bosses/__init__.py`, `tests/spec/test_phase_f.py` (`-k f05`)
 - **Aufgabe:**
-  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte für `"oberstempler"` (sowie Alias `"oberamtsrat"`), `"abt_kieme"` (sowie Alias `"abt_nautilus"`) und `"hochzeitstorte"` (zerstört bei Phase 1 und 2 jeweils die oberste Torten-Etage über `ProcRig.destroy_part`) gemäß `V16` und registriere sie in `make_boss_script`.
+  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte für `"oberstempler"` (Phase 3: Aktendeckel-Wände) und `"abt_kieme"` (Phase 2: schrittweise Flutung) gemäß `V16` und registriere sie in `make_boss_script`.
 - **Akzeptanzkriterien:**
-  - Alle 3 Bosse (samt Aliasen) durchlaufen im Test sauber ihre 3 Phasen; `"hochzeitstorte"` ruft beim Phasenwechsel `destroy_part` für die Torten-Etagen auf.
+  - Beide Bosse durchlaufen im Test sauber ihre 3 Phasen.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f05 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F06 — Boss-Skripte Paket 3: `ameisenkoenigin`/`koenigin_mandibula`, `mutter_glibber`/`zirkusdirektor`, `transformator` & `Run`-Anbindung (`V16`)
+## F06 — Boss-Skripte Paket 3: `ameisenkoenigin`, `mutter_glibber` & `Run`-Anbindung (`V16`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `F05`
 - **Ziel-Dateien:** `src/bosses/__init__.py`, `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`), `src/bosses/__init__.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f06`)
 - **Aufgabe:**
-  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte für `"ameisenkoenigin"` (sowie Alias `"koenigin_mandibula"`), `"mutter_glibber"` (sowie Alias `"zirkusdirektor"`) und `"transformator"` und registriere sie in `make_boss_script`.
+  1. Implementiere in `src/bosses/__init__.py` die 3-Phasen-Boss-Skripte für `"ameisenkoenigin"` und `"mutter_glibber"` und registriere sie in `make_boss_script`.
   2. Binde `self.boss_script: BossScript | None = None` in `Run` (`src/run.py`) ein: wird beim Spawn des Endbosses über `make_boss_script` erzeugt, in `Run.update` getickt und beim Tod des Bosses via `boss_script.on_death(self)` abgeschlossen.
 - **Akzeptanzkriterien:**
-  - Alle 6 MVP-Universums-Bosse aus `UNIVERSES` (sowie die Pool-Bosse aus `POOL_UNIVERSES`) werden von `make_boss_script` unterstützt und in `Run.update` mehrphasig gesteuert.
+  - Alle 6 MVP-Universums-Bosse aus `UNIVERSES` werden von `make_boss_script` unterstützt und in `Run.update` mehrphasig gesteuert.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f06 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -146,7 +146,7 @@
 ## F10 — Hauptquartier-Portal & Wahres Ende in `src/run.py` (`V17`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `F09`
+- **Abhängigkeiten:** `F09`, `F08`
 - **Ziel-Dateien:** `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17`), `src/bosses/headquarters.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f10`)
 - **Aufgabe:**
@@ -165,7 +165,7 @@
 - **Ziel-Dateien:** `src/klonita_lines.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21`), `docs/bibel/04-figuren.md`, `tests/spec/test_phase_f.py` (`-k f11`)
 - **Aufgabe:**
-  1. Erstelle `src/klonita_lines.py` mit `LINES: dict[str, tuple[str, ...]]` (mindestens je 4 trockene, deutsche Sätze für die 6 MVP-Universums-Eintritte `"enter_fleischwelt"`, `"enter_aktenhalde"`, `"enter_glibbria"`, `"enter_kruemelreich"`, `"enter_sporenklub"`, `"enter_abtei"`, die Pool-Eintritte `"enter_schrott"`..`"enter_glibber"`, sowie `"player_low_hp"`, `"boss_spawn"`, `"wanted_high"`, `"event_start"`, `"couch"`, `"memory_shard"`, `"assist_shield"`, `"assist_snack"`, `"quirk"`, `"default"`) und `line_for(topic: str, rng: random.Random) -> str`.
+  1. Erstelle `src/klonita_lines.py` mit `LINES: dict[str, tuple[str, ...]]` (mindestens je 4 trockene, deutsche Sätze für die 6 MVP-Universums-Eintritte `"enter_fleischwelt"`, `"enter_aktenhalde"`, `"enter_glibbria"`, `"enter_kruemelreich"`, `"enter_sporenklub"`, `"enter_abtei"` sowie `"player_low_hp"`, `"boss_spawn"`, `"wanted_high"`, `"event_start"`, `"couch"`, `"memory_shard"`, `"assist_shield"`, `"assist_snack"`, `"quirk"`, `"default"`) und `line_for(topic: str, rng: random.Random) -> str`.
 - **Akzeptanzkriterien:**
   - Alle Pflicht-Themen aus `V21` sind in `LINES` mit mindestens 4 nicht-leeren deutschen Strings vertreten; `line_for` fällt bei unbekanntem Thema deterministisch auf `"default"` zurück.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f11 -q && uv run pytest --ignore=tests/spec -q`
@@ -191,18 +191,18 @@
 ## F13 — Klonitas 4 Hilfsaktionen & 3 Einmal-pro-Universum-Macken (`src/klonita.py` Teil 2) (`V21`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `F12`
+- **Abhängigkeiten:** `F12`, `A04`
 - **Ziel-Dateien:** `src/klonita.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21`), `src/klonita.py`, `tests/spec/test_phase_f.py` (`-k f13`)
 - **Aufgabe:**
   1. Ergänze in `Klonita.update` (`src/klonita.py`) die 4 Hilfsaktionen mit ihren Cooldowns aus `V21`:
      - `"shield"` (`18 s`, löscht feindliches Projektil `< 28 px` vor der Spielerin)
-     - `"snack"` (`35 s`, heilt `+12 HP` bei Spieler-HP `< 35 %`)
+     - `"snack"` (`45 s`, heilt `+15 HP` bei Spieler-HP `< 35 %`, nicht im Bosskampf)
      - `"spark"` (`4.5 s`, schießt `6.0`-Schaden-Hilfsfunken auf Feind `< 90 px`)
      - `"cleanse"` (`22 s`, löscht Feuer/Frost/`stamped_bad` auf der Spielerin)
   2. Ergänze `trigger_quirk(self, kind: str, run: Run) -> bool` für die 3 Macken (`"shiny_poke"`, `"loud_sneeze"`, `"sample_nibble"`), die pro Universum höchstens einmal ausgelöst werden (`quirk_used_in_universe = True`).
 - **Akzeptanzkriterien:**
-  - Jede der 4 Hilfsaktionen löst unter ihrer Bedingung aus und setzt ihren spezifischen Cooldown.
+  - Jede der 4 Hilfsaktionen löst unter ihrer Bedingung aus und setzt ihren spezifischen Cooldown; der Snack heilt genau `15` Leben und löst im Bosskampf nicht aus.
   - `"sample_nibble"` entnimmt maximal `1` Probe bei `>= 5` Proben, gibt `+15` Gold und setzt `quirk_used_in_universe = True`, sodass im selben Universum keine zweite Macke auftritt.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f13 -q && uv run pytest --ignore=tests/spec -q`
 
@@ -221,3 +221,48 @@
   - `run.say(...)` begrenzt `run.bubbles` auf maximal `3` gleichzeitige Blasen und baut deren `ttl` in `Run.update` ab.
   - Eintritt in ein Universum oder Sinken der Spieler-HP unter `25 %` erzeugt automatisch eine Klonita-Sprechblase in `run.bubbles`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f14 -q && uv run pytest --ignore=tests/spec -q`
+
+## F15 — Beruhigen & Ausweichen: `Creature.calmed` / `dodge_charges` (`V21` 2b)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A14`
+- **Ziel-Dateien:** `src/enemies.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21` Abschnitte 2b und 3), `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1a`), `src/enemies.py` (`evaluate_stance`), `tests/spec/test_phase_f.py` (`-k f15`)
+- **Aufgabe:**
+  1. Ergänze `Creature` (`src/enemies.py`) um `calmed: float = 0.0` (zählt in `update` auf `0` herunter) und `dodge_charges: int = 0`.
+  2. Lass `evaluate_stance` (`src/enemies.py`) Kreaturen mit `territorial`/`neutral` und `calmed > 0` nicht durch Nähe aggressiv werden; `was_hit` und Gruppen-Aggro wirken weiter.
+- **Akzeptanzkriterien:**
+  - Eine `territorial`-Kreatur direkt neben der Spielerin bleibt mit `calmed > 0` bei `"idle"` und wird nach einem Treffer trotzdem aggressiv.
+  - `Creature.update` senkt `calmed` um `dt` bis auf `0`; `dodge_charges` startet bei `0`.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f15 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## F16 — Klonitas Bibel-Aktionen Zeigen, Tragen, Umarmen (`src/klonita.py` Teil 3) (`V21` 2b)
+
+- **Größe:** S
+- **Abhängigkeiten:** `F13`, `F15`
+- **Ziel-Dateien:** `src/klonita.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21` Abschnitte 2b und 3), `src/klonita.py`, `src/loot.py` (`Pickup`), `tests/spec/test_phase_f.py` (`-k f16`)
+- **Aufgabe:**
+  1. Implementiere `helper_point`, `helper_carry` und `helper_hug` laut Tabelle 2b mit den Cooldowns `"point"` (`60 s`) und `"carry"` (`30 s`) und rufe sie in `Klonita.update` auf (nicht bei `"dismissed"`/`"knocked"`). Ergänze `to_data`/`from_data` um `pointing` und `point_timer`.
+- **Akzeptanzkriterien:**
+  - `helper_point` findet eine Lebenskapsel in `240 px` und setzt `pointing` sowie den Cooldown `60.0`; ein zweiter Aufruf liefert `None`.
+  - `helper_carry` holt einen hoch liegenden Pickup zur Spielerin; `helper_hug` setzt `calmed` bei einer neutralen Kreatur in `80 px`, nicht bei einer feindlichen.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f16 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## F17 — Klonitas Bibel-Macken Trinkgeld, Füttern, Warnung (`src/klonita.py` Teil 4) (`V21` 3)
+
+- **Größe:** S
+- **Abhängigkeiten:** `F16`
+- **Ziel-Dateien:** `src/klonita.py`, `src/projectiles.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21` Abschnitte 2b und 3), `src/klonita.py`, `src/projectiles.py` (Treffer auf Kreaturen), `tests/spec/test_phase_f.py` (`-k f17`)
+- **Aufgabe:**
+  1. Erweitere `trigger_quirk` um `"tip_trader"`, `"feed_creature"` und `"warn_enemy"` laut Tabelle 3 und die automatische Prüfung in `update` (`QUIRK_CHANCE_PER_S`). Ergänze in `src/projectiles.py`: trifft ein Geschoss der Spielerin eine Kreatur mit `dodge_charges > 0`, verbraucht es eine Ladung statt Schaden zu machen.
+- **Akzeptanzkriterien:**
+  - Jede der 3 Macken wirkt wie in Tabelle 3; alle 6 Macken zusammen lösen höchstens einmal je Universum aus.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f17 -q && uv run pytest --ignore=tests/spec -q`
+
+---

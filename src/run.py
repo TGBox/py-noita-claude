@@ -159,9 +159,11 @@ class Run:
         height: int = WORLD_HEIGHT,
         *,
         universe_key: str = "fleischwelt",
+        boss_slot: bool = False,
     ) -> None:
         self.seed = seed if seed is not None else 0
         self.universe_key = universe_key
+        self.boss_slot = boss_slot  # Contract V9 "Bossplatz"; the spawn logic comes with Card D10
         self.rng = random.Random(seed)
         self.default_size = (width, height)
         mat.activate_key(mat.DEFAULT_SET.key)

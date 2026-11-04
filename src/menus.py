@@ -349,3 +349,14 @@ class Menus:
         ui.text(screen, unlock_line(records), (box.centerx, box.bottom - round(56 * s)), round(15 * s), ui.ACCENT,
                 anchor="midtop")  # fmt: skip
         ui.text(screen, "ESC: Zurück", (box.centerx, box.bottom - round(30 * s)), round(15 * s), anchor="midtop")
+
+
+def draw_archive_menu(
+    screen: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    records: Records,
+    tab_index: int,
+) -> None:
+    """Draw the discovery archive with its 5 tabs (Contracts V22, V23)."""
+    raise NotImplementedError("Card G05")

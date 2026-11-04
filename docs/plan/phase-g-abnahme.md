@@ -1,4 +1,4 @@
-# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (10 atomare S-Karten: `G01`–`G10`)
+# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (13 atomare S-Karten: `G01`–`G13`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_g.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Karten folgen `V22`–`V23` aus [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) und `V14` aus [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md).
@@ -8,7 +8,7 @@
 ## G01 — HUD-Erweiterung: Gold, Fahndungssterne, Proben-Beutel & Event-/Challenge-Banner (`src/hud.py`) (`V22`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `D14`, `F02`, `F14`
+- **Abhängigkeiten:** `D14`, `F02`, `F14`, `B32`
 - **Ziel-Dateien:** `src/hud.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`), `src/hud.py`, `tests/spec/test_phase_g.py` (`-k g01`)
 - **Aufgabe:**
@@ -63,7 +63,7 @@
   1. Erweitere `Records` in `src/records.py` um `blueprints: list[str]`, `universes: list[str]`, `evil_selves: list[str]`, `badges: int = 0`, `best_rank: str = "Praktikantin"` und aktualisiere `discover(self, kind: str, key: str)` für `"block"`, `"blueprint"`, `"universe"`, `"evil_self"`, `"badge"` und `"creature"` exakt nach `V23`.
   2. Implementiere `RANKS`, `compute_score(...)` und `rank_for_score(score)` in `src/records.py` sowie `PERK_ALIASES` und `resolve_perk_key(key)` in `src/perks.py`.
 - **Akzeptanzkriterien:**
-  - `records.discover("universe", "myzel")` trägt `"myzel"` in `records.universes` ein, ohne `records.creatures` oder `total_kills` zu verändern.
+  - `records.discover("universe", "sporenklub")` trägt `"sporenklub"` in `records.universes` ein, ohne `records.creatures` oder `total_kills` zu verändern.
   - `rank_for_score(0) == "Praktikantin"` und `rank_for_score(1600) == "Realitäts-Rebellin"`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g04 -q && uv run pytest --ignore=tests/spec -q`
 
@@ -76,7 +76,7 @@
 - **Ziel-Dateien:** `src/menus.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`, `V23`), `src/menus.py`, `src/records.py`, `tests/spec/test_phase_g.py` (`-k g05`)
 - **Aufgabe:**
-  1. Erweitere das Archiv-Menü (`draw_archive_menu` in `src/menus.py`), sodass mit `[Tab]` oder `[Links]`/`[Rechts]` zwischen den 5 Reitern `"Zaubermodule"`, `"Baupläne"`, `"Kreaturen"`, `"Universen"` und `"Böse Ichs"` gewechselt werden kann und der Entdeckungsfortschritt (`entdeckt / gesamt`) sowie `records.best_rank` und `records.badges` angezeigt werden.
+  1. Implementiere den Platzhalter `draw_archive_menu(screen, font, small_font, records, tab_index)` in `src/menus.py`, sodass mit `[Tab]` oder `[Links]`/`[Rechts]` zwischen den 5 Reitern `"Zaubermodule"`, `"Baupläne"`, `"Kreaturen"`, `"Universen"` und `"Böse Ichs"` gewechselt werden kann und der Entdeckungsfortschritt (`entdeckt / gesamt`) sowie `records.best_rank` und `records.badges` angezeigt werden.
 - **Akzeptanzkriterien:**
   - `draw_archive_menu` rendert für alle `tab_index in range(5)` fehlerfrei auf ein Offscreen-Surface und zeigt entdeckte Einträge aus `Records` im Klartext sowie unentdeckte als `"???"`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g05 -q && uv run pytest --ignore=tests/spec -q`
@@ -115,7 +115,7 @@
 ## G08 — Vollständige Save/Load-Serialisierung Teil 2: `Wanted`, `Event`, `Challenge`, `Klonita`, `Creature` & Status-Timer (`V23`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `G07`
+- **Abhängigkeiten:** `G07`, `F01`
 - **Ziel-Dateien:** `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/run.py` (Zeilen 580–797), `tests/spec/test_phase_g.py` (`-k g08`)
 - **Aufgabe:**
@@ -153,3 +153,45 @@
 - **Akzeptanzkriterien:**
   - `uv run pytest -q` und `uv run ruff check src tests tools` laufen ohne jeden Fehler über die gesamte Codebasis durch.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g10 -q && uv run pytest --ignore=tests/spec -q`
+
+## G11 — Anzeigenamen & Beschreibungen der 24 Geschosse nach Bibel 06 (`src/spells.py`) (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A02`
+- **Ziel-Dateien:** `src/spells.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` (Tabelle „Geschosse“), `tests/spec/test_phase_g.py` (`-k g11`)
+- **Aufgabe:**
+  1. Setze für jede Zeile der Tabelle „Geschosse“ in Bibel 06 bei `BLOCKS[<Bisher>]` `name_de` = Spalte „Name“ und `description_de` = Spalte „Beschreibung“. Schlüssel nicht ändern.
+- **Akzeptanzkriterien:**
+  - Für alle 24 Zeilen stimmen `name_de` und `description_de` exakt mit Bibel 06 überein; alle Schlüssel in `BLOCKS` sind unverändert.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g11 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## G12 — Anzeigenamen & Beschreibungen der 22 Aufsätze nach Bibel 06 (`src/spells.py`) (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A02`
+- **Ziel-Dateien:** `src/spells.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` (Tabelle „Aufsätze“), `tests/spec/test_phase_g.py` (`-k g12`)
+- **Aufgabe:**
+  1. Setze für jede Zeile der Tabelle „Aufsätze“ in Bibel 06 bei `BLOCKS[<Bisher>]` `name_de` = Spalte „Name“ und `description_de` = Spalte „Beschreibung“. Schlüssel nicht ändern.
+- **Akzeptanzkriterien:**
+  - Für alle 22 Zeilen stimmen `name_de` und `description_de` exakt mit Bibel 06 überein; alle Schlüssel in `BLOCKS` sind unverändert.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g12 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## G13 — Anzeigenamen & Beschreibungen der 4 Zünder nach Bibel 06 (`src/spells.py`) (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A02`, `A27`
+- **Ziel-Dateien:** `src/spells.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` (Tabelle „Zünder“), `tests/spec/test_phase_g.py` (`-k g13`)
+- **Aufgabe:**
+  1. Setze für jede Zeile der Tabelle „Zünder“ in Bibel 06 bei `BLOCKS[<Bisher>]` `name_de` = Spalte „Name“ und `description_de` = Spalte „Beschreibung“ sowie für `sekret_feuer` / `sekret_rauch` die Namen „Feuerfüllung“ / „Rauchfüllung“ mit den Beschreibungen aus Bibel 06 „Füllungen“. Schlüssel nicht ändern.
+- **Akzeptanzkriterien:**
+  - Für alle 4 Zeilen stimmen `name_de` und `description_de` exakt mit Bibel 06 überein; alle Schlüssel in `BLOCKS` sind unverändert.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g13 -q && uv run pytest --ignore=tests/spec -q`
+
+---

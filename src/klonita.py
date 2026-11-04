@@ -1,4 +1,4 @@
-"""Contract V21: Klonita companion state machine, 4 assists, and 3 quirks (Cards F12, F13)."""
+"""Contract V21: Klonita companion state machine, assists, helpers and quirks (Cards F12, F13, F16, F17)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .loot import Pickup
     from .run import Run
 
 KLONITA_STATES: tuple[str, ...] = (
@@ -15,6 +16,20 @@ KLONITA_STATES: tuple[str, ...] = (
     "quirk",
     "knocked",
 )
+
+HELPERS: tuple[str, ...] = ("point", "carry", "hug")
+QUIRKS: tuple[str, ...] = (
+    "shiny_poke",
+    "loud_sneeze",
+    "sample_nibble",
+    "tip_trader",
+    "feed_creature",
+    "warn_enemy",
+)
+QUIRK_CHANCE_PER_S = 0.02
+POINT_RADIUS = 240.0
+CARRY_MIN_RISE = 40.0
+HUG_RADIUS = 80.0
 
 AUTO_TRIGGERS: tuple[str, ...] = (
     "enter_universe",
@@ -42,9 +57,13 @@ class Klonita:
             "snack": 0.0,
             "spark": 0.0,
             "cleanse": 0.0,
+            "point": 0.0,
+            "carry": 0.0,
         }
     )
     facing: int = 1
+    pointing: tuple[float, float] | None = None
+    point_timer: float = 0.0
 
     def toggle(self) -> str:
         """Toggle between 'dismissed' and 'follow' (unless 'knocked') and return new state."""
@@ -59,8 +78,20 @@ class Klonita:
         raise NotImplementedError("Card F12")
 
     def trigger_quirk(self, kind: str, run: Run) -> bool:
-        """Execute a once-per-universe quirk ('shiny_poke', 'loud_sneeze', 'sample_nibble')."""
-        raise NotImplementedError("Card F13")
+        """Execute one of QUIRKS; all quirks together fire at most once per universe."""
+        raise NotImplementedError("Cards F13, F17")
+
+    def helper_point(self, run: Run) -> tuple[float, float] | None:
+        """Point at a secret, life capsule or memory shard within POINT_RADIUS (60 s cooldown)."""
+        raise NotImplementedError("Card F16")
+
+    def helper_carry(self, run: Run) -> Pickup | None:
+        """Bring a pickup lying above the player to her (30 s cooldown)."""
+        raise NotImplementedError("Card F16")
+
+    def helper_hug(self, run: Run) -> int:
+        """Calm peaceful/passive/territorial/neutral creatures within HUG_RADIUS; return the count."""
+        raise NotImplementedError("Card F16")
 
     def update(self, dt: float, run: Run) -> None:
         """Update follow movement, cooldowns, assist actions, and quirks."""
@@ -93,4 +124,3 @@ class Klonita:
             quirk_used_in_universe=bool(data.get("quirk_used_in_universe", False)),
             facing=int(data.get("facing", 1)),  # type: ignore[arg-type]
         )
-

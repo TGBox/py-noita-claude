@@ -37,13 +37,4 @@ SAMPLE_ALIASES: dict[str, str] = {
     "plattennadel": "probe_plattennadel",
     "glockensplitter": "probe_glockensplitter",
     "kerzenstumpf": "probe_kerzenstumpf",
-    "probe_saft": "probe_gallenstein",
-    "probe_papier": "probe_stempelkissen",
-    "probe_bunt": "probe_glibberkern",
-    "probe_harz": "probe_ameisenduft",
-    "probe_pilz": "probe_leuchtspore",
-    "probe_salz": "probe_glockensplitter",
-    "probe_rost": "probe_knochen",
-    "probe_zucker": "probe_zuckerkristall",
-    "probe_spule": "probe_aether",
 }

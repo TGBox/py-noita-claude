@@ -6,7 +6,7 @@ Verbindlicher Vorvertrag für alle Phasen. Löst sämtliche Widersprüche zwisch
 
 ## V0a Kanonische Proben- und Regions-Schlüssel (`src/universes/catalog.py`)
 
-In `src/universes/catalog.py` sind die **6 MVP-Universen der Bibel** (`fleischwelt`, `aktenhalde`, `glibbria`, `kruemelreich`, `sporenklub`, `abtei`) der alleinige aktive Kanon (`len(UNIVERSES) == 6`). Die 3 zusätzlichen Pool-Universen (`schrott`, `kuchen`, `spule`) liegen separat in `POOL_UNIVERSES`. Karte `A01` gleicht `src/universes/catalog.py` vor Beginn der Folgephasen an:
+In `src/universes/catalog.py` sind die **6 MVP-Universen der Bibel** (`fleischwelt`, `aktenhalde`, `glibbria`, `kruemelreich`, `sporenklub`, `abtei`) der alleinige aktive Kanon (`len(UNIVERSES) == 6`). `ALL_UNIVERSES` enthält im MVP genau diese 6; die Pool-Universen der Erweiterung kommen erst in Phase J dazu. Karte `A01` gleicht `src/universes/catalog.py` vor Beginn der Folgephasen an:
 
 ### 1. Proben-Schlüssel (`Universe.samples`, `Universe.sample_key` & `src/samples.py`)
 
@@ -22,7 +22,7 @@ Alle 12 Universums-Proben (je 2 pro MVP-Universum) tragen zwingend das Präfix `
 | `abtei` | `("probe_glockensplitter", "probe_kerzenstumpf")` | `"probe_glockensplitter"` | `"Glockensplitter"`, `"Kerzenstumpf mit Gesicht"` |
 
 ```python
-# Rückwärtskompatibilität für alte Schlüssel ohne Präfix und Pool-Proben (in src/samples.py):
+# Rückwärtskompatibilität für die alten Schlüssel ohne Präfix aus T1–T4 (in src/samples.py):
 SAMPLE_ALIASES: dict[str, str] = {
     "gallenstein": "probe_gallenstein",
     "wucherungsableger": "probe_wucherung",
@@ -36,12 +36,6 @@ SAMPLE_ALIASES: dict[str, str] = {
     "plattennadel": "probe_plattennadel",
     "glockensplitter": "probe_glockensplitter",
     "kerzenstumpf": "probe_kerzenstumpf",
-    "probe_saft": "probe_gallenstein",
-    "probe_papier": "probe_stempelkissen",
-    "probe_bunt": "probe_glibberkern",
-    "probe_harz": "probe_ameisenduft",
-    "probe_pilz": "probe_leuchtspore",
-    "probe_salz": "probe_glockensplitter",
 }
 ```
 
@@ -126,7 +120,7 @@ Damit kein günstiges Modell auf eine offene Designfrage stößt, gelten folgend
 
 1. **Blattlaus-Weidematerial (`C17`, Krümelreich):**
    - `GRAZE_MATERIAL["blattlaus"] = "zucker"` (Blattläuse weiden an `zucker`-Zellen und verwandeln sich beim Treten in eine Honigtau-Quelle: Treffer mit `cause == "Tritt"` spawnt `3` Zellen `"honig"` in Luft unter der Blattlaus, ohne sie beim ersten Tritt zu töten: Tritt-Schaden an `blattlaus` wird in `on_hurt` auf `2.0` begrenzt).
-2. **Krypta-Strömung (`D08` / `D09`, Versunkene Abtei):**
+2. **Krypta-Strömung (`A26` / `D06`, Versunkene Abtei):**
    - Keine Änderung am Rust-Kern. Stattdessen liest `Run.update` für jeden `Body` im Wasser (`body.in_liquid(self.world)`), dessen Mittelpunkt in einer Region `rect` liegt, den Regions-Parameter `region.param("current_vx", 0.0)` und addiert `current_vx * dt` auf `body.vx` (in der `krypta`: `current_vx = 28.0` px/s nach rechts).
 3. **`glow`-Format in Sprite-JSON (`V5` vs. Bibel 01, Karte `A20`):**
    - `V5` gewinnt verbindlich: In der `.json`-Datei ist `"glow"` ein Objekt `{"0": [[x, y], ...], "1": [[x, y], ...]}` oder eine Liste von `GlowPoint`-Einträgen. `load_meta` / `load_sheet_meta` akzeptiert beide Formate.
@@ -134,3 +128,52 @@ Damit kein günstiges Modell auf eine offene Designfrage stößt, gelten folgend
    - `CreatureSpec` für `tuersteherpilz` ist `neutral`. Drückt der Spieler `E` (`controls.pickup`) in `<= 28 px` Abstand zu einem nicht-aggressiven `tuersteherpilz` und hat `run.gold >= 20`, zieht `Run` `20` Gold ab, setzt `creature.bribed = True`, verschiebt den Pilz um `16 px` zur Seite (aus dem Durchgang) und gibt die Sprechblase `"20 Gold – ich hab dich nie gesehen."` aus.
 5. **Mönchsfisch-Chor (`C17`, Versunkene Abtei):**
    - Sind `>= 3` lebende `moenchsfisch` innerhalb von `180 px` umeinander, erhalten alle Kreaturen im Umkreis von `180 px` um diese Gruppe `creature.chorus_buff = 1.0` (Sekunden-Timer); solange `chorus_buff > 0`, ist ihr Angriffsschaden `× 1.25` (`apply_chorus_buff`).
+
+---
+
+## V0e Module: Schlüssel, Anzeigenamen & Füllungen (`src/spells.py`)
+
+Entscheidung (2026-11-04): Die Code-Schlüssel in `BLOCKS` bleiben im MVP unverändert. Spieler sehen die Namen aus Bibel 06, `MODULE_ALIASES` (V23) übersetzt die Bibel-Schlüssel.
+
+**Anzeigenamen:** Für jede Zeile der Tabellen „Geschosse“, „Aufsätze“ und „Zünder“ in Bibel 06 erhält `BLOCKS[<Bisher>]` den `name_de` aus Spalte „Name“ und den `description_de` aus Spalte „Beschreibung“ (Karten `G11`–`G13`).
+**Füllungen:** Bibel 06 „Füllungen (10)“. Zwei gibt es schon: `fuellung_feuer` → `sekret_feuer`, `fuellung_rauch` → `sekret_rauch` (nur Alias + Anzeigename). Acht kommen als neue `Block`-Einträge mit `Category.PAYLOAD` und dem Bibel-Schlüssel dazu (Karte `A27`):
+
+| Schlüssel | `name_de` | `material` |
+| --- | --- | --- |
+| `fuellung_wasser` | Wasserfüllung | `"water"` |
+| `fuellung_oel` | Ölfüllung | `"oil"` |
+| `fuellung_dampf` | Dampffüllung | `"steam"` |
+| `fuellung_sand` | Sandfüllung | `"sand"` |
+| `fuellung_erde` | Erdfüllung | `"dirt"` |
+| `fuellung_fels` | Felsfüllung | `"rock"` |
+| `fuellung_kolben` | Kolbenfüllung | `None`, neues Feld `from_flask=True` |
+| `fuellung_lokal` | Lokalkolorit | `None`, neues Feld `local_material=True` |
+
+**Sonderfüllungen** (Karte `A28`), reine Funktion in `src/spells.py`:
+
+```python
+FLASK_PAYLOAD_CELLS = 10
+
+def resolve_payload_material(block: Block, flask: Flask | None, set_keys: tuple[str, ...],
+                             base_keys: tuple[str, ...], rng: random.Random) -> str | None:
+    """Material key a payload block delivers for one cast.
+
+    - normal block: block.material
+    - from_flask: flask material key, and flask.amount -= FLASK_PAYLOAD_CELLS; empty or no flask: "water"
+    - local_material: rng.choice of the keys in set_keys that are not in base_keys (universe materials);
+      none available: "water"
+    """
+```
+
+`Wand`/`Projectile` rufen diese Funktion beim Abfeuern auf, statt `block.material` direkt zu lesen.
+
+**Organische Alt-Füllungen** (Entscheidung 2026-11-04, Karte `A29`): Füllungen, die im regulären Spiel Sinn ergeben, bleiben als normale Beute. Die übrigen bleiben in `BLOCKS` (alte Spielstände laden weiter), werden aber nie mehr gezogen: neues Feld `Block.retired: bool = False`; `random_block` (`src/loot.py`) und `blocks_of_tier` überspringen `retired`-Blöcke.
+
+| Schlüssel | Material | Status | neuer `name_de` |
+| --- | --- | --- | --- |
+| `sekret_blut` | `blood` | bleibt | Blutfüllung |
+| `sekret_saeure` | `acid` | bleibt | Säurefüllung |
+| `sekret_glut` | `magma` | bleibt | Glutfüllung |
+| `sekret_talg`, `sekret_sporen`, `sekret_schleim`, `sekret_eiter`, `sekret_aetzdampf`, `sekret_staub`, `sekret_sehnen`, `sekret_knochen`, `sekret_wucherung` | — | `retired=True` | unverändert |
+
+Damit verkauft Herr Pansen (`V18`) Blut-, Säure- und Glutfüllung (alle drei Materialien liegen im Satz `"fleischwelt"`). Bibel 06 nennt die drei als „Organische Füllungen“.

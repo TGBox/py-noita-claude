@@ -90,10 +90,6 @@ def _check_creature_sheets_for_universe(tmp_path: Path, u_key: str) -> None:
         _assert_sheet_quality(tmp_path, "kreaturen", sp.species)
 
 
-def test_b06_creature_sheets_schrott(tmp_path: Path) -> None:
-    _check_creature_sheets_for_universe(tmp_path, "schrott")
-
-
 def test_b07_creature_sheets_sporenklub(tmp_path: Path) -> None:
     _check_creature_sheets_for_universe(tmp_path, "sporenklub")
 
@@ -106,20 +102,12 @@ def test_b09_creature_sheets_aktenhalde(tmp_path: Path) -> None:
     _check_creature_sheets_for_universe(tmp_path, "aktenhalde")
 
 
-def test_b10_creature_sheets_kuchen(tmp_path: Path) -> None:
-    _check_creature_sheets_for_universe(tmp_path, "kuchen")
-
-
 def test_b11_creature_sheets_abtei(tmp_path: Path) -> None:
     _check_creature_sheets_for_universe(tmp_path, "abtei")
 
 
 def test_b12_creature_sheets_kruemelreich(tmp_path: Path) -> None:
     _check_creature_sheets_for_universe(tmp_path, "kruemelreich")
-
-
-def test_b13_creature_sheets_spule(tmp_path: Path) -> None:
-    _check_creature_sheets_for_universe(tmp_path, "spule")
 
 
 def test_b14_creature_sheets_glibbria(tmp_path: Path) -> None:
@@ -130,16 +118,19 @@ def test_b15_mid_bosses_part1(tmp_path: Path) -> None:
     from tools.sprites_bosses import build_mid_boss_sheets
 
     build_mid_boss_sheets(tmp_path)
-    for k in ("gabelstapler_krabbe", "sporenherz", "pfuetzenwurm", "aktenwolf", "marzipan_ritter"):
+    for k in ("pfuetzenwurm", "aktenwolf", "manege_clown"):
         _assert_sheet_quality(tmp_path, "bosse", k)
 
 
 def test_b16_mid_bosses_part2(tmp_path: Path) -> None:
+    from src.universes.catalog import UNIVERSES
     from tools.sprites_bosses import build_mid_boss_sheets
 
     build_mid_boss_sheets(tmp_path)
-    for k in ("glockenwaechter", "harzgeneral", "spulenmeister", "manege_clown", "warden"):
+    for k in ("harzgeneral", "sporenherz", "glockenwaechter", "warden"):
         _assert_sheet_quality(tmp_path, "bosse", k)
+    for u in UNIVERSES.values():
+        _assert_sheet_quality(tmp_path, "bosse", u.mid_boss)
 
 
 def test_b17_end_bosses_part1(tmp_path: Path) -> None:
@@ -147,7 +138,7 @@ def test_b17_end_bosses_part1(tmp_path: Path) -> None:
     from tools.sprites_bosses import build_end_boss_sheets
 
     build_end_boss_sheets(tmp_path)
-    for k in ("schrottpresse", "muttermyzel", "pfuetzenkoenig"):
+    for k in ("weltenherz", "oberstempler"):
         _assert_sheet_quality(tmp_path, "bosse", k)
         assert k in RIG_LAYOUTS
 
@@ -157,19 +148,26 @@ def test_b18_end_bosses_part2(tmp_path: Path) -> None:
     from tools.sprites_bosses import build_end_boss_sheets
 
     build_end_boss_sheets(tmp_path)
-    for k in ("oberamtsrat", "hochzeitstorte", "abt_nautilus"):
+    for k in ("mutter_glibber", "dj_myzel"):
         _assert_sheet_quality(tmp_path, "bosse", k)
         assert k in RIG_LAYOUTS
 
 
 def test_b19_end_bosses_part3(tmp_path: Path) -> None:
     from src.procbody import RIG_LAYOUTS
+    from src.universes.catalog import UNIVERSES
     from tools.sprites_bosses import build_end_boss_sheets
 
     build_end_boss_sheets(tmp_path)
-    for k in ("koenigin_mandibula", "transformator", "zirkusdirektor"):
+    for k in ("ameisenkoenigin", "abt_kieme"):
         _assert_sheet_quality(tmp_path, "bosse", k)
         assert k in RIG_LAYOUTS
+    for k in ("trampolinwal", "kirchenkrake"):
+        _assert_sheet_quality(tmp_path, "kreaturen", k)
+        assert k in RIG_LAYOUTS
+    for u in UNIVERSES.values():
+        _assert_sheet_quality(tmp_path, "bosse", u.boss)
+        assert u.boss in RIG_LAYOUTS
 
 
 def test_b20_weapon_parts(tmp_path: Path) -> None:
@@ -182,41 +180,42 @@ def test_b20_weapon_parts(tmp_path: Path) -> None:
 
 
 def test_b21_spell_icons_forms(tmp_path: Path) -> None:
-    from src.spells import BLOCKS, FORM
+    from src.spells import BLOCKS, Category
     from tools.sprites_items import build_spell_icon_sheets
 
     build_spell_icon_sheets(tmp_path)
     for k, b in BLOCKS.items():
-        if b.kind == FORM:
+        if b.category == Category.FORM:
             _assert_sheet_quality(tmp_path, "zauber", k)
 
 
-def test_b22_spell_icons_MOD(tmp_path: Path) -> None:
-    from src.spells import BLOCKS, MOD
+def test_b22_spell_icons_modifiers(tmp_path: Path) -> None:
+    from src.spells import BLOCKS, Category
     from tools.sprites_items import build_spell_icon_sheets
 
     build_spell_icon_sheets(tmp_path)
     for k, b in BLOCKS.items():
-        if b.kind == MOD:
+        if b.category == Category.MODIFIER:
             _assert_sheet_quality(tmp_path, "zauber", k)
 
 
-def test_b23_spell_icons_payload(tmp_path: Path) -> None:
-    from src.spells import BLOCKS, PAYLOAD
+def test_b23_spell_icons_payloads(tmp_path: Path) -> None:
+    from src.spells import BLOCKS, Category
     from tools.sprites_items import build_spell_icon_sheets
 
     build_spell_icon_sheets(tmp_path)
     for k, b in BLOCKS.items():
-        if b.kind == PAYLOAD:
+        if b.category == Category.PAYLOAD:
             _assert_sheet_quality(tmp_path, "zauber", k)
 
 
-def test_b24_spell_icons_triggers(tmp_path: Path) -> None:
+def test_b24_spell_icons_all_blocks(tmp_path: Path) -> None:
     from src.spells import BLOCKS
     from tools.sprites_items import build_spell_icon_sheets
 
     build_spell_icon_sheets(tmp_path)
-    for k in BLOCKS:
+    block_keys = list(BLOCKS.keys())  # BLOCKS is a tuple subclass: iterate the keys explicitly
+    for k in block_keys:
         _assert_sheet_quality(tmp_path, "zauber", k)
 
 
@@ -261,7 +260,7 @@ def test_b27_sample_icons(tmp_path: Path) -> None:
     from tools.sprites_items import build_item_icon_sheets
 
     build_item_icon_sheets(tmp_path)
-    assert len(SAMPLES) >= 12
+    assert len(SAMPLES) == 17
     for k in SAMPLES:
         _assert_sheet_quality(tmp_path, "gegenstaende", k)
 
@@ -270,16 +269,35 @@ def test_b28_env_station_sheets_part1(tmp_path: Path) -> None:
     from tools.sprites_env import build_env_prop_sheets
 
     build_env_prop_sheets(tmp_path)
-    for k in ("ws_portal", "ws_fabricator", "ws_trader", "ws_couch", "ws_physik_o_mat"):
+    for k in (
+        "portal_stein",
+        "werkbank",
+        "fabrikator",
+        "experimentier_liege",
+        "haendler_stand",
+        "zapfhahn",
+    ):
         _assert_sheet_quality(tmp_path, "umgebung", k)
 
 
 def test_b29_env_station_sheets_part2(tmp_path: Path) -> None:
+    from src.workshop import STATIONS
     from tools.sprites_env import build_env_prop_sheets
 
     build_env_prop_sheets(tmp_path)
-    for k in ("ws_schiessstand", "ws_archive", "ws_shredder", "ws_well", "ws_workbench"):
+    for k in (
+        "physik_o_mat",
+        "schiessstand",
+        "archiv_pult",
+        "klonita_sofa",
+        "akten_schredder",
+        "flaschen_brunnen",
+        "portal_headquarters",
+        "trainings_attrappe",
+    ):
         _assert_sheet_quality(tmp_path, "umgebung", k)
+    for st in STATIONS.values():
+        _assert_sheet_quality(tmp_path, "umgebung", st.sprite_key)
 
 
 def test_b30_env_destructible_props(tmp_path: Path) -> None:
@@ -288,18 +306,18 @@ def test_b30_env_destructible_props(tmp_path: Path) -> None:
     build_env_prop_sheets(tmp_path)
     for k in (
         "explosionsfass",
-        "schrott_ventil",
-        "sporen_knolle",
-        "pilz_laterne",
         "saeure_behaelter",
         "magen_zotte",
         "akten_regal",
         "amt_uhr",
-        "kuchen_kerze",
-        "abtei_glocke",
-        "ameisen_kokon",
-        "spule_isolator",
         "glibber_ballon",
+        "ameisen_kokon",
+        "sporen_knolle",
+        "pilz_laterne",
+        "abtei_glocke",
+        "pruefungs_schrein",
+        "geheim_altar",
+        "gold_statue",
     ):
         _assert_sheet_quality(tmp_path, "umgebung", k)
 

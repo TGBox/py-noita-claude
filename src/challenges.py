@@ -64,3 +64,51 @@ def pick_challenge(universe_key: str, depth: int, rng: random.Random) -> Challen
     """Pick a deterministic Challenge instance for universe_key and depth."""
     raise NotImplementedError("Card D13")
 
+
+@dataclass(frozen=True)
+class QuestSpec:
+    """Universe challenge given by a native (Contract V13b)."""
+
+    key: str
+    universe: str
+    giver: str
+    text_de: str
+    goal: int
+    reward: tuple[str, int]
+
+
+@dataclass
+class Quest:
+    spec: QuestSpec
+    accepted: bool = False
+    progress: int = 0
+    done: bool = False
+    failed: bool = False
+    reward_paid: bool = False
+
+    def accept(self, run: Run) -> None:
+        raise NotImplementedError("Card D22")
+
+    def on_event(self, name: str, data: dict[str, object], run: Run) -> None:
+        raise NotImplementedError("Card D22")
+
+    def tick(self, dt: float, run: Run) -> None:
+        raise NotImplementedError("Card D22")
+
+    def turn_in(self, run: Run) -> bool:
+        raise NotImplementedError("Card D22")
+
+    def to_data(self) -> dict[str, object]:
+        raise NotImplementedError("Card D22")
+
+    @classmethod
+    def from_data(cls, data: dict[str, object] | None) -> Quest | None:
+        raise NotImplementedError("Card D22")
+
+
+QUESTS: dict[str, QuestSpec] = {}
+
+
+def quest_for(universe_key: str) -> Quest:
+    """Return a fresh Quest for the universe (Card D22)."""
+    raise NotImplementedError("Card D22")

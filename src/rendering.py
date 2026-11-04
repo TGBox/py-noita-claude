@@ -1026,10 +1026,10 @@ def draw_status(canvas: pygame.Surface, body, cam_x: int, cam_y: int, rng: rando
 
 
 class Renderer:
-    """High-level run renderer facade for HUD and world (Card G01/G02)."""
+    """High-level run renderer facade for world and HUD (Card B32; HUD parts G01/G02)."""
 
     def __init__(self, screen: pygame.Surface) -> None:
         self.screen = screen
 
     def draw(self, run: object) -> None:
-        raise NotImplementedError("Card G01")
+        raise NotImplementedError("Card B32")

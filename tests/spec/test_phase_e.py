@@ -100,9 +100,9 @@ def test_e06_fabricator_recipes_and_limits() -> None:
         assert rec.gold > 0 and len(rec.samples) >= 1
 
     fab = Fabricator()
-    rec_spark = build_cost("spark")
+    rec_spark = build_cost("funke")
     samples = {k: need * 5 for k, need in rec_spark.samples}
-    ok, _ = fab.can_build("spark", unlocked_blueprints=set(), gold=999, sample_counts=samples)
+    ok, _ = fab.can_build("funke", unlocked_blueprints=set(), gold=999, sample_counts=samples)
     assert ok is True
 
 
@@ -167,11 +167,11 @@ def test_e12_fabricator_menu_and_craft_in_run() -> None:
 
     run = Run(seed=12)
     run.enter_workshop()
-    rec = build_cost("spark")
+    rec = build_cost("funke")
     run.gold = 999
     for sk, count in rec.samples:
         run.inventory.add_sample(sk, count * 2)
-    ok, _ = run.craft_selected_recipe("spark")
+    ok, _ = run.craft_selected_recipe("funke")
     assert ok is True
 
 

@@ -134,9 +134,9 @@ Beide nutzen die vorhandene Physik. Einsatz Gold, Belohnung Gold, Proben oder Sc
 | Fleischwelt | „Bring mir 3 Gallensteine, ich sammle sie.“ | Lebenskapsel |
 | Aktenhalde | „Stempel 5 Formulare ab, bevor die Prüfung kommt.“ (Formulare liegen herum, mit E stempeln) | 150 Gold |
 | Glibbria | „Bring meine Kuh heil über den Sirupsee.“ (Glibberkuh muss geführt werden) | Modul Seltenheit 3 |
-| Krümelreich | „Füttere die Blattläuse, ohne dass die Ameisen dich sehen.“ | Proben ×2 |
-| Sporenklub | „Tanz mit mir!“ (5 Sprünge genau auf dem Beat) | Neonsaft-Kolben + 80 Gold |
-| Versunkene Abtei | „Läute die Glocke dreimal, ohne den Kraken zu wecken.“ | Selbstexperiment-Neuwurf gratis |
+| Krümelreich | „Füttere die Blattläuse, ohne dass die Ameisen dich sehen.“ (3 Portionen Zucker neben Blattläuse gießen) | Proben ×2 |
+| Sporenklub | „Tanz mit mir!“ (5 Sprünge hintereinander genau auf dem Beat) | Neonsaft-Kolben + 80 Gold |
+| Versunkene Abtei | „Läute die Glocke dreimal, ohne den Kraken zu wecken.“ (jeder Schlag ist Lärm; wer zu schnell läutet, weckt ihn) | Selbstexperiment-Neuwurf gratis |
 
 Zusätzlich kann in jedem Universum ein optionaler **Prüfungs-Schrein** (`challenge_shrine`, `pruefungs_schrein`) stehen, der eine von 6 allgemeinen Lauf-Prüfungen (`pacifist`, `no_gold`, `speed_run`, `no_damage`, `kill_streak`, `dry_feet`) gegen Gold- und Proben-Belohnung anbietet.
 

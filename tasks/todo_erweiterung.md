@@ -118,6 +118,12 @@ Master-Plan: [`tasks/plan_erweiterung.md`](plan_erweiterung.md) · Bibel: [`docs
 - **Description:** Implementiert Universumsdaten, Materialien (`rost_schiene`, `zuckerwatte_rot`, `helium_gas`, `spiegel_glas`), Regel `rule_momentum`, Kreaturen, Boss Achterbahn-Drache, Event Freie Fahrt und Rang 1–3 Skalierung.
 - **Files touched:** `src/universes/freizeitpark.py`, `tools/sprites_creatures_expansion.py`
 
+### Task J07: Sekundäre Zufallsereignisse
+
+- **Description:** Ergänzt `src/events.py` um 8 universumsübergreifende Nebenereignisse: `lieferung`, `pilz_schwarm`, `gold_regen`, `stromausfall`, `flutwelle`, `zucker_rausch`, `wanderzirkus`, `ameisen_karawane`. Sie laufen zusätzlich zum universumseigenen Ereignis aus `V10` (MVP: genau 6 Ereignisse, eines je Universum). Wirkung, Intervall und Warnzeit sind noch offen und werden vor der Umsetzung in der Bibel festgelegt.
+- **Herkunft:** Am 2026-11-04 aus dem MVP (alte Karte D12) nach Phase 2 verschoben.
+- **Files touched:** `src/events.py`, `docs/bibel/03-universen.md`
+
 ---
 
 ## Phase K: Klonita-Laborassistenz

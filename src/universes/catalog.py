@@ -43,7 +43,7 @@ UNIVERSES: tuple[Universe, ...] = (
             Region("schlund", "Schlund"), Region("zotten", "Zotten"),
             Region("pfuetze", "Pfütze"),
         ),
-        natives=("madenwurm", "blutfliege", "saeurespucker", "bandwurm_kopf"),
+        natives=("fleischmade", "blutegel", "saeurespucker", "zottenwurm"),
         event="verdauung",
         samples=("probe_gallenstein", "probe_wucherung"),
         sample_key="probe_gallenstein",
@@ -62,7 +62,7 @@ UNIVERSES: tuple[Universe, ...] = (
             Region("wartezone", "Wartezone"), Region("registratur", "Registratur"),
             Region("chefbueros", "Chefbüros"),
         ),
-        natives=("papierfresser", "heftklammer_krabbe", "paragraphenreiter", "kaffeegolem"),
+        natives=("aktenfresser", "stempler", "paragraphenreiter", "kaffeegolem"),
         event="pruefung",
         samples=("probe_stempelkissen", "probe_formular"),
         sample_key="probe_stempelkissen",
@@ -81,7 +81,7 @@ UNIVERSES: tuple[Universe, ...] = (
             Region("zelt", "Zelt"), Region("backstage", "Backstage"),
             Region("manege", "Manege"),
         ),
-        natives=("glibber_slime", "brause_geist", "trampolin_frosch", "konfetti_kanone"),
+        natives=("huepfling", "glibberteiler", "zuckerwatte_wolke", "konfetti_kanone"),
         big="trampolinwal", event="brauseregen",
         samples=("probe_glibberkern", "probe_brauseperle"),
         sample_key="probe_glibberkern",
@@ -99,7 +99,7 @@ UNIVERSES: tuple[Universe, ...] = (
             Region("gaenge", "Gänge", (("ambient", 0.2),)),
             Region("thronsaal", "Thronsaal", (("ambient", 0.2),)),
         ),
-        natives=("ameisen_soldat", "blattlaus", "arbeiterameise", "harzspucker"),
+        natives=("ameisenkrieger", "blattlaus", "arbeiterameise", "harzspucker"),
         event="riesenschritt",
         samples=("probe_zuckerkristall", "probe_ameisenduft"),
         sample_key="probe_zuckerkristall",
@@ -116,7 +116,7 @@ UNIVERSES: tuple[Universe, ...] = (
             Region("kappenwald", "Kappenwald"), Region("sporennebel", "Sporennebel"),
             Region("wurzelherz", "Wurzelherz"),
         ),
-        natives=("bass_pilz", "sporen_motte", "sporenwerfer", "kappenschleicher"),
+        natives=("tuersteherpilz", "sporenschnorrer", "sporenwerfer", "leuchtmotte"),
         event="bass_drop",
         samples=("probe_leuchtspore", "probe_plattennadel"),
         sample_key="probe_leuchtspore",
@@ -133,7 +133,7 @@ UNIVERSES: tuple[Universe, ...] = (
             Region("schiff", "Schiff"), Region("kreuzgang", "Kreuzgang"),
             Region("krypta", "Krypta", (("current_vx", 28.0),)),
         ),
-        natives=("chor_fisch", "kerzen_qualle", "korallenwaechter", "weihrauch_aal"),
+        natives=("moenchsfisch", "orgelaal", "glockenqualle", "korallenwaechter"),
         big="kirchenkrake", event="glockenschlag",
         samples=("probe_glockensplitter", "probe_kerzenstumpf"),
         sample_key="probe_glockensplitter",
@@ -144,65 +144,10 @@ UNIVERSES: tuple[Universe, ...] = (
     ),
 )  # fmt: skip
 
-# Post-MVP pool universes (bible chapter 03, "Der Pool für später") + legacy aliases.
-POOL_UNIVERSES: dict[str, Universe] = {
-    "schrott": Universe(
-        "schrott", "Der Große Schrott",
-        "Rostige Zahnräder, tropfendes Öl und ewige Funken.",
-        rule="rule_conductivity", shape="quadrat", ambient=0.45, material_set="koerper",
-        regions=(
-            Region("halde", "Halde"), Region("schmelze", "Schmelze"),
-            Region("kernwerk", "Kernwerk"),
-        ),
-        natives=("rostkaefer", "schweissimp", "magnetwurm", "schrottgolem"),
-        samples=("probe_rost", "probe_knochen"),
-        sample_key="probe_rost",
-        mid_boss="gabelstapler_krabbe",
-        boss="schrottpresse",
-    ),
-    "kuchen": Universe(
-        "kuchen", "Die Kuchenkruste",
-        "Zuckerguss-Brücken über heißen Karamell-Seen.",
-        rule="rule_sugar_crust", shape="quadrat", ambient=0.65, material_set="koerper",
-        regions=(
-            Region("glasur", "Glasur"), Region("biskuit", "Biskuit"),
-            Region("boden", "Boden"),
-        ),
-        natives=("zuckerspinne", "kerzenkobold", "marzipanschwein", "baiser_geist"),
-        samples=("probe_zucker", "probe_zuckerkristall"),
-        sample_key="probe_zucker",
-        mid_boss="marzipan_ritter",
-        boss="hochzeitstorte",
-    ),
-    "spule": Universe(
-        "spule", "Die Summende Spule",
-        "Kupfertürme, Kondensatoren und wandernde Lichtbögen.",
-        rule="rule_conductivity", shape="hoch", ambient=0.5, material_set="koerper",
-        regions=(
-            Region("spulenwald", "Spulenwald"), Region("kondensator", "Kondensator"),
-            Region("kern", "Kern"),
-        ),
-        natives=("funkenhornisse", "spulenkrabbe", "kupferschlange", "kondensator_geist"),
-        samples=("probe_spule", "probe_aether"),
-        sample_key="probe_spule",
-        mid_boss="spulenmeister",
-        boss="transformator",
-    ),
-}
-
 BY_KEY: dict[str, Universe] = {u.key: u for u in UNIVERSES}
-UNIVERSE_ALIASES: dict[str, str] = {
-    "magen": "fleischwelt",
-    "amt": "aktenhalde",
-    "glibber": "glibbria",
-    "ameisen": "kruemelreich",
-    "myzel": "sporenklub",
-}
-ALL_UNIVERSES: dict[str, Universe] = {
-    **POOL_UNIVERSES,
-    **BY_KEY,
-    **{alias: BY_KEY[target] for alias, target in UNIVERSE_ALIASES.items()},
-}
+# Only the six MVP universes. The pool universes of the expansion (schrott, kuchen, spule, ...)
+# are added in Phase J (docs/erweiterung/03-universen-erweiterung.md).
+ALL_UNIVERSES: dict[str, Universe] = dict(BY_KEY)
 UNIVERSES = _UniverseCatalogTuple(UNIVERSES)
 
 

@@ -167,6 +167,21 @@ def test_f13_klonita_assists_and_quirks() -> None:
     assert k.quirk_used_in_universe is True
     assert k.trigger_quirk("sample_nibble", run) is False
 
+    # Snack: +15 HP below 35 %, 45 s cooldown, never during a boss fight.
+    run.enemies.creatures.clear()
+    run.boss_script = None
+    run.player.body.hp = run.player.body.max_hp * 0.30
+    hp_before = run.player.body.hp
+    k.update(0.016, run)
+    assert run.player.body.hp == hp_before + 15.0
+    assert k.cooldowns["snack"] == 45.0
+
+    k.cooldowns["snack"] = 0.0
+    run.boss_script = object()
+    hp_before = run.player.body.hp
+    k.update(0.016, run)
+    assert run.player.body.hp == hp_before
+
 
 def test_f14_klonita_and_speech_bubbles_in_run() -> None:
     from src.run import Run
@@ -174,3 +189,91 @@ def test_f14_klonita_and_speech_bubbles_in_run() -> None:
     run = Run(seed=14)
     run.say("Klonita", "Hallo!", run.player.x, run.player.y)
     assert len(run.bubbles) >= 1
+
+
+# ---------------------------------------------------------------------------
+# F15–F17 — Klonitas Bibel-Aktionen & Macken (V21 Abschnitte 2b und 3)
+# ---------------------------------------------------------------------------
+def _with_stance(creature, stance: str):
+    import dataclasses
+
+    creature.spec = dataclasses.replace(creature.spec, stance=stance)
+    return creature
+
+
+def test_f15_calmed_creatures_and_dodge_charges() -> None:
+    from src.enemies import EnemyManager, evaluate_stance
+    from src.player import Player
+
+    em = EnemyManager()
+    c = em.spawn("made", 40.0, 40.0)
+    assert c.calmed == 0.0 and c.dodge_charges == 0
+    p = Player(42.0, 40.0)
+    c.aggro = False
+    assert evaluate_stance(c, p, em.creatures, stance_override="territorial")
+    c.aggro = False
+    c.calmed = 1.0
+    assert not evaluate_stance(c, p, em.creatures, stance_override="territorial")
+    c.aggro = True
+    assert evaluate_stance(c, p, em.creatures, stance_override="territorial")
+
+
+def test_f16_klonita_point_carry_hug() -> None:
+    import dataclasses
+
+    from src.klonita import Klonita
+    from src.loot import Pickup
+    from src.run import Run
+
+    run = Run(seed=16)
+    run.enemies.creatures.clear()
+    run.pickups.clear()
+    run.level = dataclasses.replace(run.level, secret=None)
+    k = Klonita(x=run.player.x, y=run.player.y)
+
+    run.pickups.append(Pickup(run.player.x + 100.0, run.player.y, kind="life_capsule"))
+    assert k.helper_point(run) == (run.player.x + 100.0, run.player.y)
+    assert k.pointing is not None and k.cooldowns["point"] == 60.0
+    assert k.helper_point(run) is None
+
+    run.pickups.clear()
+    high = Pickup(run.player.x + 30.0, run.player.y - 90.0, kind="block", item_key="funke")
+    run.pickups.append(high)
+    assert k.helper_carry(run) is high
+    assert (high.x, high.y) == (run.player.x, run.player.y)
+    assert k.cooldowns["carry"] == 30.0
+
+    calm = _with_stance(run.enemies.spawn("made", k.x + 30.0, k.y), "neutral")
+    wild = _with_stance(run.enemies.spawn("made", k.x - 30.0, k.y), "hostile")
+    assert k.helper_hug(run) == 1
+    assert calm.calmed > 0.0 and wild.calmed == 0.0
+
+
+def test_f17_klonita_tip_feed_warn() -> None:
+    from src.klonita import QUIRKS, Klonita
+    from src.run import Run
+
+    assert len(QUIRKS) == 6
+    run = Run(seed=17)
+    run.enemies.creatures.clear()
+    k = Klonita(x=run.player.x, y=run.player.y)
+
+    _with_stance(run.enemies.spawn("made", k.x + 20.0, k.y), "trader")
+    run.gold = 100
+    assert k.trigger_quirk("tip_trader", run) is True
+    assert 85 <= run.gold <= 95
+    _with_stance(run.enemies.spawn("made", k.x + 10.0, k.y), "passive")
+    assert k.trigger_quirk("feed_creature", run) is False  # only one quirk per universe
+
+    k.quirk_used_in_universe = False
+    run.enemies.creatures.clear()
+    pet = _with_stance(run.enemies.spawn("made", k.x + 10.0, k.y), "passive")
+    pet.hp = pet.max_hp * 0.5
+    assert k.trigger_quirk("feed_creature", run) is True
+    assert pet.hp == pytest.approx(pet.max_hp * 0.7)
+
+    k.quirk_used_in_universe = False
+    run.enemies.creatures.clear()
+    foe = _with_stance(run.enemies.spawn("made", k.x + 60.0, k.y), "hostile")
+    assert k.trigger_quirk("warn_enemy", run) is True
+    assert foe.dodge_charges == 1
