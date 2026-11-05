@@ -148,11 +148,12 @@ def test_a05_unified_pickup_and_sprite_keys() -> None:
     p_sample = Pickup(0.0, 0.0, kind="sample", item_key="probe_gallenstein", amount=3)
     assert pickup_sprite_key(p_sample) == "probe_gallenstein"
 
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=5)) == "gold_klein"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=15)) == "gold_mittel"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=40)) == "gold_gross"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="badge", amount=1)) == "dienstmarke"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="crate", amount=1)) == "beutekiste"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=5)) == "gold_muenze"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=15)) == "gold_haufen_s"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=40)) == "gold_haufen_m"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=80)) == "gold_haufen_l"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="badge", amount=1)) == "dienstausweis"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="crate", amount=1)) == "fundkiste"
 
 
 # ---------------------------------------------------------------------------

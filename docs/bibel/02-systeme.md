@@ -24,7 +24,7 @@ Werkstatt → Universum A (Rang 1) → Werkstatt → Universum B (Rang 1, Zwisch
   | 3 | Ameisenkönigin (Krümelreich), Weltenherz (Fleischwelt) |
 
   Mit mehr Universen im Pool werden die freien Plätze aus allen übrigen Universen gezogen.
-- **Böses Ich:** Der Seed wählt eines der drei für den Endkampf. Es kämpft in seinem eigenen Heimat-Universum (kleine Sonderwelt je böses Ich). Zusätzlich können die beiden anderen Bösen Ichs als optionale Begegnungen (Echos/Späherinnen) in den versteckten Geheimräumen (`secret`) der Universen ab Rang 2 angetroffen werden (inkl. Verhandlungsoption bei der Kaiserin, Kapitel 05).
+- **Böses Ich:** Der Seed wählt eines der drei für den Endkampf. Es kämpft in seinem eigenen Heimat-Universum (kleine Sonderwelt je böses Ich). Zusätzlich können die beiden anderen Bösen Ichs als optionale Begegnungen (Echos/Späherinnen) in den versteckten Geheimräumen (`secret`) der Universen ab Rang 2 angetroffen werden (inkl. Verhandlungsoption bei der Kaiserin, Kapitel 05): je eines im ersten Universum von Rang 2 und Rang 3, kurzer Kampf mit 2 Phasen und 30 % Leben, Beute 100 Gold und ein Dienstausweis.
 - **Ausgang:** In jedem Universum liegt am Ende ein **Ankerpunkt**. Dort öffnet Cloitas Waffe genau ein Portal zur Werkstatt; sonst ist sie eine normale Waffe.
 - **Parallelwelten (Wackelportal):** wie bisher über eine versteckte Schatzkammer. Führt in eine gespiegelte oder dunklere, härtere Fassung desselben Laufs.
 - **„Noch einmal, nur schlimmer“** (NG+) nach dem Sieg: neue Universen-Reihenfolge, Gegnerfaktor +0,6 je Runde.

@@ -19,10 +19,10 @@ if TYPE_CHECKING:
 WANTED_MAX: float = 5.0
 
 AGENT_TYPES: tuple[str, ...] = (
-    "agent_streife",          # (Alias: "agent_sachbearbeiter") ab 1 Stern: Stempel-Projektile
-    "agent_drohne",           # fliegende Späh- und Markierdrohne
-    "agent_vollstrecker",     # ab 2 Sternen: gepanzert, Aktenkoffer-Schild (reflect), Salvenfeuer
-    "agent_abteilungsleiter", # ab 4 Sternen: fliegt, ruft Verstärkung, Paragraphen-Strahl
+    "agent_streife",          # ab 1 Stern (Alias "agent_sachbearbeiter"): Formularblitz 8, Leben 45
+    "agent_drohne",           # ab 2 Sternen: fliegt, markiert Cloita 10 s, Leben 15
+    "agent_vollstrecker",     # ab 3 Sternen: Schild, reflect, Stempelschlag 20, Leben 120
+    "agent_abteilungsleiter", # ab 4 Sternen: fliegt, ruft agent_streife, Paragraphen-Strahl 14, Leben 160
 )
 
 AGENT_ALIASES: dict[str, str] = {
@@ -74,8 +74,18 @@ class Wanted:
     @classmethod
     def from_data(cls, data: dict[str, object] | None) -> Wanted: ...
 
+FORBIDDEN_BLOCKS: tuple[str, ...] = ("sprengkern", "knochenbombe")  # Bibel 06: Atomkern, Kraterbombe
+
+AGENT_GOLD: dict[str, int] = {"agent_streife": 15, "agent_drohne": 5, "agent_vollstrecker": 40,
+                              "agent_abteilungsleiter": 40}
+BADGE_CHANCE: dict[str, float] = {"agent_streife": 0.10, "agent_drohne": 0.05, "agent_vollstrecker": 0.15,
+                                  "agent_abteilungsleiter": 0.50}   # Dienstausweis (kind="badge")
+
 def agent_species_for_stars(stars: int) -> list[str]:
-    """Deterministische Liste der zu spawnenden Agenten-Spezies für gegebene Sterne (0..5)."""
+    """Bibel 02: Streife ab 1, Drohne ab 2, Vollstrecker ab 3, Abteilungsleiter ab 4 Sternen.
+    0 -> [], 1 -> [streife], 2 -> [streife, drohne], 3 -> [streife, drohne, vollstrecker],
+    4 -> [streife, drohne, vollstrecker, abteilungsleiter],
+    5 -> [streife, streife, drohne, vollstrecker, vollstrecker, abteilungsleiter]."""
 
 def spawn_agents(run: Run, count: int | None = None) -> list[Creature]:
     """Spawnt Behörden-Agenten in der Nähe von run.level.spawn (Mindestabstand 48 px,
@@ -88,7 +98,8 @@ def spawn_agents(run: Run, count: int | None = None) -> list[Creature]:
 | Vergehen | `delta` | `reason` |
 | --- | --- | --- |
 | Je `500` zerstörte Weltzellen | `+0.25` | `"Sachbeschädigung"` |
-| Verbotener Zauber gewirkt (`nuke`, `black_hole`, `omega`) | `+0.5` | `"Verbotene Magie"` |
+| Neutrale oder passive Kreatur getötet (`spec.stance` in `"peaceful"`, `"passive"`, `"neutral"`, `"territorial"`, `"shy"`) | `+0.25` | `"Unnötige Gewalt"` |
+| Verbotener Großzauber gewirkt (`FORBIDDEN_BLOCKS`) | `+0.5` | `"Verbotene Magie"` |
 | Ladendiebstahl | `+1.0` | `"Ladendiebstahl"` |
 | Händler verletzt | `+1.5` | `"Händler angegriffen"` |
 | Händler getötet | `+3.0` | `"Händler getötet"` |
@@ -150,17 +161,14 @@ def make_boss_script(boss: Creature) -> BossScript | None:
     (alle 6 Universums-Zwischengegner, 3 Bösen Ichs, 'ober_cloita'), sonst None."""
 ```
 
-### Kanonische Phasenschwellen
+### Kanonische Phasenschwellen (Bibel 05)
 
-- **3-Phasen-Bosse** (6 Universums-Zwischengegner + 3 Böse Ichs):
-  - Phase `0`: Start (`hp_threshold = 1.0`)
-  - Phase `1`: bei `hp_ratio <= 0.66` (`1.0 s` Unverwundbarkeit während Übergang)
-  - Phase `2`: bei `hp_ratio <= 0.33` (`1.0 s` Unverwundbarkeit während Übergang)
-- **4-Phasen-Boss (`ober_cloita`)**:
-  - Phase `0`: Start (`1.0`, *"Akte geschlossen? Noch lange nicht!"*)
-  - Phase `1`: `hp_ratio <= 0.75` (*"Formular B-12: Beschwörung der Beamtenschaft!"*)
-  - Phase `2`: `hp_ratio <= 0.50` (*"Paragraph 9: Realitäts-Kompression!"*)
-  - Phase `3`: `hp_ratio <= 0.25` (*"Total-Revision! Alles wird gestempelt!"*)
+Jeder Phasenwechsel: `1.0 s` Unverwundbarkeit, Boss-Zeile über `run.boss_line`, `run.emit("boss_phase", …)`.
+
+- **6 Zwischengegner:** 3 Phasen bei `1.0`, `0.66`, `0.33`.
+- **3 böse Ichs im Endkampf:** 4 Phasen bei `1.0`, `0.75`, `0.50`, `0.25`.
+- **Echos und böse Ichs im Hauptquartier (Stufe 2):** 2 Phasen bei `1.0`, `0.50`.
+- **`ober_cloita`:** 3 Phasen bei `1.0`, `0.66`, `0.33`; Phase `k` nutzt die Angriffe des `k`-ten bösen Ichs in `EVIL_SELVES`, die letzte alle gemischt.
 
 ### Die 6 kanonischen Universums-Zwischengegner in `src/bosses/` (Bibel Kap. 03 & 05)
 
@@ -177,63 +185,83 @@ Phasen genau nach Bibel 05 („Zwischengegner“); Phase 1 gilt ab 100 %, Phase 
 
 ---
 
-## V17 — Böse Ichs (`src/bosses/evil_selves.py`) & Hauptquartier (`src/bosses/headquarters.py`)
+## V17 — Böse Ichs (`src/bosses/evil_selves.py`), Endkampf & Hauptquartier (`src/bosses/headquarters.py`)
 
-### 1. Böse Ichs (`src/bosses/evil_selves.py`)
+Kanonische Quellen: Bibel 02 („Aufbau eines Laufs“, „Wahres Ende“) und Bibel 05 („Böse Ichs“, „Wahres Ende“). Überarbeitet am 2026-11-04.
+
+### 1. Böse Ichs, Endgegner & Echos
 
 ```python
-EVIL_SELVES: tuple[str, ...] = (
-    "boese_kaiserin",  # Optionale Begegnung in Universum 2 (depth == 2) im Secret-Raum + Kaiserin-Handel
-    "boese_gute",      # Optionale Begegnung in Universum 3 (depth == 3) im Secret-Raum
-    "boese_omega",     # Optionale Begegnung in Universum 4 (depth == 4) im Secret-Raum
-)
+EVIL_SELVES: tuple[str, ...] = ("boese_kaiserin", "boese_gute", "boese_omega")
+EVIL_HP: dict[str, int] = {"boese_kaiserin": 3500, "boese_gute": 3200, "boese_omega": 3800}
+ECHO_HP_FACTOR = 0.30
+ECHO_DEPTHS: tuple[int, int] = (3, 5)   # erstes Universum von Rang 2 und Rang 3 (plan.slot + 1)
+ECHO_GOLD = 100
 
-def evil_self_for_depth(depth: int) -> str | None:
-    """Gibt für depth 2 -> 'boese_kaiserin', depth 3 -> 'boese_gute',
-    depth 4 -> 'boese_omega' zurück, sonst None."""
+def final_evil_self(run: Run) -> str:
+    """Endgegner dieses Laufs: run.plan.evil_self (der Seed wählt, Bibel 02)."""
+
+def echo_for_depth(run: Run, depth: int) -> str | None:
+    """Echo im Geheimraum (level.secret): bei depth == 3 das erste, bei depth == 5 das zweite
+    der beiden bösen Ichs, die nicht Endgegner sind (Reihenfolge wie in EVIL_SELVES); sonst None."""
 
 def signature_wand_for_evil_self(species: str) -> Wand:
-    """Erzeugt den einzigartigen Signatur-Zauberstab, den das besiegte Böse Ich fallen lässt:
-    - 'boese_kaiserin': 'Kaiserliches Zepter' (Mana 180, Recharge 0.22, vorbestückt mit ['chain', 'lance', 'spark'])
-    - 'boese_gute':     'Heiligenschein-Gerte' (Mana 200, Recharge 0.18, vorbestückt mit ['heal', 'shield', 'orb'])
-    - 'boese_omega':    'Omega-Prisma' (Mana 260, Recharge 0.30, vorbestückt mit ['omega', 'split_cast', 'plasma'])
-    """
+    """Waffe des bösen Ichs (Bibel 05: eigene Waffe mit Modulen), Code-Schlüssel aus BLOCKS:
+    - 'boese_kaiserin': "Kaiserliches Zepter"  (mana_max 180, recharge 0.22) ['nadelregen', 'beschleunigung', 'sprengkraft']
+    - 'boese_gute':     "Heiligenschein-Gerte" (mana_max 200, recharge 0.18) ['leuchtkugel', 'zielsuche', 'kettenfunke']
+    - 'boese_omega':    "Omega-Armkanone"      (mana_max 260, recharge 0.30) ['feuerball', 'dreifach', 'zielsuche']"""
 
 def apply_empress_bargain(run: Run, accepted: bool) -> None:
-    """Wird im Kaiserin-Handel-Menü aufgerufen:
-    - accepted == False: Kampf gegen 'boese_kaiserin' beginnt normal.
-    - accepted == True: 'boese_kaiserin' verschwindet friedlich, lässt 'Kaiserliches Zepter' + 100 Gold
-      fallen, erhöht aber Wanted um +2.0 ('Pakt mit der Kaiserin') und reduziert player.body.max_hp um 20 %."""
+    """Angebot „die Hälfte des Multiversums“ (Phase 2 der Kaiserin, auch als Echo):
+    - accepted == False: Kampf geht weiter.
+    - accepted == True: Böses Ende. run.ending = "boese", run.outcome = "bad_ending" (beendet den Lauf wie "dead"), run.victory = False,
+      run.records.discover("ending", "boese"); kein Weiterspielen."""
 ```
 
-Tod eines Bösen Ichs:
+- **Echo:** Art wie das böse Ich, `hp = EVIL_HP * ECHO_HP_FACTOR`, 2 Phasen (V16). Tod: `ECHO_GOLD` Gold, `1` `"badge"` (Dienstausweis), `run.records.discover("evil_self", species)`.
+- **Tod im Endkampf:** Signatur-Waffe, `run.records.discover("evil_self", species)`. Kein Erinnerungssplitter (es gibt genau 6, einen je Universum).
 
-- Ruft `run.records.discover("evil_self", species)` auf.
-- Dropt den Signatur-Zauberstab (`signature_wand_for_evil_self(species)`), `1` `"badge"` (`"dienstmarke"`) und `1` `"memory_shard"`.
+### 2. Endkampf in der Heimatwelt (`src/universes/gen/evil_homes.py`)
 
-### 2. Hauptquartier & Wahres Ende (`src/bosses/headquarters.py`)
+Nach dem 6. Universum bietet der Portalrahmen nur noch die Heimatwelt des Endgegners (`run.plan.finished`). Jede Heimatwelt ist `1280×720` groß, hat einen eigenen Materialsatz und eine Arena-Mechanik:
 
-#### Eintrittsbedingung (`can_enter_headquarters(run: Run) -> bool`)
-
-- Gibt `True` zurück, wenn die Spielerin **alle `6` Erinnerungssplitter (`run.memory_shards >= 6`)** gesammelt hat **ODER** mindestens **`3` Dienstausweise (`run.badges >= 3`)** besitzt **ODER** **`run.wanted.stars >= 4`** erreicht hat.
-- Betritt die Spielerin das Hauptquartier-Portal (`run.enter_headquarters()`), wechselt `run.in_headquarters = True` und lädt die 3-stufige Arena (`320 × 200` Zellen):
+| Böses Ich | Heimatwelt | Materialsatz (Grundmaterialien +) | Mechanik |
+| --- | --- | --- | --- |
+| `boese_kaiserin` | Thronsaal aus Gold | `"goldboden"` (fest und rutschig: Bremsweg ×3) | Phase 4: der Thron wird zur Kanone (fester Punkt, schießt alle 1,2 s) |
+| `boese_gute` | Kathedrale aus Licht | `"lichtstein"` (fest, leuchtet), `"heiliges_licht"` (Gas, 4 Schaden/s bei Berührung) | Lichtstrahlen hinterlassen `"heiliges_licht"`; Bekehrung: Klonita 10 s auf ihrer Seite (harmlos) |
+| `boese_omega` | Fabrikhalle | `"foerderband"` (fest, schiebt Körper darauf mit 40 px/s), `"stahl"` (sehr hart) | 4 Pressen (alle 3 s, 30 Schaden im 16-px-Streifen); Phase 3: Riesenmaschine aus Teilen |
 
 ```python
-HQ_STAGES: tuple[str, ...] = (
-    "anhoerung",   # Stufe 1: Welle aus 4 Behörden-Agenten + Stempel-Geschützen
-    "boese_ichs",  # Stufe 2: Alle noch NICHT im Run besiegten Bösen Ichs (falls alle 3 schon besiegt: 2 Elite-Abteilungsleiter)
-    "ober_cloita", # Stufe 3: 4-Phasen-Endkampf gegen 'ober_cloita'
-)
+def generate_evil_home(world: World, species: str, seed: int) -> Level:
+    """Baut die Heimatwelt; Level.boss_arena = ganze Halle, Level.universe_key = species."""
+```
 
-def can_enter_headquarters(run: Run) -> bool: ...
-def generate_headquarters_arena(world: World) -> tuple[int, int]: ...
+- `Run.enter_final()` lädt die Heimatwelt, spawnt das böse Ich mit `EVIL_HP` und seinem 4-Phasen-Skript.
+- **Sieg:** `run.victory = True`. Ist `can_enter_headquarters(run)` erfüllt, erscheint zusätzlich das Hauptquartier-Portal (`kind="portal"`, `item_key="headquarters"`); sonst endet der Lauf normal.
+
+### 3. Hauptquartier & wahres Ende
+
+```python
+HQ_STAGES: tuple[str, ...] = ("anhoerung", "boese_ichs", "ober_cloita")
+COUNCIL_SIZE = 5
+OBER_CLOITA_HP = 6000
+
+def can_enter_headquarters(run: Run) -> bool:
+    """Bibel 02: run.memory_shards >= 6 or run.badges >= 3 or run.wanted.stars >= 4
+    (geprüft nach dem Sieg über das böse Ich)."""
+
+def generate_headquarters_arena(world: World) -> tuple[int, int]:
+    """Endloser Aktensaal (960×360) mit Ratspult (120×32) am rechten Ende; gibt den Spawn zurück."""
 
 class HeadquartersController:
-    def __init__(self) -> None:
-        self.stage_index: int = 0
-        self.completed: bool = False
+    stage_index: int
+    completed: bool
     def spawn_stage(self, run: Run) -> None: ...
     def update(self, dt: float, run: Run) -> None: ...
 ```
 
-- Sieg über `"ober_cloita"` setzt `run.victory = True`, `run.true_ending = True` und vergibt den Rang `"Realitäts-Rebellin"` (`+500` Bonus-Punkte).
+- **Eintritt:** kein Werkstatt-Besuch, volle Heilung (Boss-Zeile „Die Splitter erinnern sich an dich.“).
+- **Stufe 1 „anhoerung“:** `COUNCIL_SIZE` Räte (`"ratsmitglied"`, Leben 90, `faction="behoerde"`, `ranged`) hinter dem Pult; solange einer lebt, alle 10 s 2 `"agent_streife"` und Formular-Regen. Jeder gefallene Rat verliert die Maske: `run.say` mit einer Zeile „Ich war die Cloita, die …“.
+- **Stufe 2 „boese_ichs“:** die zwei bösen Ichs außer dem Endgegner nacheinander, je 2 Phasen (V16) und `50 %` von `EVIL_HP`.
+- **Stufe 3 „ober_cloita“:** `OBER_CLOITA_HP`, 3 Phasen (V16). Je `10 %` verlorenes Leben fällt ein Kopf-Splitter (`kind="memory_shard"`, zählt nicht zu den 6); Klonita fängt ihn und gibt Cloita `+50` Flux. Zu Beginn von Phase 3 umarmt Klonita die Ober-Cloita: `3 s` gelähmt.
+- **Sieg:** `run.victory = True`, `run.true_ending = True`, `run.records.discover("ending", "wahr")`.

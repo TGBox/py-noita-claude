@@ -72,7 +72,8 @@ def test_g04_records_discover_and_ranks() -> None:
     rec.discover("blueprint", "nadel")
     rec.discover("universe", "sporenklub")
     rec.discover("evil_self", "boese_kaiserin")
-    rec.discover("badge", "dienstmarke")
+    rec.discover("badge", "dienstausweis")
+    rec.discover("ending", "boese")
     rec.discover("creature", "fleischmade")
 
     assert "funke" in rec.blocks
@@ -80,6 +81,7 @@ def test_g04_records_discover_and_ranks() -> None:
     assert "sporenklub" in rec.universes
     assert "boese_kaiserin" in rec.evil_selves
     assert rec.badges == 1
+    assert rec.endings == ["boese"]
     assert rec.creatures["fleischmade"] == 1
     assert "sporenklub" not in rec.creatures
 

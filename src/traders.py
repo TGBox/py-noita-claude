@@ -1,4 +1,4 @@
-"""Contract V19: 6 trader personalities, offer generation, and purchase rules (Cards E04, E05)."""
+"""Contract V19: the 6 workshop traders, their offers and purchase rules (Cards E04, E05)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ class TraderOffer:
     key: str
     gold_cost: int
     sample_cost: tuple[tuple[str, int], ...] = ()
-    blessed: bool = False
+    blessing: str = ""
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,7 @@ class TraderSpec:
     home_universe: str
     greeting_de: str
     quirk_de: str
+    category: str
     price_multiplier: float = 1.0
     flat_fee: int = 0
 
@@ -33,20 +34,19 @@ class TraderSpec:
 TRADERS: dict[str, TraderSpec] = {}
 
 
-def pick_trader_for_universe(universe_key: str, rng: random.Random) -> TraderSpec:
-    """Pick the home trader (60% chance) or a random trader from TRADERS."""
+def traders_for_workshop(visited: list[str]) -> list[TraderSpec]:
+    """Home traders of the (at most) two most recently visited universes, newest first."""
     raise NotImplementedError("Card E04")
 
 
 def generate_offers(
     trader: TraderSpec,
-    depth: int,
+    stage: int,
     rng: random.Random,
     *,
     price_factor: float = 1.0,
-    universe_sample_key: str = "probe_rost",
 ) -> list[TraderOffer]:
-    """Generate 4 offers tailored to trader's quirk and assortment."""
+    """Generate 4 offers from the trader's category."""
     raise NotImplementedError("Card E04")
 
 
@@ -57,6 +57,5 @@ def buy_offer(
     *,
     use_samples: bool = False,
 ) -> tuple[bool, str]:
-    """Execute purchase of offer from trader on run, enforcing all trader quirks."""
+    """Execute a purchase and return (ok, German message)."""
     raise NotImplementedError("Card E05")
-

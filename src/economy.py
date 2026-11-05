@@ -1,41 +1,50 @@
-"""Contract V19: Gold drop and shop pricing formulas (Card E02)."""
+"""Contract V19: gold sources and prices after bible chapter 02 (Card E02)."""
 
 from __future__ import annotations
 
 import random
 
+CREATURE_GOLD: dict[int, tuple[int, int]] = {1: (5, 10), 2: (10, 18), 3: (18, 30)}
+BIG_CREATURE_GOLD: dict[int, int] = {1: 40, 2: 70, 3: 110}
+BOSS_GOLD: dict[int, int] = {1: 200, 2: 350, 3: 500}
+PILES_PER_UNIVERSE: tuple[int, int] = (6, 8)
+MODULE_BASE: dict[int, int] = {1: 50, 2: 85, 3: 120}
+PHYSIK_STAKE = 30
+SCHIESS_STAKE = 20
+ZAPF_PRICE = 10
 
-def creature_gold(max_hp: float, depth: int, rng: random.Random) -> int:
-    """Compute gold dropped by a regular creature."""
+
+def creature_gold(rank: int, rng: random.Random, *, big: bool = False) -> int:
     raise NotImplementedError("Card E02")
 
 
-def pile_gold(depth: int, rng: random.Random) -> int:
-    """Compute gold in a world gold pile."""
+def mid_boss_gold(rank: int) -> int:
     raise NotImplementedError("Card E02")
 
 
-def crate_gold(depth: int, rng: random.Random) -> int:
-    """Compute gold dropped by a loot crate."""
+def boss_gold(rank: int) -> int:
     raise NotImplementedError("Card E02")
 
 
-def mid_boss_gold(depth: int) -> int:
-    """Compute fixed gold dropped by a mid-boss (45 + 15 * depth)."""
+def pile_gold(rank: int, rng: random.Random) -> int:
     raise NotImplementedError("Card E02")
 
 
-def module_price(rarity_tier: int, depth: int, price_factor: float = 1.0) -> int:
-    """Compute shop price for a spell module of rarity_tier (1..3)."""
+def crate_gold(rank: int, rng: random.Random) -> int:
     raise NotImplementedError("Card E02")
 
 
-def weapon_price(wand_tier: int, depth: int, price_factor: float = 1.0) -> int:
-    """Compute shop price for a wand of wand_tier (1..3)."""
+def module_price(rarity_tier: int, stage: int, price_factor: float = 1.0) -> int:
     raise NotImplementedError("Card E02")
 
 
-def reroll_price(reroll_index: int, price_factor: float = 1.0) -> int:
-    """Compute cost for shop/workbench reroll index (0, 1, 2, ...)."""
+def weapon_price(stage: int, price_factor: float = 1.0) -> int:
     raise NotImplementedError("Card E02")
 
+
+def fabricator_gold(rarity_tier: int, stage: int) -> int:
+    raise NotImplementedError("Card E02")
+
+
+def experiment_reroll_price(reroll_index: int) -> int:
+    raise NotImplementedError("Card E02")

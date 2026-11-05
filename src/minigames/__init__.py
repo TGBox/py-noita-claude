@@ -1,4 +1,4 @@
-"""Contract V20: Workshop minigames base class and result types (Cards E07..E09)."""
+"""Contract V20: workshop minigame base class and result type (Cards E07..E09)."""
 
 from __future__ import annotations
 
@@ -8,12 +8,8 @@ from ..world import World
 
 MINIGAME_WORLD_SIZE: tuple[int, int] = (160, 120)
 
-NEXT_BOOST_KEYS: tuple[str, ...] = (
-    "mana_regen",
-    "max_hp",
-    "gold_magnet",
-    "discount",
-)
+# Boosts for the next universe (bible 07): flux charge +20 %, damage +10 %, speed +10 %.
+NEXT_BOOST_KEYS: tuple[str, ...] = ("flux", "damage", "speed")
 
 
 @dataclass
@@ -29,7 +25,8 @@ class MinigameResult:
 class Minigame:
     key: str = ""
     title_de: str = ""
-    time_limit: float = 20.0
+    stake: int = 0
+    time_limit: float = 15.0
 
     def __init__(self, seed: int = 0) -> None:
         self.seed: int = seed
@@ -44,6 +41,5 @@ class Minigame:
         action: str | None = None,
         cursor: tuple[int, int] = (80, 60),
     ) -> MinigameResult | None:
-        """Advance minigame simulation by dt and return MinigameResult once finished."""
+        """Advance the minigame by dt; return the result once it is finished."""
         raise NotImplementedError("Card E07")
-

@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.9
+
+- 2026-11-05 (efd97a2): fix: fix phase plan to align with the bible
+
 ## SemVer v1.7.8
 
-- 2026-11-04 (faba262): feat: re-evaluate all implementation plans and align them with the general direction
+- 2026-11-04 (d6559c5): feat: re-evaluate all implementation plans and align them with the general direction
 
 ## SemVer v1.7.7
 

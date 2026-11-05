@@ -23,6 +23,20 @@ AGENT_ALIASES: dict[str, str] = {
     "agent_sachbearbeiter": "agent_streife",
 }
 
+FORBIDDEN_BLOCKS: tuple[str, ...] = ("sprengkern", "knochenbombe")
+AGENT_GOLD: dict[str, int] = {
+    "agent_streife": 15,
+    "agent_drohne": 5,
+    "agent_vollstrecker": 40,
+    "agent_abteilungsleiter": 40,
+}
+BADGE_CHANCE: dict[str, float] = {
+    "agent_streife": 0.10,
+    "agent_drohne": 0.05,
+    "agent_vollstrecker": 0.15,
+    "agent_abteilungsleiter": 0.50,
+}
+
 
 @dataclass
 class Wanted:
