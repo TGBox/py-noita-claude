@@ -157,6 +157,12 @@ def topo_order(cards: dict[str, Card]) -> list[Card]:
 # --------------------------------------------------------------------------- helpers
 
 
+# The project's post-commit hook asks interactively for a SemVer bump (reading the
+# console) and amends CHANGELOG.md; the card run must neither block nor touch the
+# changelog, so it sets the hook's own skip flag and never hands out the console.
+GIT_ENV = {**os.environ, "GIT_CHANGELOG_RUNNING": "1"}
+
+
 def run(
     cmd: list[str] | str, *, timeout: float | None = None, check: bool = False
 ) -> tuple[int, str]:
@@ -164,6 +170,8 @@ def run(
         cmd,
         check=False,
         cwd=ROOT,
+        env=GIT_ENV,
+        stdin=subprocess.DEVNULL,
         shell=isinstance(cmd, str),
         capture_output=True,
         text=True,
@@ -351,6 +359,20 @@ def crashed(path: Path) -> bool:
     return "Traceback (most recent call last)" in path.read_text(encoding="utf-8", errors="replace")
 
 
+def _subject(card: Card) -> str:
+    title = re.sub(r"\(`V[^)]*\)", "", card.title).replace("`", "").strip()
+    return title if len(title) <= 60 else title[:57].rstrip() + "..."
+
+
+def commit_message(card: Card) -> str:
+    """Conventional Commits (the project's commit-msg hook insists on it)."""
+    return f"feat(karte-{card.key.lower()}): {_subject(card)}"
+
+
+def merge_message(card: Card) -> str:
+    return f"chore(kartenlauf): Karte {card.key} übernehmen"
+
+
 def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
     """Return (status, attempts, note)."""
     branch = f"card/{card.key}"
@@ -358,6 +380,10 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
     git("branch", "-D", branch, check=False)
     git("checkout", "-q", "-b", branch)
     before = changed_files()
+    ok, _ = verify(card)
+    if ok:  # e.g. done by hand or by an earlier, interrupted run
+        git("checkout", "-q", args.lauf)
+        return "fertig", 0, "war schon grün"
     message = PROMPT.format(targets=", ".join(card.targets), verify=card.verify, card=card.text)
     note = ""
     for attempt in range(1, args.versuche + 1):
@@ -380,9 +406,13 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
         if ok:
             git("add", "--", *[t for t in card.targets if (ROOT / t).exists()])
             if run(["git", "diff", "--cached", "--quiet"])[0] != 0:
-                git("commit", "-q", "-m", f"Karte {card.key}: {card.title}")
+                code, out = run(["git", "commit", "-q", "-m", commit_message(card)])
+                if code != 0:
+                    return "abgebrochen", attempt, "Commit abgelehnt: " + shorten(out, 300)
             git("checkout", "-q", args.lauf)
-            git("merge", "-q", "--no-ff", branch, "-m", f"Merge Karte {card.key}")
+            code, out = run(["git", "merge", "-q", "--no-ff", branch, "-m", merge_message(card)])
+            if code != 0:
+                return "abgebrochen", attempt, "Merge fehlgeschlagen: " + shorten(out, 300)
             extra = f" (zurückgesetzt außerhalb: {', '.join(outside)})" if outside else ""
             return "fertig", attempt, extra.strip()
         note = shorten(output, 400).splitlines()[-1] if output.strip() else "rot"
