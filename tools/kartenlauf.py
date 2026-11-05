@@ -25,6 +25,7 @@ Nothing is pushed. Start (from the project folder):
 from __future__ import annotations
 
 import argparse
+import ast
 import datetime as dt
 import json
 import os
@@ -49,6 +50,11 @@ PROTECTED = ("CHANGELOG.md", "pyproject.toml", "uv.lock", "native/", "tests/spec
 CARD_HEADER = re.compile(r"^## ([A-G]\d\d) — (.+)$", re.MULTILINE)
 CARD_ID = re.compile(r"`([A-G]\d\d)`(?:\s*–\s*`([A-G]\d\d)`)?")
 BACKTICK = re.compile(r"`([^`]+)`")
+CONTEXT_ITEM = re.compile(r"`([^`]+)`(?:\s*\(((?:[^()]|\([^()]*\))*)\))?")
+CONTRACT_ID = re.compile(r"V(\d+)([a-z]?)(?:\s*[–-]\s*`?V(\d+)`?)?")
+HEADING = re.compile(r"^(#{1,4}) (.+)$", re.MULTILINE)
+SMALL_SOURCE = 20_000  # bytes; larger read-only sources are passed as an outline
+CHARS_PER_TOKEN = 3.3
 
 PROMPT = """You are implementing exactly one task card of the game project py-noita-claude
 (Python, pygame-ce). Follow the card literally.
@@ -86,6 +92,7 @@ class Card:
     targets: list[str]
     context: list[str]
     verify: str
+    hints: dict[str, str] = field(default_factory=dict)  # context path -> "(…)" hint
     order: int = 0
 
 
@@ -122,9 +129,12 @@ def load_cards() -> dict[str, Card]:
             end = heads[i + 1].start() if i + 1 < len(heads) else len(source)
             text = source[head.start() : end].split("\n---", 1)[0].strip()
             verify = BACKTICK.findall(_field(text, "Verifikation"))
-            context = [
-                p for p in _paths(_field(text, "Zu lesender Kontext")) if (ROOT / p).is_file()
-            ]
+            hints = {
+                path: hint
+                for path, hint in CONTEXT_ITEM.findall(_field(text, "Zu lesender Kontext"))
+                if "/" in path and " " not in path and (ROOT / path).is_file()
+            }
+            context = list(hints)
             cards[head.group(1)] = Card(
                 key=head.group(1),
                 title=head.group(2).strip(),
@@ -133,6 +143,7 @@ def load_cards() -> dict[str, Card]:
                 targets=_paths(_field(text, "Ziel-Dateien")),
                 context=context,
                 verify=verify[0] if verify else "",
+                hints=hints,
             )
     return cards
 
@@ -292,9 +303,163 @@ def revert_outside(card: Card, before: set[str]) -> list[str]:
 
 
 def reset_card(before: set[str]) -> None:
-    git("reset", "--hard", "-q")
+    """Undo what this card changed; earlier uncommitted changes (e.g. the script) stay."""
     for path in changed_files() - before:
-        (ROOT / path).unlink(missing_ok=True)
+        if git("ls-files", "--", path):
+            git("reset", "-q", "HEAD", "--", path, check=False)
+            git("checkout", "HEAD", "--", path)
+        else:
+            (ROOT / path).unlink(missing_ok=True)
+
+
+# --------------------------------------------------------------------------- context
+#
+# A small local model has a small context window. Instead of whole files the run sends
+# only what the card points at: the card's own test functions, the contract sections
+# it names (`V0b`, „Phrase“) and an outline of large read-only sources.
+
+
+def _hint_ids(hint: str) -> list[str]:
+    ids = []
+    for num, letter, last in CONTRACT_ID.findall(hint):
+        if last:
+            ids += [f"V{n}" for n in range(int(num), int(last) + 1)]
+        else:
+            ids.append(f"V{num}{letter}")
+    return ids
+
+
+def _headings(text: str) -> list[re.Match[str]]:
+    """Markdown headings outside fenced code blocks."""
+    fences = [m.start() for m in re.finditer(r"^```", text, re.MULTILINE)]
+    spans = list(zip(fences[::2], fences[1::2], strict=False))
+    return [h for h in HEADING.finditer(text) if not any(a < h.start() < b for a, b in spans)]
+
+
+def _md_sections(text: str, hint: str) -> str | None:
+    """Sections whose heading names one of the hint's contract ids or quoted phrases."""
+    ids = _hint_ids(hint)
+    phrases = re.findall(r"„([^“]+)“", hint)
+    heads = _headings(text)
+    picked = []
+    for i, head in enumerate(heads):
+        title = head.group(2)
+        if len(head.group(1)) == 1:  # the document title names all its contracts
+            continue
+        hit = any(re.search(rf"(?<![\w]){re.escape(i_)}(?![\w])", title) for i_ in ids)
+        hit = hit or any(p.lower() in title.lower() for p in phrases)
+        if not hit:
+            continue
+        level = len(head.group(1))
+        end = len(text)
+        for nxt in heads[i + 1 :]:
+            if len(nxt.group(1)) <= level:
+                end = nxt.start()
+                break
+        picked.append((head.start(), end))
+    if not picked:
+        return None
+    merged: list[tuple[int, int]] = []
+    for start, end in sorted(picked):
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    return "\n\n".join(text[a:b].strip() for a, b in merged)
+
+
+def _test_excerpt(source: str, card_key: str) -> str:
+    """Imports, the card's test functions and the module-level helpers they use."""
+    tree = ast.parse(source)
+    prefix = f"test_{card_key.lower()}_"
+    named: dict[str, ast.stmt] = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            named[node.name] = node
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for t in targets:
+                if isinstance(t, ast.Name):
+                    named[t.id] = node
+    wanted = [n for n in named if n.startswith(prefix)]
+    seen: set[str] = set()
+    while wanted:
+        name = wanted.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        for sub in ast.walk(named[name]):
+            if isinstance(sub, ast.Name) and sub.id in named and sub.id not in seen:
+                wanted.append(sub.id)
+    keep = [
+        n for n in tree.body
+        if isinstance(n, (ast.Import, ast.ImportFrom)) or n in {named[k] for k in seen}
+    ]  # fmt: skip
+    return "\n\n".join(ast.get_source_segment(source, n) or "" for n in keep)
+
+
+def _outline(source: str) -> str:
+    """Signatures, docstring first lines and constants of a large Python module."""
+    tree = ast.parse(source)
+    lines: list[str] = []
+
+    def add(node: ast.AST, indent: str) -> None:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            seg = (ast.get_source_segment(source, node) or "").split("\n")
+            head = next((i for i, line in enumerate(seg) if line.rstrip().endswith(":")), 0)
+            lines.append(indent + "\n".join(seg[: head + 1]).strip())
+            doc = ast.get_docstring(node)
+            if doc:
+                lines.append(indent + '    """' + doc.splitlines()[0] + '"""')
+            lines.append(indent + "    ...")
+        elif isinstance(node, ast.ClassDef):
+            lines.append(f"{indent}class {node.name}:")
+            for sub in node.body:
+                add(sub, indent + "    ")
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)) and not indent.strip():
+            seg = ast.get_source_segment(source, node) or ""
+            lines.append(seg if len(seg) < 200 else seg[:200] + " …")
+        elif isinstance(node, ast.AnnAssign) and indent:
+            lines.append(indent + (ast.get_source_segment(source, node) or ""))
+
+    for node in tree.body:
+        add(node, "")
+    return "\n".join(lines)
+
+
+def build_context(card: Card) -> tuple[list[str], Path | None, int]:
+    """Return (files for --read, bundle file or None, estimated prompt tokens)."""
+    reads: list[str] = []
+    parts: list[str] = []
+    for path, hint in card.hints.items():
+        if path in card.targets:
+            continue
+        text = (ROOT / path).read_text(encoding="utf-8", errors="replace")
+        if path.startswith("tests/") and path.endswith(".py"):
+            parts.append(f"## {path} (nur die Tests dieser Karte)\n\n```python\n"
+                         f"{_test_excerpt(text, card.key)}\n```")  # fmt: skip
+        elif path.endswith(".md"):
+            excerpt = _md_sections(text, hint)
+            label = "Auszug" if excerpt else "vollständig"
+            parts.append(f"## {path} ({label})\n\n{excerpt or text}")
+        elif path.endswith(".py") and len(text.encode()) > SMALL_SOURCE:
+            parts.append(f"## {path} (Gliederung)\n\n```python\n{_outline(text)}\n```")
+        else:
+            reads.append(path)
+    bundle = None
+    if parts:
+        bundle = WORK / "kontext" / f"{card.key}.md"
+        bundle.parent.mkdir(parents=True, exist_ok=True)
+        bundle.write_text(f"# Kontext für Karte {card.key}\n\n" + "\n\n".join(parts), "utf-8")
+    chars = sum((ROOT / p).stat().st_size for p in [*card.targets, *reads] if (ROOT / p).is_file())
+    chars += bundle.stat().st_size if bundle else 0
+    chars += len(card.text) + 2000
+    return reads, bundle, int(chars / CHARS_PER_TOKEN)
+
+
+def model_ctx() -> int:
+    match = re.search(r"num_ctx:\s*(\d+)", MODEL_SETTINGS.read_text(encoding="utf-8"))
+    return int(match.group(1)) if match else 32768
 
 
 def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
@@ -314,9 +479,11 @@ def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
     ]  # fmt: skip
     for target in card.targets:
         cmd += ["--file", target]
-    for ctx in card.context:
-        if ctx not in card.targets:
-            cmd += ["--read", ctx]
+    reads, bundle, tokens = build_context(card)
+    for ctx in reads:
+        cmd += ["--read", ctx]
+    if bundle:
+        cmd += ["--read", str(bundle.relative_to(ROOT))]
     cmd += ["--message", message]
     # Windows: without UTF-8 output Aider crashes on the first non-cp1252 character and
     # then hangs until the time limit.
@@ -329,7 +496,12 @@ def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
     chat = log.with_suffix(".chat.md")
     chat.unlink(missing_ok=True)  # Aider appends to an existing history file
     deadline = time.monotonic() + args.timeout * 60
+    limit = model_ctx()
     with log.open("w", encoding="utf-8") as out:
+        out.write(f"Kontext: ca. {tokens} Tokens von {limit} (num_ctx)\n")
+        out.flush()
+        if tokens > limit * 0.85:  # leave room for thinking and the answer
+            return AIDER_TOO_BIG
         proc = subprocess.Popen(
             cmd, cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=out,
             stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
@@ -350,6 +522,7 @@ def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
 
 AIDER_TIMEOUT = -1
 AIDER_CRASH = -2
+AIDER_TOO_BIG = -3
 
 
 def crashed(path: Path) -> bool:
@@ -398,6 +571,11 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
                 attempt,
                 f"Aider abgestürzt, siehe {log.name} / {log.stem}.chat.md",
             )
+        if code == AIDER_TOO_BIG:
+            reset_card(before)
+            git("checkout", "-q", args.lauf)
+            first = log.read_text(encoding="utf-8").splitlines()[0]
+            return "gescheitert", attempt, f"Kontext zu groß: {first}"
         if code == AIDER_TIMEOUT:
             note = f"Aider-Zeitlimit ({args.timeout} min)"
             continue
@@ -428,7 +606,10 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
 
 
 def prepare_git(args: argparse.Namespace) -> None:
-    if git("status", "--porcelain", "--untracked-files=no"):
+    dirty = run(["git", "status", "--porcelain", "--untracked-files=no"], check=True)[1]
+    # Changes to the run's own files may stay uncommitted; they travel along on checkout.
+    others = [ln for ln in dirty.splitlines() if ln.strip() and "tools/kartenlauf." not in ln]
+    if others:
         raise SystemExit("Es gibt nicht committete Änderungen. Bitte erst committen oder stashen.")
     exclude = ROOT / ".git" / "info" / "exclude"
     rule = "tasks/kartenlauf/"
