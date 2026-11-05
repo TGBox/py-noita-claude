@@ -2,7 +2,8 @@
 
 ## SemVer v1.7.9
 
-- 2026-11-05 (49886f1): feat: add new infos and run script for the first test card run with ollama
+- 2026-11-05 (95d440a): fix: fix card run
+- 2026-11-05 (5383147): feat: add new infos and run script for the first test card run with ollama
 
 ## SemVer v1.7.8
 

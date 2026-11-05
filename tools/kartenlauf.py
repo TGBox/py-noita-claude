@@ -310,17 +310,45 @@ def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
         if ctx not in card.targets:
             cmd += ["--read", ctx]
     cmd += ["--message", message]
-    env = {**os.environ, "OLLAMA_API_BASE": args.ollama}
-    try:
-        proc = subprocess.run(
-            cmd, check=False, cwd=ROOT, env=env, capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=args.timeout * 60,
+    # Windows: without UTF-8 output Aider crashes on the first non-cp1252 character and
+    # then hangs until the time limit.
+    env = {
+        **os.environ,
+        "OLLAMA_API_BASE": args.ollama,
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+    }
+    chat = log.with_suffix(".chat.md")
+    chat.unlink(missing_ok=True)  # Aider appends to an existing history file
+    deadline = time.monotonic() + args.timeout * 60
+    with log.open("w", encoding="utf-8") as out:
+        proc = subprocess.Popen(
+            cmd, cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=out,
+            stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
         )  # fmt: skip
-        log.write_text((proc.stdout or "") + (proc.stderr or ""), encoding="utf-8")
-        return proc.returncode
-    except subprocess.TimeoutExpired:
-        log.write_text("Zeitüberschreitung", encoding="utf-8")
-        return -1
+        while proc.poll() is None:
+            time.sleep(5)
+            if crashed(chat) or crashed(log):
+                proc.kill()
+                proc.wait()
+                return AIDER_CRASH
+            if time.monotonic() > deadline:
+                proc.kill()
+                proc.wait()
+                out.write("\nZeitüberschreitung\n")
+                return AIDER_TIMEOUT
+    return AIDER_CRASH if crashed(chat) or crashed(log) else proc.returncode
+
+
+AIDER_TIMEOUT = -1
+AIDER_CRASH = -2
+
+
+def crashed(path: Path) -> bool:
+    """Aider printed a Python traceback (it does not exit by itself afterwards)."""
+    if not path.is_file():
+        return False
+    return "Traceback (most recent call last)" in path.read_text(encoding="utf-8", errors="replace")
 
 
 def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
@@ -336,7 +364,15 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
         log = LOG_DIR / f"{card.key}-{attempt}.log"
         code = aider(card, message, args, log)
         outside = revert_outside(card, before)
-        if code == -1:
+        if code == AIDER_CRASH:
+            reset_card(before)
+            git("checkout", "-q", args.lauf)
+            return (
+                "abgebrochen",
+                attempt,
+                f"Aider abgestürzt, siehe {log.name} / {log.stem}.chat.md",
+            )
+        if code == AIDER_TIMEOUT:
             note = f"Aider-Zeitlimit ({args.timeout} min)"
             continue
         ok, output = verify(card)
@@ -446,6 +482,10 @@ def main() -> int:
                 "when": f"{now():%Y-%m-%d %H:%M}",
             }
             print(f"    -> {result} nach {attempts} Versuch(en)", flush=True)
+            if result == "abgebrochen":
+                print(f"Lauf gestoppt: {note}. Die Karte bleibt offen.", flush=True)
+                del state.cards[card.key]
+                break
             state.save()
             write_report(state, ordered)
     finally:
