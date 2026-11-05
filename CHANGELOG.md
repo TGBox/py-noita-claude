@@ -2,7 +2,8 @@
 
 ## SemVer v1.7.9
 
-- 2026-11-05 (95d440a): fix: fix card run
+- 2026-11-05 (c204bbc): feat(karte-a01): Proben- und Regions-SchlÃ¼ssel angleichen
+- 2026-11-05 (d627406): fix: fix card run
 - 2026-11-05 (5383147): feat: add new infos and run script for the first test card run with ollama
 
 ## SemVer v1.7.8
