@@ -6,6 +6,9 @@ import random
 
 LINES: dict[str, tuple[str, ...]] = {}
 
+# Minimum number of lines per topic (Contract V21 section 4, bible 08 "Textmengen").
+LINE_COUNTS: dict[str, int] = {}
+
 
 def line_for(topic: str, rng: random.Random) -> str:
     """Return a deterministic German dialogue line for topic."""

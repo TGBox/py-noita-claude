@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.9
+
+- 2026-11-05 (49886f1): feat: add new infos and run script for the first test card run with ollama
+
 ## SemVer v1.7.8
 
-- 2026-11-04 (faba262): feat: re-evaluate all implementation plans and align them with the general direction
+- 2026-11-04 (d6559c5): feat: re-evaluate all implementation plans and align them with the general direction
 
 ## SemVer v1.7.7
 
