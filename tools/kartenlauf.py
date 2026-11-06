@@ -732,7 +732,7 @@ def prepare_git(args: argparse.Namespace) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--model", default="ollama_chat/qwen3.5:9b")
+    parser.add_argument("--model", default="ollama_chat/qwen3-coder:30b")
     parser.add_argument("--ollama", default="http://127.0.0.1:11434")
     parser.add_argument("--aider", default="aider")
     parser.add_argument("--basis", default="master", help="Zweig, von dem der Lauf abzweigt")
