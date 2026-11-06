@@ -305,11 +305,24 @@ def revert_outside(card: Card, before: set[str]) -> list[str]:
         if allowed and not protected:
             continue
         reverted.append(path)
-        if git("ls-files", path):
-            git("checkout", "--", path)
+        restore(path)
+    return reverted
+
+
+def restore(path: str) -> None:
+    """Put ``path`` back to its state in HEAD; delete it if HEAD does not know it.
+
+    Aider stages files it creates (even with --no-auto-commits), so a new file can be in
+    the index without being in HEAD. Errors are logged, never fatal for the run.
+    """
+    run(["git", "reset", "-q", "HEAD", "--", path])
+    try:
+        if run(["git", "cat-file", "-e", f"HEAD:{path}"])[0] == 0:
+            run(["git", "checkout", "HEAD", "--", path])
         else:
             (ROOT / path).unlink(missing_ok=True)
-    return reverted
+    except OSError as error:
+        print(f"    Konnte {path} nicht zurücksetzen: {error}", flush=True)
 
 
 def reset_card(before: set[str]) -> None:
@@ -317,11 +330,7 @@ def reset_card(before: set[str]) -> None:
     for path in changed_files() - before:
         if "tools/kartenlauf." in path:
             continue
-        if git("ls-files", "--", path):
-            git("reset", "-q", "HEAD", "--", path, check=False)
-            git("checkout", "HEAD", "--", path)
-        else:
-            (ROOT / path).unlink(missing_ok=True)
+        restore(path)
 
 
 # --------------------------------------------------------------------------- context
@@ -490,6 +499,9 @@ def model_ctx(model: str) -> int:
     return 8192  # Ollama's default when the model has no entry
 
 
+# qwen3-coder mangled the file name line of the whole format (it created a file "}");
+# its diff edits work, so it always uses its own format.
+NO_WHOLE_MODELS = frozenset({"ollama_chat/qwen3-coder:30b"})
 WHOLE_LIMIT = 12_000  # bytes; small files are rewritten whole (more reliable for small models)
 
 
@@ -498,7 +510,7 @@ def edit_format(card: Card, wanted: str, model: str) -> str:
     if wanted != "auto":
         return wanted
     sizes = [(ROOT / t).stat().st_size for t in card.targets if (ROOT / t).is_file()]
-    if all(size <= WHOLE_LIMIT for size in sizes):
+    if all(size <= WHOLE_LIMIT for size in sizes) and model not in NO_WHOLE_MODELS:
         return "whole"
     return model_setting(model, "edit_format") or "diff"
 
@@ -712,8 +724,7 @@ def prepare_git(args: argparse.Namespace) -> None:
         for line in dirty.splitlines():
             path = line[3:].strip().strip('"')
             if path and "tools/kartenlauf." not in path:
-                git("reset", "-q", "HEAD", "--", path, check=False)
-                git("checkout", "HEAD", "--", path)
+                restore(path)
         git("checkout", "-q", args.lauf)
     dirty = run(["git", "status", "--porcelain", "--untracked-files=no"], check=True)[1]
     # Changes to the run's own files may stay uncommitted; they travel along on checkout.
