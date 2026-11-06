@@ -64,8 +64,12 @@ Rules:
 - The read-only files are your context. Never change tests in tests/spec/.
 - Code, names and comments in English; every text the player sees in German.
 - Keep existing behaviour working; prefer small, focused changes.
+- Placeholders that raise NotImplementedError("Card {key}") belong to this card: replace
+  their body in place. Never write a second definition of a function, class or constant
+  that already exists in the file; change the existing one.
+- Add every import you use.
 - The card is done when this command passes: {verify}
-
+{stubs}
 Card:
 
 {card}
@@ -73,6 +77,7 @@ Card:
 
 RETRY = """The verification failed. Fix the code (only in {targets}) so it passes.
 Command: {verify}
+Edit the existing definitions; do not add duplicates. Remove any duplicate you created.
 
 Output (shortened):
 
@@ -462,12 +467,45 @@ def model_ctx() -> int:
     return int(match.group(1)) if match else 32768
 
 
+WHOLE_LIMIT = 12_000  # bytes; small files are rewritten whole (more reliable for small models)
+
+
+def edit_format(card: Card, wanted: str) -> str:
+    if wanted != "auto":
+        return wanted
+    sizes = [(ROOT / t).stat().st_size for t in card.targets if (ROOT / t).is_file()]
+    return "whole" if all(size <= WHOLE_LIMIT for size in sizes) else "diff"
+
+
+def stub_list(card: Card) -> str:
+    """Name the placeholders of this card with file and line, so the model edits them."""
+    marker = re.compile(rf'NotImplementedError\(".*?\b{card.key}\b')
+    found = []
+    for target in card.targets:
+        path = ROOT / target
+        if not path.is_file() or not target.endswith(".py"):
+            continue
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        owner = ""
+        for number, line in enumerate(lines, 1):
+            match = re.match(r"\s*(?:def|class) (\w+)", line)
+            if match:
+                owner = f"{match.group(1)} (Zeile {number})"
+            if marker.search(line) and owner:
+                found.append(f"- {target}: {owner}")
+    if not found:
+        return ""
+    return (
+        "\nPlaceholders of this card (replace their bodies in place):\n" + "\n".join(found) + "\n"
+    )
+
+
 def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
     cmd = [
         args.aider,
         "--model", args.model,
         "--model-settings-file", str(MODEL_SETTINGS),
-        "--edit-format", args.format,
+        "--edit-format", edit_format(card, args.format),
         "--no-auto-commits", "--no-dirty-commits", "--no-auto-lint",
         "--yes-always", "--no-suggest-shell-commands", "--no-detect-urls",
         "--no-gitignore", "--no-show-model-warnings",
@@ -557,7 +595,13 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
     if ok:  # e.g. done by hand or by an earlier, interrupted run
         git("checkout", "-q", args.lauf)
         return "fertig", 0, "war schon grün"
-    message = PROMPT.format(targets=", ".join(card.targets), verify=card.verify, card=card.text)
+    message = PROMPT.format(
+        targets=", ".join(card.targets),
+        verify=card.verify,
+        card=card.text,
+        key=card.key,
+        stubs=stub_list(card),
+    )
     note = ""
     for attempt in range(1, args.versuche + 1):
         log = LOG_DIR / f"{card.key}-{attempt}.log"
@@ -629,7 +673,9 @@ def main() -> int:
     parser.add_argument("--basis", default="master", help="Zweig, von dem der Lauf abzweigt")
     parser.add_argument("--lauf", default="ollama-card-run", help="Sammelzweig des Laufs")
     parser.add_argument(
-        "--format", default="diff", help="Aider-Bearbeitungsformat: diff oder whole"
+        "--format",
+        default="auto",
+        help="Aider-Bearbeitungsformat: auto (whole bis 12 KB je Ziel-Datei, sonst diff), diff, whole",
     )
     parser.add_argument("--versuche", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=40, help="Minuten je Aider-Aufruf")
