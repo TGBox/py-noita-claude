@@ -12,7 +12,7 @@ A wand is a deck of blocks that is drawn in order when casting:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 
@@ -603,6 +603,28 @@ def _families() -> list[Block]:
 
 BLOCKS = BLOCKS + tuple(_families())
 
+TIER3_BLOCKS: frozenset[str] = frozenset(
+    {
+        "sprengkern",
+        "knochenbombe",
+        "achterkreis",
+        "dreifach",
+        "zielsuche",
+        "kettenfunke",
+        "schwerelos",
+        "blutpreis",
+    }
+)
+
+
+def _tier(block: Block) -> int:
+    if block.key in TIER3_BLOCKS:
+        return 3
+    return 2 if block.rarity == FAMILY_RARITY else 1
+
+
+BLOCKS = tuple(replace(b, rarity_tier=_tier(b)) for b in BLOCKS)
+
 from typing import Any
 
 
@@ -628,12 +650,66 @@ CATALOG: dict[str, Block] = {block.key: block for block in BLOCKS}
 assert len(CATALOG) == len(BLOCKS), "duplicate block keys"
 BLOCKS = _BlockCatalogTuple(BLOCKS)
 
-MODULE_ALIASES: dict[str, str] = {}
+MODULE_ALIASES: dict[str, str] = {
+    # Geschosse (24)
+    "flux_funke": "funke",
+    "nadelschuss": "nadel",
+    "huepfgranate": "gallenblase",
+    "matschbatzen": "klumpen",
+    "schrotladung": "knochensplitter",
+    "bohrkopf": "zahnbohrer",
+    "lebenssauger": "blutegel",
+    "sprungbolzen": "teleportbolzen",
+    "kreissaege": "knochensaege",
+    "haftmine": "sporenmine",
+    "tunnelfresser": "fressgeschwuer",
+    "durchschlagbolzen": "knochenspeer",
+    "mikrofunke": "mikrofunke",
+    "feuerball": "feuerball",
+    "kraterbombe": "knochenbombe",
+    "nadelregen": "nadelregen",
+    "klebekugel": "schleimkugel",
+    "stromstoss": "nervenstrom",
+    "wandelstrahl": "wandlungsdruese",
+    "tauschstrahl": "tauschdruese",
+    "kettenblitz": "kettenfunke",
+    "leuchtfackel": "leuchtkugel",
+    "mahlwerk": "zahnrad",
+    "flummi": "gelenkkugel",
+    # Aufsätze (22)
+    "turbo": "beschleunigung",
+    "turbo_x": "beschleunigung_stark",
+    "sprengladung": "sprengkraft",
+    "atomkern": "sprengkern",
+    "antigrav": "umkehr",
+    "schwebefeld": "schwerelos",
+    "bleimantel": "schwere_ladung",
+    "zielsuchkopf": "zielsuche",
+    "doppellauf": "doppel",
+    "dreifachlauf": "dreifach",
+    "rundumschlag": "achterkreis",
+    "faecherduese": "faecher",
+    "rueckspiegel": "vorne_hinten",
+    "panzerbrechend": "durchbohren",
+    "gummierung": "abprall",
+    "brandsatz": "brandbeschleuniger",
+    "langstrecke": "langlebigkeit",
+    "kurzstrecke": "kurzlebig",
+    "wucht": "giftzahn",
+    "fluxpumpe": "blutpreis",
+    "schnelllader": "dauerladung",
+    "abzugsfeder": "hast",
+    # Zünder (4)
+    "aufschlagzuender": "nerv_aufprall",
+    "zeitzuender": "nerv_zeit",
+    "endzuender": "nerv_ende",
+    "naessezuender": "nerv_naesse",
+}
 
 
 def blocks_of_tier(tier: int) -> list[str]:
     """Return all block keys with rarity_tier == tier (Card A02)."""
-    raise NotImplementedError("Card A02")
+    return [block.key for block in BLOCKS if block.rarity_tier == tier]
 
 
 def resolve_block_key(key: str) -> str:
