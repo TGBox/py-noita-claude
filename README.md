@@ -181,8 +181,8 @@ Dateien `assets/audio/musik_<tiefe>.wav/.ogg` (z. B. `musik_lunge.ogg`) ersetzen
 mal gefüllt (Blut, Säure, Talg, Schleim), mal leer. Eine Phiole fasst 300 Zellen einer einzigen
 Flüssigkeit. Ausgegossenes ist echtes Material in der Welt: Blut löscht Brände, Säure frisst
 Wände, Talg wird zur Brandfalle. Trinken wirkt je nach Inhalt (Säure ätzt
-dich, jeder Schluck löscht Feuer). **Blut heilt nicht**, wie in Noita ist Heilung knapp: Das
-Sanktum heilt voll, Herzklumpen auch, und nur mit dem Perk „Blutsauger“ heilt ein Schluck Blut. Geworfen zerplatzt die Phiole und verteilt alles auf einmal.
+dich, jeder Schluck löscht Feuer). Ein Schluck **Blut heilt ein wenig**; mit dem Perk „Blutsauger“ heilt es dich noch zusätzlich. Das
+Sanktum heilt voll, Herzklumpen auch. Geworfen zerplatzt die Phiole und verteilt alles auf einmal.
 
 **Blutperlen** liegen in den Höhlen und fallen aus jedem getöteten Gegner. Du sammelst sie
 durch Berührung ein.
@@ -268,7 +268,7 @@ gilt für dich und für alle Gegner.
 | Leichte Knochen | Du schwebst 50 % länger. |
 | Panzerplatten | Explosionen verletzen dich kaum noch. |
 | Blutdurst | Jeder getötete Gegner heilt dich um 6. |
-| Blutsauger | Blut aus der Phiole heilt dich (6 pro Schluck). |
+| Blutsauger | Blut aus der Phiole heilt dich zusätzlich (+6 pro Schluck). |
 | Schnelle Drüsen | Augmentationen zaubern und laden 25 % schneller. |
 | Säureblut | Wenn du verletzt wirst, spritzt ätzendes Blut um dich. |
 | Zweiter Puls | Einmal pro Lauf stehst du nach dem Tod wieder auf. |

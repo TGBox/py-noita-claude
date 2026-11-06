@@ -21,7 +21,7 @@ ABSORB_RATE = 300.0  # cells per second
 ABSORB_RADIUS = 7
 REACH = 60.0  # how far from the player a flask can pour or suck (px)
 SIP = 30  # cells used up by one drink
-BLOOD_HEAL = 6.0  # per sip, only with the "Blutsauger" perk
+BLOOD_HEAL = 6.0  # extra heal per sip with the "Blutsauger" perk
 THROW_SPEED = 260.0
 SPRAY_SPEED = (150.0, 230.0)  # px/s: poured liquid squirts away from the body
 SPRAY_SPREAD = 0.16  # radians
@@ -32,7 +32,7 @@ SHATTER_RADIUS_PER_CELL = 0.06  # splash radius grows with the content
 
 # What a sip does: (heal, damage) per sip and a German description, by material key.
 DRINK_EFFECTS: dict[str, tuple[float, float, str]] = {
-    "blood": (0.0, 0.0, "Blut. Es schmeckt nach Eisen, heilen kann es dich nicht."),
+    "blood": (8.0, 0.0, "Blut stillt deine Wunden ein wenig."),
     "acid": (0.0, 25.0, "Die Säure verätzt dich von innen!"),
     "tallow": (0.0, 0.0, "Fettig. Du fühlst dich schwer."),
     "mucus": (2.0, 0.0, "Zäh und kalt. Das Brennen lässt nach."),
@@ -166,16 +166,14 @@ class Flask:
         return taken
 
     def drink(self, body: Body, blood_heals: bool = False) -> str:
-        """Take a sip. Returns a German message (empty if nothing happened).
-
-        Like in Noita, blood only heals with a perk (``blood_heals``): healing is rare.
-        """
+        """Take a sip. Returns a German message (empty if nothing happened)."""
         if self.empty:
             return ""
         key = self.key
         heal, damage, message = DRINK_EFFECTS.get(key, (0.0, 0.0, "Es schmeckt nach nichts."))
         if key == "blood" and blood_heals:
-            heal, message = BLOOD_HEAL, "Das Blut stillt deine Wunden."
+            heal += BLOOD_HEAL
+            message = "Das Blut stillt deine Wunden umso mehr."
         share = min(1.0, self.amount / SIP)
         body.hp = min(body.max_hp, body.hp + heal * share)
         if damage:
