@@ -2,10 +2,11 @@
 
 ## SemVer v1.7.11
 
-- 2026-11-06 (589faea): fix(kartenlauf): Platzhalter-Hinweise und automatisches Bearbeitungsformat
+- 2026-11-06 (29f0163): fix(plan): Stufen-Regel fÃ¼r A02 korrigiert, Einstellungen fÃ¼r qwen3-coder
 
 ## SemVer v1.7.10
 
+- 2026-11-06 (91eb2f8): fix(kartenlauf): Platzhalter-Hinweise und automatisches Bearbeitungsformat
 - 2026-11-05 (e3141dc): fix(kartenlauf): schlanker Kontext und grÃ¶ÃŸeres Kontextfenster
 - 2026-11-05 (d2b1993): fix: fix errors
 - 2026-11-05 (d4c3c6d): fix(kartenlauf): Conventional Commits, Vorab-PrÃ¼fung und nicht-interaktive Hooks

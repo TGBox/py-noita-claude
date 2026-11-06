@@ -61,26 +61,25 @@ Regions-Parameter (`Region.params`):
 
 ## V0b Seltenheitsstufen für Module (`src/spells.py`)
 
-In `src/spells.py` ist `Block.rarity: float = 1.0` ein **Drop-Gewicht** (kleiner = seltener, z. B. `0.25` bis `1.2`). Damit Fabrikator (`E05`), Herausforderungen (`D12`–`D13`) und Beute-Tabellen mit ganzzahligen Seltenheitsstufen (`1`, `2`, `3`) arbeiten können, ohne bestehende Gewichtungen zu brechen, erhält `src/spells.py` (Karte `A02`) eine berechnete Eigenschaft und eine Hilfsfunktion:
+`Block.rarity: float` bleibt das **Drop-Gewicht** für Beute und Läden. Die ganzzahlige Stufe `Block.rarity_tier: int` (Feld, Standard `1`) brauchen Fabrikator, Händlerpreise und Belohnungen. Sie wird beim Aufbau von `BLOCKS` gesetzt (Karte `A02`):
+
+- **Stufe 3:** die starken Grundmodule in `TIER3_BLOCKS` (Code-Schlüssel; Bibel-06-Name in Klammern):
+  `"sprengkern"` (Atomkern), `"knochenbombe"` (Kraterbombe), `"achterkreis"` (Rundumschlag), `"dreifach"` (Dreifachlauf), `"zielsuche"` (Zielsuchkopf), `"kettenfunke"` (Kettenblitz), `"schwerelos"` (Schwebefeld), `"blutpreis"` (Fluxpumpe).
+- **Stufe 2:** alle vom Code erzeugten Familien-Varianten (`rarity == FAMILY_RARITY`), sofern nicht Stufe 3.
+- **Stufe 1:** alle übrigen Grundmodule.
 
 ```python
-# In class Block (src/spells.py):
-@property
-def rarity_tier(self) -> int:
-    """Integer rarity tier 1 (common), 2 (uncommon), 3 (rare) derived from weight."""
-    if self.rarity <= 0.45:
-        return 3
-    if self.rarity <= 0.8:
-        return 2
-    return 1
+TIER3_BLOCKS: frozenset[str] = frozenset({
+    "sprengkern", "knochenbombe", "achterkreis", "dreifach",
+    "zielsuche", "kettenfunke", "schwerelos", "blutpreis",
+})
 
-def blocks_of_tier(tier: int) -> tuple[Block, ...]:
-    """All blocks in BLOCKS with block.rarity_tier == tier."""
-    return tuple(b for b in BLOCKS if b.rarity_tier == tier)
+def blocks_of_tier(tier: int) -> list[str]:
+    """Schlüssel aller Blöcke mit block.rarity_tier == tier (ohne retired-Blöcke, siehe V0e)."""
 ```
 
-- „Seltenheit 3+“ in Bibel 02 / `E05` bedeutet exakt: `block.rarity_tier >= 3`.
-- Belohnung `("module_rarity", 3)` in `V13` zieht mit `rng.choice(blocks_of_tier(3)).key`.
+- „Seltenheit 3+“ in Bibel 02 / `E06` bedeutet exakt: `block.rarity_tier >= 3`.
+- Belohnungen der Stufe 3 (`V13b`) ziehen mit `rng.choice(blocks_of_tier(3))`.
 
 ---
 

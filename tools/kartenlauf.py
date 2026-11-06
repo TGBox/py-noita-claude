@@ -282,6 +282,9 @@ def verify(card: Card) -> tuple[bool, str]:
     outputs = []
     py_targets = [t for t in card.targets if t.endswith(".py") and (ROOT / t).is_file()]
     if py_targets:
+        # Safe automatic fixes first (imports, sorting, formatting); then the real check.
+        run(["uv", "run", "ruff", "check", "--fix", *py_targets], timeout=300)
+        run(["uv", "run", "ruff", "format", *py_targets], timeout=300)
         code, out = run(["uv", "run", "ruff", "check", *py_targets], timeout=300)
         outputs.append(out)
         if code != 0:
@@ -462,9 +465,15 @@ def build_context(card: Card) -> tuple[list[str], Path | None, int]:
     return reads, bundle, int(chars / CHARS_PER_TOKEN)
 
 
-def model_ctx() -> int:
-    match = re.search(r"num_ctx:\s*(\d+)", MODEL_SETTINGS.read_text(encoding="utf-8"))
-    return int(match.group(1)) if match else 32768
+def model_ctx(model: str) -> int:
+    """num_ctx of ``model`` in the model settings file (entries start with "- name:")."""
+    text = MODEL_SETTINGS.read_text(encoding="utf-8")
+    for entry in re.split(r"^- ", text, flags=re.MULTILINE):
+        if re.match(rf"name:\s*{re.escape(model)}\s*$", entry, re.MULTILINE):
+            match = re.search(r"num_ctx:\s*(\d+)", entry)
+            if match:
+                return int(match.group(1))
+    return 8192  # Ollama's default when the model has no entry
 
 
 WHOLE_LIMIT = 12_000  # bytes; small files are rewritten whole (more reliable for small models)
@@ -534,7 +543,7 @@ def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
     chat = log.with_suffix(".chat.md")
     chat.unlink(missing_ok=True)  # Aider appends to an existing history file
     deadline = time.monotonic() + args.timeout * 60
-    limit = model_ctx()
+    limit = model_ctx(args.model)
     with log.open("w", encoding="utf-8") as out:
         out.write(f"Kontext: ca. {tokens} Tokens von {limit} (num_ctx)\n")
         out.flush()

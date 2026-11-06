@@ -30,7 +30,7 @@
 - **Ziel-Dateien:** `src/spells.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0b`), `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/spells.py`, `tests/spec/test_phase_a.py` (`-k a02`)
 - **Aufgabe:**
-  1. Ergänze auf `Block` in `src/spells.py` das Feld `rarity_tier: int = 1` und weise allen Blöcken in `BLOCKS` die Stufe `1`, `2` oder `3` gemäß `V0b` zu.
+  1. `Block` hat bereits das Feld `rarity_tier: int = 1`. Lege `TIER3_BLOCKS` an und setze beim Aufbau von `BLOCKS` die Stufe nach der Regel in `V0b` (Stufe 3: `TIER3_BLOCKS`; Stufe 2: Familien-Varianten mit `rarity == FAMILY_RARITY`; sonst 1). Ersetze die vorhandenen Platzhalter, lege keine zweiten Definitionen an.
   2. Implementiere `blocks_of_tier(tier: int) -> list[str]` sowie `MODULE_ALIASES: dict[str, str]` und `resolve_block_key(key: str) -> str` gemäß `V0b` und `V23`.
 - **Akzeptanzkriterien:**
   - Jeder Eintrag in `BLOCKS.values()` hat `rarity_tier in (1, 2, 3)`.
