@@ -28,10 +28,27 @@
 - **Größe:** S
 - **Abhängigkeiten:** keine
 - **Ziel-Dateien:** `src/spells.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0b`), `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/spells.py`, `tests/spec/test_phase_a.py` (`-k a02`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0b`), `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `docs/bibel/06-waffen-und-module.md` („Geschosse“, „Aufsätze“, „Zünder“), `src/spells.py`, `tests/spec/test_phase_a.py` (`-k a02`)
 - **Aufgabe:**
-  1. `Block` hat bereits das Feld `rarity_tier: int = 1`. Lege `TIER3_BLOCKS` an und setze beim Aufbau von `BLOCKS` die Stufe nach der Regel in `V0b` (Stufe 3: `TIER3_BLOCKS`; Stufe 2: Familien-Varianten mit `rarity == FAMILY_RARITY`; sonst 1). Ersetze die vorhandenen Platzhalter, lege keine zweiten Definitionen an.
-  2. Implementiere `blocks_of_tier(tier: int) -> list[str]` sowie `MODULE_ALIASES: dict[str, str]` und `resolve_block_key(key: str) -> str` gemäß `V0b` und `V23`.
+  1. `Block` hat bereits das Feld `rarity_tier: int = 1`. Ändere **keinen** einzelnen `Block(...)`-Eintrag. Füge direkt unter der Zeile `BLOCKS = BLOCKS + tuple(_families())` ein (mit `import dataclasses` oben in der Datei):
+
+     ```python
+     TIER3_BLOCKS: frozenset[str] = frozenset({
+         "sprengkern", "knochenbombe", "achterkreis", "dreifach",
+         "zielsuche", "kettenfunke", "schwerelos", "blutpreis",
+     })
+
+
+     def _tier(block: Block) -> int:
+         if block.key in TIER3_BLOCKS:
+             return 3
+         return 2 if block.rarity == FAMILY_RARITY else 1
+
+
+     BLOCKS = tuple(dataclasses.replace(b, rarity_tier=_tier(b)) for b in BLOCKS)
+     ```
+
+  2. Ersetze den Platzhalter `blocks_of_tier(tier: int) -> list[str]` (Schlüssel aller Blöcke mit dieser Stufe) und fülle das vorhandene `MODULE_ALIASES` mit einer Zeile je Eintrag der Tabellen „Geschosse“, „Aufsätze“ und „Zünder“ aus Bibel 06: `"<Schlüssel>": "<Bisher>"`. `resolve_block_key` ist schon fertig.
 - **Akzeptanzkriterien:**
   - Jeder Eintrag in `BLOCKS.values()` hat `rarity_tier in (1, 2, 3)`.
   - `blocks_of_tier(1)`, `blocks_of_tier(2)` und `blocks_of_tier(3)` sind jeweils nicht leer und disjunkt; ihre Vereinigung umfasst alle `BLOCKS`-Schlüssel.

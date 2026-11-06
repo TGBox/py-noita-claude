@@ -298,6 +298,8 @@ def revert_outside(card: Card, before: set[str]) -> list[str]:
     """Undo every change Aider made outside the card's target files."""
     reverted = []
     for path in sorted(changed_files() - before):
+        if "tools/kartenlauf." in path:  # the run's own files may be updated meanwhile
+            continue
         allowed = any(path == t or path.startswith(t.rstrip("/") + "/") for t in card.targets)
         protected = any(path == p or path.startswith(p) for p in PROTECTED)
         if allowed and not protected:
@@ -313,6 +315,8 @@ def revert_outside(card: Card, before: set[str]) -> list[str]:
 def reset_card(before: set[str]) -> None:
     """Undo what this card changed; earlier uncommitted changes (e.g. the script) stay."""
     for path in changed_files() - before:
+        if "tools/kartenlauf." in path:
+            continue
         if git("ls-files", "--", path):
             git("reset", "-q", "HEAD", "--", path, check=False)
             git("checkout", "HEAD", "--", path)
@@ -465,6 +469,16 @@ def build_context(card: Card) -> tuple[list[str], Path | None, int]:
     return reads, bundle, int(chars / CHARS_PER_TOKEN)
 
 
+def model_setting(model: str, key: str) -> str:
+    """Value of ``key`` in the settings entry of ``model`` ("" if missing)."""
+    text = MODEL_SETTINGS.read_text(encoding="utf-8")
+    for entry in re.split(r"^- ", text, flags=re.MULTILINE):
+        if re.match(rf"name:\s*{re.escape(model)}\s*$", entry, re.MULTILINE):
+            match = re.search(rf"^\s*{key}:\s*(\S+)", entry, re.MULTILINE)
+            return match.group(1) if match else ""
+    return ""
+
+
 def model_ctx(model: str) -> int:
     """num_ctx of ``model`` in the model settings file (entries start with "- name:")."""
     text = MODEL_SETTINGS.read_text(encoding="utf-8")
@@ -479,11 +493,14 @@ def model_ctx(model: str) -> int:
 WHOLE_LIMIT = 12_000  # bytes; small files are rewritten whole (more reliable for small models)
 
 
-def edit_format(card: Card, wanted: str) -> str:
+def edit_format(card: Card, wanted: str, model: str) -> str:
+    """auto: small files whole, large files in the model's format from the settings file."""
     if wanted != "auto":
         return wanted
     sizes = [(ROOT / t).stat().st_size for t in card.targets if (ROOT / t).is_file()]
-    return "whole" if all(size <= WHOLE_LIMIT for size in sizes) else "diff"
+    if all(size <= WHOLE_LIMIT for size in sizes):
+        return "whole"
+    return model_setting(model, "edit_format") or "diff"
 
 
 def stub_list(card: Card) -> str:
@@ -514,7 +531,8 @@ def aider(card: Card, message: str, args: argparse.Namespace, log: Path) -> int:
         args.aider,
         "--model", args.model,
         "--model-settings-file", str(MODEL_SETTINGS),
-        "--edit-format", edit_format(card, args.format),
+        "--edit-format", edit_format(card, args.format, args.model),
+        "--timeout", str(args.timeout * 60),
         "--no-auto-commits", "--no-dirty-commits", "--no-auto-lint",
         "--yes-always", "--no-suggest-shell-commands", "--no-detect-urls",
         "--no-gitignore", "--no-show-model-warnings",
@@ -686,6 +704,17 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
 
 
 def prepare_git(args: argparse.Namespace) -> None:
+    current = git("branch", "--show-current")
+    if current.startswith("card/"):
+        # The previous run was interrupted (e.g. Ctrl+C): drop that card's half-done edits.
+        print(f"Räume den abgebrochenen Zweig {current} auf.", flush=True)
+        dirty = run(["git", "status", "--porcelain", "--untracked-files=no"], check=True)[1]
+        for line in dirty.splitlines():
+            path = line[3:].strip().strip('"')
+            if path and "tools/kartenlauf." not in path:
+                git("reset", "-q", "HEAD", "--", path, check=False)
+                git("checkout", "HEAD", "--", path)
+        git("checkout", "-q", args.lauf)
     dirty = run(["git", "status", "--porcelain", "--untracked-files=no"], check=True)[1]
     # Changes to the run's own files may stay uncommitted; they travel along on checkout.
     others = [ln for ln in dirty.splitlines() if ln.strip() and "tools/kartenlauf." not in ln]
