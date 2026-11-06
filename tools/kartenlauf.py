@@ -593,6 +593,27 @@ def merge_message(card: Card) -> str:
     return f"chore(kartenlauf): Karte {card.key} übernehmen"
 
 
+PATH_TOKEN = re.compile(r"[\w.\-]+(?:[/\\][\w.\-]+)+\.\w+")
+
+
+def hide_paths(message: str, card: Card) -> str:
+    """Keep Aider from pulling files into the chat because the message names them.
+
+    Aider adds every repository file mentioned in the message as an editable file (with
+    --yes-always without asking). That doubled the prompt and overflowed the context.
+    Target files stay as they are; every other path loses its folders and extension.
+    """
+    targets = {t.replace("\\", "/") for t in card.targets}
+
+    def repl(match: re.Match[str]) -> str:
+        path = match.group(0).replace("\\", "/")
+        if path in targets or not (ROOT / path).exists():
+            return match.group(0)
+        return f"{Path(path).stem} (Kontext)"
+
+    return PATH_TOKEN.sub(repl, message)
+
+
 def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
     """Return (status, attempts, note)."""
     branch = f"card/{card.key}"
@@ -604,12 +625,15 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
     if ok:  # e.g. done by hand or by an earlier, interrupted run
         git("checkout", "-q", args.lauf)
         return "fertig", 0, "war schon grün"
-    message = PROMPT.format(
-        targets=", ".join(card.targets),
-        verify=card.verify,
-        card=card.text,
-        key=card.key,
-        stubs=stub_list(card),
+    message = hide_paths(
+        PROMPT.format(
+            targets=", ".join(card.targets),
+            verify=card.verify,
+            card=card.text,
+            key=card.key,
+            stubs=stub_list(card),
+        ),
+        card,
     )
     note = ""
     for attempt in range(1, args.versuche + 1):
@@ -647,8 +671,11 @@ def do_card(card: Card, args: argparse.Namespace) -> tuple[str, int, str]:
             extra = f" (zurückgesetzt außerhalb: {', '.join(outside)})" if outside else ""
             return "fertig", attempt, extra.strip()
         note = shorten(output, 400).splitlines()[-1] if output.strip() else "rot"
-        message = RETRY.format(
-            targets=", ".join(card.targets), verify=card.verify, output=shorten(output)
+        message = hide_paths(
+            RETRY.format(
+                targets=", ".join(card.targets), verify=card.verify, output=shorten(output)
+            ),
+            card,
         )
     reset_card(before)
     git("checkout", "-q", args.lauf)
