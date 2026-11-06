@@ -78,16 +78,42 @@ class Player(Body):
             self.vy += (-LEVITATE_MAX_SPEED - self.vy) * follow
             self.energy = max(0.0, self.energy - dt)
         else:
-            self.vy = min(self.vy + GRAVITY * self.gravity_scale * dt, MAX_FALL_SPEED)
+            # Apply frozen effect to fall speed
+            fall_speed = MAX_FALL_SPEED
+            if self.frozen > 0:
+                fall_speed *= 0.3
+            self.vy = min(self.vy + GRAVITY * self.gravity_scale * dt, fall_speed)
         if in_liquid:
             self.vy = max(-LIQUID_MAX_SPEED, min(LIQUID_MAX_SPEED, self.vy))
 
         speed = LEVITATE_RUN_SPEED if self.levitating else RUN_SPEED
+        # Apply haste_time effect to run speed
+        if self.haste_time > 0:
+            speed *= 1.3
+        # Apply sticky effect to run speed
+        if self.sticky > 0:
+            speed *= 0.55
         if self.polymorphed > 0:  # a maggot crawls
             speed *= POLYMORPH_SPEED
             self.polymorphed = max(0.0, self.polymorphed - dt)
+
         target = move_dir * speed * (LIQUID_RUN_FACTOR if in_liquid else 1.0)
+        # Apply drunk effect to movement
+        if self.drunk > 0:
+            # Add slight wobble to movement direction
+            import random
+
+            target += random.uniform(-0.5, 0.5) * speed
+
         self.vx += (target - self.vx) * min(1.0, RUN_RESPONSE * dt)
+
+        # Apply sticky effect to jump height
+        if self.sticky > 0:
+            self.vy *= 0.65
+
+        # Apply fizzy_time effect to jump height
+        if self.fizzy_time > 0:
+            self.vy *= 1.5
 
         self.move(world, dt)
         if self.on_ground and not self.levitating:
