@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from src import materials as mat
+from src.behaviour import BehaviourContext, tick_abilities
 from src.body import ENEMY_TEAM, Body
+from src.factions import are_hostile
 from src.materials import AIR
 from src.player import GRAVITY, MAX_FALL_SPEED
 from src.projectiles import ProjectileSystem
@@ -206,6 +208,7 @@ GROUP_AGGRO_RADIUS = 140.0
 SHY_FLEE_DISTANCE = 90.0
 AGGRO_RADIUS = 130.0
 
+MIN_WINDUP = 0.40  # seconds every ranged attack is telegraphed
 MELEE_REACH = 2  # px around the body that counts as touching
 WANDER_PAUSE = 0.35  # chance that a new wander leg is a pause
 HURT_FLASH = 0.08  # seconds a creature flashes after taking damage
@@ -293,6 +296,14 @@ class Creature(Body):
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.ranged_cooldown = max(0.0, self.ranged_cooldown - dt)
         self.unstick(world)
+        if self.state == "windup":
+            shot = poll_attack_ready(self, dt)
+            if shot is not None:
+                self._fire(shot, projectiles)
+        elif self.state == "recover":
+            self.state_timer -= dt
+            if self.state_timer <= 0:
+                self.state = "idle"
 
         px, py = player.center
         if self.spec.burrows:  # it eats its way through and feels the player through bone
@@ -398,23 +409,29 @@ class Creature(Body):
             if spec.pop_on_touch:
                 self.hp = 0.0
                 return
-        if self.attacks and self.ranged_cooldown <= 0:
+        if self.attacks and self.ranged_cooldown <= 0 and self.state not in ("windup", "recover"):
             cx, cy = self.center
             px, py = player.center
             if math.hypot(px - cx, py - cy) <= spec.ranged_range:
-                wand = self.attacks[self.pattern % len(self.attacks)]
-                self.pattern += 1
-                wand.cooldown = wand.recharge_left = 0.0
-                shots = wand.cast()
-                if spec.radial:
-                    turn = self.rng.uniform(0, math.tau)
-                    for k in range(spec.radial):
-                        angle = turn + math.tau * k / spec.radial
-                        projectiles.spawn(shots, cx, cy, angle, self.team)
-                else:
-                    angle = math.atan2(py - cy, px - cx) - 0.25  # lob slightly upwards
-                    projectiles.spawn(shots, cx, cy, angle, self.team)
-                self.ranged_cooldown = spec.ranged_cooldown * self.rng.uniform(0.8, 1.2)
+                begin_attack(self, (px, py))  # telegraph first, fire in _fire
+
+    def _fire(self, target_xy: tuple[float, float], projectiles: ProjectileSystem) -> None:
+        spec = self.spec
+        cx, cy = self.center
+        px, py = target_xy
+        wand = self.attacks[self.pattern % len(self.attacks)]
+        self.pattern += 1
+        wand.cooldown = wand.recharge_left = 0.0
+        shots = wand.cast()
+        if spec.radial:
+            turn = self.rng.uniform(0, math.tau)
+            for k in range(spec.radial):
+                angle = turn + math.tau * k / spec.radial
+                projectiles.spawn(shots, cx, cy, angle, self.team)
+        else:
+            angle = math.atan2(py - cy, px - cx) - 0.25  # lob slightly upwards
+            projectiles.spawn(shots, cx, cy, angle, self.team)
+        self.ranged_cooldown = spec.ranged_cooldown * self.rng.uniform(0.8, 1.2)
 
     def _breathe(
         self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
@@ -491,7 +508,12 @@ class EnemyManager:
         for creature in self.creatures:
             cx, cy = creature.center
             if x0 <= cx < x1 and y0 <= cy < y1:
-                creature.update(world, dt, player, projectiles)
+                target = self._pick_target(creature, player, grudges)
+                creature.update(world, dt, target, projectiles)
+                if creature.spec.abilities:
+                    self._tick_abilities(
+                        creature, world, dt, player, projectiles, on_beat, grudges, out_events
+                    )
         self._spawn_summons(world)
         died = [c for c in self.creatures if c.dead]
         for creature in died:
@@ -506,6 +528,47 @@ class EnemyManager:
                         world.ignite(x, y)
         self.creatures = [c for c in self.creatures if not c.dead]
         return died
+
+    def _pick_target(
+        self, creature: Creature, player: Body, grudges: set[tuple[str, str]] | None
+    ) -> Body:
+        """The nearest hostile actor in sight: the player or a creature of an enemy faction."""
+        cx, cy = creature.center
+        best: Body = player
+        px, py = player.center
+        best_distance = math.hypot(px - cx, py - cy)
+        for other in self.creatures:
+            if other is creature or other.dead or other.spec.prop:
+                continue
+            if other.spec.stance == "trader" or not are_hostile(
+                creature.spec.faction, other.spec.faction, grudges
+            ):
+                continue
+            ox, oy = other.center
+            distance = math.hypot(ox - cx, oy - cy)
+            if distance <= creature.spec.sight and distance < best_distance:
+                best, best_distance = other, distance
+        return best
+
+    def _tick_abilities(
+        self,
+        creature: Creature,
+        world: World,
+        dt: float,
+        player: Body,
+        projectiles: ProjectileSystem | list[Any],
+        on_beat: bool,
+        grudges: set[tuple[str, str]] | None,
+        out_events: list[tuple[str, dict[str, Any]]] | None,
+    ) -> None:
+        items = projectiles.items if isinstance(projectiles, ProjectileSystem) else projectiles
+        ctx = BehaviourContext(
+            dt, world, player, self.creatures, items,  # type: ignore[arg-type]
+            grudges=grudges or set(), on_beat=on_beat, rng=creature.rng,
+        )  # fmt: skip
+        tick_abilities(creature, ctx)
+        if out_events is not None:
+            out_events.extend(ctx.out_events)
 
     def _spawn_summons(self, world: World) -> None:
         for parent in list(self.creatures):
@@ -641,9 +704,20 @@ def evaluate_stance(
 
 def begin_attack(creature: Creature, target_xy: tuple[float, float]) -> None:
     """Enter windup state before firing at ``target_xy`` (Card A15)."""
-    raise NotImplementedError("Card A15")
+    creature.state = "windup"
+    creature.state_timer = max(MIN_WINDUP, creature.spec.windup_time)
+    creature.pending_shot = target_xy
 
 
 def poll_attack_ready(creature: Creature, dt: float) -> tuple[float, float] | None:
     """Advance attack telegraph timer; return target_xy when ready to fire (Card A15)."""
-    raise NotImplementedError("Card A15")
+    if creature.state != "windup" or creature.pending_shot is None:
+        return None
+    creature.state_timer -= dt
+    if creature.state_timer > 0:
+        return None
+    target = creature.pending_shot
+    creature.pending_shot = None
+    creature.state = "recover"  # the shot itself is fired by the caller
+    creature.state_timer = creature.spec.recover_time
+    return target
