@@ -678,8 +678,71 @@ _SPORENKLUB: tuple[Material, ...] = (
     ),
 )
 
-LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH, *_SPORENKLUB)}
-assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH) + len(_SPORENKLUB), "duplicate material key"
+_ABTEI: tuple[Material, ...] = (
+    _m(
+        "mauerwerk",
+        "Mauerwerk",
+        SOLID,
+        255,
+        (110, 115, 120),
+        grain=10,
+        hardness=3,
+        description_de="Uralter nasser Stein der versunkenen Klosterruine.",
+    ),
+    _m(
+        "buntglas",
+        "Buntglas",
+        SOLID,
+        255,
+        (180, 70, 140),
+        grain=4,
+        hardness=2,
+        description_de="Zerbrechliches sakrales Kirchenfensterglas.",
+    ),
+    _m(
+        "kerzenwachs",
+        "Kerzenwachs",
+        SOLID,
+        255,
+        (235, 230, 200),
+        grain=4,
+        hardness=1,
+        flammability=0.2,
+        description_de="Geweihtes Bienenwachs, schmilzt bei Feuer.",
+    ),
+    _m(
+        "glockenbronze",
+        "Glockenbronze",
+        SOLID,
+        255,
+        (175, 130, 60),
+        grain=6,
+        hardness=3,
+        description_de="Schwere Bronze uralter Kirchenglocken.",
+    ),
+    _m(
+        "algen",
+        "Algen",
+        SOLID,
+        255,
+        (40, 120, 50),
+        grain=8,
+        hardness=1,
+        description_de="Glibbrige Grünalgen auf überflutetem Gestein.",
+    ),
+    _m(
+        "weihrauch",
+        "Weihrauch",
+        GAS,
+        -1,
+        (210, 200, 220),
+        life=(400, 800),
+        description_de="Duftender Nebel uralter Weihrauchkessel.",
+    ),
+)
+
+LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH, *_SPORENKLUB, *_ABTEI)}
+assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH) + len(_SPORENKLUB) + len(_ABTEI), "duplicate material key"
 
 BASE_KEYS: tuple[str, ...] = tuple(m.key for m in _BASE)
 
@@ -1006,13 +1069,26 @@ SPORENKLUB = MaterialSet(
     ),
 )
 
-SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH, SPORENKLUB)}
+ABTEI = MaterialSet(
+    "abtei",
+    (
+        *BASE_KEYS,
+        "mauerwerk",
+        "buntglas",
+        "kerzenwachs",
+        "glockenbronze",
+        "algen",
+        "weihrauch",
+    ),
+)
+
+SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH, SPORENKLUB, ABTEI)}
 
 
 def _init_set_reactions() -> None:
     from src.reactions import Reaction
 
-    global GLIBBRIA, KRUEMELREICH, SPORENKLUB
+    global GLIBBRIA, KRUEMELREICH, SPORENKLUB, ABTEI
     GLIBBRIA = MaterialSet(
         "glibbria",
         (
@@ -1057,9 +1133,26 @@ def _init_set_reactions() -> None:
             "nebel",
         ),
     )
+    ABTEI = MaterialSet(
+        "abtei",
+        (
+            *BASE_KEYS,
+            "mauerwerk",
+            "buntglas",
+            "kerzenwachs",
+            "glockenbronze",
+            "algen",
+            "weihrauch",
+        ),
+        reactions=(
+            Reaction("fire", "kerzenwachs", "fire", "smoke", 0.05),
+            Reaction("algen", "water", "algen", "algen", 0.01),
+        ),
+    )
     SETS["glibbria"] = GLIBBRIA
     SETS["kruemelreich"] = KRUEMELREICH
     SETS["sporenklub"] = SPORENKLUB
+    SETS["abtei"] = ABTEI
 
 
 _init_set_reactions()
