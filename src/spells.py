@@ -87,6 +87,7 @@ class Block:
     trigger: Trigger | None = None
     # Sekret (payload)
     material: str | None = None  # material key
+    retired: bool = False
 
 
 BLOCKS: tuple[Block, ...] = (
@@ -462,33 +463,33 @@ BLOCKS: tuple[Block, ...] = (
         trigger=Trigger.WET,
     ),
     # Sekrete (payloads)
-    Block("sekret_blut", "Blutsekret", Category.PAYLOAD, mana=6, material="blood"),
-    Block("sekret_talg", "Talgsekret", Category.PAYLOAD, mana=8, material="tallow"),
-    Block("sekret_saeure", "Säuresekret", Category.PAYLOAD, mana=14, material="acid"),
+    Block("sekret_blut", "Blutfüllung", Category.PAYLOAD, mana=6, material="blood", description_de="Macht alles rot und glitschig."),
+    Block("sekret_talg", "Talgsekret", Category.PAYLOAD, mana=8, material="tallow", retired=True),
+    Block("sekret_saeure", "Säurefüllung", Category.PAYLOAD, mana=14, material="acid", description_de="Frisst sich durch fast alles."),
     Block("sekret_feuer", "Feuersekret", Category.PAYLOAD, mana=10, material="fire"),
-    Block("sekret_sporen", "Sporensekret", Category.PAYLOAD, mana=10, material="spores"),
-    Block("sekret_schleim", "Schleimsekret", Category.PAYLOAD, mana=8, material="mucus"),
+    Block("sekret_sporen", "Sporensekret", Category.PAYLOAD, mana=10, material="spores", retired=True),
+    Block("sekret_schleim", "Schleimsekret", Category.PAYLOAD, mana=8, material="mucus", retired=True),
     Block("sekret_rauch", "Rauchsekret", Category.PAYLOAD, mana=3, material="smoke"),
     Block(
-        "sekret_glut", "Glutsekret", Category.PAYLOAD, mana=30, uses=12, material="magma",
-        description_de="Hinterlässt Glutblut, das alles Brennbare entzündet.",
+        "sekret_glut", "Glutfüllung", Category.PAYLOAD, mana=30, uses=12, material="magma",
+        description_de="Heiß, langsam, sehr endgültig.",
     ),
     Block(
-        "sekret_eiter", "Eitersekret", Category.PAYLOAD, mana=8, material="pus",
+        "sekret_eiter", "Eitersekret", Category.PAYLOAD, mana=8, material="pus", retired=True,
         description_de="Hinterlässt vergiftenden Eiter.",
     ),
-    Block("sekret_aetzdampf", "Ätzdampfsekret", Category.PAYLOAD, mana=12, material="fume"),
-    Block("sekret_staub", "Staubsekret", Category.PAYLOAD, mana=5, material="bone_dust"),
+    Block("sekret_aetzdampf", "Ätzdampfsekret", Category.PAYLOAD, mana=12, material="fume", retired=True),
+    Block("sekret_staub", "Staubsekret", Category.PAYLOAD, mana=5, material="bone_dust", retired=True),
     Block(
-        "sekret_sehnen", "Sehnensekret", Category.PAYLOAD, mana=12, material="sinew",
+        "sekret_sehnen", "Sehnensekret", Category.PAYLOAD, mana=12, material="sinew", retired=True,
         description_de="Baut einen Klumpen Sehnen - eine Plattform zum Draufstehen.",
     ),
     Block(
-        "sekret_knochen", "Knochensekret", Category.PAYLOAD, mana=16, material="bone",
+        "sekret_knochen", "Knochensekret", Category.PAYLOAD, mana=16, material="bone", retired=True,
         description_de="Baut einen Klumpen Knochen - eine Deckung gegen Geschosse.",
     ),
     Block(
-        "sekret_wucherung", "Wucherungssekret", Category.PAYLOAD, mana=12, material="growth",
+        "sekret_wucherung", "Wucherungssekret", Category.PAYLOAD, mana=12, material="growth", retired=True,
         description_de="Pflanzt eine Wucherung, die sich durch Fleisch frisst.",
     ),
 )  # fmt: skip
@@ -709,7 +710,7 @@ MODULE_ALIASES: dict[str, str] = {
 
 def blocks_of_tier(tier: int) -> list[str]:
     """Return all block keys with rarity_tier == tier (Card A02)."""
-    return [block.key for block in BLOCKS if block.rarity_tier == tier]
+    return [block.key for block in BLOCKS if block.rarity_tier == tier and not block.retired]
 
 
 def resolve_block_key(key: str) -> str:

@@ -39,7 +39,7 @@ def random_block(
     rng: random.Random, category: Category | None = None, favoured: Collection[str] = ()
 ) -> str:
     """Pick a block key, weighted by category; ``favoured`` blocks come up more often."""
-    pool = [b for b in BLOCKS if category is None or b.category is category]
+    pool = [b for b in BLOCKS if (category is None or b.category is category) and not b.retired]
     weights = [
         CATEGORY_WEIGHTS[b.category] * b.rarity * (KNOWN_BONUS if b.key in favoured else 1.0)
         for b in pool
