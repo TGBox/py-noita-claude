@@ -492,7 +492,7 @@ def draw_portal_select_menu(
     for i, offer in enumerate(offers):
         u_key = getattr(offer, "universe", "")
         u = ALL_UNIVERSES.get(u_key)
-        u_name = u.name if u else u_key.title()
+        u_name = getattr(u, "name_de", getattr(u, "name", u_key.title())) if u else u_key.title()
         u_rule = u.rule if u else ""
         u_rank = getattr(offer, "rank", 1)
         boss = getattr(offer, "boss", None)
