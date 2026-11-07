@@ -444,6 +444,53 @@ GLOCKENWAECHTER = CreatureSpec(
     windup_time=0.5, recover_time=0.2, drops_sample="probe_glockensplitter", pearls=30,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Endbosse der 6 Universen (Card C12): weltenherz, oberstempler, mutter_glibber,
+# ameisenkoenigin, dj_myzel, abt_kieme
+# ---------------------------------------------------------------------------
+
+WELTENHERZ = CreatureSpec(
+    "weltenherz", "Weltenherz", width=40, height=40, hp=450, flying=False, speed=0, sight=500,
+    stance="hostile", faction="parasiten", is_boss=True, stationary=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "zottenwurm", 3.0), Ability("aura", "heartbeat", 60.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+OBERSTEMPLER = CreatureSpec(
+    "oberstempler", "Oberstempler", width=30, height=36, hp=400, flying=False, speed=40, sight=500,
+    stance="hostile", faction="akten", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("ranged", "stamp_death"), Ability("summon", "stempler", 3.0)),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+MUTTER_GLIBBER = CreatureSpec(
+    "mutter_glibber", "Mutter Glibber", width=36, height=36, hp=380, flying=False, speed=32, sight=500,
+    stance="hostile", faction="gelee", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("split", "pudding"), Ability("ranged", "candy_burst")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+AMEISENKOENIGIN = CreatureSpec(
+    "ameisenkoenigin", "Ameisenkönigin", width=42, height=30, hp=420, flying=False, speed=25, sight=500,
+    stance="hostile", faction="insekten", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "ameisenkrieger", 2.5), Ability("ranged", "acid_cone")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+DJ_MYZEL = CreatureSpec(
+    "dj_myzel", "DJ Myzel", width=32, height=32, hp=390, flying=True, speed=45, sight=500,
+    stance="hostile", faction="pilze", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("aura", "beat_pulse", 70.0), Ability("summon", "sporenblase", 3.0)),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+ABT_KIEME = CreatureSpec(
+    "abt_kieme", "Abt Kieme", width=34, height=34, hp=360, flying=True, speed=38, sight=500,
+    stance="hostile", faction="tiefsee", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("ranged", "soundwave"), Ability("aura", "shock", 55.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -460,6 +507,7 @@ SPECIES: dict[str, CreatureSpec] = {
         TRAMPOLINWAL, KIRCHENKRAKE,
         PFUETZENWURM, AKTENWOLF, MANEGE_CLOWN, HARZGENERAL, SPORENHERZ,
         GLOCKENWAECHTER,
+        WELTENHERZ, OBERSTEMPLER, MUTTER_GLIBBER, AMEISENKOENIGIN, DJ_MYZEL, ABT_KIEME,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
