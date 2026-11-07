@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from src import materials as mat
 from src.universes.gen import common
+from src.universes.gen.abtei import generate_abtei
 from src.universes.gen.aktenhalde import generate_aktenhalde
 from src.universes.gen.fleischwelt import generate_fleischwelt
 from src.universes.gen.glibbria import generate_glibbria
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from src.world import World
 
 GENERATORS: dict[str, Callable[[World, Universe, int, int], Level]] = {
+    "abtei": generate_abtei,
     "aktenhalde": generate_aktenhalde,
     "fleischwelt": generate_fleischwelt,
     "glibbria": generate_glibbria,
