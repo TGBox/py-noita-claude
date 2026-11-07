@@ -193,4 +193,53 @@ class ProcRig:
         return result
 
 
-RIG_LAYOUTS: dict[str, PartLayout] = {}
+RIG_LAYOUTS: dict[str, PartLayout] = {
+    "weltenherz": PartLayout(
+        parts=(
+            PartSpec(key="core", offset=(0.0, 0.0), z_order=1, sheet_name="weltenherz"),
+            PartSpec(key="ventricle_left", offset=(-16.0, 4.0), z_order=0, sheet_name="weltenherz", bob_amp=2.0),
+            PartSpec(key="ventricle_right", offset=(16.0, 4.0), z_order=0, sheet_name="weltenherz", bob_amp=2.0),
+        )
+    ),
+    "oberstempler": PartLayout(
+        parts=(
+            PartSpec(key="body", offset=(0.0, 0.0), z_order=1, sheet_name="oberstempler"),
+            PartSpec(key="stamp_arm", offset=(18.0, 6.0), z_order=2, sheet_name="oberstempler", bob_amp=3.0),
+        )
+    ),
+    "mutter_glibber": PartLayout(
+        parts=(
+            PartSpec(key="nucleus", offset=(0.0, 0.0), z_order=1, sheet_name="mutter_glibber"),
+            PartSpec(key="blob_orbit", offset=(-12.0, 10.0), z_order=0, sheet_name="mutter_glibber", bob_amp=2.5),
+        )
+    ),
+    "dj_myzel": PartLayout(
+        parts=(
+            PartSpec(key="cap", offset=(0.0, -8.0), z_order=1, sheet_name="dj_myzel"),
+            PartSpec(key="turntable", offset=(0.0, 12.0), z_order=2, sheet_name="dj_myzel", bob_amp=1.5),
+        )
+    ),
+    "ameisenkoenigin": PartLayout(
+        parts=(
+            PartSpec(key="thorax", offset=(0.0, 0.0), z_order=1, sheet_name="ameisenkoenigin"),
+            PartSpec(key="abdomen", offset=(-20.0, 4.0), z_order=0, sheet_name="ameisenkoenigin", bob_amp=1.0),
+            PartSpec(key="mandibles", offset=(16.0, -2.0), z_order=2, sheet_name="ameisenkoenigin", bob_amp=2.0),
+        )
+    ),
+    "abt_kieme": PartLayout(
+        parts=(
+            PartSpec(key="robe", offset=(0.0, 0.0), z_order=1, sheet_name="abt_kieme"),
+            PartSpec(key="miter", offset=(0.0, -16.0), z_order=2, sheet_name="abt_kieme", bob_amp=1.0),
+        )
+    ),
+    "trampolinwal": PartLayout(
+        parts=(
+            PartSpec(key="whale_body", offset=(0.0, 0.0), z_order=1, sheet_name="trampolinwal"),
+        )
+    ),
+    "kirchenkrake": PartLayout(
+        parts=(
+            PartSpec(key="kraken_bell", offset=(0.0, 0.0), z_order=1, sheet_name="kirchenkrake"),
+        )
+    ),
+}

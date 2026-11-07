@@ -88,12 +88,180 @@ def build_mid_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     return paths
 
 
-def build_end_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
-    """Build bosse/<end_boss>.{png,json} and part sheets for all 9 end-bosses (Cards B17..B19)."""
-    raise NotImplementedError("Cards B17..B19")
+def _draw_end_boss_frame(
+    boss_key: str,
+    u_key: str,
+    offset_y: int = 0,
+    action: bool = False,
+) -> PixelCanvas:
+    pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
+    w, h = 48, 48
+
+    c = PixelCanvas(w, h)
+    
+    # Large monolithic end-boss body
+    draw_shaded_rect(c, 8, 10 + offset_y, 40, 38 + offset_y, pal["primary"])
+    # Head / core chamber
+    draw_shaded_ellipse(c, 24, 18 + offset_y, 12, 10, pal["secondary"])
+    # Outer carapace / ornaments
+    draw_shaded_rect(c, 14, 8 + offset_y, 34, 14 + offset_y, pal["accent"])
+    
+    # Glow pulsating core / attack focus
+    if action:
+        draw_shaded_rect(c, 18, 22 + offset_y, 30, 32 + offset_y, pal["glow"])
+        c.set_px(24, 27 + offset_y, (255, 255, 255, 255))
+    else:
+        c.set_px(24, 18 + offset_y, pal["glow"].highlight)
+
+    apply_dark_outline(c)
+    return c
 
 
 def build_end_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build bosse/<end_boss>.{png,json} and part sheets for all 9 end-bosses (Cards B17..B19)."""
-    raise NotImplementedError("Cards B17..B19")
+    end_boss_map = [
+        ("weltenherz", "fleischwelt"),
+        ("oberstempler", "aktenhalde"),
+        ("mutter_glibber", "glibbria"),
+        ("dj_myzel", "sporenklub"),
+        ("ameisenkoenigin", "kruemelreich"),
+        ("abt_kieme", "abtei"),
+    ]
+
+    paths: list[Path] = []
+    for boss_key, u_key in end_boss_map:
+        pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
+        idle = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, 1, 0, -1)]
+        walk = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, -1, 0, 1)]
+        windup = [_draw_end_boss_frame(boss_key, u_key, -1, True), _draw_end_boss_frame(boss_key, u_key, 0, True)]
+        attack = [_draw_end_boss_frame(boss_key, u_key, 1, True), _draw_end_boss_frame(boss_key, u_key, 0, False)]
+        hurt = [_draw_end_boss_frame(boss_key, u_key, 1), _draw_end_boss_frame(boss_key, u_key, 0)]
+
+        anims = {
+            "idle": idle,
+            "walk": walk,
+            "windup": windup,
+            "attack": attack,
+            "hurt": hurt,
+        }
+        glow = [{"offset": [24, 24], "color": list(pal["glow"].highlight[:3]), "radius": 24}]
+        p, j = save_sheet(
+            "bosse",
+            boss_key,
+            anims,
+            anchor=(24, 40),
+            fps={"idle": 3.0, "walk": 5.0, "windup": 5.0, "attack": 7.0, "hurt": 7.0},
+            glow=glow,
+            out_dir=out_dir,
+        )
+        paths.extend([p, j])
+
+    # Also build trampolinwal and kirchenkrake under kreaturen/ as tested in b19
+    for k, u_key in (("trampolinwal", "glibbria"), ("kirchenkrake", "abtei")):
+        pal = UNIVERSE_PALETTES[u_key]
+        idle = [_draw_end_boss_frame(k, u_key, y) for y in (0, 1, 0, -1)]
+        walk = [_draw_end_boss_frame(k, u_key, y) for y in (0, -1, 0, 1)]
+        anims = {"idle": idle, "walk": walk}
+        glow = [{"offset": [24, 24], "color": list(pal["glow"].highlight[:3]), "radius": 20}]
+        p, j = save_sheet(
+            "kreaturen",
+            k,
+            anims,
+            anchor=(24, 40),
+            fps={"idle": 3.0, "walk": 5.0},
+            glow=glow,
+            out_dir=out_dir,
+        )
+        paths.extend([p, j])
+
+    return paths
+
+
+def _draw_end_boss_frame(
+    boss_key: str,
+    u_key: str,
+    offset_y: int = 0,
+    action: bool = False,
+) -> PixelCanvas:
+    pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
+    w, h = 48, 48
+
+    c = PixelCanvas(w, h)
+    
+    # Large monolithic end-boss body
+    draw_shaded_rect(c, 8, 10 + offset_y, 40, 38 + offset_y, pal["primary"])
+    # Head / core chamber
+    draw_shaded_ellipse(c, 24, 18 + offset_y, 12, 10, pal["secondary"])
+    # Outer carapace / ornaments
+    draw_shaded_rect(c, 14, 8 + offset_y, 34, 14 + offset_y, pal["accent"])
+    
+    # Glow pulsating core / attack focus
+    if action:
+        draw_shaded_rect(c, 18, 22 + offset_y, 30, 32 + offset_y, pal["glow"])
+        c.set_px(24, 27 + offset_y, (255, 255, 255, 255))
+    else:
+        c.set_px(24, 18 + offset_y, pal["glow"].highlight)
+
+    apply_dark_outline(c)
+    return c
+
+
+def build_end_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
+    """Build bosse/<end_boss>.{png,json} and part sheets for all 9 end-bosses (Cards B17..B19)."""
+    end_boss_map = [
+        ("weltenherz", "fleischwelt"),
+        ("oberstempler", "aktenhalde"),
+        ("mutter_glibber", "glibbria"),
+        ("dj_myzel", "sporenklub"),
+        ("ameisenkoenigin", "kruemelreich"),
+        ("abt_kieme", "abtei"),
+    ]
+
+    paths: list[Path] = []
+    for boss_key, u_key in end_boss_map:
+        pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
+        idle = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, 1, 0, -1)]
+        walk = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, -1, 0, 1)]
+        windup = [_draw_end_boss_frame(boss_key, u_key, -1, True), _draw_end_boss_frame(boss_key, u_key, 0, True)]
+        attack = [_draw_end_boss_frame(boss_key, u_key, 1, True), _draw_end_boss_frame(boss_key, u_key, 0, False)]
+        hurt = [_draw_end_boss_frame(boss_key, u_key, 1), _draw_end_boss_frame(boss_key, u_key, 0)]
+
+        anims = {
+            "idle": idle,
+            "walk": walk,
+            "windup": windup,
+            "attack": attack,
+            "hurt": hurt,
+        }
+        glow = [{"offset": [24, 24], "color": list(pal["glow"].highlight[:3]), "radius": 24}]
+        p, j = save_sheet(
+            "bosse",
+            boss_key,
+            anims,
+            anchor=(24, 40),
+            fps={"idle": 3.0, "walk": 5.0, "windup": 5.0, "attack": 7.0, "hurt": 7.0},
+            glow=glow,
+            out_dir=out_dir,
+        )
+        paths.extend([p, j])
+
+    # Also build trampolinwal and kirchenkrake under kreaturen/ as tested in b19
+    for k, u_key in (("trampolinwal", "glibbria"), ("kirchenkrake", "abtei")):
+        pal = UNIVERSE_PALETTES[u_key]
+        idle = [_draw_end_boss_frame(k, u_key, y) for y in (0, 1, 0, -1)]
+        walk = [_draw_end_boss_frame(k, u_key, y) for y in (0, -1, 0, 1)]
+        anims = {"idle": idle, "walk": walk}
+        glow = [{"offset": [24, 24], "color": list(pal["glow"].highlight[:3]), "radius": 20}]
+        p, j = save_sheet(
+            "kreaturen",
+            k,
+            anims,
+            anchor=(24, 40),
+            fps={"idle": 3.0, "walk": 5.0},
+            glow=glow,
+            out_dir=out_dir,
+        )
+        paths.extend([p, j])
+
+    return paths
 
