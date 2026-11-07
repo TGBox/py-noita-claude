@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import random
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 
 from src import materials as mat
@@ -80,7 +80,14 @@ class Projectile:
         return isinstance(self.form, Block) and self.form.bounces > 0
 
 
-def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM) -> Projectile:
+def build(
+    shot: Shot,
+    x: float,
+    y: float,
+    angle: float,
+    team: str = PLAYER_TEAM,
+    resolve: Callable[[Block], str | None] | None = None,
+) -> Projectile:
     """Apply a shot's modifiers to its form and launch it."""
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
@@ -106,8 +113,9 @@ def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM)
         if block.category is Category.TRIGGER:
             trigger = block.trigger
             timer = block.timer
-        if block.material is not None:
-            material = mat.id_of(block.material)
+        key = resolve(block) if resolve is not None else block.material
+        if key is not None:
+            material = mat.id_of(key)
     angle += shot.angle_offset
     return Projectile(
         form=form,
@@ -147,6 +155,7 @@ class ProjectileSystem:
         self._pending: list[Projectile] = []
         self._blasts: list[Blast] = []
         self._rng = random.Random()
+        self.payload_resolver: Callable[[Block], str | None] | None = None
         self.healing = 0.0  # life stolen for the player since the last ``take_healing``
         self.teleports: list[tuple[float, float]] = []  # where player teleport bolts ended
         self.player_damage = 1.0  # factor on the player's projectile damage (perks)
@@ -178,7 +187,8 @@ class ProjectileSystem:
                 extra = sum(m.spread_bonus for m in shot.modifiers)
                 if extra:
                     spread += self._rng.uniform(-extra, extra)
-                projectile = build(shot, x, y, angle + spread, team)
+                resolver = self.payload_resolver if team == PLAYER_TEAM else None
+                projectile = build(shot, x, y, angle + spread, team, resolve=resolver)
                 projectile.gravity *= self.gravity_scale
                 projectile.bounces += self.bounce_bonus.get(team, 0)
                 projectile.damage *= damage_factor
