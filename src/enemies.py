@@ -376,6 +376,24 @@ KORALLENWAECHTER = CreatureSpec(
     windup_time=0.5, recover_time=0.2, drops_sample="probe_kerzenstumpf", sample_chance=0.35, pearls=14,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Großkreaturen (Card C09): trampolinwal, kirchenkrake
+# ---------------------------------------------------------------------------
+
+TRAMPOLINWAL = CreatureSpec(
+    "trampolinwal", "Trampolinwal", width=56, height=32, hp=300, flying=False, speed=10, sight=200,
+    stance="passive", faction="gelee",
+    abilities=(Ability("reflect", "bounce"),),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_glibberkern", sample_chance=0.35, pearls=40,
+)  # fmt: skip
+
+KIRCHENKRAKE = CreatureSpec(
+    "kirchenkrake", "Kirchenkrake", width=48, height=40, hp=350, flying=True, speed=25, sight=400,
+    stance="hostile", faction="tiefsee",
+    abilities=(Ability("grab_pull", "tentacle"),),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_glockensplitter", sample_chance=0.35, pearls=40,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -389,6 +407,7 @@ SPECIES: dict[str, CreatureSpec] = {
         AMEISENKRIEGER, BLATTLAUS, ARBEITERAMEISE, HARZSPUCKER,
         TUERSTEHERPILZ, SPORENSCHNORRER, SPORENWERFER, LEUCHTMOTTE,
         MOENCHSFISCH, ORGELAAL, GLOCKENQUALLE, KORALLENWAECHTER,
+        TRAMPOLINWAL, KIRCHENKRAKE,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
@@ -461,6 +480,7 @@ class Creature(Body):
         self.morphed: bool = False
         self.bribed: bool = False
         self.giver: bool = False
+        self.noise_level: float = 0.0
         self.ability_cooldowns: dict[str, float] = {}
         self.path_cache: Any = None
         self.anim_state: str = "idle"
@@ -687,6 +707,23 @@ class EnemyManager:
         self.creatures.append(c)
         return c
 
+    def on_noise(
+        self,
+        x: float,
+        y: float,
+        radius: float,
+        out_events: list[tuple[str, dict[str, object]]],
+    ) -> None:
+        """Card C09: alert dormant / sensitive creatures within radius of a noise source."""
+        for c in self.creatures:
+            if c.dead or c.species != "kirchenkrake":
+                continue
+            cx, cy = c.center
+            if math.hypot(cx - x, cy - y) <= radius:
+                c.noise_level += 40.0
+                if c.noise_level >= 100.0:
+                    out_events.append(("creature_woke", {"species": "kirchenkrake"}))
+
     def update(
         self,
         world_or_dt: World | float,
@@ -710,6 +747,8 @@ class EnemyManager:
         """Update creatures inside ``area``; returns the ones that died this update."""
         x0, y0, x1, y1 = area
         for creature in self.creatures:
+            if creature.noise_level > 0.0:
+                creature.noise_level = max(0.0, creature.noise_level - 10.0 * dt)
             cx, cy = creature.center
             if x0 <= cx < x1 and y0 <= cy < y1:
                 target = self._pick_target(creature, player, grudges)
