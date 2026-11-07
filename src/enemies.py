@@ -213,6 +213,39 @@ ZOTTENWURM = CreatureSpec(
     windup_time=0.4, recover_time=0.2, drops_sample="probe_wucherung", sample_chance=0.35, pearls=14,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Aktenhalde (Card C02): aktenfresser, stempler, paragraphenreiter, kaffeegolem
+# ---------------------------------------------------------------------------
+
+AKTENFRESSER = CreatureSpec(
+    "aktenfresser", "Aktenfresser", width=20, height=17, hp=40, flying=False, speed=35, sight=380,
+    melee_damage=10, melee_cooldown=0.9, stance="neutral", faction="akten",
+    abilities=(Ability("dig", "papier"), Ability("melee"), Ability("pack")),
+    windup_time=0.5, recover_time=0.2, weak_material="fire", drops_sample="probe_stempelkissen",
+    sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+STEMPLER = CreatureSpec(
+    "stempler", "Stempler", width=12, height=18, hp=30, flying=False, speed=30, sight=360,
+    melee_damage=5, melee_cooldown=0.8, stance="neutral", faction="akten",
+    abilities=(Ability("melee"), Ability("summon", "agent_streife", 1.0), Ability("aura", "stamp_tax", 32.0)),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_formular", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+PARAGRAPHENREITER = CreatureSpec(
+    "paragraphenreiter", "Paragraphenreiter", width=16, height=20, hp=36, flying=True, speed=55,
+    sight=440, stance="hostile", faction="akten",
+    abilities=(Ability("ranged", "paragraph"), Ability("summon", "stempler", 1.0)),
+    windup_time=0.45, recover_time=0.2, drops_sample="probe_formular", sample_chance=0.35, pearls=12,
+)  # fmt: skip
+
+KAFFEEGOLEM = CreatureSpec(
+    "kaffeegolem", "Kaffeegolem", width=18, height=22, hp=55, flying=False, speed=32, sight=380,
+    melee_damage=8, melee_cooldown=1.0, stance="neutral", faction="akten",
+    abilities=(Ability("melee"), Ability("ranged", "steam"), Ability("morph", "enraged", 0.5)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_stempelkissen", sample_chance=0.35, pearls=14,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -221,6 +254,7 @@ SPECIES: dict[str, CreatureSpec] = {
         EMBER_MAGGOT, ACID_SPITTER, LEECH, EYE_BLOAT, MUCUS_CRAWLER, NERVE_KNOT,
         TALLOW_SAC, ACID_SAC, SPORE_SAC, BONE_EATER, BREATH, SHAPESHIFTER,
         FLEISCHMADE, BLUTEGEL, SAEURESPUCKER, ZOTTENWURM,
+        AKTENFRESSER, STEMPLER, PARAGRAPHENREITER, KAFFEEGOLEM,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
