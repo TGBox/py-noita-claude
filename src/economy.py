@@ -15,36 +15,48 @@ ZAPF_PRICE = 10
 
 
 def creature_gold(rank: int, rng: random.Random, *, big: bool = False) -> int:
-    raise NotImplementedError("Card E02")
+    """big: BIG_CREATURE_GOLD[rank]; sonst rng.randint(*CREATURE_GOLD[rank])."""
+    if big:
+        return BIG_CREATURE_GOLD[rank]
+    low, high = CREATURE_GOLD[rank]
+    return rng.randint(low, high)
 
 
 def mid_boss_gold(rank: int) -> int:
-    raise NotImplementedError("Card E02")
+    """Unter-Zwischenboss (spec.is_mid_boss): BIG_CREATURE_GOLD[rank]."""
+    return BIG_CREATURE_GOLD[rank]
 
 
 def boss_gold(rank: int) -> int:
-    raise NotImplementedError("Card E02")
+    """Zwischengegner: BOSS_GOLD[rank]."""
+    return BOSS_GOLD[rank]
 
 
 def pile_gold(rank: int, rng: random.Random) -> int:
-    raise NotImplementedError("Card E02")
+    """Goldhaufen: rng.randint(10, 40) * rank."""
+    return rng.randint(10, 40) * rank
 
 
 def crate_gold(rank: int, rng: random.Random) -> int:
-    raise NotImplementedError("Card E02")
+    """Fundkiste: rng.randint(20, 60) * rank (dazu 1–3 Gegenstände, siehe loot.py)."""
+    return rng.randint(20, 60) * rank
 
 
 def module_price(rarity_tier: int, stage: int, price_factor: float = 1.0) -> int:
-    raise NotImplementedError("Card E02")
+    """round(MODULE_BASE[rarity_tier] * (1 + 0.25 * stage) * price_factor)."""
+    return round(MODULE_BASE[rarity_tier] * (1 + 0.25 * stage) * price_factor)
 
 
 def weapon_price(stage: int, price_factor: float = 1.0) -> int:
-    raise NotImplementedError("Card E02")
+    """round((160 + 70 * (stage - 1)) * price_factor)."""
+    return round((160 + 70 * (stage - 1)) * price_factor)
 
 
 def fabricator_gold(rarity_tier: int, stage: int) -> int:
-    raise NotImplementedError("Card E02")
+    """round(module_price(rarity_tier, stage) * 0.7)."""
+    return round(module_price(rarity_tier, stage) * 0.7)
 
 
 def experiment_reroll_price(reroll_index: int) -> int:
-    raise NotImplementedError("Card E02")
+    """100 * 2 ** reroll_index (100, 200, 400, …; Zähler gilt für den ganzen Lauf)."""
+    return 100 * (2**reroll_index)
