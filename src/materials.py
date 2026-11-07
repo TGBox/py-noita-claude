@@ -548,8 +548,85 @@ _GLIBBRIA = (
     ),
 )
 
-LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA)}
-assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA), "duplicate material key"
+_KRUEMELREICH: tuple[Material, ...] = (
+    _m(
+        "kruemel",
+        "Krümel",
+        SOLID,
+        255,
+        (205, 160, 110),
+        debris="brosel",
+        debris_chance=0.4,
+        grain=10,
+        hardness=2,
+        description_de="Trockener Teigboden. Zerbröselt leicht.",
+    ),
+    _m(
+        "brosel",
+        "Brösel",
+        POWDER,
+        60,
+        (215, 175, 120),
+        grain=12,
+        hardness=1,
+        description_de="Feine Kuchenbrösel, rieseln durch Ritzen.",
+    ),
+    _m(
+        "zucker",
+        "Zucker",
+        POWDER,
+        65,
+        (245, 245, 250),
+        grain=8,
+        hardness=1,
+        flammability=0.1,
+        description_de="Weißer Kristallzucker. Schmilzt bei Feuer.",
+    ),
+    _m(
+        "karamell",
+        "Karamell",
+        LIQUID,
+        25,
+        (160, 90, 30),
+        mobility=0.3,
+        fluidity=2,
+        description_de="Klebrige, heiße Karamellmasse.",
+    ),
+    _m(
+        "honig",
+        "Honig",
+        LIQUID,
+        20,
+        (220, 150, 20),
+        mobility=0.2,
+        fluidity=2,
+        description_de="Dickflüssig und süß.",
+    ),
+    _m(
+        "fliese",
+        "Kachelfliese",
+        SOLID,
+        255,
+        (180, 185, 190),
+        grain=2,
+        hardness=3,
+        description_de="Backstubenfliesen. Hart und hitzebeständig.",
+    ),
+    _m(
+        "staubfluse",
+        "Staubfluse",
+        POWDER,
+        30,
+        (130, 125, 120),
+        grain=14,
+        hardness=1,
+        flammability=0.3,
+        description_de="Trockener Backstubenstaub. Leicht entflammbar.",
+    ),
+)
+
+LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH)}
+assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH), "duplicate material key"
 
 BASE_KEYS: tuple[str, ...] = tuple(m.key for m in _BASE)
 
@@ -850,13 +927,27 @@ GLIBBRIA = MaterialSet(
     ),
 )
 
-SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA)}
+KRUEMELREICH = MaterialSet(
+    "kruemelreich",
+    (
+        *BASE_KEYS,
+        "kruemel",
+        "brosel",
+        "zucker",
+        "karamell",
+        "honig",
+        "fliese",
+        "staubfluse",
+    ),
+)
+
+SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH)}
 
 
 def _init_set_reactions() -> None:
     from src.reactions import Reaction
 
-    global GLIBBRIA
+    global GLIBBRIA, KRUEMELREICH
     GLIBBRIA = MaterialSet(
         "glibbria",
         (
@@ -874,7 +965,24 @@ def _init_set_reactions() -> None:
             Reaction("fire", "zuckerguss", "fire", "smoke", 0.05),
         ),
     )
+    KRUEMELREICH = MaterialSet(
+        "kruemelreich",
+        (
+            *BASE_KEYS,
+            "kruemel",
+            "brosel",
+            "zucker",
+            "karamell",
+            "honig",
+            "fliese",
+            "staubfluse",
+        ),
+        reactions=(
+            Reaction("fire", "zucker", "fire", "karamell", 0.05),
+        ),
+    )
     SETS["glibbria"] = GLIBBRIA
+    SETS["kruemelreich"] = KRUEMELREICH
 
 
 _init_set_reactions()
