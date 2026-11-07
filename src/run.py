@@ -242,6 +242,7 @@ class Run:
         self.boss_banner: tuple[str, float] | None = None
         self.workshop_layout: WorkshopLayout | None = None
         self.event: Event | None = None
+        self.event_timer: float = 0.0
         self.challenge: Challenge | None = None
         self.boss_script: BossScript | None = None
         self.records: Records = Records()
@@ -893,6 +894,23 @@ class Run:
         self.time_in_depth += dt
         if not self.outcome:
             self.stats["time"] += dt
+
+        # Universe secondary event lifecycle (Cards D11, D12)
+        if not self.in_sanctum:
+            if self.event is not None and self.event.active:
+                self.event.tick(dt, self)
+                if not self.event.active:
+                    self.event = None
+            elif self.event is None:
+                self.event_timer += dt
+                u_event_key = getattr(self.universe, "event", "")
+                if u_event_key:
+                    from src.events import EVENTS, Event
+                    spec = EVENTS.get(u_event_key)
+                    if spec is not None and self.event_timer >= spec.interval:
+                        self.event_timer = 0.0
+                        self.event = Event(spec=spec, remaining=spec.duration)
+                        self.event.on_start(self)
         alive = not self.player.dead and self.outcome != "victory"
         if not alive:
             controls = Controls(aim=controls.aim)
