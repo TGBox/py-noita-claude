@@ -15,19 +15,43 @@ from tools.sprites import (
 )
 
 
-def _draw_char_frame(palette_key: str, offset_y: int = 0, cast_arm: bool = False) -> PixelCanvas:
+def _draw_char_frame(
+    palette_key: str,
+    offset_y: int = 0,
+    cast_arm: bool = False,
+    arm_swing: int = 0,
+    leg_stride: int = 0,
+) -> PixelCanvas:
     c = PixelCanvas(20, 24)
     pal = ENTITY_PALETTES.get(palette_key, ENTITY_PALETTES["spielerin"])
     # Cloak / coat body
-    draw_shaded_rect(c, 4, 10 + offset_y, 16, 21, pal["primary"])
+    draw_shaded_rect(c, 5, 10 + offset_y, 15, 19 + offset_y, pal["primary"])
+    # Legs / hem opening showing movement
+    if leg_stride != 0:
+        # One leg extended forward, one back
+        lx1 = 10 - leg_stride
+        lx2 = 10 + leg_stride
+        draw_shaded_rect(
+            c, max(1, lx1 - 2), 19 + offset_y, min(18, lx1 + 2), 22 + offset_y, pal["secondary"]
+        )
+        draw_shaded_rect(
+            c, max(1, lx2 - 2), 19 + offset_y, min(18, lx2 + 2), 22 + offset_y, pal["secondary"]
+        )
+    else:
+        draw_shaded_rect(c, 7, 19 + offset_y, 13, 22 + offset_y, pal["secondary"])
     # Hood / head
     draw_shaded_ellipse(c, 10, 6 + offset_y, 5, 5, pal["secondary"])
     # Face visor / shadow inside hood
     draw_shaded_rect(c, 7, 6 + offset_y, 13, 8 + offset_y, pal["accent"])
-    # Casting arm / wand or hands
+    # Casting arm / wand or arms swinging
     if cast_arm:
         draw_shaded_rect(c, 14, 11 + offset_y, 18, 14 + offset_y, pal["secondary"])
         c.set_px(18, 12 + offset_y, (255, 255, 255, 255))
+    elif arm_swing != 0:
+        draw_shaded_rect(
+            c, 10 + arm_swing, 11 + offset_y, 13 + arm_swing + 2, 15 + offset_y, pal["secondary"]
+        )
+        c.set_px(10 + arm_swing, 13 + offset_y, pal["accent"].light)
     else:
         c.set_px(15, 13 + offset_y, pal["accent"].light)
     apply_dark_outline(c)
@@ -37,9 +61,20 @@ def _draw_char_frame(palette_key: str, offset_y: int = 0, cast_arm: bool = False
 def build_player_sheet(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build charaktere/spielerin.{png,json} (Card B01)."""
     idle_frames = [_draw_char_frame("spielerin", y) for y in (0, 1, 0, -1)]
-    walk_frames = [_draw_char_frame("spielerin", y) for y in (0, -1, 0, 1, 0, -1)]
-    jump_frames = [_draw_char_frame("spielerin", -2), _draw_char_frame("spielerin", -1)]
-    fall_frames = [_draw_char_frame("spielerin", 1), _draw_char_frame("spielerin", 2)]
+    walk_frames = [
+        _draw_char_frame("spielerin", 0, leg_stride=0, arm_swing=0),
+        _draw_char_frame("spielerin", -1, leg_stride=4, arm_swing=4),
+        _draw_char_frame("spielerin", 0, leg_stride=0, arm_swing=0),
+        _draw_char_frame("spielerin", 1, leg_stride=-4, arm_swing=-4),
+    ]
+    jump_frames = [
+        _draw_char_frame("spielerin", -2, leg_stride=2),
+        _draw_char_frame("spielerin", -1, leg_stride=1),
+    ]
+    fall_frames = [
+        _draw_char_frame("spielerin", 1, leg_stride=2),
+        _draw_char_frame("spielerin", 2, leg_stride=0),
+    ]
     cast_frames = [
         _draw_char_frame("spielerin", cast_arm=True),
         _draw_char_frame("spielerin", -1, cast_arm=True),
@@ -177,8 +212,14 @@ def build_agent_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     # 1. agent_sachbearbeiter (also aliased/copied for agent_streife if needed)
     sb_idle = [_draw_agent_sachbearbeiter_frame(y) for y in (0, 1, 0, -1)]
     sb_walk = [_draw_agent_sachbearbeiter_frame(y) for y in (0, -1, 0, 1, 0, -1)]
-    sb_windup = [_draw_agent_sachbearbeiter_frame(-1, True), _draw_agent_sachbearbeiter_frame(0, True)]
-    sb_attack = [_draw_agent_sachbearbeiter_frame(1, True), _draw_agent_sachbearbeiter_frame(0, False)]
+    sb_windup = [
+        _draw_agent_sachbearbeiter_frame(-1, True),
+        _draw_agent_sachbearbeiter_frame(0, True),
+    ]
+    sb_attack = [
+        _draw_agent_sachbearbeiter_frame(1, True),
+        _draw_agent_sachbearbeiter_frame(0, False),
+    ]
     sb_hurt = [_draw_agent_sachbearbeiter_frame(1), _draw_agent_sachbearbeiter_frame(0)]
     sb_dead = [_draw_agent_sachbearbeiter_frame(2)]
     sb_anims = {
@@ -226,9 +267,14 @@ def build_agent_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     paths.extend([p, j])
 
     # 3. agent_abteilungsleiter
-    al_idle = [_draw_agent_abteilungsleiter_frame(y, w) for y, w in ((0, 0), (-1, 1), (0, 0), (1, -1))]
+    al_idle = [
+        _draw_agent_abteilungsleiter_frame(y, w) for y, w in ((0, 0), (-1, 1), (0, 0), (1, -1))
+    ]
     al_fly = [_draw_agent_abteilungsleiter_frame(y, 0) for y in (-1, -2, -1, 0)]
-    al_windup = [_draw_agent_abteilungsleiter_frame(-1, 0), _draw_agent_abteilungsleiter_frame(-2, 1)]
+    al_windup = [
+        _draw_agent_abteilungsleiter_frame(-1, 0),
+        _draw_agent_abteilungsleiter_frame(-2, 1),
+    ]
     al_attack = [_draw_agent_abteilungsleiter_frame(0, 1), _draw_agent_abteilungsleiter_frame(1, 0)]
     al_hurt = [_draw_agent_abteilungsleiter_frame(1, 0), _draw_agent_abteilungsleiter_frame(0, 0)]
     al_dead = [_draw_agent_abteilungsleiter_frame(2, 0)]
@@ -295,7 +341,15 @@ def build_evil_and_hq_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
             sheet_name,
             anims,
             anchor=(10, 22),
-            fps={"idle": 6.0, "walk": 8.0, "jump": 6.0, "fall": 6.0, "cast": 10.0, "hurt": 8.0, "dead": 1.0},
+            fps={
+                "idle": 6.0,
+                "walk": 8.0,
+                "jump": 6.0,
+                "fall": 6.0,
+                "cast": 10.0,
+                "hurt": 8.0,
+                "dead": 1.0,
+            },
             glow=glow,
             out_dir=out_dir,
         )
@@ -303,6 +357,7 @@ def build_evil_and_hq_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
 
     # 2. ober_cloita: Evil/bureaucratic Klonita variant
     pal_hq = ENTITY_PALETTES["ober_cloita"]
+
     def _draw_cloita_frame(offset_y: int = 0, staff_rot: int = 0) -> PixelCanvas:
         c = PixelCanvas(20, 24)
         # Bureaucratic dark robe
@@ -313,7 +368,9 @@ def build_evil_and_hq_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
         draw_shaded_rect(c, 7, 2 + offset_y, 13, 5 + offset_y, pal_hq["glow"])
         c.set_px(10, 3 + offset_y, (255, 215, 0, 255))
         # Floating command sigil / quill staff
-        draw_shaded_rect(c, 14 + staff_rot, 8 + offset_y, 17 + staff_rot, 19 + offset_y, pal_hq["accent"])
+        draw_shaded_rect(
+            c, 14 + staff_rot, 8 + offset_y, 17 + staff_rot, 19 + offset_y, pal_hq["accent"]
+        )
         apply_dark_outline(c)
         return c
 
