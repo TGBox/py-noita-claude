@@ -69,6 +69,9 @@ class Projectile:
     hit_ids: set[int] = field(default_factory=set)
     wet: bool = False  # flew through liquid (Nässe-Nerv)
     owner_species: str = ""  # creature species that fired this projectile (Contract V4, Card A11)
+    source_pos: tuple[float, float] | None = (
+        None  # position where the projectile was fired from (Card A11)
+    )
     from_player: bool = True  # compatibility flag for player vs enemy projectile origin
 
     @property
