@@ -196,6 +196,16 @@ for _alias, _target_spec in (
 ):
     SPECIES.setdefault(_alias, _target_spec)
 
+STANCE_ALIASES = {
+    "fearful": "shy",
+    "curious": "territorial",
+    "neutral": "territorial",
+    "passive": "peaceful",
+}
+GROUP_AGGRO_RADIUS = 140.0
+SHY_FLEE_DISTANCE = 90.0
+AGGRO_RADIUS = 130.0
+
 MELEE_REACH = 2  # px around the body that counts as touching
 WANDER_PAUSE = 0.35  # chance that a new wander leg is a pause
 HURT_FLASH = 0.08  # seconds a creature flashes after taking damage
@@ -593,7 +603,40 @@ def evaluate_stance(
     stance_override: str | None = None,
 ) -> bool:
     """Evaluate whether ``creature`` should attack ``player`` under its stance (Card A14)."""
-    raise NotImplementedError("Card A14")
+    stance = stance_override or creature.stance or creature.spec.stance
+    stance = STANCE_ALIASES.get(stance, stance)
+    if creature.bribed:
+        return False
+    px, py = player.center
+    cx, cy = creature.center
+    distance = math.hypot(px - cx, py - cy)
+    if creature.alerted and not creature.aggro:  # hurt: the whole nearby group turns hostile
+        creature.aggro = True
+        for other in all_creatures:
+            if other is creature or other.dead or other.group_id != creature.group_id:
+                continue
+            ox, oy = other.center
+            if math.hypot(ox - cx, oy - cy) <= GROUP_AGGRO_RADIUS:
+                other.aggro = True
+    if stance == "shy":
+        if creature.aggro:
+            return True
+        if distance < SHY_FLEE_DISTANCE:
+            creature.state = "flee"
+        return False
+    if stance == "peaceful":
+        return creature.aggro
+    if stance == "territorial":
+        if creature.aggro:
+            return True
+        if distance <= AGGRO_RADIUS * 0.6:
+            creature.aggro = True
+            return True
+        return False
+    if distance <= max(AGGRO_RADIUS, creature.spec.sight):  # "hostile"
+        creature.aggro = True
+        return True
+    return creature.aggro
 
 
 def begin_attack(creature: Creature, target_xy: tuple[float, float]) -> None:
