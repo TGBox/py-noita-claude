@@ -347,4 +347,59 @@ def build_evil_and_hq_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
 
 def build_trader_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build charaktere/npc_*.{png,json} (Card B05)."""
-    raise NotImplementedError("Card B05")
+    from tools.palette import UNIVERSE_PALETTES
+
+    paths: list[Path] = []
+
+    # Map trader to respective universe palette
+    trader_map = [
+        ("npc_magenhaendler", "fleischwelt"),
+        ("npc_sachbearbeiterin", "aktenhalde"),
+        ("npc_glibberhaendler", "glibbria"),
+        ("npc_ameisenhehler", "kruemelreich"),
+        ("npc_dj", "sporenklub"),
+        ("npc_kuester", "abtei"),
+    ]
+
+    for trader_name, u_key in trader_map:
+        pal = UNIVERSE_PALETTES[u_key]
+
+        def _draw_trader_frame(offset_y: int = 0, item_active: bool = False, p=pal) -> PixelCanvas:
+            c = PixelCanvas(20, 24)
+            # Body / robe / stall keeper
+            draw_shaded_rect(c, 4, 10 + offset_y, 16, 21, p["primary"])
+            # Head / hood / hat
+            draw_shaded_ellipse(c, 10, 6 + offset_y, 5, 5, p["secondary"])
+            # Face / eyes / feature
+            draw_shaded_rect(c, 8, 6 + offset_y, 12, 8 + offset_y, p["accent"])
+            # Wares / hands holding item
+            draw_shaded_rect(c, 6, 13 + offset_y, 14, 16 + offset_y, p["glow"])
+            if item_active:
+                c.set_px(10, 14 + offset_y, (255, 255, 255, 255))
+            else:
+                c.set_px(10, 14 + offset_y, p["secondary"].mid)
+            apply_dark_outline(c)
+            return c
+
+        idle_frames = [_draw_trader_frame(y) for y in (0, 1, 0, -1)]
+        talk_frames = [_draw_trader_frame(y, True) for y in (0, -1, 0, 1)]
+        offer_frames = [_draw_trader_frame(0, True), _draw_trader_frame(-1, True)]
+
+        anims = {
+            "idle": idle_frames,
+            "talk": talk_frames,
+            "offer": offer_frames,
+        }
+        glow = [{"offset": [10, 14], "color": list(pal["glow"].highlight[:3]), "radius": 10}]
+        p_path, j_path = save_sheet(
+            "charaktere",
+            trader_name,
+            anims,
+            anchor=(10, 22),
+            fps={"idle": 4.0, "talk": 8.0, "offer": 6.0},
+            glow=glow,
+            out_dir=out_dir,
+        )
+        paths.extend([p_path, j_path])
+
+    return paths
