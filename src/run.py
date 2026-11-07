@@ -259,6 +259,7 @@ class Run:
         self.boss_script: BossScript | None = None
         self.records: Records = Records()
         self.universe: Universe = UNIVERSE_BY_KEY.get(universe_key, UNIVERSES[0])
+        self.portal_index: int = 0
         self.new_run()
 
     # ---------------------------------------------------------------- flow
@@ -271,6 +272,15 @@ class Run:
     def next_depth_number(self) -> int:
         """Number shown in the HUD: the depth we are in (or about to enter from a sanctum)."""
         return self.depth_index + (2 if self.in_sanctum else 1)
+
+    def start_multiverse_run(self) -> None:
+        """Start a run in the workshophub with universe progression (Card G14)."""
+        from src.universes.plan import RunPlan
+
+        self._reset()
+        self.plan = RunPlan(self.seed)
+        self.portal_index = 0
+        self.enter_workshop()
 
     def new_run(self) -> None:
         self._reset()
@@ -971,7 +981,10 @@ class Run:
         if alive:
             self._collect_pearls(dt)
         if controls.pickup:
-            self._pick_up()
+            if self.in_workshop and self.menu_mode == "":
+                self.interact_station()
+            else:
+                self._pick_up()
         if alive and self.player.polymorphed <= 0:
             self._use_flask(controls, dt)
         self._kick_cooldown = max(0.0, self._kick_cooldown - dt)
@@ -1313,16 +1326,17 @@ class Run:
         body, solids that grew into it are removed.
         """
         player, world = self.player, self.world
-        for y in range(player.y, player.y + player.height):
-            for x in range(player.x, player.x + player.width):
+        px, py = int(player.x), int(player.y)
+        for y in range(py, py + player.height):
+            for x in range(px, px + player.width):
                 cell = world.get(x, y)
                 if not BLOCKS_BODY[cell] or cell == BEDROCK:
                     continue
                 world.set_cell(x, y, AIR)
                 if KIND[cell] == POWDER:
                     for up in range(1, 8):
-                        if world.get(x, player.y - up) == AIR:
-                            world.set_cell(x, player.y - up, cell)
+                        if world.get(x, py - up) == AIR:
+                            world.set_cell(x, py - up, cell)
                             break
 
     def _sweep_specks(self) -> None:
@@ -1883,8 +1897,40 @@ class Run:
         raise NotImplementedError("Card F14")
 
     def handle_menu_input(self, key: int) -> bool:
-        """Handle keyboard navigation for modal overlays (Card G09)."""
-        raise NotImplementedError("Card G09")
+        """Handle keyboard navigation for modal overlays (Card G09, G14)."""
+        import pygame
+
+        if self.menu_mode == "portal_select":
+            offers = self.plan.offers() if self.plan else []
+            if not offers:
+                if key == pygame.K_ESCAPE:
+                    self.menu_mode = ""
+                    return True
+                return False
+
+            if key in (pygame.K_UP, pygame.K_w):
+                self.portal_index = (self.portal_index - 1) % len(offers)
+                return True
+            if key in (pygame.K_DOWN, pygame.K_s):
+                self.portal_index = (self.portal_index + 1) % len(offers)
+                return True
+            if key in (pygame.K_1, pygame.K_2):
+                idx = 0 if key == pygame.K_1 else 1
+                if idx < len(offers):
+                    self.portal_index = idx
+                    return True
+            if key in (pygame.K_RETURN, pygame.K_e):
+                idx = self.portal_index
+                self.menu_mode = ""
+                self.portal_index = 0
+                self.choose_next_universe(idx)
+                return True
+            if key == pygame.K_ESCAPE:
+                self.menu_mode = ""
+                return True
+            return False
+
+        return False
 
     def _on_death(self, creature) -> None:
         cx, cy = creature.center

@@ -43,6 +43,22 @@ class Player(Body):
         super().__init__(int(x), int(y), PLAYER_WIDTH, PLAYER_HEIGHT, MAX_HP)
         self.step_up = STEP_UP
 
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, val: float) -> None:
+        self._x = int(val)
+
+    @property
+    def y(self) -> int:
+        return self._y
+
+    @y.setter
+    def y(self, val: float) -> None:
+        self._y = int(val)
+
     def place(self, x: int, y: int) -> None:
         super().place(x, y)
         self.energy = self.energy_max
