@@ -625,8 +625,61 @@ _KRUEMELREICH: tuple[Material, ...] = (
     ),
 )
 
-LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH)}
-assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH), "duplicate material key"
+_SPORENKLUB: tuple[Material, ...] = (
+    _m(
+        "pilzfleisch",
+        "Pilzfleisch",
+        SOLID,
+        255,
+        (120, 90, 80),
+        grain=6,
+        hardness=2,
+        description_de="Zähes, faseriges Geflecht alter Riesenpilze.",
+    ),
+    _m(
+        "pilzhut",
+        "Pilzhut",
+        SOLID,
+        255,
+        (170, 70, 60),
+        grain=8,
+        hardness=2,
+        description_de="Glatte, samtige Kappe eines Riesenpilzes.",
+    ),
+    _m(
+        "leuchtsporen",
+        "Leuchtsporen",
+        POWDER,
+        40,
+        (140, 255, 100),
+        grain=10,
+        hardness=1,
+        glow=160,
+        description_de="Fluoreszierender Sporenstaub.",
+    ),
+    _m(
+        "neonsaft",
+        "Neonsaft",
+        LIQUID,
+        25,
+        (50, 240, 180),
+        fluidity=4,
+        glow=160,
+        description_de="Hell leuchtender Nährsaft des Sporenklubs.",
+    ),
+    _m(
+        "nebel",
+        "Sporennebel",
+        GAS,
+        -1,
+        (160, 220, 190),
+        life=(300, 600),
+        description_de="Dichter Dunst, der den Tanzboden verhüllt.",
+    ),
+)
+
+LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH, *_SPORENKLUB)}
+assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH) + len(_SPORENKLUB), "duplicate material key"
 
 BASE_KEYS: tuple[str, ...] = tuple(m.key for m in _BASE)
 
@@ -941,13 +994,25 @@ KRUEMELREICH = MaterialSet(
     ),
 )
 
-SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH)}
+SPORENKLUB = MaterialSet(
+    "sporenklub",
+    (
+        *BASE_KEYS,
+        "pilzfleisch",
+        "pilzhut",
+        "leuchtsporen",
+        "neonsaft",
+        "nebel",
+    ),
+)
+
+SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH, SPORENKLUB)}
 
 
 def _init_set_reactions() -> None:
     from src.reactions import Reaction
 
-    global GLIBBRIA, KRUEMELREICH
+    global GLIBBRIA, KRUEMELREICH, SPORENKLUB
     GLIBBRIA = MaterialSet(
         "glibbria",
         (
@@ -981,8 +1046,20 @@ def _init_set_reactions() -> None:
             Reaction("fire", "zucker", "fire", "karamell", 0.05),
         ),
     )
+    SPORENKLUB = MaterialSet(
+        "sporenklub",
+        (
+            *BASE_KEYS,
+            "pilzfleisch",
+            "pilzhut",
+            "leuchtsporen",
+            "neonsaft",
+            "nebel",
+        ),
+    )
     SETS["glibbria"] = GLIBBRIA
     SETS["kruemelreich"] = KRUEMELREICH
+    SETS["sporenklub"] = SPORENKLUB
 
 
 _init_set_reactions()
