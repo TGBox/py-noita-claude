@@ -921,6 +921,9 @@ class Run:
 
         self._step_world(dt, area)
         everywhere = area or (0, 0, self.world.width, self.world.height)
+        for creature in self.enemies.creatures:
+            for key in list(creature.ability_cooldowns):
+                creature.ability_cooldowns[key] = max(0.0, creature.ability_cooldowns[key] - dt)
         died = self.enemies.update(self.world, dt, self.player, self.projectiles, everywhere)
         self._prop_blasts: list[Blast] = []
         for creature in died:
@@ -1333,6 +1336,9 @@ class Run:
                 abs(ox - reach_x) <= KICK_REACH / 2 + creature.width / 2
                 and abs(oy - cy) <= creature.height / 2 + 6
             ):
+                if creature.giver or getattr(creature.spec, "giver", False):
+                    self._milk(creature)  # a giver is milked, not hurt
+                    continue
                 creature.hurt(KICK_DAMAGE, "Tritt")
                 if not creature.spec.boss and not creature.spec.stationary:
                     creature.vx = side * KICK_PUSH
@@ -1557,9 +1563,36 @@ class Run:
     def _pickup_from(self, data: dict[str, Any]) -> Pickup | None:
         return _pickup_from(data)
 
+    def _milk(self, creature: Any) -> None:
+        """Kicking a giver (aphid) squeezes out a few honey droplets, then it needs a rest."""
+        if creature.ability_cooldowns.get("milk", 0.0) > 0.0:
+            return
+        creature.ability_cooldowns["milk"] = MILK_COOLDOWN
+        honey = mat.MAT_ID.get("honig") or mat.MAT_ID.get("honey")
+        if honey is None:  # material not part of the active set: a little healing instead
+            self.player.hp = min(self.player.max_hp, self.player.hp + MILK_HEAL)
+            return
+        cx, cy = creature.center
+        for k in range(MILK_DROPS):
+            self.droplets.append(
+                Droplet(honey, cx, cy + creature.height / 2, (k - 1.5) * 10.0, 20.0)
+            )
+
     def try_interact_creature(self) -> bool:
         """Attempt special E-key interaction with nearby creature (Card A16)."""
-        raise NotImplementedError("Card A16")
+        px, py = self.player.center
+        for creature in self.enemies.creatures:
+            if creature.dead or creature.species != "tuersteherpilz" or creature.bribed:
+                continue
+            cx, cy = creature.center
+            if math.hypot(cx - px, cy - py) > BRIBE_RANGE or self.gold < BRIBE_COST:
+                continue
+            self.gold -= BRIBE_COST
+            creature.bribed = True
+            creature.aggro = False
+            self.emit("bribe", species=creature.species, cost=BRIBE_COST)
+            return True
+        return False
 
     def enter_workshop(self) -> None:
         """Move the run into the workshop between universes (Contract V18, Card E10)."""
@@ -1711,6 +1744,11 @@ NEW_PICKUP_KINDS = frozenset(
     }
 )
 BLUEPRINT_SHARDS_NEEDED = 3
+MILK_COOLDOWN = 8.0  # seconds before a giver can be milked again
+MILK_DROPS = 4
+MILK_HEAL = 3.0
+BRIBE_COST = 20
+BRIBE_RANGE = 32.0
 
 PICKUP_FIELDS = (
     "kind",
