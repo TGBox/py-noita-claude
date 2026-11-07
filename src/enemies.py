@@ -433,6 +433,17 @@ SPORENHERZ = CreatureSpec(
     windup_time=0.5, recover_time=0.2, drops_sample="probe_plattennadel", pearls=28,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Zwischenbosse Teil 2 (Card C11): glockenwaechter
+# ---------------------------------------------------------------------------
+
+GLOCKENWAECHTER = CreatureSpec(
+    "glockenwaechter", "Glockenwächter", width=24, height=28, hp=180, flying=True, speed=35, sight=450,
+    stance="hostile", faction="tiefsee", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("aura", "shock", 50.0),),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glockensplitter", pearls=30,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -448,6 +459,7 @@ SPECIES: dict[str, CreatureSpec] = {
         MOENCHSFISCH, ORGELAAL, GLOCKENQUALLE, KORALLENWAECHTER,
         TRAMPOLINWAL, KIRCHENKRAKE,
         PFUETZENWURM, AKTENWOLF, MANEGE_CLOWN, HARZGENERAL, SPORENHERZ,
+        GLOCKENWAECHTER,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
