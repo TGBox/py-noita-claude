@@ -8,7 +8,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 
 from src import materials as mat
-from src.body import BURN_TIME, PLAYER_TEAM, Body
+from src.body import BURN_TIME, ENEMY_TEAM, PLAYER_TEAM, Body
 from src.materials import AIR, KIND, LIQUID, STOPS_PROJECTILE
 from src.spells import TIMER_DELAY, Block, Category, Trigger
 from src.wand import Shot
@@ -329,6 +329,16 @@ class ProjectileSystem:
             victim.burning = BURN_TIME
         if p.lifesteal and p.team == PLAYER_TEAM:
             self.healing += damage * p.lifesteal
+        # Card C15: Creature projectile status effects
+        if not p.from_player or p.team != PLAYER_TEAM or p.owner_species:
+            species = p.owner_species
+            target_body = getattr(victim, "body", victim)
+            if species in ("stempler", "agent_streife", "agent_sachbearbeiter", "oberstempler", "aktenwolf"):
+                target_body.stamped_bad = max(target_body.stamped_bad, 10.0)
+            elif species in ("harzspucker", "harzgeneral"):
+                target_body.sticky = max(target_body.sticky, 5.0)
+            elif species in ("orgelaal", "glockenqualle", "glockenwaechter"):
+                target_body.charged = max(target_body.charged, 4.0)
 
     def _bounce(self, p: Projectile, world: World, nx: float, ny: float) -> None:
         if p.trigger is Trigger.IMPACT and not p.released:
@@ -416,4 +426,32 @@ def update_projectiles(
     out_events: list[tuple[str, dict[str, object]]] | None = None,
 ) -> None:
     """Update projectiles and apply creature projectile status effects (Card C15)."""
-    raise NotImplementedError("Card C15")
+    system = ProjectileSystem()
+    system.items = list(projectiles)
+
+    bodies: list[Body] = []
+    player_body = getattr(player, "body", player)
+    if isinstance(player_body, Body):
+        bodies.append(player_body)
+    creatures = getattr(enemies, "creatures", [])
+    for c in creatures:
+        c_body = getattr(c, "body", c)
+        if isinstance(c_body, Body):
+            bodies.append(c_body)
+
+    for p in projectiles:
+        # If projectile has no team set explicitly or matches PLAYER_TEAM but from_player is False
+        if not p.from_player and p.team == PLAYER_TEAM:
+            p.team = ENEMY_TEAM
+
+    aim = (0.0, 0.0)
+    if hasattr(player, "aim"):
+        aim = getattr(player, "aim")
+    elif hasattr(player, "center"):
+        aim = getattr(player, "center")
+
+    system.update(world, dt, aim, bodies)
+
+    # Keep projectiles list synchronized
+    projectiles.clear()
+    projectiles.extend(system.items)
