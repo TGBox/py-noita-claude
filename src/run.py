@@ -54,7 +54,7 @@ from src.perks import PERK_BY_KEY, PERKS
 from src.player import ENERGY_RECHARGE_AIR, MAX_ENERGY, MAX_HP, Player
 from src.projectiles import Blast, ProjectileSystem
 from src.records import Records
-from src.rules import RULE_KEYS, Rule
+from src.rules import RULE_KEYS, Rule, apply_player_rules
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
 from src.spells import CATALOG
 from src.universes.catalog import BY_KEY as UNIVERSE_BY_KEY
@@ -900,6 +900,9 @@ class Run:
             self._speck_timer = SPECK_INTERVAL
             self._sweep_specks()
         self.player.update(self.world, dt, controls.move, controls.jump, controls.levitate)
+        apply_player_rules(
+            self.player, self.world, self.rule, dt, region=self._region_at(*self.player.center)
+        )
         self.rule.update(self, dt, area)
         if alive:
             self._check_trapped(dt, bool(controls.move or controls.levitate))
@@ -1610,6 +1613,40 @@ class Run:
             self.emit("bribe", species=creature.species, cost=BRIBE_COST)
             return True
         return False
+
+    def _region_at(self, x: float, y: float) -> Any:
+        """Return the Region object at world position (x, y)."""
+        regions = getattr(self.level, "regions", None)
+        if regions:
+            for region_key, (x0, y0, x1, y1) in regions:
+                if x0 <= x < x1 and y0 <= y < y1:
+                    for reg in self.universe.regions:
+                        if reg.key == region_key:
+                            return reg
+        # Fallback to thirds of the height
+        if self.universe.regions:
+            h = max(1, self.world.height)
+            index = min(
+                len(self.universe.regions) - 1, max(0, int(y / (h / len(self.universe.regions))))
+            )
+            return self.universe.regions[index]
+        return None
+
+    def _region_at(self, x: float, y: float) -> Any:
+        """Return the Region object at world position (x, y)."""
+        regions = getattr(self.level, "regions", None)
+        if regions:
+            for region_key, (x0, y0, x1, y1) in regions:
+                if x0 <= x < x1 and y0 <= y < y1:
+                    for reg in self.universe.regions:
+                        if reg.key == region_key:
+                            return reg
+        # Fallback to thirds of the height
+        if self.universe.regions:
+            h = max(1, self.world.height)
+            index = min(len(self.universe.regions) - 1, max(0, int(y / (h / len(self.universe.regions)))))
+            return self.universe.regions[index]
+        return None
 
     def enter_workshop(self) -> None:
         """Move the run into the workshop between universes (Contract V18, Card E10)."""
