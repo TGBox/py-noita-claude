@@ -222,54 +222,231 @@ def build_mid_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     return paths
 
 
-def _draw_end_boss_frame(
-    boss_key: str,
-    u_key: str,
-    offset_y: int = 0,
-    action: bool = False,
-) -> PixelCanvas:
-    pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
-    w, h = 48, 48
+# ---------------------------------------------------------------------------
+# End-Bosses & Large Creatures (Cards B17, B18, B19)
+# ---------------------------------------------------------------------------
 
-    c = PixelCanvas(w, h)
-    
-    # Large monolithic end-boss body
-    draw_shaded_rect(c, 8, 10 + offset_y, 40, 38 + offset_y, pal["primary"])
-    # Head / core chamber
-    draw_shaded_ellipse(c, 24, 18 + offset_y, 12, 10, pal["secondary"])
-    # Outer carapace / ornaments
-    draw_shaded_rect(c, 14, 8 + offset_y, 34, 14 + offset_y, pal["accent"])
-    
-    # Glow pulsating core / attack focus
+
+def _draw_weltenherz(offset_y: int = 0, beat_pulse: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["fleischwelt"]
+    # Beating heart hanging from aorta veins, dripping blood
+    # Massive aorta root tubes branching upwards
+    for ax in (16, 20, 24, 28, 32):
+        draw_shaded_rect(c, ax, 2 + offset_y, ax + 2, 12 + offset_y, pal["accent"])
+    # Two great ventricles / heart lobes forming anatomical heart shape
+    r = 13 + beat_pulse
+    draw_shaded_ellipse(c, 18, 22 + offset_y, r, r + 2, pal["primary"])
+    draw_shaded_ellipse(c, 30, 22 + offset_y, r, r + 2, pal["primary"])
+    # Heart apex pointing down
+    draw_shaded_ellipse(c, 24, 32 + offset_y, 11 + beat_pulse, 9 + beat_pulse, pal["secondary"])
+    # Pulsing glowing veins / core
     if action:
-        draw_shaded_rect(c, 18, 22 + offset_y, 30, 32 + offset_y, pal["glow"])
-        c.set_px(24, 27 + offset_y, (255, 255, 255, 255))
+        draw_shaded_rect(c, 20, 22 + offset_y, 28, 30 + offset_y, pal["glow"])
+        c.set_px(24, 26 + offset_y, (255, 255, 255, 255))
     else:
-        c.set_px(24, 18 + offset_y, pal["glow"].highlight)
+        c.set_px(24, 25 + offset_y, pal["glow"].highlight)
+    apply_dark_outline(c)
+    return c
 
+
+def _draw_oberstempler(offset_y: int = 0, arm_shift: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["aktenhalde"]
+    # Bureaucrat titan made of stacked mahogany desks, clock face, massive stamp hammer arms
+    # Clock face head on top
+    draw_shaded_ellipse(c, 24, 9 + offset_y, 8, 8, pal["accent"])
+    c.set_px(24, 9 + offset_y, (255, 215, 0, 255))  # clock center
+    c.set_px(24, 6 + offset_y, (40, 40, 40, 255))   # hands
+    c.set_px(27, 9 + offset_y, (40, 40, 40, 255))
+    # Massive stacked desk torso (wide rectangular tiered block)
+    draw_shaded_rect(c, 10, 18 + offset_y, 38, 34 + offset_y, pal["primary"])
+    # Drawers & brass handles
+    draw_shaded_rect(c, 14, 22 + offset_y, 34, 24 + offset_y, pal["secondary"])
+    c.set_px(24, 23 + offset_y, pal["glow"].highlight)
+    draw_shaded_rect(c, 14, 28 + offset_y, 34, 30 + offset_y, pal["secondary"])
+    c.set_px(24, 29 + offset_y, pal["glow"].highlight)
+    # Giant stamp arms hanging on sides
+    draw_shaded_rect(c, 4, 16 + offset_y - arm_shift, 9, 38 + offset_y - arm_shift, pal["accent"])
+    draw_shaded_rect(c, 39, 16 + offset_y + arm_shift, 44, 38 + offset_y + arm_shift, pal["accent"])
+    # Sturdy desk pedestal feet
+    draw_shaded_rect(c, 12, 35 + offset_y, 18, 43 + offset_y, pal["secondary"])
+    draw_shaded_rect(c, 30, 35 + offset_y, 36, 43 + offset_y, pal["secondary"])
+    if action:
+        draw_shaded_rect(c, 4, 36 + offset_y - arm_shift, 9, 41 + offset_y - arm_shift, pal["glow"])
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_mutter_glibber(offset_y: int = 0, ripple: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["glibbria"]
+    # Colossal gelatinous queen jelly mount with floating crown and internal embryonic blobs
+    # Golden crown floating on jelly top
+    draw_shaded_rect(c, 18, 5 + offset_y, 30, 11 + offset_y, pal["accent"])
+    c.set_px(20, 4 + offset_y, (255, 215, 0, 255))
+    c.set_px(24, 3 + offset_y, (255, 255, 255, 255))
+    c.set_px(28, 4 + offset_y, (255, 215, 0, 255))
+    # Colossal sprawling jelly mass (wide semi-dome)
+    draw_shaded_ellipse(c, 24, 28 + offset_y, 20 + ripple, 14 - ripple, pal["primary"])
+    draw_shaded_ellipse(c, 24, 24 + offset_y, 15 + ripple, 10, pal["glow"])
+    # Embryonic baby jelly floating inside
+    draw_shaded_ellipse(c, 18, 27 + offset_y, 4, 4, pal["secondary"])
+    draw_shaded_ellipse(c, 30, 27 + offset_y, 4, 4, pal["secondary"])
+    if action:
+        draw_shaded_ellipse(c, 24, 26 + offset_y, 7, 7, pal["accent"])
+        c.set_px(24, 26 + offset_y, (255, 255, 255, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_dj_myzel(offset_y: int = 0, beat_bounce: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["sporenklub"]
+    # Towering mushroom DJ behind two giant vinyl turntables and neon speaker stacks
+    # Massive mushroom cap with headphones
+    draw_shaded_ellipse(c, 24, 12 + offset_y, 17, 8, pal["primary"])
+    # DJ Headphone arc
+    draw_shaded_rect(c, 9, 7 + offset_y, 39, 10 + offset_y, pal["accent"])
+    draw_shaded_rect(c, 8, 10 + offset_y, 11, 15 + offset_y, pal["glow"])
+    draw_shaded_rect(c, 37, 10 + offset_y, 40, 15 + offset_y, pal["glow"])
+    # Stem body behind desk
+    draw_shaded_rect(c, 20, 18 + offset_y, 28, 30 + offset_y, pal["secondary"])
+    # Giant DJ mixing console / turntables in front
+    draw_shaded_rect(c, 6, 28 + offset_y, 42, 40 + offset_y, pal["primary"])
+    # Left turntable platter
+    draw_shaded_ellipse(c, 15, 34 + offset_y, 7, 4, pal["accent"])
+    c.set_px(15, 34 + offset_y, pal["glow"].highlight)
+    # Right turntable platter
+    draw_shaded_ellipse(c, 33, 34 + offset_y, 7, 4, pal["accent"])
+    c.set_px(33, 34 + offset_y, pal["glow"].highlight)
+    if action:
+        draw_shaded_rect(c, 21, 31 + offset_y, 27, 36 + offset_y, pal["glow"])
+        c.set_px(24, 33 + offset_y, (255, 255, 255, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_ameisenkoenigin(offset_y: int = 0, crawl: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["kruemelreich"]
+    # Gigantic bloated queen ant with royal crown, segmented egg-laying abdomen
+    # Royal crown on ant head
+    draw_shaded_rect(c, 31, 9 + offset_y, 40, 14 + offset_y, pal["accent"])
+    c.set_px(33, 8 + offset_y, (255, 215, 0, 255))
+    c.set_px(36, 7 + offset_y, (255, 255, 255, 255))
+    c.set_px(39, 8 + offset_y, (255, 215, 0, 255))
+    # Head & giant mandibles
+    draw_shaded_ellipse(c, 35, 18 + offset_y, 7, 6, pal["secondary"])
+    draw_shaded_rect(c, 41, 16 + offset_y, 46, 21 + offset_y, pal["accent"])
+    # Mid-body thorax
+    draw_shaded_ellipse(c, 26, 22 + offset_y, 6, 6, pal["primary"])
+    # Huge elongated egg-bloated abdomen on left
+    draw_shaded_ellipse(c, 13, 27 + offset_y, 11, 9, pal["primary"])
+    draw_shaded_ellipse(c, 13, 27 + offset_y, 7, 6, pal["glow"])
+    # Many crawling legs beneath
+    if crawl != 0:
+        draw_shaded_rect(c, 18 - crawl, 33 + offset_y, 22 - crawl, 42 + offset_y, pal["secondary"])
+        draw_shaded_rect(c, 28 + crawl, 33 + offset_y, 32 + crawl, 42 + offset_y, pal["secondary"])
+    else:
+        draw_shaded_rect(c, 19, 33 + offset_y, 31, 42 + offset_y, pal["secondary"])
+    if action:
+        draw_shaded_rect(c, 42, 17 + offset_y, 46, 20 + offset_y, pal["glow"])
+        c.set_px(45, 18 + offset_y, (255, 255, 255, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_abt_kieme(offset_y: int = 0, robe_flutter: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["abtei"]
+    # Ancient venerable fish abbot in towering papal miter on a floating stone pulpit
+    # Towering bishop/papal miter (tall pointed hat with golden cross)
+    draw_shaded_rect(c, 21, 2 + offset_y, 27, 12 + offset_y, pal["accent"])
+    c.set_px(24, 6 + offset_y, (255, 215, 0, 255))
+    c.set_px(23, 7 + offset_y, (255, 215, 0, 255))
+    c.set_px(25, 7 + offset_y, (255, 215, 0, 255))
+    # Fish abbot head with flowing white barbels and glass bowl helmet
+    draw_shaded_ellipse(c, 24, 16 + offset_y, 8, 6, pal["secondary"])
+    c.set_px(21, 15 + offset_y, pal["glow"].highlight)
+    # Towering monastic ceremonial robe with organ pipe back
+    draw_shaded_rect(c, 17 - robe_flutter, 21 + offset_y, 31 + robe_flutter, 33 + offset_y, pal["primary"])
+    for opx in (18, 22, 26, 30):
+        draw_shaded_rect(c, opx, 10 + offset_y, opx + 1, 21 + offset_y, pal["accent"])
+    # Floating pulpit base (carved stone boat/chalice)
+    draw_shaded_ellipse(c, 24, 38 + offset_y, 14, 5, pal["secondary"])
+    draw_shaded_rect(c, 14, 34 + offset_y, 34, 38 + offset_y, pal["primary"])
+    if action:
+        draw_shaded_rect(c, 22, 24 + offset_y, 26, 28 + offset_y, pal["glow"])
+        c.set_px(24, 26 + offset_y, (255, 255, 255, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_trampolinwal(offset_y: int = 0, fin_flap: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["glibbria"]
+    # Immense floating jelly whale with trampoline back and candy blowhole
+    # Giant streamlined whale body
+    draw_shaded_ellipse(c, 24, 24 + offset_y, 19, 11, pal["primary"])
+    # Trampoline taut skin on whale back
+    draw_shaded_rect(c, 12, 14 + offset_y, 36, 17 + offset_y, pal["accent"])
+    c.set_px(24, 15 + offset_y, (255, 255, 255, 255))
+    # Fluked whale tail on left
+    draw_shaded_ellipse(c, 6, 22 + offset_y - fin_flap, 4, 7, pal["secondary"])
+    # Pectoral flipper
+    draw_shaded_ellipse(c, 28, 30 + offset_y + fin_flap, 6, 4, pal["secondary"])
+    # Smiling whale eye
+    c.set_px(37, 23 + offset_y, pal["glow"].highlight)
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_kirchenkrake(offset_y: int = 0, tentacle_wave: int = 0, action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(48, 48)
+    pal = UNIVERSE_PALETTES["abtei"]
+    # Colossal abyssal kraken with cathedral bell helmet and candelabra tentacles
+    # Grand cathedral bell dome helmet
+    draw_shaded_rect(c, 16, 5 + offset_y, 32, 18 + offset_y, pal["accent"])
+    c.set_px(24, 4 + offset_y, (255, 215, 0, 255))
+    # Central cephalopod body & glowing ancient eyes
+    draw_shaded_ellipse(c, 24, 23 + offset_y, 12, 8, pal["primary"])
+    c.set_px(19, 23 + offset_y, pal["glow"].highlight)
+    c.set_px(29, 23 + offset_y, pal["glow"].highlight)
+    # Huge writhing tentacles holding lit candles
+    for i, tx in enumerate((8, 15, 24, 33, 40)):
+        shift = tentacle_wave if i % 2 == 0 else -tentacle_wave
+        draw_shaded_rect(c, tx + shift, 28 + offset_y, tx + shift + 2, 42 + offset_y, pal["secondary"])
+        # Candle flame at tip
+        c.set_px(tx + shift + 1, 27 + offset_y, (255, 200, 50, 255))
     apply_dark_outline(c)
     return c
 
 
 def build_end_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build bosse/<end_boss>.{png,json} and part sheets for all 9 end-bosses (Cards B17..B19)."""
-    end_boss_map = [
-        ("weltenherz", "fleischwelt"),
-        ("oberstempler", "aktenhalde"),
-        ("mutter_glibber", "glibbria"),
-        ("dj_myzel", "sporenklub"),
-        ("ameisenkoenigin", "kruemelreich"),
-        ("abt_kieme", "abtei"),
+    end_boss_specs = [
+        ("weltenherz", "fleischwelt", _draw_weltenherz),
+        ("oberstempler", "aktenhalde", _draw_oberstempler),
+        ("mutter_glibber", "glibbria", _draw_mutter_glibber),
+        ("dj_myzel", "sporenklub", _draw_dj_myzel),
+        ("ameisenkoenigin", "kruemelreich", _draw_ameisenkoenigin),
+        ("abt_kieme", "abtei", _draw_abt_kieme),
     ]
 
     paths: list[Path] = []
-    for boss_key, u_key in end_boss_map:
+    for boss_key, u_key, draw_fn in end_boss_specs:
         pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
-        idle = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, 1, 0, -1)]
-        walk = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, -1, 0, 1)]
-        windup = [_draw_end_boss_frame(boss_key, u_key, -1, True), _draw_end_boss_frame(boss_key, u_key, 0, True)]
-        attack = [_draw_end_boss_frame(boss_key, u_key, 1, True), _draw_end_boss_frame(boss_key, u_key, 0, False)]
-        hurt = [_draw_end_boss_frame(boss_key, u_key, 1), _draw_end_boss_frame(boss_key, u_key, 0)]
+        idle = [draw_fn(y, 0, False) for y in (0, 1, 0, -1)]
+        walk = [
+            draw_fn(0, 0, False),
+            draw_fn(-1, 3, False),
+            draw_fn(0, 0, False),
+            draw_fn(1, -3, False),
+        ]
+        windup = [draw_fn(-1, 1, True), draw_fn(0, 2, True)]
+        attack = [draw_fn(1, 3, True), draw_fn(0, 0, False)]
+        hurt = [draw_fn(1, 0, False), draw_fn(0, 0, False)]
 
         anims = {
             "idle": idle,
@@ -291,99 +468,18 @@ def build_end_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
         paths.extend([p, j])
 
     # Also build trampolinwal and kirchenkrake under kreaturen/ as tested in b19
-    for k, u_key in (("trampolinwal", "glibbria"), ("kirchenkrake", "abtei")):
+    for k, u_key, draw_fn in (
+        ("trampolinwal", "glibbria", _draw_trampolinwal),
+        ("kirchenkrake", "abtei", _draw_kirchenkrake),
+    ):
         pal = UNIVERSE_PALETTES[u_key]
-        idle = [_draw_end_boss_frame(k, u_key, y) for y in (0, 1, 0, -1)]
-        walk = [_draw_end_boss_frame(k, u_key, y) for y in (0, -1, 0, 1)]
-        anims = {"idle": idle, "walk": walk}
-        glow = [{"offset": [24, 24], "color": list(pal["glow"].highlight[:3]), "radius": 20}]
-        p, j = save_sheet(
-            "kreaturen",
-            k,
-            anims,
-            anchor=(24, 40),
-            fps={"idle": 3.0, "walk": 5.0},
-            glow=glow,
-            out_dir=out_dir,
-        )
-        paths.extend([p, j])
-
-    return paths
-
-
-def _draw_end_boss_frame(
-    boss_key: str,
-    u_key: str,
-    offset_y: int = 0,
-    action: bool = False,
-) -> PixelCanvas:
-    pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
-    w, h = 48, 48
-
-    c = PixelCanvas(w, h)
-    
-    # Large monolithic end-boss body
-    draw_shaded_rect(c, 8, 10 + offset_y, 40, 38 + offset_y, pal["primary"])
-    # Head / core chamber
-    draw_shaded_ellipse(c, 24, 18 + offset_y, 12, 10, pal["secondary"])
-    # Outer carapace / ornaments
-    draw_shaded_rect(c, 14, 8 + offset_y, 34, 14 + offset_y, pal["accent"])
-    
-    # Glow pulsating core / attack focus
-    if action:
-        draw_shaded_rect(c, 18, 22 + offset_y, 30, 32 + offset_y, pal["glow"])
-        c.set_px(24, 27 + offset_y, (255, 255, 255, 255))
-    else:
-        c.set_px(24, 18 + offset_y, pal["glow"].highlight)
-
-    apply_dark_outline(c)
-    return c
-
-
-def build_end_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
-    """Build bosse/<end_boss>.{png,json} and part sheets for all 9 end-bosses (Cards B17..B19)."""
-    end_boss_map = [
-        ("weltenherz", "fleischwelt"),
-        ("oberstempler", "aktenhalde"),
-        ("mutter_glibber", "glibbria"),
-        ("dj_myzel", "sporenklub"),
-        ("ameisenkoenigin", "kruemelreich"),
-        ("abt_kieme", "abtei"),
-    ]
-
-    paths: list[Path] = []
-    for boss_key, u_key in end_boss_map:
-        pal = UNIVERSE_PALETTES.get(u_key, UNIVERSE_PALETTES["fleischwelt"])
-        idle = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, 1, 0, -1)]
-        walk = [_draw_end_boss_frame(boss_key, u_key, y) for y in (0, -1, 0, 1)]
-        windup = [_draw_end_boss_frame(boss_key, u_key, -1, True), _draw_end_boss_frame(boss_key, u_key, 0, True)]
-        attack = [_draw_end_boss_frame(boss_key, u_key, 1, True), _draw_end_boss_frame(boss_key, u_key, 0, False)]
-        hurt = [_draw_end_boss_frame(boss_key, u_key, 1), _draw_end_boss_frame(boss_key, u_key, 0)]
-
-        anims = {
-            "idle": idle,
-            "walk": walk,
-            "windup": windup,
-            "attack": attack,
-            "hurt": hurt,
-        }
-        glow = [{"offset": [24, 24], "color": list(pal["glow"].highlight[:3]), "radius": 24}]
-        p, j = save_sheet(
-            "bosse",
-            boss_key,
-            anims,
-            anchor=(24, 40),
-            fps={"idle": 3.0, "walk": 5.0, "windup": 5.0, "attack": 7.0, "hurt": 7.0},
-            glow=glow,
-            out_dir=out_dir,
-        )
-        paths.extend([p, j])
-
-    # Also build trampolinwal and kirchenkrake under kreaturen/ as tested in b19
-    for k, u_key in (("trampolinwal", "glibbria"), ("kirchenkrake", "abtei")):
-        pal = UNIVERSE_PALETTES[u_key]
-        idle = [_draw_end_boss_frame(k, u_key, y) for y in (0, 1, 0, -1)]
-        walk = [_draw_end_boss_frame(k, u_key, y) for y in (0, -1, 0, 1)]
+        idle = [draw_fn(y, 0, False) for y in (0, 1, 0, -1)]
+        walk = [
+            draw_fn(0, 0, False),
+            draw_fn(-1, 3, False),
+            draw_fn(0, 0, False),
+            draw_fn(1, -3, False),
+        ]
         anims = {"idle": idle, "walk": walk}
         glow = [{"offset": [24, 24], "color": list(pal["glow"].highlight[:3]), "radius": 20}]
         p, j = save_sheet(
