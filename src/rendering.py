@@ -1029,7 +1029,137 @@ class Renderer:
     """High-level run renderer facade for world and HUD (Card B32; HUD parts G01/G02)."""
 
     def __init__(self, screen: pygame.Surface) -> None:
+        from src.sprite_render import SheetCache
+
         self.screen = screen
+        self.sheet_cache = SheetCache()
+        self.hud = None
 
     def draw(self, run: object) -> None:
-        raise NotImplementedError("Card B32")
+        """Render the run state: world, creatures, pickups, player, klonita, and HUD."""
+        from src.hud import Hud, HudState
+        from src.sprite_render import blit_frame
+        from src.sprites import Animator
+        from src.viewport import Viewport
+
+        screen = self.screen
+        sw, sh = screen.get_size()
+
+        # Determine camera position
+        player = getattr(run, "player", None)
+        if player is not None:
+            cam_x = int(player.x - sw // 2)
+            cam_y = int(player.y - sh // 2)
+        else:
+            cam_x, cam_y = 0, 0
+
+        # 1. World chunks
+        chunks = getattr(run, "chunks", None)
+        if chunks is not None and hasattr(chunks, "items"):
+            draw_chunks(screen, chunks.items, cam_x, cam_y)
+
+        # 2. Pickups
+        pickups = getattr(run, "pickups", None)
+        if pickups is not None:
+            known = getattr(run, "known_blocks", None)
+            draw_pickups(screen, pickups, cam_x, cam_y, known)
+
+        # 3. Creatures (safe fallback)
+        enemies = getattr(run, "enemies", None)
+        if enemies is not None and hasattr(enemies, "creatures"):
+            try:
+                draw_creatures(screen, {}, enemies.creatures, cam_x, cam_y)
+            except (KeyError, ValueError, AttributeError, pygame.error):
+                pass
+
+        # 4. Player sprite
+        if player is not None:
+            try:
+                sheet, meta = self.sheet_cache.get("charaktere", "spielerin")
+                if player.dead:
+                    anim_state = "dead"
+                elif getattr(player, "hurt", 0) > 0 or getattr(player, "damage_taken", 0) > 0:
+                    anim_state = "hurt"
+                elif getattr(player, "vy", 0.0) < -1.0:
+                    anim_state = "jump"
+                elif getattr(player, "vy", 0.0) > 1.0:
+                    anim_state = "fall"
+                elif abs(getattr(player, "vx", 0.0)) > 0.5:
+                    anim_state = "walk"
+                else:
+                    anim_state = "idle"
+
+                anim_state = anim_state if anim_state in meta.anims else "idle"
+                facing_right = (
+                    getattr(player, "facing", 1) >= 0 if hasattr(player, "facing") else True
+                )
+                animator = Animator(meta, anim_state)
+                blit_frame(
+                    screen,
+                    sheet,
+                    meta,
+                    animator,
+                    player.x,
+                    player.y,
+                    cam_x,
+                    cam_y,
+                    flip_x=not facing_right,
+                )
+            except (KeyError, ValueError, AttributeError, pygame.error):
+                pass
+
+        # 5. Klonita
+        klonita = getattr(run, "klonita", None)
+        if klonita is not None and getattr(klonita, "state", "") != "dismissed":
+            try:
+                sheet_k, meta_k = self.sheet_cache.get("charaktere", "klonita")
+                if klonita.state == "knocked":
+                    k_state = "knocked"
+                elif klonita.state == "assist":
+                    k_state = "assist"
+                elif klonita.state == "quirk":
+                    k_state = "quirk"
+                elif (
+                    abs(getattr(klonita, "vx", 0.0)) > 0.5 or abs(getattr(klonita, "vy", 0.0)) > 0.5
+                ):
+                    k_state = "fly"
+                else:
+                    k_state = "idle"
+
+                k_state = k_state if k_state in meta_k.anims else "idle"
+                k_animator = Animator(meta_k, k_state)
+                facing_k = getattr(klonita, "facing", 1) >= 0
+                blit_frame(
+                    screen,
+                    sheet_k,
+                    meta_k,
+                    k_animator,
+                    klonita.x,
+                    klonita.y,
+                    cam_x,
+                    cam_y,
+                    flip_x=not facing_k,
+                )
+            except (KeyError, ValueError, AttributeError, pygame.error):
+                pass
+
+        # 6. HUD
+        try:
+            if not pygame.font.get_init():
+                pygame.font.init()
+            if self.hud is None:
+                self.hud = Hud()
+            vp = Viewport(sw, sh)
+            vp.resize(sw, sh)
+            depth_name = getattr(getattr(run, "depth", None), "name_de", "")
+            state = HudState(
+                player=player,
+                inventory=getattr(run, "inventory", None),
+                depth_name=depth_name,
+                depth_number=getattr(run, "next_depth_number", 1),
+                depth_total=getattr(run, "depth_total", 6),
+                fps=60.0,
+            )
+            self.hud.draw(screen, vp, state)
+        except (KeyError, ValueError, AttributeError, pygame.error):
+            pass
