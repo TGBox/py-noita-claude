@@ -70,9 +70,51 @@ def build_player_sheet(out_dir: Path = ASSET_ROOT) -> list[Path]:
     return [png_path, json_path]
 
 
+def _draw_klonita_frame(offset_y: int = 0, lantern_wave: int = 0) -> PixelCanvas:
+    c = PixelCanvas(18, 22)
+    pal = ENTITY_PALETTES["klonita"]
+    # Floating hem robe
+    draw_shaded_rect(c, 3, 9 + offset_y, 14, 19 + offset_y, pal["primary"])
+    # Head
+    draw_shaded_ellipse(c, 9, 6 + offset_y, 4, 4, pal["secondary"])
+    # Crooked witch hat
+    draw_shaded_rect(c, 2, 4 + offset_y, 15, 6 + offset_y, pal["secondary"])
+    draw_shaded_rect(
+        c, 5 + lantern_wave, 1 + offset_y, 11 + lantern_wave, 4 + offset_y, pal["primary"]
+    )
+    # Purple glowing lantern
+    draw_shaded_rect(c, 12, 11 + offset_y, 16, 15 + offset_y, pal["accent"])
+    c.set_px(14, 13 + offset_y, (200, 100, 255, 255))
+    apply_dark_outline(c)
+    return c
+
+
 def build_klonita_sheet(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build charaktere/klonita.{png,json} (Card B02)."""
-    raise NotImplementedError("Card B02")
+    idle_frames = [_draw_klonita_frame(y, w) for y, w in ((0, 0), (-1, 1), (0, 0), (1, -1))]
+    fly_frames = [_draw_klonita_frame(y, 0) for y in (-1, -2, -1, 0)]
+    assist_frames = [_draw_klonita_frame(0, w) for w in (1, 2, 1)]
+    quirk_frames = [_draw_klonita_frame(y, w) for y, w in ((0, -1), (1, -2), (0, 0))]
+    knocked_frames = [_draw_klonita_frame(2, -1), _draw_klonita_frame(3, 0)]
+
+    anims = {
+        "idle": idle_frames,
+        "fly": fly_frames,
+        "assist": assist_frames,
+        "quirk": quirk_frames,
+        "knocked": knocked_frames,
+    }
+    glow = [{"offset": [14, 13], "color": [200, 100, 255], "radius": 14}]
+    png_path, json_path = save_sheet(
+        "charaktere",
+        "klonita",
+        anims,
+        anchor=(9, 20),
+        fps={"idle": 5.0, "fly": 8.0, "assist": 8.0, "quirk": 6.0, "knocked": 6.0},
+        glow=glow,
+        out_dir=out_dir,
+    )
+    return [png_path, json_path]
 
 
 def build_agent_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
