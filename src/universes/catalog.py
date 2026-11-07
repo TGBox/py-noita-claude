@@ -111,7 +111,7 @@ UNIVERSES: tuple[Universe, ...] = (
     Universe(
         "sporenklub", "Sporenklub",
         "Die Party läuft seit 400 Jahren. Die Pilze wollen nicht, dass sie aufhört.",
-        rule="rule_beat", shape="quadrat", ambient=0.15, material_set="koerper",
+        rule="rule_beat", shape="quadrat", ambient=0.15, material_set="sporenklub",
         regions=(
             Region("lautsprechertuerme", "Lautsprechertürme"), Region("tanzflaeche", "Tanzfläche"),
             Region("hinterzimmer", "Hinterzimmer"),
