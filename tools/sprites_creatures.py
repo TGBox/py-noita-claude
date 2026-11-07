@@ -104,6 +104,8 @@ def build_creature_sheets(
                 anims["dig"] = [_draw_creature_frame(species, u_key, 1, True), _draw_creature_frame(species, u_key, 2, True)]
             elif species == "stempler":
                 anims["stamp"] = [_draw_creature_frame(species, u_key, -2, True), _draw_creature_frame(species, u_key, 2, True)]
+            elif species == "orgelaal":
+                anims["swim"] = [_draw_creature_frame(species, u_key, y) for y in (-1, 0, 1, 0)]
 
             first = idle_frames[0]
             anchor = (first.width // 2, first.height - 2)
