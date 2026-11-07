@@ -534,28 +534,41 @@ def _draw_harzspucker(offset_y: int = 0, amber_glow: bool = False, recoil: int =
 
 
 def _draw_huepfling(offset_y: int = 0, squash: int = 0) -> PixelCanvas:
-    c = PixelCanvas(16, 16)
+    c = PixelCanvas(12, 16)
     pal = UNIVERSE_PALETTES["glibbria"]
-    # Round bouncy glassy jelly ball
-    draw_shaded_ellipse(c, 8, 8 + offset_y + squash, 5 + squash, 5 - squash, pal["glow"])
+    # Pointy teardrop / cone jelly drop
+    # Top tip
+    c.set_px(6, 2 + offset_y + squash, pal["glow"].highlight)
+    draw_shaded_rect(c, 5, 3 + offset_y + squash, 7, 5 + offset_y + squash, pal["glow"])
+    # Wider base
+    draw_shaded_ellipse(c, 6, 9 + offset_y + squash, 5 + squash, 5 - squash, pal["glow"])
     # Big googly eyes & dimpled smile
-    c.set_px(6, 6 + offset_y + squash, (40, 40, 40, 255))
-    c.set_px(10, 6 + offset_y + squash, (40, 40, 40, 255))
+    c.set_px(5, 7 + offset_y + squash, (40, 40, 40, 255))
+    c.set_px(7, 7 + offset_y + squash, (40, 40, 40, 255))
     # Strawberry floating inside
-    c.set_px(8, 9 + offset_y + squash, (220, 30, 30, 255))
+    c.set_px(6, 10 + offset_y + squash, (220, 30, 30, 255))
     apply_dark_outline(c)
     return c
 
 
-def _draw_glibberteiler(offset_y: int = 0, shake: int = 0) -> PixelCanvas:
-    c = PixelCanvas(20, 16)
+def _draw_glibberteiler(offset_y: int = 0, split_gap: int = 0) -> PixelCanvas:
+    c = PixelCanvas(22, 14)
     pal = UNIVERSE_PALETTES["glibbria"]
-    # Angry red-green jelly blob with small teeth & angry brows
-    draw_shaded_ellipse(c, 10, 8 + offset_y, 7, 5, pal["primary"])
-    # Angry eyebrows & small teeth
-    draw_shaded_rect(c, 6 + shake, 5 + offset_y, 14 + shake, 7 + offset_y, pal["accent"])
-    c.set_px(8, 9 + offset_y, (255, 255, 255, 255))
-    c.set_px(12, 9 + offset_y, (255, 255, 255, 255))
+    # Wide rectangular/trapezoid split jelly cube with angry brow
+    if split_gap > 0:
+        # Left blob
+        draw_shaded_rect(c, 2 - split_gap // 2, 4 + offset_y, 8 - split_gap // 2, 11 + offset_y, pal["primary"])
+        c.set_px(5 - split_gap // 2, 6 + offset_y, (255, 255, 255, 255))
+        # Right blob
+        draw_shaded_rect(c, 13 + split_gap // 2, 4 + offset_y, 19 + split_gap // 2, 11 + offset_y, pal["primary"])
+        c.set_px(16 + split_gap // 2, 6 + offset_y, (255, 255, 255, 255))
+    else:
+        # Wide flat brick shape
+        draw_shaded_rect(c, 3, 4 + offset_y, 19, 12 + offset_y, pal["primary"])
+        # Angry eyebrows & small teeth
+        draw_shaded_rect(c, 7, 5 + offset_y, 15, 7 + offset_y, pal["accent"])
+        c.set_px(7, 8 + offset_y, (255, 255, 255, 255))
+        c.set_px(14, 8 + offset_y, (255, 255, 255, 255))
     apply_dark_outline(c)
     return c
 
