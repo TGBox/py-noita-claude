@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.sprite_render import ASSET_ROOT
-from tools.palette import ENTITY_PALETTES
+from tools.palette import ENTITY_PALETTES, UNIVERSE_PALETTES
 from tools.sprites import (
     PixelCanvas,
     apply_dark_outline,
@@ -662,61 +662,277 @@ def build_evil_and_hq_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     return paths
 
 
+def _draw_magenhaendler_frame(offset_y: int = 0, tentacle_wave: int = 0) -> PixelCanvas:
+    c = PixelCanvas(22, 24)
+    pal = UNIVERSE_PALETTES["fleischwelt"]
+    # Walking stomach body (round sack shape)
+    draw_shaded_ellipse(c, 11, 14 + offset_y, 8, 7, pal["primary"])
+    # Melone (bowler hat) on top
+    draw_shaded_rect(c, 6, 5 + offset_y, 16, 7 + offset_y, pal["secondary"])
+    draw_shaded_rect(c, 8, 2 + offset_y, 14, 5 + offset_y, pal["secondary"])
+    # Golden monokel
+    c.set_px(14, 10 + offset_y, (255, 215, 0, 255))
+    c.set_px(15, 10 + offset_y, (255, 215, 0, 255))
+    # Tentacle arms holding wares
+    draw_shaded_rect(
+        c,
+        max(1, 2 + tentacle_wave),
+        13 + offset_y,
+        min(6, 5 + tentacle_wave),
+        18 + offset_y,
+        pal["accent"],
+    )
+    draw_shaded_rect(
+        c,
+        max(16, 17 - tentacle_wave),
+        13 + offset_y,
+        min(21, 20 - tentacle_wave),
+        18 + offset_y,
+        pal["glow"],
+    )
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_sachbearbeiterin_frame(offset_y: int = 0, arm_action: int = 0) -> PixelCanvas:
+    c = PixelCanvas(18, 26)
+    pal = UNIVERSE_PALETTES["aktenhalde"]
+    # Angular upright file folder body (rectangular tall silhouette)
+    draw_shaded_rect(c, 3, 6 + offset_y, 15, 22 + offset_y, pal["primary"])
+    # Spine label & tab on top right
+    draw_shaded_rect(c, 10, 3 + offset_y, 14, 6 + offset_y, pal["secondary"])
+    # Big glasses on folder
+    draw_shaded_rect(c, 5, 9 + offset_y, 13, 11 + offset_y, pal["glow"])
+    c.set_px(6, 10 + offset_y, (50, 50, 50, 255))
+    c.set_px(12, 10 + offset_y, (50, 50, 50, 255))
+    # Stamp hand / sleeve protector on arm
+    draw_shaded_rect(
+        c, 13, 15 + offset_y + arm_action, 17, 19 + offset_y + arm_action, pal["accent"]
+    )
+    c.set_px(15, 18 + offset_y + arm_action, (220, 50, 50, 255))  # red stamp pad
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_glibberhaendler_frame(offset_y: int = 0, squash: int = 0) -> PixelCanvas:
+    c = PixelCanvas(26, 18)
+    pal = UNIVERSE_PALETTES["glibbria"]
+    # Very wide flat green jelly cube (low aspect ratio: width 20, height 9)
+    draw_shaded_rect(
+        c, 2 - squash, 7 + offset_y + squash, 24 + squash, 16 + offset_y, pal["primary"]
+    )
+    # Wide straw hat with brim sticking far out
+    draw_shaded_rect(c, 1, 4 + offset_y + squash, 25, 6 + offset_y + squash, pal["secondary"])
+    draw_shaded_rect(c, 9, 2 + offset_y + squash, 17, 4 + offset_y + squash, pal["glow"])
+    # Items floating inside jelly
+    draw_shaded_rect(c, 6, 9 + offset_y, 10, 12 + offset_y, pal["accent"])
+    draw_shaded_rect(c, 15, 10 + offset_y, 19, 13 + offset_y, pal["secondary"])
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_ameisenhehler_frame(offset_y: int = 0, coat_open: int = 0) -> PixelCanvas:
+    c = PixelCanvas(22, 24)
+    pal = UNIVERSE_PALETTES["kruemelreich"]
+    # Trenchcoat ant body
+    draw_shaded_rect(c, 6 - coat_open, 10 + offset_y, 16 + coat_open, 21 + offset_y, pal["primary"])
+    # Ant head with long antennae
+    draw_shaded_ellipse(c, 11, 6 + offset_y, 4, 3, pal["secondary"])
+    c.set_px(8, 2 + offset_y, pal["secondary"].shadow)
+    c.set_px(14, 2 + offset_y, pal["secondary"].shadow)
+    # Cool sunglasses
+    draw_shaded_rect(c, 8, 5 + offset_y, 14, 7 + offset_y, pal["secondary"])
+    c.set_px(9, 6 + offset_y, (18, 14, 24, 255))
+    c.set_px(13, 6 + offset_y, (18, 14, 24, 255))
+    # Stolen wares inside coat
+    if coat_open > 0:
+        draw_shaded_rect(c, 8, 12 + offset_y, 14, 18 + offset_y, pal["glow"])
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_dj_frame(offset_y: int = 0, headphone_bounce: int = 0) -> PixelCanvas:
+    c = PixelCanvas(24, 24)
+    pal = UNIVERSE_PALETTES["sporenklub"]
+    # Mushroom cap with glowing lamellae (wide hemispherical top)
+    draw_shaded_ellipse(c, 12, 7 + offset_y, 10, 5, pal["primary"])
+    # Glowing neon lamellae underneath
+    draw_shaded_rect(c, 5, 10 + offset_y, 19, 12 + offset_y, pal["glow"])
+    # Stem body
+    draw_shaded_rect(c, 9, 12 + offset_y, 15, 21 + offset_y, pal["secondary"])
+    # Big over-ear DJ headphones on cap
+    draw_shaded_rect(
+        c, 3, 5 + offset_y + headphone_bounce, 6, 11 + offset_y + headphone_bounce, pal["accent"]
+    )
+    draw_shaded_rect(
+        c, 18, 5 + offset_y + headphone_bounce, 21, 11 + offset_y + headphone_bounce, pal["accent"]
+    )
+    draw_shaded_rect(
+        c, 5, 2 + offset_y + headphone_bounce, 19, 4 + offset_y + headphone_bounce, pal["accent"]
+    )
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_kuester_frame(offset_y: int = 0, staff_sway: int = 0) -> PixelCanvas:
+    c = PixelCanvas(22, 28)
+    pal = UNIVERSE_PALETTES["abtei"]
+    # Long flowing monk robe for fish body (high vertical shape)
+    draw_shaded_rect(c, 5, 12 + offset_y, 17, 26 + offset_y, pal["primary"])
+    # Big round glass diving helmet / bowl with fish inside (spherical top)
+    draw_shaded_ellipse(c, 11, 7 + offset_y, 6, 6, pal["glow"])
+    # Fish face inside glass
+    c.set_px(11, 7 + offset_y, (255, 160, 50, 255))
+    c.set_px(13, 6 + offset_y, (255, 255, 255, 255))
+    # Fish tail fin sticking out of robe on left
+    draw_shaded_rect(c, 1, 16 + offset_y, 5, 21 + offset_y, pal["secondary"])
+    # Holy blessing staff high on right
+    draw_shaded_rect(
+        c, 18 + staff_sway, 2 + offset_y, 20 + staff_sway, 24 + offset_y, pal["accent"]
+    )
+    c.set_px(19 + staff_sway, 1 + offset_y, (255, 215, 0, 255))
+    apply_dark_outline(c)
+    return c
+
+
 def build_trader_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build charaktere/npc_*.{png,json} (Card B05)."""
-    from tools.palette import UNIVERSE_PALETTES
-
     paths: list[Path] = []
 
-    # Map trader to respective universe palette
-    trader_map = [
-        ("npc_magenhaendler", "fleischwelt"),
-        ("npc_sachbearbeiterin", "aktenhalde"),
-        ("npc_glibberhaendler", "glibbria"),
-        ("npc_ameisenhehler", "kruemelreich"),
-        ("npc_dj", "sporenklub"),
-        ("npc_kuester", "abtei"),
-    ]
+    # 1. npc_magenhaendler
+    pal_m = UNIVERSE_PALETTES["fleischwelt"]
+    m_anims = {
+        "idle": [_draw_magenhaendler_frame(y, 0) for y in (0, 1, 0, -1)],
+        "talk": [
+            _draw_magenhaendler_frame(0, 1),
+            _draw_magenhaendler_frame(-1, 2),
+            _draw_magenhaendler_frame(0, 0),
+        ],
+        "offer": [_draw_magenhaendler_frame(0, 2), _draw_magenhaendler_frame(-1, 2)],
+        "hurt": [_draw_magenhaendler_frame(1, 0), _draw_magenhaendler_frame(0, 0)],
+    }
+    glow_m = [{"offset": [18, 15], "color": list(pal_m["glow"].highlight[:3]), "radius": 10}]
+    p, j = save_sheet(
+        "charaktere",
+        "npc_magenhaendler",
+        m_anims,
+        anchor=(11, 22),
+        fps={"idle": 4.0, "talk": 8.0, "offer": 6.0, "hurt": 8.0},
+        glow=glow_m,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
 
-    for trader_name, u_key in trader_map:
-        pal = UNIVERSE_PALETTES[u_key]
+    # 2. npc_sachbearbeiterin
+    pal_s = UNIVERSE_PALETTES["aktenhalde"]
+    s_anims = {
+        "idle": [_draw_sachbearbeiterin_frame(y, 0) for y in (0, 1, 0, -1)],
+        "talk": [
+            _draw_sachbearbeiterin_frame(0, 1),
+            _draw_sachbearbeiterin_frame(-1, 2),
+            _draw_sachbearbeiterin_frame(0, 0),
+        ],
+        "offer": [_draw_sachbearbeiterin_frame(0, 2), _draw_sachbearbeiterin_frame(-1, 2)],
+        "hurt": [_draw_sachbearbeiterin_frame(1, 0), _draw_sachbearbeiterin_frame(0, 0)],
+    }
+    glow_s = [{"offset": [9, 10], "color": list(pal_s["glow"].highlight[:3]), "radius": 10}]
+    p, j = save_sheet(
+        "charaktere",
+        "npc_sachbearbeiterin",
+        s_anims,
+        anchor=(9, 23),
+        fps={"idle": 4.0, "talk": 8.0, "offer": 6.0, "hurt": 8.0},
+        glow=glow_s,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
 
-        def _draw_trader_frame(offset_y: int = 0, item_active: bool = False, p=pal) -> PixelCanvas:
-            c = PixelCanvas(20, 24)
-            # Body / robe / stall keeper
-            draw_shaded_rect(c, 4, 10 + offset_y, 16, 21, p["primary"])
-            # Head / hood / hat
-            draw_shaded_ellipse(c, 10, 6 + offset_y, 5, 5, p["secondary"])
-            # Face / eyes / feature
-            draw_shaded_rect(c, 8, 6 + offset_y, 12, 8 + offset_y, p["accent"])
-            # Wares / hands holding item
-            draw_shaded_rect(c, 6, 13 + offset_y, 14, 16 + offset_y, p["glow"])
-            if item_active:
-                c.set_px(10, 14 + offset_y, (255, 255, 255, 255))
-            else:
-                c.set_px(10, 14 + offset_y, p["secondary"].mid)
-            apply_dark_outline(c)
-            return c
+    # 3. npc_glibberhaendler
+    pal_g = UNIVERSE_PALETTES["glibbria"]
+    g_anims = {
+        "idle": [_draw_glibberhaendler_frame(y, 0) for y in (0, 1, 0, -1)],
+        "talk": [
+            _draw_glibberhaendler_frame(0, 1),
+            _draw_glibberhaendler_frame(-1, 2),
+            _draw_glibberhaendler_frame(0, 0),
+        ],
+        "offer": [_draw_glibberhaendler_frame(0, 2), _draw_glibberhaendler_frame(-1, 2)],
+        "hurt": [_draw_glibberhaendler_frame(1, 0), _draw_glibberhaendler_frame(0, 0)],
+    }
+    glow_g = [{"offset": [12, 10], "color": list(pal_g["glow"].highlight[:3]), "radius": 10}]
+    p, j = save_sheet(
+        "charaktere",
+        "npc_glibberhaendler",
+        g_anims,
+        anchor=(12, 18),
+        fps={"idle": 4.0, "talk": 8.0, "offer": 6.0, "hurt": 8.0},
+        glow=glow_g,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
 
-        idle_frames = [_draw_trader_frame(y) for y in (0, 1, 0, -1)]
-        talk_frames = [_draw_trader_frame(y, True) for y in (0, -1, 0, 1)]
-        offer_frames = [_draw_trader_frame(0, True), _draw_trader_frame(-1, True)]
+    # 4. npc_ameisenhehler
+    pal_a = UNIVERSE_PALETTES["kruemelreich"]
+    a_anims = {
+        "idle": [_draw_ameisenhehler_frame(y, 0) for y in (0, 1, 0, -1)],
+        "talk": [
+            _draw_ameisenhehler_frame(0, 1),
+            _draw_ameisenhehler_frame(-1, 2),
+            _draw_ameisenhehler_frame(0, 0),
+        ],
+        "offer": [_draw_ameisenhehler_frame(0, 2), _draw_ameisenhehler_frame(-1, 2)],
+        "hurt": [_draw_ameisenhehler_frame(1, 0), _draw_ameisenhehler_frame(0, 0)],
+    }
+    glow_a = [{"offset": [11, 14], "color": list(pal_a["glow"].highlight[:3]), "radius": 10}]
+    p, j = save_sheet(
+        "charaktere",
+        "npc_ameisenhehler",
+        a_anims,
+        anchor=(11, 22),
+        fps={"idle": 4.0, "talk": 8.0, "offer": 6.0, "hurt": 8.0},
+        glow=glow_a,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
 
-        anims = {
-            "idle": idle_frames,
-            "talk": talk_frames,
-            "offer": offer_frames,
-        }
-        glow = [{"offset": [10, 14], "color": list(pal["glow"].highlight[:3]), "radius": 10}]
-        p_path, j_path = save_sheet(
-            "charaktere",
-            trader_name,
-            anims,
-            anchor=(10, 22),
-            fps={"idle": 4.0, "talk": 8.0, "offer": 6.0},
-            glow=glow,
-            out_dir=out_dir,
-        )
-        paths.extend([p_path, j_path])
+    # 5. npc_dj
+    pal_d = UNIVERSE_PALETTES["sporenklub"]
+    d_anims = {
+        "idle": [_draw_dj_frame(y, 0) for y in (0, 1, 0, -1)],
+        "talk": [_draw_dj_frame(0, 1), _draw_dj_frame(-1, 2), _draw_dj_frame(0, 0)],
+        "offer": [_draw_dj_frame(0, 2), _draw_dj_frame(-1, 2)],
+        "hurt": [_draw_dj_frame(1, 0), _draw_dj_frame(0, 0)],
+    }
+    glow_d = [{"offset": [12, 11], "color": list(pal_d["glow"].highlight[:3]), "radius": 12}]
+    p, j = save_sheet(
+        "charaktere",
+        "npc_dj",
+        d_anims,
+        anchor=(12, 22),
+        fps={"idle": 4.0, "talk": 8.0, "offer": 6.0, "hurt": 8.0},
+        glow=glow_d,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
+
+    # 6. npc_kuester
+    pal_k = UNIVERSE_PALETTES["abtei"]
+    k_anims = {
+        "idle": [_draw_kuester_frame(y, 0) for y in (0, 1, 0, -1)],
+        "talk": [_draw_kuester_frame(0, 1), _draw_kuester_frame(-1, 2), _draw_kuester_frame(0, 0)],
+        "offer": [_draw_kuester_frame(0, 2), _draw_kuester_frame(-1, 2)],
+        "hurt": [_draw_kuester_frame(1, 0), _draw_kuester_frame(0, 0)],
+    }
+    glow_k = [{"offset": [10, 6], "color": list(pal_k["glow"].highlight[:3]), "radius": 10}]
+    p, j = save_sheet(
+        "charaktere",
+        "npc_kuester",
+        k_anims,
+        anchor=(10, 24),
+        fps={"idle": 4.0, "talk": 8.0, "offer": 6.0, "hurt": 8.0},
+        glow=glow_k,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
 
     return paths
