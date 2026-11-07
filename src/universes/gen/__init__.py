@@ -9,13 +9,16 @@ from typing import TYPE_CHECKING
 
 from src import materials as mat
 from src.universes.gen import common
+from src.universes.gen.aktenhalde import generate_aktenhalde
 from src.worldgen import Level
 
 if TYPE_CHECKING:
     from src.universes.model import Universe
     from src.world import World
 
-GENERATORS: dict[str, Callable[[World, Universe, int, int], Level]] = {}
+GENERATORS: dict[str, Callable[[World, Universe, int, int], Level]] = {
+    "aktenhalde": generate_aktenhalde,
+}
 
 SHAPE_TOPOLOGY = {
     "breit": "horizontal",
