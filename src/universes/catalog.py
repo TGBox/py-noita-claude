@@ -128,7 +128,7 @@ UNIVERSES: tuple[Universe, ...] = (
     Universe(
         "abtei", "Versunkene Abtei",
         "Die Mönche haben ein Schweigegelübde abgelegt. Dann haben sie Kiemen bekommen.",
-        rule="rule_flooded", shape="hoch", ambient=0.35, material_set="koerper",
+        rule="rule_flooded", shape="hoch", ambient=0.35, material_set="abtei",
         regions=(
             Region("glockenturm", "Glockenturm"), Region("kirchenschiff", "Kirchenschiff"),
             Region("krypta", "Krypta", (("ambient", 0.15), ("current_vx", 28.0))),
