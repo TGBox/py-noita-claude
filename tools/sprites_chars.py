@@ -105,11 +105,17 @@ def build_player_sheet(out_dir: Path = ASSET_ROOT) -> list[Path]:
     return [png_path, json_path]
 
 
-def _draw_klonita_frame(offset_y: int = 0, lantern_wave: int = 0) -> PixelCanvas:
+def _draw_klonita_frame(
+    offset_y: int = 0,
+    lantern_wave: int = 0,
+    hem_flutter: int = 0,
+) -> PixelCanvas:
     c = PixelCanvas(18, 22)
     pal = ENTITY_PALETTES["klonita"]
-    # Floating hem robe
-    draw_shaded_rect(c, 3, 9 + offset_y, 14, 19 + offset_y, pal["primary"])
+    # Floating hem robe with flutter
+    x1 = max(1, 3 - hem_flutter)
+    x2 = min(17, 14 + hem_flutter)
+    draw_shaded_rect(c, x1, 9 + offset_y, x2, 19 + offset_y, pal["primary"])
     # Head
     draw_shaded_ellipse(c, 9, 6 + offset_y, 4, 4, pal["secondary"])
     # Crooked witch hat
@@ -126,8 +132,13 @@ def _draw_klonita_frame(offset_y: int = 0, lantern_wave: int = 0) -> PixelCanvas
 
 def build_klonita_sheet(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build charaktere/klonita.{png,json} (Card B02)."""
-    idle_frames = [_draw_klonita_frame(y, w) for y, w in ((0, 0), (-1, 1), (0, 0), (1, -1))]
-    fly_frames = [_draw_klonita_frame(y, 0) for y in (-1, -2, -1, 0)]
+    idle_frames = [_draw_klonita_frame(y, w, 0) for y, w in ((0, 0), (-1, 1), (0, 0), (1, -1))]
+    fly_frames = [
+        _draw_klonita_frame(0, 0, 0),
+        _draw_klonita_frame(-2, 1, 3),
+        _draw_klonita_frame(-1, 0, 0),
+        _draw_klonita_frame(0, -1, -2),
+    ]
     assist_frames = [_draw_klonita_frame(0, w) for w in (1, 2, 1)]
     quirk_frames = [_draw_klonita_frame(y, w) for y, w in ((0, -1), (1, -2), (0, 0))]
     knocked_frames = [_draw_klonita_frame(2, -1), _draw_klonita_frame(3, 0)]
