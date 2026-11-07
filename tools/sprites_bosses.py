@@ -89,24 +89,25 @@ def _draw_manege_clown(offset_y: int = 0, jiggle: int = 0, honk: bool = False) -
     return c
 
 
-def _draw_harzgeneral(offset_y: int = 0, claw_open: int = 0, leg_stride: int = 0) -> PixelCanvas:
+def _draw_harzgeneral(offset_y: int = 0, leg_stride: int = 0, claw_open: bool = False) -> PixelCanvas:
     c = PixelCanvas(32, 30)
     pal = UNIVERSE_PALETTES["kruemelreich"]
     # Heavy armored ant commander with golden epaulets and huge resin cannon claw
     # Torso & abdomen
-    draw_shaded_ellipse(c, 11, 17 + offset_y, 7, 6, pal["primary"])
-    draw_shaded_ellipse(c, 21, 15 + offset_y, 6, 6, pal["primary"])
+    draw_shaded_ellipse(c, 11, 16 + offset_y, 7, 5, pal["primary"])
+    draw_shaded_ellipse(c, 21, 14 + offset_y, 6, 5, pal["primary"])
     # Pickelhaube / bicorne general hat
     draw_shaded_rect(c, 16, 4 + offset_y, 27, 9 + offset_y, pal["secondary"])
     c.set_px(21, 3 + offset_y, (255, 215, 0, 255))
     # Giant amber resin claw
-    draw_shaded_rect(c, 22, 12 + offset_y - claw_open, 29, 18 + offset_y + claw_open, pal["glow"])
-    # Sturdy legs
+    claw_shift = 2 if claw_open else 0
+    draw_shaded_rect(c, 22, 11 + offset_y - claw_shift, 29, 17 + offset_y + claw_shift, pal["glow"])
+    # Sturdy legs with noticeable stride width
     if leg_stride != 0:
-        draw_shaded_rect(c, max(1, 5 - leg_stride), 23 + offset_y, min(30, 9 - leg_stride), 28 + offset_y, pal["accent"])
-        draw_shaded_rect(c, max(1, 15 + leg_stride), 23 + offset_y, min(30, 19 + leg_stride), 28 + offset_y, pal["accent"])
+        draw_shaded_rect(c, max(1, 2 - leg_stride), 22 + offset_y, min(30, 6 - leg_stride), 28 + offset_y, pal["accent"])
+        draw_shaded_rect(c, max(1, 18 + leg_stride), 22 + offset_y, min(30, 22 + leg_stride), 28 + offset_y, pal["accent"])
     else:
-        draw_shaded_rect(c, 7, 23 + offset_y, 18, 28 + offset_y, pal["accent"])
+        draw_shaded_rect(c, 6, 22 + offset_y, 18, 28 + offset_y, pal["accent"])
     apply_dark_outline(c)
     return c
 
@@ -140,8 +141,8 @@ def _draw_glockenwaechter(offset_y: int = 0, swing: int = 0, clapper_strike: boo
     draw_shaded_rect(c, 7 + swing, 7 + offset_y, 23 + swing, 22 + offset_y, pal["primary"])
     draw_shaded_ellipse(c, 15 + swing, 22 + offset_y, 8, 3, pal["accent"])
     # Dangling clapper & glowing rune
-    clapper_x = 15 + swing + (2 if clapper_strike else -2)
-    draw_shaded_rect(c, clapper_x - 1, 23 + offset_y, clapper_x + 1, 28 + offset_y, pal["glow"])
+    clapper_x = 15 + swing * 2 + (2 if clapper_strike else -2)
+    draw_shaded_rect(c, max(1, clapper_x - 1), 23 + offset_y, min(28, clapper_x + 2), 28 + offset_y, pal["glow"])
     if clapper_strike:
         c.set_px(clapper_x, 27 + offset_y, (255, 255, 200, 255))
     apply_dark_outline(c)
