@@ -257,7 +257,92 @@ def build_agent_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
 
 def build_evil_and_hq_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build charaktere/boese_* and ober_cloita sheets (Card B04)."""
-    raise NotImplementedError("Card B04")
+    paths: list[Path] = []
+
+    # 1. Evil selves: boese_kaiserin, boese_gute, boese_omega
+    # Use palette keys evil_kaiserin, evil_gute, evil_omega with player frame shape but darker/distorted
+    evil_configs = [
+        ("boese_kaiserin", "evil_kaiserin", (220, 50, 50)),
+        ("boese_gute", "evil_gute", (50, 220, 50)),
+        ("boese_omega", "evil_omega", (220, 220, 50)),
+    ]
+
+    for sheet_name, pal_key, glow_col in evil_configs:
+        idle_frames = [_draw_char_frame(pal_key, y) for y in (0, 1, 0, -1)]
+        walk_frames = [_draw_char_frame(pal_key, y) for y in (0, -1, 0, 1, 0, -1)]
+        jump_frames = [_draw_char_frame(pal_key, -2), _draw_char_frame(pal_key, -1)]
+        fall_frames = [_draw_char_frame(pal_key, 1), _draw_char_frame(pal_key, 2)]
+        cast_frames = [
+            _draw_char_frame(pal_key, cast_arm=True),
+            _draw_char_frame(pal_key, -1, cast_arm=True),
+            _draw_char_frame(pal_key, cast_arm=True),
+        ]
+        hurt_frames = [_draw_char_frame(pal_key, 1), _draw_char_frame(pal_key, 0)]
+        dead_frames = [_draw_char_frame(pal_key, 3)]
+
+        anims = {
+            "idle": idle_frames,
+            "walk": walk_frames,
+            "jump": jump_frames,
+            "fall": fall_frames,
+            "cast": cast_frames,
+            "hurt": hurt_frames,
+            "dead": dead_frames,
+        }
+        glow = [{"offset": [14, 12], "color": list(glow_col), "radius": 12}]
+        p, j = save_sheet(
+            "charaktere",
+            sheet_name,
+            anims,
+            anchor=(10, 22),
+            fps={"idle": 6.0, "walk": 8.0, "jump": 6.0, "fall": 6.0, "cast": 10.0, "hurt": 8.0, "dead": 1.0},
+            glow=glow,
+            out_dir=out_dir,
+        )
+        paths.extend([p, j])
+
+    # 2. ober_cloita: Evil/bureaucratic Klonita variant
+    pal_hq = ENTITY_PALETTES["ober_cloita"]
+    def _draw_cloita_frame(offset_y: int = 0, staff_rot: int = 0) -> PixelCanvas:
+        c = PixelCanvas(20, 24)
+        # Bureaucratic dark robe
+        draw_shaded_rect(c, 4, 10 + offset_y, 16, 21, pal_hq["primary"])
+        # Head / veil
+        draw_shaded_ellipse(c, 10, 6 + offset_y, 5, 5, pal_hq["secondary"])
+        # High crown/tiara
+        draw_shaded_rect(c, 7, 2 + offset_y, 13, 5 + offset_y, pal_hq["glow"])
+        c.set_px(10, 3 + offset_y, (255, 215, 0, 255))
+        # Floating command sigil / quill staff
+        draw_shaded_rect(c, 14 + staff_rot, 8 + offset_y, 17 + staff_rot, 19 + offset_y, pal_hq["accent"])
+        apply_dark_outline(c)
+        return c
+
+    cloita_idle = [_draw_cloita_frame(y, w) for y, w in ((0, 0), (-1, 1), (0, 0), (1, -1))]
+    cloita_fly = [_draw_cloita_frame(y, 0) for y in (-1, -2, -1, 0)]
+    cloita_cast = [_draw_cloita_frame(0, 1), _draw_cloita_frame(-1, 2), _draw_cloita_frame(0, 1)]
+    cloita_hurt = [_draw_cloita_frame(1, 0), _draw_cloita_frame(0, 0)]
+    cloita_dead = [_draw_cloita_frame(3, 0)]
+
+    cloita_anims = {
+        "idle": cloita_idle,
+        "fly": cloita_fly,
+        "cast": cloita_cast,
+        "hurt": cloita_hurt,
+        "dead": cloita_dead,
+    }
+    glow = [{"offset": [10, 4], "color": [220, 220, 255], "radius": 14}]
+    p, j = save_sheet(
+        "charaktere",
+        "ober_cloita",
+        cloita_anims,
+        anchor=(10, 22),
+        fps={"idle": 5.0, "fly": 8.0, "cast": 10.0, "hurt": 8.0, "dead": 1.0},
+        glow=glow,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
+
+    return paths
 
 
 def build_trader_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
