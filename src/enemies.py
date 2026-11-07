@@ -491,6 +491,73 @@ ABT_KIEME = CreatureSpec(
     windup_time=0.5, recover_time=0.2, drops_sample="probe_kern", pearls=80,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Behörden-Agenten, böse Ichs & Ober-Cloita (Card C14)
+# ---------------------------------------------------------------------------
+
+AGENT_STREIFE = CreatureSpec(
+    "agent_streife", "Streifen-Agent", width=14, height=18, hp=45, flying=False, speed=45, sight=450,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("hunt"), Ability("ranged", "stamp")),
+    windup_time=0.4, recover_time=0.2, pearls=15,
+)  # fmt: skip
+
+AGENT_DROHNE = CreatureSpec(
+    "agent_drohne", "Agenten-Drohne", width=12, height=12, hp=15, flying=True, speed=60, sight=420,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("flee"), Ability("ranged", "taser")),
+    windup_time=0.3, recover_time=0.2, pearls=10,
+)  # fmt: skip
+
+AGENT_VOLLSTRECKER = CreatureSpec(
+    "agent_vollstrecker", "Vollstrecker-Agent", width=18, height=22, hp=120, flying=False, speed=40, sight=480,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("shield", "front"), Ability("melee")),
+    windup_time=0.5, recover_time=0.2, pearls=25,
+)  # fmt: skip
+
+AGENT_ABTEILUNGSLEITER = CreatureSpec(
+    "agent_abteilungsleiter", "Abteilungsleiter", width=20, height=24, hp=160, flying=True, speed=35, sight=500,
+    stance="hostile", faction="behoerde", is_mid_boss=True,
+    abilities=(Ability("summon", "agent_streife", 3.0), Ability("ranged", "stamp_tax")),
+    windup_time=0.5, recover_time=0.2, pearls=40,
+)  # fmt: skip
+
+BOESE_KAISERIN = CreatureSpec(
+    "boese_kaiserin", "Böse Kaiserin", width=28, height=36, hp=3500, flying=False, speed=45, sight=600,
+    stance="hostile", faction="boese_ichs", is_boss=True, boss=True,
+    abilities=(Ability("ranged", "beam"), Ability("summon", "agent_streife", 4.0)),
+    windup_time=0.5, recover_time=0.2, pearls=200,
+)  # fmt: skip
+
+BOESE_GUTE = CreatureSpec(
+    "boese_gute", "Böse Gute", width=26, height=34, hp=3200, flying=True, speed=50, sight=600,
+    stance="hostile", faction="boese_ichs", is_boss=True, boss=True,
+    abilities=(Ability("aura", "heal_allies", 60.0), Ability("ranged", "holy_burst")),
+    windup_time=0.5, recover_time=0.2, pearls=200,
+)  # fmt: skip
+
+BOESE_OMEGA = CreatureSpec(
+    "boese_omega", "Böse Omega", width=32, height=40, hp=3800, flying=True, speed=40, sight=600,
+    stance="hostile", faction="boese_ichs", is_boss=True, boss=True,
+    abilities=(Ability("split", "omega"), Ability("ranged", "void_blast")),
+    windup_time=0.5, recover_time=0.2, pearls=200,
+)  # fmt: skip
+
+RATSMITGLIED = CreatureSpec(
+    "ratsmitglied", "Ratsmitglied", width=18, height=24, hp=90, flying=False, speed=35, sight=450,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("aura", "stamp_tax", 40.0),),
+    windup_time=0.5, recover_time=0.2, pearls=30,
+)  # fmt: skip
+
+OBER_CLOITA = CreatureSpec(
+    "ober_cloita", "Ober-Cloita", width=48, height=56, hp=6000, flying=True, speed=30, sight=700,
+    stance="hostile", faction="behoerde", is_boss=True, boss=True,
+    abilities=(Ability("summon", "ratsmitglied", 5.0), Ability("ranged", "multiverse_beam")),
+    windup_time=0.6, recover_time=0.2, pearls=500,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -508,6 +575,9 @@ SPECIES: dict[str, CreatureSpec] = {
         PFUETZENWURM, AKTENWOLF, MANEGE_CLOWN, HARZGENERAL, SPORENHERZ,
         GLOCKENWAECHTER,
         WELTENHERZ, OBERSTEMPLER, MUTTER_GLIBBER, AMEISENKOENIGIN, DJ_MYZEL, ABT_KIEME,
+        AGENT_STREIFE, AGENT_DROHNE, AGENT_VOLLSTRECKER, AGENT_ABTEILUNGSLEITER,
+        BOESE_KAISERIN, BOESE_GUTE, BOESE_OMEGA,
+        RATSMITGLIED, OBER_CLOITA,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
@@ -516,6 +586,7 @@ for _alias, _target_spec in (
     ("imp", EMBER_MAGGOT),
     ("leech", LEECH),
     ("golem", MUCUS_CRAWLER),
+    ("agent_sachbearbeiter", AGENT_STREIFE),
 ):
     SPECIES.setdefault(_alias, _target_spec)
 
