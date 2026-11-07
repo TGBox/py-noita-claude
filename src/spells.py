@@ -87,6 +87,8 @@ class Block:
     trigger: Trigger | None = None
     # Sekret (payload)
     material: str | None = None  # material key
+    from_flask: bool = False
+    local_material: bool = False
     retired: bool = False
 
 
@@ -478,6 +480,40 @@ BLOCKS: tuple[Block, ...] = (
         "sekret_eiter", "Eitersekret", Category.PAYLOAD, mana=8, material="pus", retired=True,
         description_de="Hinterlässt vergiftenden Eiter.",
     ),
+    Block(
+        "fuellung_wasser", "Wasserfüllung", Category.PAYLOAD, mana=5, material="water",
+        description_de="Klares Wasser zum Löschen und Reinigen.",
+    ),
+    Block(
+        "fuellung_oel", "Ölfüllung", Category.PAYLOAD, mana=8, material="oil",
+        description_de="Brennbares Öl für Kettenreaktionen.",
+    ),
+    Block(
+        "fuellung_dampf", "Dampffüllung", Category.PAYLOAD, mana=6, material="steam",
+        description_de="Heißer Dampf, der aufsteigt und vernebelt.",
+    ),
+    Block(
+        "fuellung_sand", "Sandfüllung", Category.PAYLOAD, mana=6, material="sand",
+        description_de="Rieselnder Sand, der verschüttet.",
+    ),
+    Block(
+        "fuellung_erde", "Erdfüllung", Category.PAYLOAD, mana=7, material="dirt",
+        description_de="Fruchtbare Erde zum Aufschütten.",
+    ),
+    Block(
+        "fuellung_fels", "Felsfüllung", Category.PAYLOAD, mana=12, material="rock",
+        description_de="Schwere Felsbrocken als massive Barrikade.",
+    ),
+    Block(
+        "fuellung_kolben", "Kolbenfüllung", Category.PAYLOAD, mana=8, material=None,
+        from_flask=True,
+        description_de="Verschießt das Material des aktuell gehaltenen Kolbens.",
+    ),
+    Block(
+        "fuellung_lokal", "Lokalkolorit", Category.PAYLOAD, mana=10, material=None,
+        local_material=True,
+        description_de="Verschießt ein typisches Material des aktuellen Universums.",
+    ),
     Block("sekret_aetzdampf", "Ätzdampfsekret", Category.PAYLOAD, mana=12, material="fume", retired=True),
     Block("sekret_staub", "Staubsekret", Category.PAYLOAD, mana=5, material="bone_dust", retired=True),
     Block(
@@ -705,6 +741,9 @@ MODULE_ALIASES: dict[str, str] = {
     "zeitzuender": "nerv_zeit",
     "endzuender": "nerv_ende",
     "naessezuender": "nerv_naesse",
+    # Füllungen (2 Aliase auf bestehende Sekrete)
+    "fuellung_feuer": "sekret_feuer",
+    "fuellung_rauch": "sekret_rauch",
 }
 
 
