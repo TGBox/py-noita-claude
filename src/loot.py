@@ -112,6 +112,93 @@ class Pickup:
     vx: float = 0.0  # thrown about by blasts and kicks
     age: float = 0.0
 
+    def __post_init__(self) -> None:
+        """Synchronize legacy fields with unified pickup fields."""
+        # If kind is set, synchronize legacy fields to match
+        if self.kind == "wand":
+            self.wand = None
+        elif self.kind == "block":
+            self.block = self.item_key
+        elif self.kind == "pearls":
+            self.pearls = self.amount
+        elif self.kind == "sample":
+            # For samples, we don't set legacy fields since they're not used
+            pass
+        elif self.kind == "perk":
+            self.perk = self.item_key
+        elif self.kind == "flask":
+            self.flask = None  # We don't have enough info to reconstruct flask
+        elif self.kind == "heart" or self.kind == "life_capsule":
+            self.heart = self.amount
+        elif self.kind == "cocoon":
+            self.cocoon = True
+        elif self.kind == "eye":
+            self.eye = True
+        elif self.kind == "reroll":
+            self.reroll = self.amount
+        elif self.kind == "portal":
+            self.portal = True
+        elif self.kind == "gold":
+            # Gold doesn't have legacy fields, so we just set amount
+            pass
+        elif self.kind == "memory_shard":
+            # Memory shards don't have legacy fields
+            pass
+        elif self.kind == "blueprint_shard":
+            # Blueprint shards don't have legacy fields
+            pass
+        elif self.kind == "crate":
+            # Crates don't have legacy fields
+            pass
+        elif self.kind == "badge":
+            # Badges don't have legacy fields
+            pass
+        elif self.kind == "formular_stempel":
+            # Formular stempel doesn't have legacy fields
+            pass
+
+        # If legacy fields are set, synchronize to unified fields
+        if self.wand is not None:
+            self.kind = "wand"
+            self.item_key = ""
+            self.amount = 1
+        elif self.block is not None:
+            self.kind = "block"
+            self.item_key = self.block
+            self.amount = 1
+        elif self.pearls > 0:
+            self.kind = "pearls"
+            self.item_key = ""
+            self.amount = self.pearls
+        elif self.perk is not None:
+            self.kind = "perk"
+            self.item_key = self.perk
+            self.amount = 1
+        elif self.flask is not None:
+            self.kind = "flask"
+            self.item_key = ""
+            self.amount = 1
+        elif self.heart > 0:
+            self.kind = "heart"
+            self.item_key = ""
+            self.amount = self.heart
+        elif self.cocoon:
+            self.kind = "cocoon"
+            self.item_key = ""
+            self.amount = 1
+        elif self.eye:
+            self.kind = "eye"
+            self.item_key = ""
+            self.amount = 1
+        elif self.reroll:
+            self.kind = "reroll"
+            self.item_key = ""
+            self.amount = self.reroll if isinstance(self.reroll, int) else 1
+        elif self.portal:
+            self.kind = "portal"
+            self.item_key = ""
+            self.amount = 1
+
     @property
     def label_de(self) -> str:
         if self.perk is not None:
@@ -297,5 +384,77 @@ def scatter_pearls(
 
 def pickup_sprite_key(pickup: Pickup) -> str:
     """Return the canonical sprite key in gegenstaende/ for pickup (Card A05)."""
-    raise NotImplementedError("Card A05")
-
+    if pickup.kind == "wand":
+        return "waffe"
+    elif pickup.kind == "block":
+        return "modul"
+    elif pickup.kind == "pearls":
+        return "gold_muenze"
+    elif pickup.kind == "gold":
+        # Determine gold sprite based on amount
+        if pickup.amount < 10:
+            return "gold_muenze"
+        elif pickup.amount < 30:
+            return "gold_haufen_s"
+        elif pickup.amount < 60:
+            return "gold_haufen_m"
+        else:
+            return "gold_haufen_l"
+    elif pickup.kind == "sample":
+        # Return the sample key directly
+        return pickup.item_key
+    elif pickup.kind == "perk":
+        return "experiment"
+    elif pickup.kind == "flask":
+        if pickup.flask is not None and pickup.flask.empty:
+            return "kolben_leer"
+        else:
+            return "kolben_voll"
+    elif pickup.kind == "heart" or pickup.kind == "life_capsule":
+        return "lebenskapsel"
+    elif pickup.kind == "cocoon":
+        return "kokon"
+    elif pickup.kind == "eye":
+        return "auge"
+    elif pickup.kind == "reroll":
+        return "wuerfel"
+    elif pickup.kind == "portal":
+        return "wackelportal"
+    elif pickup.kind == "memory_shard":
+        return "erinnerungssplitter"
+    elif pickup.kind == "blueprint_shard":
+        return "bauplan_splitter"
+    elif pickup.kind == "crate":
+        return "fundkiste"
+    elif pickup.kind == "badge":
+        return "dienstausweis"
+    elif pickup.kind == "formular_stempel":
+        # Return the formular stamp sprite key
+        return "formular_stempel"
+    else:
+        # Default case - if no kind is set, try to determine from legacy fields
+        if pickup.wand is not None:
+            return "waffe"
+        elif pickup.block is not None:
+            return "modul"
+        elif pickup.pearls > 0:
+            return "gold_muenze"
+        elif pickup.perk is not None:
+            return "experiment"
+        elif pickup.flask is not None:
+            if pickup.flask.empty:
+                return "kolben_leer"
+            else:
+                return "kolben_voll"
+        elif pickup.heart > 0:
+            return "lebenskapsel"
+        elif pickup.cocoon:
+            return "kokon"
+        elif pickup.eye:
+            return "auge"
+        elif pickup.reroll:
+            return "wuerfel"
+        elif pickup.portal:
+            return "wackelportal"
+        # If no legacy field is set, return a default
+        return "gold_muenze"
