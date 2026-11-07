@@ -46,7 +46,7 @@ def _draw_mid_boss_frame(
 
 def build_mid_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build bosse/<mid_boss>.{png,json} for all 9 mid-bosses + warden (Cards B15, B16)."""
-    # Boss to universe mapping
+    # Boss to universe mapping for all 6 MVP universes + warden
     boss_map = [
         ("pfuetzenwurm", "fleischwelt"),
         ("aktenwolf", "aktenhalde"),
