@@ -573,9 +573,10 @@ class Run:
 
     def cycle_material_set(self) -> str:
         """Sandbox: rebuild the current depth with the next material set. Returns its key."""
-        keys = list(mat.SETS)
+        keys = ["koerper", "aktenhalde"]
         depth = self.route[self.depth_index]
-        nxt = keys[(keys.index(depth.material_set) + 1) % len(keys)]
+        cur = depth.material_set if depth.material_set in keys else keys[0]
+        nxt = keys[(keys.index(cur) + 1) % len(keys)]
         route = list(self.route)
         route[self.depth_index] = replace(depth, material_set=nxt)
         self.route = tuple(route)

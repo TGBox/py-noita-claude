@@ -755,7 +755,24 @@ AKTENHALDE = MaterialSet(
     ),
 )
 
-SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, AKTENHALDE)}
+FLEISCHWELT = MaterialSet(
+    "fleischwelt",
+    (
+        *BASE_KEYS,
+        "flesh",
+        "bone",
+        "enamel",
+        "blood",
+        "acid",
+        "growth",
+        "spores",
+        "tallow",
+        "crust",
+        "magma",
+    ),
+)
+
+SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE)}
 # Sets changed by a universe rule (e.g. flammability), keyed "<set>+<rule><rank>".
 DERIVED: dict[str, MaterialSet] = {}
 

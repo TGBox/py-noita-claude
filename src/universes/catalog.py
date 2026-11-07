@@ -38,7 +38,7 @@ UNIVERSES: tuple[Universe, ...] = (
         "fleischwelt", "Fleischwelt",
         "Ein Universum, das nur aus einem einzigen, sehr großen und sehr hungrigen Lebewesen "
         "besteht.",
-        rule="rule_living_walls", shape="quadrat", ambient=0.28, material_set="koerper",
+        rule="rule_living_walls", shape="quadrat", ambient=0.28, material_set="fleischwelt",
         regions=(
             Region("schlund", "Schlund"), Region("magen", "Magen"),
             Region("knochenmark", "Knochenmark"),
