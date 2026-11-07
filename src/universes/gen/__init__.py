@@ -12,6 +12,7 @@ from src.universes.gen import common
 from src.universes.gen.aktenhalde import generate_aktenhalde
 from src.universes.gen.fleischwelt import generate_fleischwelt
 from src.universes.gen.glibbria import generate_glibbria
+from src.universes.gen.kruemelreich import generate_kruemelreich
 from src.worldgen import Level
 
 if TYPE_CHECKING:
@@ -22,6 +23,7 @@ GENERATORS: dict[str, Callable[[World, Universe, int, int], Level]] = {
     "aktenhalde": generate_aktenhalde,
     "fleischwelt": generate_fleischwelt,
     "glibbria": generate_glibbria,
+    "kruemelreich": generate_kruemelreich,
 }
 
 SHAPE_TOPOLOGY = {
