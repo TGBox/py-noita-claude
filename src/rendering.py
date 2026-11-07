@@ -37,6 +37,7 @@ PERK_KEYS = tuple(PERK_BY_KEY)
 from src.projectiles import Projectile
 from src.settings import VIEW_HEIGHT, VIEW_WIDTH
 from src.spells import CATALOG, Block, Category
+from src.sprite_render import SheetCache
 from src.texture import make_grain
 from src.wand import Wand
 from src.world import World
@@ -667,17 +668,87 @@ def build_creature_sprites() -> dict[tuple, pygame.Surface]:
 
 def draw_creatures(
     canvas: pygame.Surface,
-    sprites: dict[tuple[str, int, bool, bool], pygame.Surface],
+    sprites: dict[tuple[str, int, bool, bool], pygame.Surface] | None,
     creatures: list[Creature],
     cam_x: int,
     cam_y: int,
     visible: set[int] | None = None,
+    sheet_cache: SheetCache | None = None,
 ) -> None:
+    from src.procbody import RIG_LAYOUTS, ProcRig
+    from src.sprite_render import blit_frame
+    from src.sprites import Animator
+
     for creature in creatures:
         if visible is not None and id(creature) not in visible:
             continue  # hidden behind tissue
         key = creature.spec.key
         x, y = creature.x - cam_x, creature.y - cam_y
+
+        # If sheet_cache is available, render via procedural sheets & rigs
+        if sheet_cache is not None:
+            facing_right = creature.facing >= 0
+            is_windup = getattr(creature, "state", "") == "windup"
+            flash = 1.0 if is_windup else (1.0 if getattr(creature, "flash", 0.0) > 0.0 else 0.0)
+
+            anim_state = (
+                getattr(creature, "anim_state", None) or getattr(creature, "state", None) or "idle"
+            )
+
+            # Boss with multi-part rig
+            if key in RIG_LAYOUTS:
+                rig = getattr(creature, "rig", None)
+                if rig is None:
+                    rig = ProcRig(RIG_LAYOUTS[key])
+                for _part_key, wx, wy, sheet_name in rig.world_parts(
+                    creature.x, creature.y, flip_x=not facing_right
+                ):
+                    sheet, meta = sheet_cache.get("bosse", sheet_name)
+                    st = anim_state if anim_state in meta.anims else "idle"
+                    anim = Animator(meta, st)
+                    blit_frame(
+                        canvas,
+                        sheet,
+                        meta,
+                        anim,
+                        wx,
+                        wy,
+                        cam_x,
+                        cam_y,
+                        flip_x=not facing_right,
+                        flash=flash,
+                    )
+            else:
+                # Determine category
+                if key.startswith(("agent_", "boese_")) or key == "ober_cloita":
+                    category = "charaktere"
+                elif getattr(creature.spec, "boss", False):
+                    category = "bosse"
+                else:
+                    category = "kreaturen"
+
+                sheet, meta = sheet_cache.get(category, key)
+                st = anim_state if anim_state in meta.anims else "idle"
+                anim = Animator(meta, st)
+                blit_frame(
+                    canvas,
+                    sheet,
+                    meta,
+                    anim,
+                    creature.center[0],
+                    creature.center[1],
+                    cam_x,
+                    cam_y,
+                    flip_x=not facing_right,
+                    flash=flash,
+                )
+
+            if creature.hp < creature.max_hp:
+                width = max(1, round(creature.width * creature.hp / creature.max_hp))
+                canvas.fill(HEALTH_BAR, (x, y - 3, width, 1))
+            continue
+
+        # Legacy software fallback
         if key == "magenwurm":
             _draw_worm(canvas, creature, x, y)
             continue
@@ -693,13 +764,15 @@ def draw_creatures(
         if key == "atem":
             _draw_breath(canvas, creature, x, y)
             continue
-        frame = int(creature.age * FRAME_RATES[key]) % len(CREATURE_SPRITES[key])
-        facing = creature.facing > 0
-        rim = sprites.get((key, frame, facing, "rim"))
-        if rim is not None:
-            canvas.blit(rim, (x - 1, y - 1))
-        sprite = sprites[(key, frame, facing, creature.flash > 0)]
-        canvas.blit(sprite, (x, y))
+        if sprites is not None and key in CREATURE_SPRITES and key in FRAME_RATES:
+            frame = int(creature.age * FRAME_RATES[key]) % len(CREATURE_SPRITES[key])
+            facing = creature.facing > 0
+            rim = sprites.get((key, frame, facing, "rim"))
+            if rim is not None:
+                canvas.blit(rim, (x - 1, y - 1))
+            sprite = sprites.get((key, frame, facing, creature.flash > 0))
+            if sprite is not None:
+                canvas.blit(sprite, (x, y))
         if creature.hp < creature.max_hp:
             width = max(1, round(creature.width * creature.hp / creature.max_hp))
             canvas.fill(HEALTH_BAR, (x, y - 3, width, 1))
@@ -1068,7 +1141,9 @@ class Renderer:
         enemies = getattr(run, "enemies", None)
         if enemies is not None and hasattr(enemies, "creatures"):
             try:
-                draw_creatures(screen, {}, enemies.creatures, cam_x, cam_y)
+                draw_creatures(
+                    screen, None, enemies.creatures, cam_x, cam_y, sheet_cache=self.sheet_cache
+                )
             except (KeyError, ValueError, AttributeError, pygame.error):
                 pass
 
@@ -1078,7 +1153,7 @@ class Renderer:
                 sheet, meta = self.sheet_cache.get("charaktere", "spielerin")
                 if player.dead:
                     anim_state = "dead"
-                elif getattr(player, "hurt", 0) > 0 or getattr(player, "damage_taken", 0) > 0:
+                elif getattr(player, "damage_taken", 0) > 0:
                     anim_state = "hurt"
                 elif getattr(player, "vy", 0.0) < -1.0:
                     anim_state = "jump"
