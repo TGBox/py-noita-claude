@@ -248,6 +248,14 @@ class Run:
         self.event: Event | None = None
         self.event_timer: float = 0.0
         self.challenge: Challenge | None = None
+        self.plan: Any = None
+        self.fabricator: Any = None
+        self.couch_used: bool = False
+        self.minigames_played: set[str] = set()
+        self.experiment_picked: bool = False
+        self.experiment_rerolls: int = 0
+        self.active_traders: list[Any] = []
+        self.inventory_open: bool = False
         self.boss_script: BossScript | None = None
         self.records: Records = Records()
         self.universe: Universe = UNIVERSE_BY_KEY.get(universe_key, UNIVERSES[0])
@@ -514,7 +522,9 @@ class Run:
         self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
         if self.universe_key != "fleischwelt":
-            self.level = generate_level(self.world, depth, self.seed + index, universe=self.universe)
+            self.level = generate_level(
+                self.world, depth, self.seed + index, universe=self.universe
+            )
         else:
             self.level = generate_level(self.world, depth)
         if self.mirror:
@@ -929,6 +939,7 @@ class Run:
                 u_event_key = getattr(self.universe, "event", "")
                 if u_event_key:
                     from src.events import EVENTS, Event
+
                     spec = EVENTS.get(u_event_key)
                     if spec is not None and self.event_timer >= spec.interval:
                         self.event_timer = 0.0
@@ -974,13 +985,20 @@ class Run:
                 creature.ability_cooldowns[key] = max(0.0, creature.ability_cooldowns[key] - dt)
         out_events: list[tuple[str, dict[str, Any]]] = []
         died = self.enemies.update(
-            self.world, dt, self.player, self.projectiles, everywhere,
-            grudges=self.grudges, on_beat=True, out_events=out_events,
+            self.world,
+            dt,
+            self.player,
+            self.projectiles,
+            everywhere,
+            grudges=self.grudges,
+            on_beat=True,
+            out_events=out_events,
         )
         for creature in died:
             for ability in getattr(creature.spec, "abilities", ()):
                 if ability.kind == "split":
                     from src.behaviour import handle_split_on_death
+
                     handle_split_on_death(creature, ability, out_events)
         self._handle_creature_events(out_events)
         self._prop_blasts: list[Blast] = []
@@ -1707,7 +1725,116 @@ class Run:
 
     def enter_workshop(self) -> None:
         """Move the run into the workshop between universes (Contract V18, Card E10)."""
-        raise NotImplementedError("Card E10")
+        from src.fabricator import Fabricator
+        from src.traders import traders_for_workshop
+        from src.universes.plan import RunPlan
+        from src.workshop import WORKSHOP_SIZE, generate_workshop
+
+        if self.plan is None:
+            self.plan = RunPlan(self.seed)
+
+        self.in_workshop = True
+        self.menu_mode = ""
+
+        # Build workshop world and layout
+        self.world = World(*WORKSHOP_SIZE)
+        self.workshop_layout = generate_workshop(self.world)
+
+        # Place player at workshop spawn and fully heal
+        sx, sy = self.workshop_layout.spawn
+        self.player.x, self.player.y = float(sx), float(sy)
+        self.player.body.hp = self.player.body.max_hp
+
+        # Move Klonita to couch position
+        self.klonita.x, self.klonita.y = (
+            float(self.workshop_layout.klonita_pos[0]),
+            float(self.workshop_layout.klonita_pos[1]),
+        )
+
+        # Clear active enemies/pickups in workshop
+        self.enemies.creatures.clear()
+        self.pickups.clear()
+        self.projectiles.clear()
+        self.droplets.clear()
+        self.chunks.clear()
+
+        # Contract V18 reset visit rules
+        self.wanted.on_workshop()
+        if self.fabricator is None:
+            self.fabricator = Fabricator()
+        else:
+            self.fabricator.reset_visit()
+
+        self.couch_used = False
+        self.minigames_played = set()
+        self.experiment_picked = False
+
+        # Reset / populate active traders for workshop
+        self.active_traders = traders_for_workshop(self.plan.visited)
+
+    def interact_station(self) -> None:
+        """Interact with the nearest workshop station (Contract V18, Card E10)."""
+        from src.economy import ZAPF_PRICE
+        from src.flask import CAPACITY, Flask
+        from src.workshop import station_at
+
+        if not self.in_workshop or self.workshop_layout is None:
+            return
+
+        st = station_at(self.workshop_layout, int(self.player.x), int(self.player.y), radius=16)
+        if st is None:
+            return
+
+        key = st.key
+        if key == "ws_couch":
+            if not self.couch_used:
+                self.couch_used = True
+                heal_amount = self.player.body.max_hp * 0.35
+                self.player.body.hp = min(
+                    self.player.body.max_hp, self.player.body.hp + heal_amount
+                )
+                try:
+                    from src.klonita_lines import LINES
+
+                    lines = LINES.get("couch", ("Kuschelig hier!",))
+                    text = self.rng.choice(lines) if lines else "Kuschelig hier!"
+                except (ImportError, AttributeError, IndexError):
+                    text = "Kuschelig hier!"
+                self.messages.append(f"Klonita: {text}")
+        elif key == "ws_zapfhahn":
+            if self.flask is not None:
+                if self.gold >= ZAPF_PRICE:
+                    self.gold -= ZAPF_PRICE
+                    self.flask = Flask("fluxschnaps", CAPACITY)
+                    self.messages.append("Kolben mit Fluxschnaps gefüllt (-10 Gold).")
+                else:
+                    self.messages.append("Zu wenig Gold für Fluxschnaps.")
+        elif key == "ws_well":
+            if self.flask is not None:
+                self.flask = Flask("water", CAPACITY)
+                self.messages.append("Kolben kostenlos mit Wasser gefüllt.")
+        elif key == "ws_liege":
+            self.menu_mode = "experiment"
+        elif key == "ws_fabrikator":
+            self.menu_mode = "fabricator"
+        elif key == "ws_werkbank":
+            self.inventory_open = True
+        elif key == "ws_haendler":
+            self.menu_mode = "trader"
+        elif key == "ws_archiv":
+            self.menu_mode = "archive"
+        elif key == "ws_portal":
+            self.menu_mode = "portal_select"
+        elif key == "ws_shredder":
+            cost = self.wanted.bribe_cost()
+            if self.gold >= cost and self.wanted.level > 0.0:
+                self.gold -= cost
+                self.wanted.level = max(0.0, self.wanted.level - 1.0)
+                self.messages.append(f"Akten geschreddert (-{cost} Gold, -1.0 Fahndungsstufe).")
+            elif self.wanted.level <= 0.0:
+                self.messages.append("Keine Akten vorhanden.")
+            else:
+                self.messages.append("Zu wenig Gold zum Schreddern.")
 
     def choose_next_universe(self, index: int) -> None:
         """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""
@@ -1768,7 +1895,12 @@ class Run:
         sample_key = creature.spec.drops_sample or getattr(self.universe, "sample_key", "")
         if sample_key:
             sample_chance = getattr(creature.spec, "sample_chance", 0.35)
-            if getattr(creature.spec, "is_mid_boss", False) or getattr(creature.spec, "is_boss", False) or getattr(creature.spec, "boss", False) or self.rng.random() < sample_chance:
+            if (
+                getattr(creature.spec, "is_mid_boss", False)
+                or getattr(creature.spec, "is_boss", False)
+                or getattr(creature.spec, "boss", False)
+                or self.rng.random() < sample_chance
+            ):
                 self.pickups.append(Pickup(cx, cy, kind="sample", item_key=sample_key, amount=1))
         self.events.append("blast_big" if creature.spec.boss else "kill")
         if creature.spec.boss:
