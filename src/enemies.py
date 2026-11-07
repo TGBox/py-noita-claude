@@ -311,6 +311,39 @@ HARZSPUCKER = CreatureSpec(
     windup_time=0.5, recover_time=0.2, drops_sample="probe_ameisenduft", sample_chance=0.35, pearls=12,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Sporenklub (Card C05): tuersteherpilz, sporenschnorrer, sporenwerfer, leuchtmotte
+# ---------------------------------------------------------------------------
+
+TUERSTEHERPILZ = CreatureSpec(
+    "tuersteherpilz", "Türsteherpilz", width=18, height=24, hp=80, flying=False, speed=0, sight=300,
+    melee_damage=15, melee_cooldown=1.2, stationary=True, stance="neutral", faction="pilze",
+    abilities=(Ability("stationary"), Ability("shield", "front"), Ability("melee")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_leuchtspore", sample_chance=0.35, pearls=15,
+)  # fmt: skip
+
+SPORENSCHNORRER = CreatureSpec(
+    "sporenschnorrer", "Sporenschnorrer", width=10, height=14, hp=18, flying=False, speed=110, sight=400,
+    stance="hostile", faction="pilze",
+    abilities=(Ability("steal", "flask"), Ability("flee"), Ability("split", "spore")),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_plattennadel", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+SPORENWERFER = CreatureSpec(
+    "sporenwerfer", "Sporenwerfer", width=14, height=18, hp=32, flying=False, speed=35, sight=380,
+    patterns=(), ranged_cooldown=2.0, ranged_range=320, stance="hostile", faction="pilze",
+    abilities=(Ability("ranged", "spore"), Ability("aura", "poison", 36.0)),
+    windup_time=0.45, recover_time=0.2, weak_material="fire", drops_sample="probe_leuchtspore",
+    sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+LEUCHTMOTTE = CreatureSpec(
+    "leuchtmotte", "Leuchtmotte", width=12, height=12, hp=16, flying=True, speed=60, sight=360,
+    stance="passive", faction="pilze",
+    abilities=(Ability("flee"), Ability("aura", "heal_allies", 44.0)),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_plattennadel", sample_chance=0.35, pearls=6,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -322,6 +355,7 @@ SPECIES: dict[str, CreatureSpec] = {
         AKTENFRESSER, STEMPLER, PARAGRAPHENREITER, KAFFEEGOLEM,
         HUEPFLING, GLIBBERTEILER, ZUCKERWATTE_WOLKE, KONFETTI_KANONE,
         AMEISENKRIEGER, BLATTLAUS, ARBEITERAMEISE, HARZSPUCKER,
+        TUERSTEHERPILZ, SPORENSCHNORRER, SPORENWERFER, LEUCHTMOTTE,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
