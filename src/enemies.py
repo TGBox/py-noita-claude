@@ -344,6 +344,38 @@ LEUCHTMOTTE = CreatureSpec(
     windup_time=0.25, recover_time=0.2, drops_sample="probe_plattennadel", sample_chance=0.35, pearls=6,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Versunkene Abtei (Card C06): moenchsfisch, orgelaal, glockenqualle, korallenwaechter
+# ---------------------------------------------------------------------------
+
+MOENCHSFISCH = CreatureSpec(
+    "moenchsfisch", "Mönchsfisch", width=14, height=16, hp=28, flying=True, speed=40, sight=380,
+    stance="neutral", faction="tiefsee",
+    abilities=(Ability("pack"), Ability("ranged", "bubble")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glockensplitter", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+ORGELAAL = CreatureSpec(
+    "orgelaal", "Orgelaal", width=28, height=6, hp=35, flying=True, speed=50, sight=420,
+    stance="hostile", faction="tiefsee",
+    abilities=(Ability("hunt"), Ability("ranged", "shock"), Ability("burrow", "sand")),
+    windup_time=0.7, recover_time=0.2, drops_sample="probe_kerzenstumpf", sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+GLOCKENQUALLE = CreatureSpec(
+    "glockenqualle", "Glockenqualle", width=14, height=18, hp=26, flying=True, speed=30, sight=300,
+    stance="passive", faction="tiefsee",
+    abilities=(Ability("aura", "shock", 36.0),),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_glockensplitter", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+KORALLENWAECHTER = CreatureSpec(
+    "korallenwaechter", "Korallenwächter", width=16, height=20, hp=50, flying=False, speed=28, sight=340,
+    melee_damage=11, melee_cooldown=1.0, stance="neutral", faction="tiefsee",
+    abilities=(Ability("shield", "front"), Ability("reflect", "shell"), Ability("melee")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kerzenstumpf", sample_chance=0.35, pearls=14,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -356,6 +388,7 @@ SPECIES: dict[str, CreatureSpec] = {
         HUEPFLING, GLIBBERTEILER, ZUCKERWATTE_WOLKE, KONFETTI_KANONE,
         AMEISENKRIEGER, BLATTLAUS, ARBEITERAMEISE, HARZSPUCKER,
         TUERSTEHERPILZ, SPORENSCHNORRER, SPORENWERFER, LEUCHTMOTTE,
+        MOENCHSFISCH, ORGELAAL, GLOCKENQUALLE, KORALLENWAECHTER,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
