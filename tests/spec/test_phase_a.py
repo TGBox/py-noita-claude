@@ -325,8 +325,9 @@ def test_a10_pathfind_walk_fly_swim() -> None:
     from src.world import World
 
     w = World(48, 32)
-    # Wall with gap at top for flyer
-    w.fill_rect(20, 6, 22, 31, MAT_ID["stone"])
+    # Wall with a wide gap at the top for the flyer. The search runs on 4x4-cell nodes
+    # (V3), so the gap must span several nodes.
+    w.fill_rect(20, 14, 22, 31, MAT_ID["stone"])
     fly_path = find_path(w, (10, 15), (30, 15), "fly")
     assert len(fly_path) >= 2
     assert fly_path[-1] == (30, 15)
