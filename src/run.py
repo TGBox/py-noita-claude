@@ -166,7 +166,11 @@ class Run:
         self.boss_slot = boss_slot  # Contract V9 "Bossplatz"; the spawn logic comes with Card D10
         self.rng = random.Random(seed)
         self.default_size = (width, height)
-        mat.activate_key(mat.DEFAULT_SET.key)
+        self.universe: Universe = UNIVERSE_BY_KEY.get(universe_key, UNIVERSES[0])
+        if self.universe_key != "fleischwelt" and getattr(self.universe, "material_set", None):
+            mat.activate_key(self.universe.material_set)
+        else:
+            mat.activate_key(mat.DEFAULT_SET.key)
         self.world = World(width, height, seed=self.rng.randrange(2**31))
         self.player = Player(0, 0)
         self.enemies = EnemyManager()
@@ -509,7 +513,10 @@ class Run:
             self.on_generate(depth.name_de)
         self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
-        self.level = generate_level(self.world, depth)
+        if self.universe_key != "fleischwelt":
+            self.level = generate_level(self.world, depth, self.seed + index, universe=self.universe)
+        else:
+            self.level = generate_level(self.world, depth)
         if self.mirror:
             self.level = self._mirror_level(self.level)
         scale = self.area_scale
@@ -527,7 +534,22 @@ class Run:
             more(depth.bloats),
             extra=tuple((key, more(count)) for key, count in depth.extra),
         )
-        if depth.boss and self.level.arena is not None:
+        if self.universe_key != "fleischwelt":
+            if getattr(self.universe, "mid_boss", None):
+                mid_arena = getattr(self.level, "mid_boss_arena", None)
+                if mid_arena and mid_arena != (0, 0, 0, 0):
+                    mc = ((mid_arena[0] + mid_arena[2]) // 2, (mid_arena[1] + mid_arena[3]) // 2)
+                else:
+                    mc = (self.world.width // 2, self.world.height // 2)
+                self.enemies.spawn(self.universe.mid_boss, mc[0], mc[1])
+            if self.boss_slot and getattr(self.universe, "boss", None):
+                b_arena = getattr(self.level, "boss_arena", None)
+                if b_arena and b_arena != (0, 0, 0, 0):
+                    bc = ((b_arena[0] + b_arena[2]) // 2, (b_arena[1] + b_arena[3]) // 2)
+                else:
+                    bc = (self.world.width // 2, self.world.height // 2)
+                self.enemies.spawn(self.universe.boss, bc[0], bc[1])
+        elif depth.boss and self.level.arena is not None:
             self.enemies.creatures.append(spawn_boss(depth.boss, self.level.arena, self.rng))
         if self.ng or self.parallel:
             power = self.power

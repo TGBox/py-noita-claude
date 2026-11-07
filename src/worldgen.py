@@ -48,8 +48,26 @@ def generate_world(world: World) -> tuple[int, int]:
     return generate_level(world, DEPTHS[0]).spawn
 
 
-def generate_level(world: World, depth: Depth) -> Level:
+def generate_level(
+    world: World,
+    depth: Depth,
+    seed: int | None = None,
+    *,
+    universe: Any | None = None,
+) -> Level:
     """Fill ``world`` with a level of the given depth."""
+    if universe is not None:
+        from src.universes.catalog import ALL_UNIVERSES
+        from src.universes.gen import generate_universe
+        from src.universes.model import Universe
+
+        u = ALL_UNIVERSES.get(universe) if isinstance(universe, str) else universe
+        if not isinstance(u, Universe):
+            u = ALL_UNIVERSES.get(getattr(universe, "key", "fleischwelt"), ALL_UNIVERSES["fleischwelt"])
+        s = seed if seed is not None else (world.seed if hasattr(world, "seed") and world.seed else 42)
+        d = getattr(depth, "index", 1) if not isinstance(depth, int) else depth
+        return generate_universe(world, u, d, s)
+
     rng = world.rng
     w, h = world.width, world.height
     scale = (w * h) / (1280 * 720)  # feature counts follow the world area
