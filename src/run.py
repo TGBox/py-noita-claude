@@ -223,6 +223,8 @@ class Run:
         self.memory_shards: int = 0
         self.blueprint_shards: int = 0
         self.badges: int = 0
+        self.listeners: list[Callable[[str, dict[str, Any]], None]] = []
+        self.emitted_events: list[tuple[str, dict[str, Any]]] = []
         self.price_factor: float = 1.0
         self.next_boost: str = ""
         self.in_workshop: bool = False
@@ -882,6 +884,7 @@ class Run:
         if controls is None:
             controls = Controls()
         self.events = []
+        self.emitted_events = []
         self.last_aim = controls.aim
         self.time_in_depth += dt
         if not self.outcome:
@@ -963,6 +966,10 @@ class Run:
         self._hurt_cooldown = max(0.0, self._hurt_cooldown - dt)
         if self.player.hp < self._last_hp - 1.0 and self._hurt_cooldown <= 0:
             self.events.append("hurt")
+            self.emit(
+                "hurt_player", amount=self._last_hp - self.player.hp,
+                source="self" if self.player.last_cause == "Tritt" else "projectile",
+            )  # fmt: skip
             self._hurt_cooldown = 0.25
         self._perk_reactions(dt)
 
@@ -1530,11 +1537,19 @@ class Run:
             self.events.append("pickup")
         if item in self.pickups:
             self.pickups.remove(item)
+        self.emit("pickup", kind=kind, key=item.item_key, amount=amount)
+        if kind == "sample":
+            self.emit("sample", key=item.item_key, count=amount)
+        elif kind == "gold":
+            self.emit("gold", amount=amount, source="pickup")
         return True
 
     def emit(self, event_name: str, **payload: Any) -> None:
         """Emit a gameplay event on the structured event bus (Contract V12, Card A07)."""
-        raise NotImplementedError("Card A07")
+        payload = dict(payload)
+        self.emitted_events.append((event_name, payload))
+        for listener in list(self.listeners):
+            listener(event_name, payload)
 
     def _pickup_data(self, item: Pickup) -> dict[str, Any]:
         return _pickup_data(item)
@@ -1582,11 +1597,17 @@ class Run:
         cx, cy = creature.center
         if creature.spec.prop:  # a burst sac: no kill, but maybe a chain reaction
             if creature.spec.blast:
-                self.world.explode(int(cx), int(cy), creature.spec.blast)
+                destroyed = self.world.explode(int(cx), int(cy), creature.spec.blast)
+                if destroyed > 0:
+                    self.emit("cells_destroyed", count=destroyed, gold_vein_cells=0)
                 self._prop_blasts.append(Blast(int(cx), int(cy), creature.spec.blast))
             self.events.append("shatter")
             return
         self.stats["kills"] += 1
+        self.emit(
+            "kill", species=creature.spec.key, x=cx, y=cy,
+            killer="player" if creature.last_cause != "Welt" else "world",
+        )  # fmt: skip
         self._log("getoetet", kreatur=creature.spec.key, durch=creature.last_cause)
         self.discoveries.append(("creature", creature.spec.key))
         if not creature.spec.boss and creature.spec.gore == "blood":
