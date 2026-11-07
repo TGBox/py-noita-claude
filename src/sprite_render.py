@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -20,7 +21,52 @@ class SheetCache:
 
     def get(self, category: str, name: str) -> tuple[pygame.Surface, SheetMeta]:
         """Return cached (Surface, SheetMeta) for category/name, with headless fallback."""
-        raise NotImplementedError("Card A18")
+        key = (category, name)
+        if key in self._cache:
+            return self._cache[key]
+
+        # Construct paths
+        json_path = self.root / category / f"{name}.json"
+        png_path = self.root / category / f"{name}.png"
+
+        # Try to load from files
+        try:
+            from .sprites import load_sheet_meta
+
+            if png_path.exists() and json_path.exists():
+                meta = load_sheet_meta(json_path)
+                sheet = pygame.image.load(png_path).convert_alpha()
+                result = (sheet, meta)
+            else:
+                # Fallback: create a deterministic test surface
+                sheet = pygame.Surface((16, 16), pygame.SRCALPHA)
+                pygame.draw.rect(sheet, (255, 255, 255, 255), (0, 0, 16, 16), 1)
+                pygame.draw.line(sheet, (255, 0, 0, 255), (0, 0), (16, 16), 1)
+                pygame.draw.line(sheet, (255, 0, 0, 255), (16, 0), (0, 16), 1)
+
+                # Create a simple meta with one frame
+                from .sprites import AnimSpec, SheetMeta
+
+                meta = SheetMeta(
+                    frame_size=(16, 16), anchor=(8, 8), anims={"idle": AnimSpec(0, 1)}, glow=()
+                )
+                result = (sheet, meta)
+        except (FileNotFoundError, pygame.error, json.JSONDecodeError):
+            # Fallback in case of any error
+            sheet = pygame.Surface((16, 16), pygame.SRCALPHA)
+            pygame.draw.rect(sheet, (255, 255, 255, 255), (0, 0, 16, 16), 1)
+            pygame.draw.line(sheet, (255, 0, 0, 255), (0, 0), (16, 16), 1)
+            pygame.draw.line(sheet, (255, 0, 0, 255), (16, 0), (0, 16), 1)
+
+            from .sprites import AnimSpec, SheetMeta
+
+            meta = SheetMeta(
+                frame_size=(16, 16), anchor=(8, 8), anims={"idle": AnimSpec(0, 1)}, glow=()
+            )
+            result = (sheet, meta)
+
+        self._cache[key] = result
+        return result
 
 
 def blit_frame(
@@ -39,7 +85,44 @@ def blit_frame(
     tint: tuple[int, int, int] | None = None,
 ) -> None:
     """Blit the current animator frame anchored at (world_x - cam_x, world_y - cam_y)."""
-    raise NotImplementedError("Card A18")
+    # Calculate screen position
+    screen_x = world_x - cam_x
+    screen_y = world_y - cam_y
+
+    # Get frame rectangle from animator
+    rect = animator.frame_rect()
+
+    # Extract frame from sheet
+    frame = sheet.subsurface(rect)
+
+    # Apply flip if needed
+    if flip_x:
+        frame = pygame.transform.flip(frame, True, False)
+
+    # Apply rotation if needed
+    if angle_deg != 0.0:
+        frame = pygame.transform.rotate(frame, angle_deg)
+
+    # Calculate position with anchor offset
+    anchor_x, anchor_y = meta.anchor
+    draw_x = screen_x - anchor_x
+    draw_y = screen_y - anchor_y
+
+    # Apply flash effect (white overlay)
+    if flash > 0.0:
+        overlay = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+        alpha = int(255 * flash)
+        overlay.fill((255, 255, 255, alpha))
+        frame.blit(overlay, (0, 0))
+
+    # Apply tint effect
+    if tint is not None:
+        tint_surf = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+        tint_surf.fill(tint + (255,))
+        frame.blit(tint_surf, (0, 0), special_flags=pygame.BLEND_MULT)
+
+    # Blit to target
+    target.blit(frame, (draw_x, draw_y))
 
 
 def glow_points(
@@ -49,5 +132,20 @@ def glow_points(
     flip_x: bool = False,
 ) -> list[tuple[float, float, tuple[int, int, int], int]]:
     """Return world-space glow tuples (wx, wy, color, radius) for meta.glow."""
-    raise NotImplementedError("Card A18")
+    points = []
+    _anchor_x, _anchor_y = meta.anchor
 
+    for glow_point in meta.glow:
+        offset_x, offset_y = glow_point.offset
+
+        # Apply flip effect to X offset
+        if flip_x:
+            offset_x = -offset_x
+
+        # Calculate world position
+        wx = world_x + offset_x
+        wy = world_y + offset_y
+
+        points.append((wx, wy, glow_point.color, glow_point.radius))
+
+    return points
