@@ -1,7 +1,7 @@
 # Phase B — Prozedurale Grafik & Sprite-Sheets (33 atomare S-Karten: `B01`–`B36`; `B06`, `B10`, `B13` entfallen)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_b.py`, `< 15 KB` zu lesender Kontext).
-> Master-Index: [vertraege.md](vertraege.md). Alle Grafik-Karten halten die Qualitätsregeln aus [v05-sprites-und-teile.md](vertraege/v05-sprites-und-teile.md) (`V8`) ein: mindestens 5 Farbtöne pro Sprite, dunkle Kontur `OUTLINE_DARK`, `> 20 %` nicht-transparente Pixel, `.png` + `.json` Paar.
+> Master-Index: [vertraege.md](vertraege.md). Alle Grafik-Karten halten die Qualitätsregeln aus [v05-sprites-und-teile.md](vertraege/v05-sprites-und-teile.md) (`V8`) ein: mindestens 5 Farbtöne pro Sprite, dunkle Kontur `OUTLINE_DARK`, `> 20 %` nicht-transparente Pixel, `.png` + `.json` Paar, **eigene Silhouette je Art** und **echte Bewegung in `"walk"`/`"fly"`** (V8 Abschnitt 3). Grafik-Karten dürfen bis ca. 150 Zeilen ändern.
 
 ---
 

@@ -450,11 +450,12 @@
 - **Größe:** S
 - **Abhängigkeiten:** `A02`
 - **Ziel-Dateien:** `src/spells.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` („Füllungen“), `tests/spec/test_phase_a.py` (`-k a27`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` („Füllungen“), `tests/spec/test_phase_a.py` (`-k a27`), `tests/test_spells.py` (`test_category_fields_are_consistent`)
 - **Aufgabe:**
   1. Ergänze auf `Block` die Felder `from_flask: bool = False` und `local_material: bool = False` und lege die 8 neuen Füllungen aus der Tabelle in `V0e` an (Mana und Werte wie die vorhandenen `sekret_*`-Blöcke, Beschreibung aus Bibel 06). Trage `fuellung_feuer` und `fuellung_rauch` als Aliase in `MODULE_ALIASES` ein.
 - **Akzeptanzkriterien:**
   - Alle 10 Bibel-Füllungen lassen sich über `resolve_block_key` als `Category.PAYLOAD`-Block finden; die 6 Material-Füllungen tragen das Material aus `V0e`.
+  - `fuellung_kolben` hat `material=None` und `from_flask=True`, `fuellung_lokal` hat `material=None` und `local_material=True`. Der Bestandstest `tests/test_spells.py` (`test_category_fields_are_consistent`) lässt das bereits zu – nicht ändern, nur grün halten.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a27 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

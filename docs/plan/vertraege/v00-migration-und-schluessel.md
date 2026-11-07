@@ -148,6 +148,8 @@ Entscheidung (2026-11-04): Die Code-Schlüssel in `BLOCKS` bleiben im MVP unver�
 | `fuellung_kolben` | Kolbenfüllung | `None`, neues Feld `from_flask=True` |
 | `fuellung_lokal` | Lokalkolorit | `None`, neues Feld `local_material=True` |
 
+`material=None` ist nur bei diesen beiden `PAYLOAD`-Blöcken erlaubt; `tests/test_spells.py` (`test_category_fields_are_consistent`) prüft genau das über `from_flask`/`local_material` (Plan-Korrektur 2026-11-07).
+
 **Sonderfüllungen** (Karte `A28`), reine Funktion in `src/spells.py`:
 
 ```python

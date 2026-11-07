@@ -27,7 +27,11 @@ class TestCatalog(unittest.TestCase):
         for block in BLOCKS:
             self.assertEqual(block.trigger is not None, block.category is Category.TRIGGER)
             if block.category is Category.PAYLOAD:
-                self.assertIsNotNone(block.material)
+                # V0e: flask filling and "Lokalkolorit" pick their material per cast
+                dynamic = getattr(block, "from_flask", False) or getattr(
+                    block, "local_material", False
+                )
+                self.assertTrue(block.material is not None or dynamic, block.key)
             elif block.material is not None:  # element "Kerne" carry a material as a mutation
                 self.assertIs(block.category, Category.MODIFIER, block.key)
             self.assertTrue(block.name_de)
