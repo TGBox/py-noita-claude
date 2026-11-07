@@ -66,6 +66,7 @@ class CreatureSpec:
     resist_material: str = ""
     drops_sample: str = ""
     sample_chance: float = 0.35
+    group_size: tuple[int, int] = (1, 1)
     is_mid_boss: bool = False
     is_boss: bool = False
 
@@ -246,6 +247,39 @@ KAFFEEGOLEM = CreatureSpec(
     windup_time=0.5, recover_time=0.2, drops_sample="probe_stempelkissen", sample_chance=0.35, pearls=14,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Glibbria (Card C03): huepfling, glibberteiler, zuckerwatte_wolke, konfetti_kanone
+# ---------------------------------------------------------------------------
+
+HUEPFLING = CreatureSpec(
+    "huepfling", "Hüpfling", width=10, height=10, hp=12, flying=False, speed=40, sight=300,
+    jump_speed=200, stance="passive", faction="gelee", group_size=(3, 6),
+    abilities=(Ability("flee"), Ability("graze", "zuckerguss")),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_brauseperle", sample_chance=0.35, pearls=3,
+)  # fmt: skip
+
+GLIBBERTEILER = CreatureSpec(
+    "glibberteiler", "Glibberteiler", width=18, height=14, hp=40, flying=False, speed=40, sight=380,
+    melee_damage=9, melee_cooldown=0.8, jump_speed=150, stance="hostile", faction="gelee",
+    abilities=(Ability("melee"), Ability("hunt"), Ability("split", "glibber"), Ability("armor")),
+    windup_time=0.5, recover_time=0.2, weak_material="fire", drops_sample="probe_glibberkern",
+    sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+ZUCKERWATTE_WOLKE = CreatureSpec(
+    "zuckerwatte_wolke", "Zuckerwattewolke", width=18, height=14, hp=24, flying=True, speed=45,
+    sight=360, stance="passive", faction="gelee",
+    abilities=(Ability("flee"), Ability("aura", "slow", 40.0)),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_brauseperle", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+KONFETTI_KANONE = CreatureSpec(
+    "konfetti_kanone", "Konfettikanone", width=16, height=16, hp=38, flying=False, speed=28, sight=400,
+    patterns=(), ranged_cooldown=2.0, ranged_range=300, stance="hostile", faction="gelee",
+    abilities=(Ability("ranged", "confetti"), Ability("reflect", "bounce")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glibberkern", sample_chance=0.35, pearls=12,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -255,6 +289,7 @@ SPECIES: dict[str, CreatureSpec] = {
         TALLOW_SAC, ACID_SAC, SPORE_SAC, BONE_EATER, BREATH, SHAPESHIFTER,
         FLEISCHMADE, BLUTEGEL, SAEURESPUCKER, ZOTTENWURM,
         AKTENFRESSER, STEMPLER, PARAGRAPHENREITER, KAFFEEGOLEM,
+        HUEPFLING, GLIBBERTEILER, ZUCKERWATTE_WOLKE, KONFETTI_KANONE,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
