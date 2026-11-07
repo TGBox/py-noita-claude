@@ -776,4 +776,21 @@ def resolve_payload_material(
     rng: Any,
 ) -> str | None:
     """Material key a payload block delivers for one cast (Contract V0e)."""
-    raise NotImplementedError("Card A28")
+    if not (block.from_flask or block.local_material):
+        return block.material
+
+    if block.from_flask:
+        key = getattr(flask, "key", None) or getattr(flask, "liquid", None)
+        amt = getattr(flask, "amount", 0.0)
+        if flask is not None and key and amt >= FLASK_PAYLOAD_CELLS:
+            flask.amount -= FLASK_PAYLOAD_CELLS
+            return key
+        return "water"
+
+    if block.local_material:
+        universe_materials = [k for k in set_keys if k not in base_keys]
+        if universe_materials:
+            return rng.choice(universe_materials)
+        return "water"
+
+    return block.material
