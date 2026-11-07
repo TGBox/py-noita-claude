@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.sprite_render import ASSET_ROOT
-from tools.palette import UNIVERSE_PALETTES, ENTITY_PALETTES
+from tools.palette import ENTITY_PALETTES, UNIVERSE_PALETTES
 from tools.sprites import (
     PixelCanvas,
     apply_dark_outline,
@@ -14,13 +14,14 @@ from tools.sprites import (
     save_sheet,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mid-Bosses (Cards B15, B16)
 # ---------------------------------------------------------------------------
 
 
-def _draw_pfuetzenwurm(offset_y: int = 0, coil_shift: int = 0, mouth_open: bool = False) -> PixelCanvas:
+def _draw_pfuetzenwurm(
+    offset_y: int = 0, coil_shift: int = 0, mouth_open: bool = False
+) -> PixelCanvas:
     c = PixelCanvas(32, 28)
     pal = UNIVERSE_PALETTES["fleischwelt"]
     # Coiled serpentine puddle worm in flesh puddle
@@ -56,10 +57,38 @@ def _draw_aktenwolf(offset_y: int = 0, leg_stride: int = 0, howling: bool = Fals
     draw_shaded_rect(c, 27, head_y + 4, 30, head_y + 7, pal["accent"])
     # 4 legs walking
     if leg_stride != 0:
-        draw_shaded_rect(c, max(1, 5 - leg_stride), 18 + offset_y, min(30, 8 - leg_stride), 26 + offset_y, pal["secondary"])
-        draw_shaded_rect(c, max(1, 10 + leg_stride), 18 + offset_y, min(30, 13 + leg_stride), 26 + offset_y, pal["secondary"])
-        draw_shaded_rect(c, max(1, 16 - leg_stride), 18 + offset_y, min(30, 19 - leg_stride), 26 + offset_y, pal["secondary"])
-        draw_shaded_rect(c, max(1, 21 + leg_stride), 18 + offset_y, min(30, 24 + leg_stride), 26 + offset_y, pal["secondary"])
+        draw_shaded_rect(
+            c,
+            max(1, 5 - leg_stride),
+            18 + offset_y,
+            min(30, 8 - leg_stride),
+            26 + offset_y,
+            pal["secondary"],
+        )
+        draw_shaded_rect(
+            c,
+            max(1, 10 + leg_stride),
+            18 + offset_y,
+            min(30, 13 + leg_stride),
+            26 + offset_y,
+            pal["secondary"],
+        )
+        draw_shaded_rect(
+            c,
+            max(1, 16 - leg_stride),
+            18 + offset_y,
+            min(30, 19 - leg_stride),
+            26 + offset_y,
+            pal["secondary"],
+        )
+        draw_shaded_rect(
+            c,
+            max(1, 21 + leg_stride),
+            18 + offset_y,
+            min(30, 24 + leg_stride),
+            26 + offset_y,
+            pal["secondary"],
+        )
     else:
         draw_shaded_rect(c, 6, 18 + offset_y, 10, 26 + offset_y, pal["secondary"])
         draw_shaded_rect(c, 18, 18 + offset_y, 22, 26 + offset_y, pal["secondary"])
@@ -89,7 +118,9 @@ def _draw_manege_clown(offset_y: int = 0, jiggle: int = 0, honk: bool = False) -
     return c
 
 
-def _draw_harzgeneral(offset_y: int = 0, leg_stride: int = 0, claw_open: bool = False) -> PixelCanvas:
+def _draw_harzgeneral(
+    offset_y: int = 0, leg_stride: int = 0, claw_open: bool = False
+) -> PixelCanvas:
     c = PixelCanvas(32, 30)
     pal = UNIVERSE_PALETTES["kruemelreich"]
     # Heavy armored ant commander with golden epaulets and huge resin cannon claw
@@ -104,8 +135,22 @@ def _draw_harzgeneral(offset_y: int = 0, leg_stride: int = 0, claw_open: bool = 
     draw_shaded_rect(c, 22, 11 + offset_y - claw_shift, 29, 17 + offset_y + claw_shift, pal["glow"])
     # Sturdy legs with noticeable stride width
     if leg_stride != 0:
-        draw_shaded_rect(c, max(1, 2 - leg_stride), 22 + offset_y, min(30, 6 - leg_stride), 28 + offset_y, pal["accent"])
-        draw_shaded_rect(c, max(1, 18 + leg_stride), 22 + offset_y, min(30, 22 + leg_stride), 28 + offset_y, pal["accent"])
+        draw_shaded_rect(
+            c,
+            max(1, 2 - leg_stride),
+            22 + offset_y,
+            min(30, 6 - leg_stride),
+            28 + offset_y,
+            pal["accent"],
+        )
+        draw_shaded_rect(
+            c,
+            max(1, 18 + leg_stride),
+            22 + offset_y,
+            min(30, 22 + leg_stride),
+            28 + offset_y,
+            pal["accent"],
+        )
     else:
         draw_shaded_rect(c, 6, 22 + offset_y, 18, 28 + offset_y, pal["accent"])
     apply_dark_outline(c)
@@ -131,7 +176,9 @@ def _draw_sporenherz(offset_y: int = 0, pulse: int = 0, emit_spores: bool = Fals
     return c
 
 
-def _draw_glockenwaechter(offset_y: int = 0, swing: int = 0, clapper_strike: bool = False) -> PixelCanvas:
+def _draw_glockenwaechter(
+    offset_y: int = 0, swing: int = 0, clapper_strike: bool = False
+) -> PixelCanvas:
     c = PixelCanvas(30, 32)
     pal = UNIVERSE_PALETTES["abtei"]
     # Ancient armored church bell sentinel with dangling ropes and stone armor
@@ -142,7 +189,9 @@ def _draw_glockenwaechter(offset_y: int = 0, swing: int = 0, clapper_strike: boo
     draw_shaded_ellipse(c, 15 + swing, 22 + offset_y, 8, 3, pal["accent"])
     # Dangling clapper & glowing rune
     clapper_x = 15 + swing * 2 + (2 if clapper_strike else -2)
-    draw_shaded_rect(c, max(1, clapper_x - 1), 23 + offset_y, min(28, clapper_x + 2), 28 + offset_y, pal["glow"])
+    draw_shaded_rect(
+        c, max(1, clapper_x - 1), 23 + offset_y, min(28, clapper_x + 2), 28 + offset_y, pal["glow"]
+    )
     if clapper_strike:
         c.set_px(clapper_x, 27 + offset_y, (255, 255, 200, 255))
     apply_dark_outline(c)
@@ -257,7 +306,7 @@ def _draw_oberstempler(offset_y: int = 0, arm_shift: int = 0, action: bool = Fal
     # Clock face head on top
     draw_shaded_ellipse(c, 24, 9 + offset_y, 8, 8, pal["accent"])
     c.set_px(24, 9 + offset_y, (255, 215, 0, 255))  # clock center
-    c.set_px(24, 6 + offset_y, (40, 40, 40, 255))   # hands
+    c.set_px(24, 6 + offset_y, (40, 40, 40, 255))  # hands
     c.set_px(27, 9 + offset_y, (40, 40, 40, 255))
     # Massive stacked desk torso (wide rectangular tiered block)
     draw_shaded_rect(c, 10, 18 + offset_y, 38, 34 + offset_y, pal["primary"])
@@ -370,7 +419,9 @@ def _draw_abt_kieme(offset_y: int = 0, robe_flutter: int = 0, action: bool = Fal
     draw_shaded_ellipse(c, 24, 16 + offset_y, 8, 6, pal["secondary"])
     c.set_px(21, 15 + offset_y, pal["glow"].highlight)
     # Towering monastic ceremonial robe with organ pipe back
-    draw_shaded_rect(c, 17 - robe_flutter, 21 + offset_y, 31 + robe_flutter, 33 + offset_y, pal["primary"])
+    draw_shaded_rect(
+        c, 17 - robe_flutter, 21 + offset_y, 31 + robe_flutter, 33 + offset_y, pal["primary"]
+    )
     for opx in (18, 22, 26, 30):
         draw_shaded_rect(c, opx, 10 + offset_y, opx + 1, 21 + offset_y, pal["accent"])
     # Floating pulpit base (carved stone boat/chalice)
@@ -402,7 +453,9 @@ def _draw_trampolinwal(offset_y: int = 0, fin_flap: int = 0, action: bool = Fals
     return c
 
 
-def _draw_kirchenkrake(offset_y: int = 0, tentacle_wave: int = 0, action: bool = False) -> PixelCanvas:
+def _draw_kirchenkrake(
+    offset_y: int = 0, tentacle_wave: int = 0, action: bool = False
+) -> PixelCanvas:
     c = PixelCanvas(48, 48)
     pal = UNIVERSE_PALETTES["abtei"]
     # Colossal abyssal kraken with cathedral bell helmet and candelabra tentacles
@@ -416,7 +469,9 @@ def _draw_kirchenkrake(offset_y: int = 0, tentacle_wave: int = 0, action: bool =
     # Huge writhing tentacles holding lit candles
     for i, tx in enumerate((8, 15, 24, 33, 40)):
         shift = tentacle_wave if i % 2 == 0 else -tentacle_wave
-        draw_shaded_rect(c, tx + shift, 28 + offset_y, tx + shift + 2, 42 + offset_y, pal["secondary"])
+        draw_shaded_rect(
+            c, tx + shift, 28 + offset_y, tx + shift + 2, 42 + offset_y, pal["secondary"]
+        )
         # Candle flame at tip
         c.set_px(tx + shift + 1, 27 + offset_y, (255, 200, 50, 255))
     apply_dark_outline(c)
@@ -494,4 +549,3 @@ def build_end_boss_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
         paths.extend([p, j])
 
     return paths
-

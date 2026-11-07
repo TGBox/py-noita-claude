@@ -557,10 +557,14 @@ def _draw_glibberteiler(offset_y: int = 0, split_gap: int = 0) -> PixelCanvas:
     # Wide rectangular/trapezoid split jelly cube with angry brow
     if split_gap > 0:
         # Left blob
-        draw_shaded_rect(c, 2 - split_gap // 2, 4 + offset_y, 8 - split_gap // 2, 11 + offset_y, pal["primary"])
+        draw_shaded_rect(
+            c, 2 - split_gap // 2, 4 + offset_y, 8 - split_gap // 2, 11 + offset_y, pal["primary"]
+        )
         c.set_px(5 - split_gap // 2, 6 + offset_y, (255, 255, 255, 255))
         # Right blob
-        draw_shaded_rect(c, 13 + split_gap // 2, 4 + offset_y, 19 + split_gap // 2, 11 + offset_y, pal["primary"])
+        draw_shaded_rect(
+            c, 13 + split_gap // 2, 4 + offset_y, 19 + split_gap // 2, 11 + offset_y, pal["primary"]
+        )
         c.set_px(16 + split_gap // 2, 6 + offset_y, (255, 255, 255, 255))
     else:
         # Wide flat brick shape
