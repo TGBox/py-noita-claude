@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from src import materials as mat
-from src.behaviour import BehaviourContext, tick_abilities
+from src.behaviour import Ability, BehaviourContext, tick_abilities
 from src.body import ENEMY_TEAM, Body
 from src.factions import are_hostile
 from src.materials import AIR
@@ -180,6 +180,39 @@ SPORE_SAC = CreatureSpec(
     "sporensack", "Sporensack", width=8, height=9, hp=2, flying=False, speed=0, sight=0,
     gore="spores", burst=12, prop=True, pearls=0,
 )  # fmt: skip
+# ---------------------------------------------------------------------------
+# Fleischwelt (Card C01): fleischmade, blutegel, saeurespucker, zottenwurm
+# ---------------------------------------------------------------------------
+
+FLEISCHMADE = CreatureSpec(
+    "fleischmade", "Fleischmade", width=16, height=10, hp=25, flying=False, speed=50, sight=450,
+    melee_damage=8, melee_cooldown=0.8, jump_speed=180, stance="hostile", faction="parasiten",
+    abilities=(Ability("melee"), Ability("hunt")), windup_time=0.4, recover_time=0.2,
+    weak_material="fire", drops_sample="probe_gallenstein", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+BLUTEGEL = CreatureSpec(
+    "blutegel", "Blutegel", width=12, height=6, hp=15, flying=False, speed=40, sight=380,
+    melee_damage=4, melee_cooldown=0.5, hangs=True, stance="hostile", faction="parasiten",
+    abilities=(Ability("melee"), Ability("hunt")), windup_time=0.25, recover_time=0.2,
+    weak_material="fire", drops_sample="probe_wucherung", sample_chance=0.35, pearls=6,
+)  # fmt: skip
+
+SAEURESPUCKER = CreatureSpec(
+    "saeurespucker", "Säurespucker", width=11, height=9, hp=32, flying=False, speed=35, sight=420,
+    patterns=(("sekret_saeure", "klumpen"),), ranged_cooldown=2.0, ranged_range=320,
+    stance="hostile", faction="parasiten", abilities=(Ability("ranged", "acid"),),
+    windup_time=0.45, recover_time=0.2, weak_material="fire", resist_material="acid",
+    drops_sample="probe_gallenstein", sample_chance=0.35, acid_immune=True, pearls=16,
+)  # fmt: skip
+
+ZOTTENWURM = CreatureSpec(
+    "zottenwurm", "Zottenwurm", width=20, height=8, hp=38, flying=False, speed=45, sight=380,
+    melee_damage=8, melee_cooldown=1.0, stance="neutral", faction="parasiten",
+    abilities=(Ability("graze", "flesh"), Ability("burrow", "flesh"), Ability("melee")),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_wucherung", sample_chance=0.35, pearls=14,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -187,6 +220,7 @@ SPECIES: dict[str, CreatureSpec] = {
         MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, BROOD_MOTHER, HEART,
         EMBER_MAGGOT, ACID_SPITTER, LEECH, EYE_BLOAT, MUCUS_CRAWLER, NERVE_KNOT,
         TALLOW_SAC, ACID_SAC, SPORE_SAC, BONE_EATER, BREATH, SHAPESHIFTER,
+        FLEISCHMADE, BLUTEGEL, SAEURESPUCKER, ZOTTENWURM,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
