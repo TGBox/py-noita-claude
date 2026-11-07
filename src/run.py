@@ -1416,6 +1416,8 @@ class Run:
             item = self.nearest_pickup()
         if item is None:
             return
+        if item.kind in NEW_PICKUP_KINDS:  # check kind first: these have no block/label
+            return self._pick_up_new_kind(item)
         self._log(
             "aufheben", gegenstand=item.label_de, preis=self.price_of(item), perlen=self.pearls
         )
@@ -1489,6 +1491,46 @@ class Run:
             self.events.append("pickup")
             return True
         return False
+
+    def _pick_up_new_kind(self, item: Pickup) -> bool:
+        """Collect a pickup of one of the unified kinds (Contract V11, Card A06)."""
+        kind = item.kind
+        amount = max(1, item.amount) if kind != "gold" else max(0, item.amount)
+        if kind == "sample":
+            if self.inventory.add_sample(item.item_key, amount) <= 0:
+                return False  # all slots full: the sample stays on the ground
+            self.events.append("pickup")
+        elif kind == "gold":
+            self.gold += amount
+            self.events.append("pearl")
+        elif kind == "life_capsule":
+            bonus = item.amount or 25
+            self.player.max_hp += bonus
+            self.player.hp = self.player.max_hp
+            self.messages.append(f"Dein Herz wächst: +{bonus} maximales Leben.")
+            self.events.append("perk")
+        elif kind == "memory_shard":
+            self.memory_shards += amount
+            self.events.append("pickup")
+        elif kind == "blueprint_shard":
+            self.blueprint_shards += amount
+            while self.blueprint_shards >= BLUEPRINT_SHARDS_NEEDED:
+                self.blueprint_shards -= BLUEPRINT_SHARDS_NEEDED
+                key = f"bauplan_{len(self.records.blueprints) + 1}"
+                self.records.discover("blueprint", key)
+                if key not in self.records.blueprints:
+                    self.records.blueprints.append(key)
+                self.messages.append("Ein Bauplan wurde freigeschaltet.")
+            self.events.append("pickup")
+        elif kind == "badge":
+            self.badges += amount
+            self.records.badges += amount
+            self.events.append("pickup")
+        else:  # "crate", "formular_stempel": opened or applied by later cards
+            self.events.append("pickup")
+        if item in self.pickups:
+            self.pickups.remove(item)
+        return True
 
     def emit(self, event_name: str, **payload: Any) -> None:
         """Emit a gameplay event on the structured event bus (Contract V12, Card A07)."""
@@ -1635,7 +1677,24 @@ def _unpack(text: str) -> bytes:
     return zlib.decompress(base64.b64decode(text.encode("ascii")))
 
 
+NEW_PICKUP_KINDS = frozenset(
+    {
+        "gold",
+        "sample",
+        "life_capsule",
+        "memory_shard",
+        "blueprint_shard",
+        "crate",
+        "badge",
+        "formular_stempel",
+    }
+)
+BLUEPRINT_SHARDS_NEEDED = 3
+
 PICKUP_FIELDS = (
+    "kind",
+    "item_key",
+    "amount",
     "pearls",
     "perk",
     "heart",
