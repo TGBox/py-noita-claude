@@ -35,10 +35,25 @@ PERKS: tuple[Perk, ...] = (
 
 PERK_BY_KEY: dict[str, Perk] = {perk.key: perk for perk in PERKS}
 
-PERK_ALIASES: dict[str, str] = {}
+PERK_ALIASES: dict[str, str] = {
+    "asbesthaut": "feuerfest",
+    "saeurefest": "saeurehaut",
+    "zweites_herz": "zaehes_fleisch",
+    "jetpacksohlen": "leichte_knochen",
+    "airbag": "panzerplatten",
+    "vampirismus_light": "blutdurst",
+    "uebertaktet": "schnelle_druesen",
+    "saeurespucker": "saeureblut",
+    "backup_bewusstsein": "zweiter_puls",
+    "dritter_arm": "flinke_haende",
+    "wutchip": "wutdruesen",
+    "goldmagnet": "perlenmagnet",
+    "filterlunge": "gaslunge",
+    "rutschfest": "schleimlaeufer",
+    "feilscherin": "feilscher",
+}
 
 
 def resolve_perk_key(key: str) -> str:
     """Resolve alias to canonical perk key (Contract V23, Card G04)."""
     return PERK_ALIASES.get(key, key)
-
