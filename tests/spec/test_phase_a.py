@@ -901,3 +901,33 @@ def test_a29_retired_organic_payloads() -> None:
     drawn = {random_block(rng, Category.PAYLOAD) for _ in range(2000)}
     assert not drawn & set(RETIRED_PAYLOADS)
     assert set(KEPT_PAYLOADS) <= drawn
+
+
+def test_a30_special_payloads_reach_the_shot() -> None:
+    from src import materials as mat
+    from src.flask import Flask
+    from src.run import Run
+    from src.spells import CATALOG, FLASK_PAYLOAD_CELLS
+    from src.wand import Shot
+
+    run = Run(seed=30)
+    x, y = run.player.x, run.player.y - 20
+    kolben = Shot(CATALOG["funke"], (CATALOG["fuellung_kolben"],))
+
+    run.flask = Flask(liquid="oil", amount=50.0, capacity=100.0)
+    run.projectiles.spawn([kolben], x, y, 0.0)
+    assert run.projectiles._pending[-1].material == mat.MAT_ID["oil"]
+    assert run.flask.amount == 50 - FLASK_PAYLOAD_CELLS
+
+    run.projectiles.spawn([kolben], x, y, 0.0, team="enemy")
+    assert run.flask.amount == 50 - FLASK_PAYLOAD_CELLS  # creatures never drain the flask
+
+    run.flask = None
+    run.projectiles.spawn([kolben], x, y, 0.0)
+    assert run.projectiles._pending[-1].material == mat.MAT_ID["water"]
+
+    lokal = Shot(CATALOG["funke"], (CATALOG["fuellung_lokal"],))
+    local_keys = set(mat.KEYS) - set(mat.BASE_KEYS)
+    run.projectiles.spawn([lokal], x, y, 0.0)
+    got = mat.KEYS[run.projectiles._pending[-1].material]
+    assert got in local_keys if local_keys else got == "water"

@@ -1,4 +1,4 @@
-# Phase A — Fundament (29 atomare S-Karten: `A01`–`A29`)
+# Phase A — Fundament (30 atomare S-Karten: `A01`–`A30`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_a.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md).
@@ -468,6 +468,7 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `src/wand.py`, `src/flask.py`, `tests/spec/test_phase_a.py` (`-k a28`)
 - **Aufgabe:**
   1. Implementiere `resolve_payload_material` in `src/spells.py` laut `V0e` und rufe sie in `src/wand.py` beim Zusammenstellen eines Schusses statt `block.material` auf (Kolben in der Hand und aktiver Materialsatz werden durchgereicht).
+     *(Plan-Korrektur 2026-11-07: Das Material wird nicht in `src/wand.py`, sondern in `src/projectiles.py` gelesen. Der Einbau in den Schuss ist deshalb Karte `A30`; A28 liefert nur die Funktion.)*
 - **Akzeptanzkriterien:**
   - Kolbenfüllung liefert das Kolbenmaterial und verbraucht 10 Zellen; ohne Kolben `"water"`.
   - Lokalkolorit liefert ein Universumsmaterial des aktiven Satzes, nie ein Grundmaterial.
@@ -486,5 +487,23 @@
 - **Akzeptanzkriterien:**
   - Die 9 ausgemusterten Blöcke stehen weiter in `BLOCKS`, kommen aber in 2000 Zügen von `random_block` und in `blocks_of_tier` nie vor; die 3 behaltenen kommen weiter vor.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a29 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## A30 — Sonderfüllungen im echten Schuss (`ProjectileSystem.payload_resolver`) (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A28`
+- **Ziel-Dateien:** `src/projectiles.py`, `src/run.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`, „Sonderfüllungen“), `src/projectiles.py` (`build`, `ProjectileSystem.__init__`, `ProjectileSystem.spawn`), `src/run.py` nur `Run.__init__` (Zeile mit `self.projectiles = ProjectileSystem()`) und `Run._cast` – die Datei ist sehr groß, gezielt suchen und gezielt ändern, `tests/spec/test_phase_a.py` (`-k a30`)
+- **Aufgabe:**
+  1. `src/projectiles.py`: `build(shot, x, y, angle, team=PLAYER_TEAM, resolve=None)` bekommt den optionalen Parameter `resolve: Callable[[Block], str | None] | None`. In der Schleife über `shot.modifiers` gilt `key = resolve(block) if resolve is not None else block.material`; ist `key` nicht `None`, wird `material = mat.id_of(key)`.
+  2. `ProjectileSystem.__init__` legt `self.payload_resolver: Callable[[Block], str | None] | None = None` an. `spawn` reicht ihn nur bei `team == PLAYER_TEAM` an `build` weiter (Kreaturen leeren nie den Kolben der Spielerin).
+  3. `src/run.py`: Neue Methode `Run._resolve_payload(self, block) -> str | None`, die `resolve_payload_material(block, self.flask, tuple(mat.KEYS), mat.BASE_KEYS, self.rng)` zurückgibt. Direkt nach `self.projectiles = ProjectileSystem()` in `Run.__init__`: `self.projectiles.payload_resolver = self._resolve_payload`.
+- **Akzeptanzkriterien:**
+  - Ein Schuss der Spielerin mit Kolbenfüllung trägt das Kolbenmaterial und verbraucht `FLASK_PAYLOAD_CELLS`; ohne Kolben trägt er `"water"`.
+  - Ein Kreaturen-Schuss mit Kolbenfüllung verändert den Kolben nicht.
+  - Lokalkolorit liefert ein Material des aktiven Satzes, das kein Grundmaterial ist (gibt es keins: `"water"`).
+- **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a30 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

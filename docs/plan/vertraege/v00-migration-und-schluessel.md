@@ -166,7 +166,7 @@ def resolve_payload_material(block: Block, flask: Flask | None, set_keys: tuple[
     """
 ```
 
-`Wand`/`Projectile` rufen diese Funktion beim Abfeuern auf, statt `block.material` direkt zu lesen.
+Eingebaut wird sie in `src/projectiles.py` (Karte `A30`): `build(..., resolve=...)` fragt für jeden Modifikator-Block `resolve(block)` statt `block.material`. `ProjectileSystem.payload_resolver` hält den Resolver der Spielerin (`Run._resolve_payload`, mit `self.flask`, `tuple(mat.KEYS)`, `mat.BASE_KEYS`, `self.rng`) und wird nur für `team == PLAYER_TEAM` benutzt.
 
 **Organische Alt-Füllungen** (Entscheidung 2026-11-04, Karte `A29`): Füllungen, die im regulären Spiel Sinn ergeben, bleiben als normale Beute. Die übrigen bleiben in `BLOCKS` (alte Spielstände laden weiter), werden aber nie mehr gezogen: neues Feld `Block.retired: bool = False`; `random_block` (`src/loot.py`) und `blocks_of_tier` überspringen `retired`-Blöcke.
 
