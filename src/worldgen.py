@@ -41,6 +41,8 @@ class Level:
     challenge_shrine: tuple[int, int, int, int] | None = None
     regions: list[tuple[str, tuple[int, int, int, int]]] = field(default_factory=list)
     destructible_props: list[tuple[str, int, int]] = field(default_factory=list)
+    quest_giver: tuple[int, int] | None = None  # where the challenge's quest giver stands (V13b)
+    quest_target: tuple[int, int] | None = None  # cow escort goal (V13b, Glibbria only)
 
 
 def generate_world(world: World) -> tuple[int, int]:

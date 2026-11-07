@@ -16,9 +16,10 @@
 - **Aufgabe:**
   1. Erstelle `src/universes/gen/fleischwelt.py` mit `generate(world, universe, depth, seed) -> Level` (`topology="vertical"` über `region_bands`, Regionen `"schlund"`, `"magen"`, `"knochenmark"` in dieser Reihenfolge). Inhalt: Schlund mit Zähnen aus `"enamel"` an den Höhlenrändern; Magen mit Säurebecken (`"acid"`) und Talg (`"tallow"`); Knochenmark aus `"bone"` mit Zahnschmelzadern. Grundmasse `"flesh"`. Props `"saeure_behaelter"`, `"magen_zotte"`. Geheimkammer (Erinnerungssplitter) in Knochen versiegelt.
   2. Registriere `"fleischwelt": generate` in `GENERATORS` (`src/universes/gen/__init__.py`). Nur Materialschlüssel aus dem aktiven Materialsatz `"fleischwelt"` verwenden.
-  3. Setze `Level.quest_giver` auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
+  3. Setze `Level.quest_giver` (Feld existiert in `src/worldgen.py`) auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
 - **Akzeptanzkriterien:**
   - `generate_universe(world, UNIVERSES["fleischwelt"], 1, 42)` liefert ein `Level` mit `level.universe_key == "fleischwelt"`, `[r[0] for r in level.regions] == ["schlund", "magen", "knochenmark"]`, freien `spawn`-/`exit_point`-Zellen und gültigen `(x0, y0, x1, y1)`-Arenen.
+  - Besteht die Inhalts-Abnahme `GENERATOR_CONTENT["fleischwelt"]` in `tests/spec/test_phase_d.py` (Topologie, Material-Anteile je Region, Props, `quest_giver`; Vertrag `V9` Abschnitt „Inhalts-Abnahme“). Ein Gerüst, das nur Räume und Tunnel gräbt, reicht nicht.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_d.py -k d01 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -32,9 +33,10 @@
 - **Aufgabe:**
   1. Erstelle `src/universes/gen/aktenhalde.py` mit `generate(world, universe, depth, seed) -> Level` (`topology="horizontal"` über `region_bands`, Regionen `"registratur"`, `"grossraumbuero"`, `"archivkeller"` in dieser Reihenfolge). Inhalt: Registratur mit dichten Regalreihen (`"aktendeckel"`-Böden, `"papier"` dazwischen); Großraumbüro mit Schreibtischen als Plattformen; Archivkeller dunkel mit Tintenseen (`"tinte"`). **Brandabschnitte** nach Bibel 03: kein zusammenhängender brennbarer Bereich größer als 640×360 (Trennwände aus `"rock"`, `"aktendeckel"` oder `"tintenpapier"`). Props `"akten_regal"`, `"amt_uhr"`.
   2. Registriere `"aktenhalde": generate` in `GENERATORS` (`src/universes/gen/__init__.py`). Nur Materialschlüssel aus dem aktiven Materialsatz `"aktenhalde"` verwenden.
-  3. Setze `Level.quest_giver` auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
+  3. Setze `Level.quest_giver` (Feld existiert in `src/worldgen.py`) auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
 - **Akzeptanzkriterien:**
   - `generate_universe(world, UNIVERSES["aktenhalde"], 1, 42)` liefert ein `Level` mit `level.universe_key == "aktenhalde"`, `[r[0] for r in level.regions] == ["registratur", "grossraumbuero", "archivkeller"]`, freien `spawn`-/`exit_point`-Zellen und gültigen `(x0, y0, x1, y1)`-Arenen.
+  - Besteht die Inhalts-Abnahme `GENERATOR_CONTENT["aktenhalde"]` in `tests/spec/test_phase_d.py` (Topologie, Material-Anteile je Region, Props, `quest_giver`; Vertrag `V9` Abschnitt „Inhalts-Abnahme“). Ein Gerüst, das nur Räume und Tunnel gräbt, reicht nicht.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_d.py -k d02 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -48,9 +50,10 @@
 - **Aufgabe:**
   1. Erstelle `src/universes/gen/glibbria.py` mit `generate(world, universe, depth, seed) -> Level` (`topology="islands"` über `region_bands`, Regionen `"gelee_huegel"`, `"kaugummi_hoehlen"`, `"sirupkueste"` in dieser Reihenfolge). Inhalt: Schwebende Inseln aus `"glibber"` und `"glibber_rot"` mit `"zuckerguss"`-Plattformen; Kaugummi-Höhlen mit `"kaugummi"`-Pfützen; unten ein Meer aus `"brausesirup"`. Wo `ensure_path` scheitert, Brücken aus `"zuckerguss"`. Props `"glibber_ballon"`.
   2. Registriere `"glibbria": generate` in `GENERATORS` (`src/universes/gen/__init__.py`). Nur Materialschlüssel aus dem aktiven Materialsatz `"glibbria"` verwenden.
-  3. Setze `Level.quest_giver` auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`) und `Level.quest_target` auf einen Punkt an der gegenüberliegenden Küste des Sirupsees.
+  3. Setze `Level.quest_giver` (Feld existiert in `src/worldgen.py`) auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`) und `Level.quest_target` auf einen Punkt an der gegenüberliegenden Küste des Sirupsees.
 - **Akzeptanzkriterien:**
   - `generate_universe(world, UNIVERSES["glibbria"], 1, 42)` liefert ein `Level` mit `level.universe_key == "glibbria"`, `[r[0] for r in level.regions] == ["gelee_huegel", "kaugummi_hoehlen", "sirupkueste"]`, freien `spawn`-/`exit_point`-Zellen und gültigen `(x0, y0, x1, y1)`-Arenen.
+  - Besteht die Inhalts-Abnahme `GENERATOR_CONTENT["glibbria"]` in `tests/spec/test_phase_d.py` (Topologie, Material-Anteile je Region, Props, `quest_giver`; Vertrag `V9` Abschnitt „Inhalts-Abnahme“). Ein Gerüst, das nur Räume und Tunnel gräbt, reicht nicht.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_d.py -k d03 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -64,9 +67,10 @@
 - **Aufgabe:**
   1. Erstelle `src/universes/gen/kruemelreich.py` mit `generate(world, universe, depth, seed) -> Level` (`topology="top_split"` über `region_bands`, Regionen `"fliesenwueste"`, `"unter_kuehlschrank"`, `"ameisenbau"` in dieser Reihenfolge). Inhalt: Fliesenwüste oben links (`"fliese"` mit Fugen, riesige `"kruemel"`, `"zucker"`-Körner, eine Erbse als Kreis aus `"rock"`); Unter dem Kühlschrank oben rechts (dunkel, `"staubfluse"`); Ameisenbau unten (Gänge und Kammern in `"brosel"`/`"kruemel"`, Königinnenkammer). Props `"ameisen_kokon"`.
   2. Registriere `"kruemelreich": generate` in `GENERATORS` (`src/universes/gen/__init__.py`). Nur Materialschlüssel aus dem aktiven Materialsatz `"kruemelreich"` verwenden.
-  3. Setze `Level.quest_giver` auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
+  3. Setze `Level.quest_giver` (Feld existiert in `src/worldgen.py`) auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
 - **Akzeptanzkriterien:**
   - `generate_universe(world, UNIVERSES["kruemelreich"], 1, 42)` liefert ein `Level` mit `level.universe_key == "kruemelreich"`, `[r[0] for r in level.regions] == ["fliesenwueste", "unter_kuehlschrank", "ameisenbau"]`, freien `spawn`-/`exit_point`-Zellen und gültigen `(x0, y0, x1, y1)`-Arenen.
+  - Besteht die Inhalts-Abnahme `GENERATOR_CONTENT["kruemelreich"]` in `tests/spec/test_phase_d.py` (Topologie, Material-Anteile je Region, Props, `quest_giver`; Vertrag `V9` Abschnitt „Inhalts-Abnahme“). Ein Gerüst, das nur Räume und Tunnel gräbt, reicht nicht.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_d.py -k d04 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -80,9 +84,10 @@
 - **Aufgabe:**
   1. Erstelle `src/universes/gen/sporenklub.py` mit `generate(world, universe, depth, seed) -> Level` (`topology="vertical"` über `region_bands`, Regionen `"lautsprechertuerme"`, `"tanzflaeche"`, `"hinterzimmer"` in dieser Reihenfolge). Inhalt: Lautsprechertürme oben (vertikale Schächte aus `"pilzhut"`); Tanzfläche als offene Kavernen mit Lichtorgeln aus `"leuchtsporen"`; Hinterzimmer mit engen Gängen (`"pilzfleisch"`), an den schmalsten Stellen ein Platz für den Türsteherpilz. Props `"sporen_knolle"`, `"pilz_laterne"`.
   2. Registriere `"sporenklub": generate` in `GENERATORS` (`src/universes/gen/__init__.py`). Nur Materialschlüssel aus dem aktiven Materialsatz `"sporenklub"` verwenden.
-  3. Setze `Level.quest_giver` auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
+  3. Setze `Level.quest_giver` (Feld existiert in `src/worldgen.py`) auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
 - **Akzeptanzkriterien:**
   - `generate_universe(world, UNIVERSES["sporenklub"], 1, 42)` liefert ein `Level` mit `level.universe_key == "sporenklub"`, `[r[0] for r in level.regions] == ["lautsprechertuerme", "tanzflaeche", "hinterzimmer"]`, freien `spawn`-/`exit_point`-Zellen und gültigen `(x0, y0, x1, y1)`-Arenen.
+  - Besteht die Inhalts-Abnahme `GENERATOR_CONTENT["sporenklub"]` in `tests/spec/test_phase_d.py` (Topologie, Material-Anteile je Region, Props, `quest_giver`; Vertrag `V9` Abschnitt „Inhalts-Abnahme“). Ein Gerüst, das nur Räume und Tunnel gräbt, reicht nicht.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_d.py -k d05 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -96,9 +101,10 @@
 - **Aufgabe:**
   1. Erstelle `src/universes/gen/abtei.py` mit `generate(world, universe, depth, seed) -> Level` (`topology="vertical"` über `region_bands`, Regionen `"glockenturm"`, `"kirchenschiff"`, `"krypta"` in dieser Reihenfolge). Inhalt: Glockenturm oben trocken mit Glocke aus `"glockenbronze"`; Kirchenschiff aus `"mauerwerk"` mit `"buntglas"`-Fenstern, geflutet (`"water"`) mit Luftblasen-Kapellen zum Atmen; Krypta dunkel mit Strömung (`current_vx`, V0a) und `"algen"`. Kerzen aus `"kerzenwachs"` als Lichtpunkte. Props `"abtei_glocke"`.
   2. Registriere `"abtei": generate` in `GENERATORS` (`src/universes/gen/__init__.py`). Nur Materialschlüssel aus dem aktiven Materialsatz `"abtei"` verwenden.
-  3. Setze `Level.quest_giver` auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
+  3. Setze `Level.quest_giver` (Feld existiert in `src/worldgen.py`) auf einen freien Bodenplatz (Auftraggeber der Herausforderung, `V13b`).
 - **Akzeptanzkriterien:**
   - `generate_universe(world, UNIVERSES["abtei"], 1, 42)` liefert ein `Level` mit `level.universe_key == "abtei"`, `[r[0] for r in level.regions] == ["glockenturm", "kirchenschiff", "krypta"]`, freien `spawn`-/`exit_point`-Zellen und gültigen `(x0, y0, x1, y1)`-Arenen.
+  - Besteht die Inhalts-Abnahme `GENERATOR_CONTENT["abtei"]` in `tests/spec/test_phase_d.py` (Topologie, Material-Anteile je Region, Props, `quest_giver`; Vertrag `V9` Abschnitt „Inhalts-Abnahme“). Ein Gerüst, das nur Räume und Tunnel gräbt, reicht nicht.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_d.py -k d06 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

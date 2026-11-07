@@ -32,28 +32,188 @@ def _check_universe_generator(u_key: str) -> None:
         assert 0 <= rect[1] < rect[3] <= w.height
 
 
+# V9 section 4 "Inhalts-Abnahme": topology, per-region material shares (sampled every 2 px),
+# props and quest giver of every MVP generator. Shares are lower bounds unless noted.
+GENERATOR_CONTENT: dict[str, dict] = {
+    "fleischwelt": {
+        "topology": "vertical",
+        "regions": {
+            "schlund": [(("enamel",), 0.005)],
+            "magen": [(("acid",), 0.01), (("tallow",), 0.005)],
+            "knochenmark": [(("bone",), 0.15), (("enamel",), 0.003)],
+        },
+        "world": [(("flesh",), 0.20)],
+        "props": ("saeure_behaelter", "magen_zotte"),
+    },
+    "aktenhalde": {
+        "topology": "horizontal",
+        "regions": {
+            "registratur": [(("aktendeckel",), 0.02), (("papier",), 0.05)],
+            "grossraumbuero": [(("air",), 0.25)],
+            "archivkeller": [(("tinte",), 0.02)],
+        },
+        "world": [],
+        "props": ("akten_regal", "amt_uhr"),
+    },
+    "glibbria": {
+        "topology": "islands",
+        "regions": {
+            "gelee_huegel": [(("glibber", "glibber_rot"), 0.10), (("zuckerguss",), 0.003)],
+            "kaugummi_hoehlen": [(("kaugummi",), 0.01)],
+            "sirupkueste": [(("brausesirup",), 0.05)],
+        },
+        "world": [],
+        "props": ("glibber_ballon",),
+    },
+    "kruemelreich": {
+        "topology": "top_split",
+        "regions": {
+            "fliesenwueste": [(("fliese",), 0.05), (("kruemel",), 0.005), (("zucker",), 0.003)],
+            "unter_kuehlschrank": [(("staubfluse",), 0.01)],
+            "ameisenbau": [(("brosel", "kruemel"), 0.15)],
+        },
+        "world": [],
+        "props": ("ameisen_kokon",),
+    },
+    "sporenklub": {
+        "topology": "vertical",
+        "regions": {
+            "lautsprechertuerme": [(("pilzhut",), 0.05)],
+            "tanzflaeche": [(("leuchtsporen",), 0.003), (("air",), 0.30)],
+            "hinterzimmer": [(("pilzfleisch",), 0.15)],
+        },
+        "world": [],
+        "props": ("sporen_knolle", "pilz_laterne"),
+    },
+    "abtei": {
+        "topology": "vertical",
+        "regions": {
+            "glockenturm": [(("glockenbronze",), 0.003)],
+            "kirchenschiff": [(("mauerwerk",), 0.05), (("buntglas",), 0.003), (("water",), 0.20)],
+            "krypta": [(("algen",), 0.003)],
+        },
+        "world": [(("kerzenwachs",), 0.0005)],
+        "props": ("abtei_glocke",),
+    },
+}
+
+
+def _share(w, rect: tuple[int, int, int, int], keys: tuple[str, ...], step: int = 2) -> float:
+    from src import materials as mat
+
+    want = {mat.MAT_ID[k] for k in keys}
+    x0, y0, x1, y1 = rect
+    total = hit = 0
+    for y in range(y0, y1, step):
+        for x in range(x0, x1, step):
+            total += 1
+            hit += w.get(x, y) in want
+    return hit / max(1, total)
+
+
+def _check_generator_content(u_key: str) -> tuple:
+    from src import materials as mat
+    from src.universes.catalog import ALL_UNIVERSES
+    from src.universes.gen import generate_universe
+    from src.universes.gen.common import region_bands
+    from src.world import World
+
+    spec = GENERATOR_CONTENT[u_key]
+    w = World(320, 200)
+    lvl = generate_universe(w, ALL_UNIVERSES[u_key], 1, 42)
+    assert mat.ACTIVE is not None and mat.ACTIVE.key == ALL_UNIVERSES[u_key].material_set
+
+    assert [r[1] for r in lvl.regions] == region_bands(w.width, w.height, spec["topology"]), (
+        f"{u_key}: regions do not follow topology {spec['topology']!r}"
+    )
+    rects = dict(lvl.regions)
+    for region, rules in spec["regions"].items():
+        for keys, minimum in rules:
+            got = _share(w, rects[region], keys)
+            assert got >= minimum, f"{u_key}/{region}: {'+'.join(keys)} {got:.3f} < {minimum}"
+    for keys, minimum in spec["world"]:
+        got = _share(w, (0, 0, w.width, w.height), keys)
+        assert got >= minimum, f"{u_key}: {'+'.join(keys)} {got:.4f} < {minimum} in the world"
+
+    prop_keys = {key for key, _, _ in lvl.destructible_props}
+    assert set(spec["props"]) <= prop_keys, f"{u_key}: props {prop_keys} miss {spec['props']}"
+    for _, px, py in lvl.destructible_props:
+        assert 0 <= px < w.width and 0 <= py < w.height
+
+    assert lvl.quest_giver is not None, f"{u_key}: no quest giver"
+    qx, qy = lvl.quest_giver
+    air = mat.MAT_ID["air"]
+    assert w.get(qx, qy) == air, f"{u_key}: quest giver stands inside material"
+    assert any(w.get(qx, qy + d) != air for d in range(1, 13)), f"{u_key}: quest giver floats"
+    return w, lvl
+
+
 def test_d01_generator_fleischwelt() -> None:
     _check_universe_generator("fleischwelt")
+    _, lvl = _check_generator_content("fleischwelt")
+    assert lvl.secret is not None, "fleischwelt: sealed bone chamber (Erinnerungssplitter) missing"
 
 
 def test_d02_generator_aktenhalde() -> None:
+    from src import materials as mat
+    from src.universes.catalog import ALL_UNIVERSES
+    from src.universes.gen import generate_universe
+    from src.world import World
+
     _check_universe_generator("aktenhalde")
+    _check_generator_content("aktenhalde")
+
+    # Brandabschnitte (bible 03): no connected paper area larger than 640x360.
+    w = World(1280, 720)
+    generate_universe(w, ALL_UNIVERSES["aktenhalde"], 1, 42)
+    paper = mat.MAT_ID["papier"]
+    step = 2
+    gw, gh = w.width // step, w.height // step
+    seen = bytearray(gw * gh)
+    for start in range(gw * gh):
+        if seen[start] or w.get((start % gw) * step, (start // gw) * step) != paper:
+            continue
+        seen[start] = 1
+        stack = [start]
+        x0 = x1 = start % gw
+        y0 = y1 = start // gw
+        while stack:
+            i = stack.pop()
+            gx, gy = i % gw, i // gw
+            x0, x1, y0, y1 = min(x0, gx), max(x1, gx), min(y0, gy), max(y1, gy)
+            for nx, ny in ((gx + 1, gy), (gx - 1, gy), (gx, gy + 1), (gx, gy - 1)):
+                j = ny * gw + nx
+                if 0 <= nx < gw and 0 <= ny < gh and not seen[j]:
+                    if w.get(nx * step, ny * step) == paper:
+                        seen[j] = 1
+                        stack.append(j)
+        width, height = (x1 - x0 + 1) * step, (y1 - y0 + 1) * step
+        assert width <= 640 and height <= 360, f"paper area {width}x{height} has no firebreak"
 
 
 def test_d03_generator_glibbria() -> None:
     _check_universe_generator("glibbria")
+    w, lvl = _check_generator_content("glibbria")
+    bottom = (0, w.height * 9 // 10, w.width, w.height)
+    assert _share(w, bottom, ("brausesirup",)) >= 0.3, "glibbria: no syrup sea at the bottom"
+    assert lvl.quest_target is not None, "glibbria: cow escort target missing"
 
 
 def test_d04_generator_kruemelreich() -> None:
     _check_universe_generator("kruemelreich")
+    _check_generator_content("kruemelreich")
 
 
 def test_d05_generator_sporenklub() -> None:
     _check_universe_generator("sporenklub")
+    _check_generator_content("sporenklub")
 
 
 def test_d06_generator_abtei() -> None:
     _check_universe_generator("abtei")
+    w, lvl = _check_generator_content("abtei")
+    tower = dict(lvl.regions)["glockenturm"]
+    assert _share(w, tower, ("water",)) <= 0.01, "abtei: the bell tower must stay dry"
 
 
 def test_d10_worldgen_dispatch_and_boss_spawns() -> None:
