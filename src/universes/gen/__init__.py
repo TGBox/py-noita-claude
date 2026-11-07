@@ -11,6 +11,7 @@ from src import materials as mat
 from src.universes.gen import common
 from src.universes.gen.aktenhalde import generate_aktenhalde
 from src.universes.gen.fleischwelt import generate_fleischwelt
+from src.universes.gen.glibbria import generate_glibbria
 from src.worldgen import Level
 
 if TYPE_CHECKING:
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 GENERATORS: dict[str, Callable[[World, Universe, int, int], Level]] = {
     "aktenhalde": generate_aktenhalde,
     "fleischwelt": generate_fleischwelt,
+    "glibbria": generate_glibbria,
 }
 
 SHAPE_TOPOLOGY = {
