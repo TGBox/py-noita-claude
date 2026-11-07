@@ -94,6 +94,13 @@ def build_creature_sheets(
                 "hurt": hurt_frames,
             }
 
+            # Optional/universe-specific states
+            if species == "blutegel":
+                anims["hang"] = [_draw_creature_frame(species, u_key, -1)]
+                anims["latched"] = [_draw_creature_frame(species, u_key, 0, True)]
+            elif species == "fleischmade":
+                anims["burrow_out"] = [_draw_creature_frame(species, u_key, 2), _draw_creature_frame(species, u_key, 0)]
+
             first = idle_frames[0]
             anchor = (first.width // 2, first.height - 2)
 
