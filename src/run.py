@@ -1167,9 +1167,26 @@ class Run:
         def flip(point: tuple[int, int] | None, width: int = 0) -> tuple[int, int] | None:
             return None if point is None else (w - 1 - point[0] - width, point[1])
 
+        def flip_rect(rect: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+            x0, y0, x1, y1 = rect
+            return (w - 1 - x1, y0, w - 1 - x0, y1)
+
+        def flip_optional(
+            rect: tuple[int, int, int, int] | None,
+        ) -> tuple[int, int, int, int] | None:
+            return None if rect is None else flip_rect(rect)
+
         return Level(
             flip(level.spawn, self.player.width - 1), flip(level.exit), flip(level.arena),
             flip(level.secret), flip(level.vault),
+            exit_point=flip(level.exit_point),
+            universe_key=level.universe_key,
+            mid_boss_arena=flip_rect(level.mid_boss_arena),
+            boss_arena=flip_rect(level.boss_arena),
+            trader_nook=flip_optional(level.trader_nook),
+            challenge_shrine=flip_optional(level.challenge_shrine),
+            regions=[(name, flip_rect(rect)) for name, rect in level.regions],
+            destructible_props=[(key, w - 1 - x, y) for key, x, y in level.destructible_props],
         )  # fmt: skip
 
     def _enemy_damage(self) -> float:
