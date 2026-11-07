@@ -139,11 +139,11 @@
 ## E10 — Werkstatt-Modus & Direkt-Stationen in `Run` (`V18`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `E01`, `E06`, `E02`
+- **Abhängigkeiten:** `E01`, `E06`, `E02`, `E04`, `F01`
 - **Ziel-Dateien:** `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`), `src/workshop.py`, `src/run.py`, `tests/spec/test_phase_e.py` (`-k e10`)
 - **Aufgabe:**
-  1. Ergänze auf `Run` `in_workshop`, `workshop_layout`, `fabricator`, `couch_used`, `minigames_played: set[str]`, `experiment_picked`, `experiment_rerolls`, `next_boost`, `price_factor`, `menu_mode` und `enter_workshop()` mit allem, was `V18` „Betreten“ verlangt.
+  1. Ergänze auf `Run` `in_workshop`, `workshop_layout`, `fabricator`, `couch_used`, `minigames_played: set[str]`, `experiment_picked`, `experiment_rerolls`, `next_boost`, `price_factor`, `menu_mode` und `enter_workshop()` mit allem, was `V18` „Betreten“ verlangt. Gibt es noch keinen Plan, legt `enter_workshop()` `self.plan = RunPlan(self.seed)` an (`src/universes/plan.py`; `E11` und `G14` brauchen ihn). Die Händler werden mit `src/traders.py` (`E04`) neu besetzt, `wanted.on_workshop()` kommt aus `F01`.
   2. Implementiere `interact_station()` für alle 12 Stationen laut Tabelle in `V18` (Couch, Zapfanlage für `ZAPF_PRICE` Gold, Brunnen, Werkbank, Schredder sowie das Setzen von `menu_mode` für Portal, Fabrikator, Händler, Archiv, Liege; Minispiele übernimmt `E14`).
 - **Akzeptanzkriterien:**
   - Nach `enter_workshop()` ist die Spielerin voll geheilt und steht am `spawn`; die Couch heilt genau einmal je Besuch `+35 %`.

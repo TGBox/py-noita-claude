@@ -267,3 +267,58 @@ def test_g13_trigger_and_payload_names() -> None:
     _check_names(TRIGGER_NAMES)
     assert BLOCKS["sekret_feuer"].name_de == "Feuerfüllung"
     assert BLOCKS["sekret_rauch"].name_de == "Rauchfüllung"
+
+
+def test_g14_multiverse_run_starts_in_workshop_and_portal_keys() -> None:
+    from src.run import Controls, Run
+    from src.workshop import STATIONS
+
+    run = Run(seed=14)
+    run.start_multiverse_run()
+    assert run.in_workshop is True
+    assert run.plan.slot == 0
+    offers = run.plan.offers()
+    assert len(offers) == 2
+
+    x0, y0, x1, y1 = STATIONS["ws_portal"].rect
+    run.player.x, run.player.y = (x0 + x1) / 2, (y0 + y1) / 2
+    run.update(0.016, Controls(pickup=True))
+    assert run.menu_mode == "portal_select"
+    assert run.handle_menu_input(pygame.K_ESCAPE) is True
+    assert run.menu_mode == "" and run.in_workshop is True
+    assert run.handle_menu_input(pygame.K_RETURN) is False  # no menu open
+
+    run.menu_mode = "portal_select"
+    assert run.handle_menu_input(pygame.K_DOWN) is True
+    assert run.handle_menu_input(pygame.K_RETURN) is True
+    assert run.in_workshop is False and run.menu_mode == ""
+    assert run.universe_key == offers[1].universe
+
+
+def test_g15_game_loop_workshop_and_portal_menu(monkeypatch) -> None:
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    from src import main as game_main
+
+    # never touch the player's real save files
+    monkeypatch.setattr(game_main.records, "delete_run", lambda *a, **k: None)
+    monkeypatch.setattr(game_main.records, "save_run", lambda *a, **k: None)
+
+    game = game_main.Game()
+    game._start_run()
+    assert game.state == "playing" and game.run.in_workshop is True
+
+    game.run.menu_mode = "portal_select"
+    game._on_key(pygame.K_ESCAPE)
+    assert game.run.menu_mode == "" and game.state == "playing"
+
+    offers = game.run.plan.offers()
+    game.run.menu_mode = "portal_select"
+    hp = game.run.player.body.hp
+    game.update(0.5)  # an open menu pauses the run
+    assert game.run.player.body.hp == hp
+    game.draw()
+    game._on_key(pygame.K_RETURN)
+    assert game.run.in_workshop is False
+    assert game.run.universe_key == offers[0].universe
+    game.update(0.016)
+    game.draw()

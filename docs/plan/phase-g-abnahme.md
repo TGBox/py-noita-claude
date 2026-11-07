@@ -1,4 +1,4 @@
-# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (13 atomare S-Karten: `G01`–`G13`)
+# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (15 atomare S-Karten: `G01`–`G15`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_g.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Karten folgen `V22`–`V23` aus [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) und `V14` aus [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md).
@@ -126,11 +126,11 @@
 ## G09 — Tastatur- & Maus-Steuerung für alle neuen Werkstatt- und Begegnungs-Menüs in `src/game.py` / `src/run.py` (`V22`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `E14`, `F08`, `G05`
+- **Abhängigkeiten:** `E14`, `F08`, `G05`, `G14`
 - **Ziel-Dateien:** `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`), `src/run.py`, `src/menus.py`, `tests/spec/test_phase_g.py` (`-k g09`)
 - **Aufgabe:**
-  1. Bündele die Menü-Eingabeverarbeitung in `Run.handle_menu_input(self, key: int) -> bool` (`src/run.py`) für alle 5 `menu_mode`-Zustände (`"portal_select"`, `"fabricator"`, `"trader"`, `"empress_bargain"`, `"archive"`): Navigation mit Pfeiltasten / `W`/`S`/`A`/`D`, Bestätigen mit `Enter`/`E`/`1`–`4`, Proben-Tausch mit `T`, Reroll mit `R`, Schließen mit `Escape`.
+  1. Erweitere das in `G14` angelegte `Run.handle_menu_input(self, key: int) -> bool` (`src/run.py`; `"portal_select"` gibt es schon) auf alle 5 `menu_mode`-Zustände (`"portal_select"`, `"fabricator"`, `"trader"`, `"empress_bargain"`, `"archive"`): Navigation mit Pfeiltasten / `W`/`S`/`A`/`D`, Bestätigen mit `Enter`/`E`/`1`–`4`, Proben-Tausch mit `T`, Reroll mit `R`, Schließen mit `Escape`.
 - **Akzeptanzkriterien:**
   - Jeder der 5 `menu_mode`-Zustände lässt sich im Test komplett per Tastendruck (`handle_menu_input`) bedienen und mit `pygame.K_ESCAPE` sauber auf `menu_mode == ""` schließen.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g09 -q && uv run pytest --ignore=tests/spec -q`
@@ -192,3 +192,37 @@
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g13 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
+
+## G14 — Neuer Lauf beginnt in der Werkstatt; Stationen per [E] und Portal-Menü per Tastatur (`src/run.py`) (`V18`, `V22`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `E11`
+- **Ziel-Dateien:** `src/run.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (Stationen-Tabelle, „Betreten“), `src/run.py` nur `Controls`, `Run.new_run`, `Run._reset`, `Run.update` (Stelle mit `controls.pickup`), `Run.enter_workshop`, `Run.interact_station`, `Run.choose_next_universe` – die Datei ist sehr groß, gezielt suchen; `src/universes/plan.py`, `tests/spec/test_phase_g.py` (`-k g14`)
+- **Aufgabe:**
+  1. Neue Methode `Run.start_multiverse_run()`: `self._reset()`, `self.plan = RunPlan(self.seed)`, `self.portal_index = 0`, dann `self.enter_workshop()`. `new_run()` bleibt unverändert (Sandbox und alte Tests nutzen es).
+  2. In `Run.update`: Ist `self.in_workshop` und `self.menu_mode == ""` und `controls.pickup` gesetzt, ruft `update` `self.interact_station()` auf (statt etwas aufzuheben).
+  3. Neue Methode `Run.handle_menu_input(self, key: int) -> bool` – vorerst nur für `menu_mode == "portal_select"`: `K_UP`/`K_w` bzw. `K_DOWN`/`K_s` verschieben `self.portal_index` innerhalb von `self.plan.offers()` (umlaufend), `K_RETURN`/`K_e` ruft `self.choose_next_universe(self.portal_index)` auf und setzt `menu_mode = ""` und `portal_index = 0`, `K_ESCAPE` setzt nur `menu_mode = ""`. Rückgabe `True`, wenn die Taste verbraucht wurde; in jedem anderen `menu_mode` `False` (`G09` ergänzt die übrigen Menüs).
+- **Akzeptanzkriterien:**
+  - Nach `start_multiverse_run()` steht die Spielerin in der Werkstatt, `plan.slot == 0` und das Portal bietet 2 Universen an.
+  - [E] am Portalrahmen öffnet `"portal_select"`; Escape schließt es; Pfeil runter + Enter reist in das zweite Angebot.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g14 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## G15 — Spielschleife verdrahten: Lauf startet in der Werkstatt, Portal-Menü sichtbar und bedienbar (`src/main.py`) (`V22`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `G14`
+- **Ziel-Dateien:** `src/main.py`
+- **Zu lesender Kontext:** `src/main.py` nur `Game.__init__`, `_start_run`, `_on_key`, `update`, `draw` und `_key_name`; `src/menus.py` (`draw_portal_select_menu`), `src/ui.py` (`font`), `src/workshop.py` (`station_at`, `STATIONS`), `tests/spec/test_phase_g.py` (`-k g15`)
+- **Aufgabe:**
+  1. `_start_run`: Ohne Sandbox startet `self.run.start_multiverse_run()` statt `self.run.new_run()`; die Sandbox bleibt beim alten Ablauf.
+  2. `_on_key`: Ist `self.run.menu_mode` gesetzt, geht die Taste zuerst an `self.run.handle_menu_input(key)`. Wurde sie nicht verbraucht und ist es `K_ESCAPE`, wird `menu_mode = ""` gesetzt. In beiden Fällen öffnet Escape **nicht** das Pausemenü. Danach `self._snap_camera()`, falls sich `self.run.in_workshop` geändert hat.
+  3. `update`: Solange `self.run.menu_mode` gesetzt ist, läuft `self.run.update` nicht (das Spiel pausiert hinter dem Menü).
+  4. `draw`: Bei `menu_mode == "portal_select"` `draw_portal_select_menu(self.screen, ui.font(...), ui.font(...), self.run.plan.offers(), self.run.portal_index)` über dem Spielbild. Bei einem anderen, noch nicht gebauten `menu_mode` einen Hinweis „Noch nicht verfügbar – [Esc]“.
+  5. In der Werkstatt: Steht die Spielerin an einer Station (`station_at(self.run.workshop_layout, x, y)`), zeigt `self.notice` „[<Taste für pickup>] <name_de der Station>“.
+- **Akzeptanzkriterien:**
+  - Ein neuer Lauf aus dem Titelmenü beginnt in der Werkstatt; das Portal-Menü lässt sich im laufenden Spiel öffnen, mit Escape schließen und mit Enter bestätigen; danach steht die Spielerin im gewählten Universum.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g15 -q && uv run pytest --ignore=tests/spec -q`, danach einmal von Hand: `uv run python -m src.main`, „Neues Spiel“, zum Portalrahmen laufen, [E], Universum wählen.
+
