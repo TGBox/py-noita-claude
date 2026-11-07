@@ -132,6 +132,7 @@ def _draw_leuchtmotte(offset_y: int = 0, wing_spread: int = 0) -> PixelCanvas:
 
 # ---------------------------------------------------------------------------
 # Fleischwelt (Card B08): fleischmade, blutegel, saeurespucker, zottenwurm
+# 4 distinctive species: maggot, leech, acid spitter, villi worm
 # ---------------------------------------------------------------------------
 
 
