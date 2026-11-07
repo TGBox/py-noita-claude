@@ -179,7 +179,7 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V3`), `src/world.py`, `tests/spec/test_phase_a.py` (`-k a10`)
 - **Aufgabe:**
   1. Erstelle `src/pathfind.py` mit `PATH_CACHE_TTL = 0.4`, `MAX_PATH_EXPANSIONS = 160`, `PathCacheEntry`, `find_path(world, start, goal, loco, max_expansions=160)` und `next_waypoint(world, start_px, goal_px, loco, cache, now)` exakt nach `V3`.
-  2. Beachte die Bewegungsregeln für `"fly"` (Luft/Gas frei, Flüssigkeiten teurer), `"swim"` (nur Flüssigkeiten) und `"walk"` (begehbare Zellen mit festem Boden darunter oder 1-Zellen-Stufe, tödliche Zellen wie Lava/Säure hohe Zusatzkosten).
+  2. Halte dich bei der Passierbarkeit der Knoten und der Rückgabe genau an die Regeln in `V3` (Mittelzelle des Knotens entscheidet; Start- und Zielknoten immer erlaubt; letzter Punkt ist genau das Ziel).
 - **Akzeptanzkriterien:**
   - `find_path` umgeht für `"fly"` eine Steinmauer mit Öffnung, findet für `"swim"` Wege durch Wasserbecken und bleibt für `"walk"` auf begehbaren Böden.
   - `find_path` terminiert bei unerreichbarem Ziel nach höchstens `max_expansions` Knoten und gibt den Pfad zum nächstgelegenen besuchten Knoten zurück.
@@ -209,10 +209,10 @@
 - **Größe:** S
 - **Abhängigkeiten:** `A05`
 - **Ziel-Dateien:** `src/behaviour.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `tests/spec/test_phase_a.py` (`-k a12`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `src/loot.py`, `src/enemies.py`, `tests/spec/test_phase_a.py` (`-k a12`)
 - **Aufgabe:**
   1. Erstelle `src/behaviour.py` mit `PIERCING_FORMS`, `GRAZE_MATERIAL` (inkl. `"blattlaus": "zucker"`), `SPLIT_SIZES`, `Ability` und `BehaviourContext` gemäß `V1`.
-  2. Implementiere in `src/behaviour.py` die Verhaltens-Helfer für die ersten 5 Fähigkeiten: `handle_split_on_death`, `handle_morph_check`, `handle_reflect_projectiles`, `handle_steal_pickup` und `handle_eat_material` (inkl. Honig-/Pilz-/Gold-Drop beim Grasen).
+  2. Implementiere in `src/behaviour.py` die Verhaltens-Helfer für die ersten 5 Fähigkeiten: `handle_split_on_death`, `handle_morph_check`, `handle_reflect_projectiles`, `handle_steal_pickup` und `handle_eat_material` (inkl. Honig-/Pilz-/Gold-Drop beim Grasen). Nutze nur vorhandene Attribute: `Pickup` (`src/loot.py`) und Kreaturen (`src/enemies.py`) haben `x` und `y` in Weltpixeln; Abstände mit `math.hypot` berechnen. Erfinde keine Methoden wie `distance_to`.
 - **Akzeptanzkriterien:**
   - `handle_split_on_death` erzeugt ein `"split"`-Event für `generation < 2` und keines für `generation >= 2`.
   - `handle_reflect_projectiles` kehrt feindliche Projektile (`form not in PIERCING_FORMS`) im Radius `24 px` um und setzt `from_player = True`.
