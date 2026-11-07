@@ -117,9 +117,142 @@ def build_klonita_sheet(out_dir: Path = ASSET_ROOT) -> list[Path]:
     return [png_path, json_path]
 
 
+def _draw_agent_sachbearbeiter_frame(offset_y: int = 0, arm_action: bool = False) -> PixelCanvas:
+    c = PixelCanvas(20, 24)
+    pal = ENTITY_PALETTES["authority"]
+    # Grey suit body
+    draw_shaded_rect(c, 4, 10 + offset_y, 16, 21, pal["primary"])
+    # Head with fedora/visor
+    draw_shaded_ellipse(c, 10, 6 + offset_y, 5, 5, pal["secondary"])
+    # Red tie or badge accent
+    draw_shaded_rect(c, 9, 11 + offset_y, 11, 15 + offset_y, pal["accent"])
+    c.set_px(10, 11 + offset_y, (220, 50, 50, 255))
+    if arm_action:
+        draw_shaded_rect(c, 14, 11 + offset_y, 18, 14 + offset_y, pal["secondary"])
+        c.set_px(17, 12 + offset_y, pal["glow"].highlight)
+    else:
+        c.set_px(15, 13 + offset_y, pal["secondary"].mid)
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_agent_vollstrecker_frame(offset_y: int = 0, shield_pos: int = 0) -> PixelCanvas:
+    c = PixelCanvas(22, 26)
+    pal = ENTITY_PALETTES["authority"]
+    # Heavy trenchcoat body
+    draw_shaded_rect(c, 4, 10 + offset_y, 18, 23, pal["primary"])
+    # Armored helmet/head
+    draw_shaded_ellipse(c, 11, 6 + offset_y, 6, 5, pal["secondary"])
+    # Visor slit glow
+    draw_shaded_rect(c, 8, 6 + offset_y, 14, 8 + offset_y, pal["glow"])
+    # Briefcase shield on arm
+    bx = 13 + shield_pos
+    draw_shaded_rect(c, bx, 11 + offset_y, bx + 5, 18 + offset_y, pal["accent"])
+    c.set_px(bx + 2, 11 + offset_y, pal["secondary"].shadow)
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_agent_abteilungsleiter_frame(offset_y: int = 0, float_wave: int = 0) -> PixelCanvas:
+    c = PixelCanvas(24, 28)
+    pal = ENTITY_PALETTES["authority"]
+    # Floating robe / formal authority mantle
+    draw_shaded_rect(c, 5, 12 + offset_y, 19, 25 + offset_y, pal["primary"])
+    # Head / mask
+    draw_shaded_ellipse(c, 12, 8 + offset_y, 5, 5, pal["secondary"])
+    # Crown / golden § symbol on head
+    draw_shaded_rect(c, 9 + float_wave, 2 + offset_y, 15 + float_wave, 5 + offset_y, pal["glow"])
+    c.set_px(12 + float_wave, 3 + offset_y, (255, 215, 0, 255))
+    # Glowing legal scroll or aura hands
+    draw_shaded_rect(c, 2, 14 + offset_y, 6, 18 + offset_y, pal["accent"])
+    draw_shaded_rect(c, 18, 14 + offset_y, 22, 18 + offset_y, pal["accent"])
+    apply_dark_outline(c)
+    return c
+
+
 def build_agent_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build charaktere/agent_*.{png,json} (Card B03)."""
-    raise NotImplementedError("Card B03")
+    paths: list[Path] = []
+
+    # 1. agent_sachbearbeiter (also aliased/copied for agent_streife if needed)
+    sb_idle = [_draw_agent_sachbearbeiter_frame(y) for y in (0, 1, 0, -1)]
+    sb_walk = [_draw_agent_sachbearbeiter_frame(y) for y in (0, -1, 0, 1, 0, -1)]
+    sb_windup = [_draw_agent_sachbearbeiter_frame(-1, True), _draw_agent_sachbearbeiter_frame(0, True)]
+    sb_attack = [_draw_agent_sachbearbeiter_frame(1, True), _draw_agent_sachbearbeiter_frame(0, False)]
+    sb_hurt = [_draw_agent_sachbearbeiter_frame(1), _draw_agent_sachbearbeiter_frame(0)]
+    sb_dead = [_draw_agent_sachbearbeiter_frame(2)]
+    sb_anims = {
+        "idle": sb_idle,
+        "walk": sb_walk,
+        "windup": sb_windup,
+        "attack": sb_attack,
+        "hurt": sb_hurt,
+        "dead": sb_dead,
+    }
+    for name in ("agent_sachbearbeiter", "agent_streife"):
+        p, j = save_sheet(
+            "charaktere",
+            name,
+            sb_anims,
+            anchor=(10, 22),
+            fps={"idle": 5.0, "walk": 8.0, "windup": 6.0, "attack": 10.0, "hurt": 8.0, "dead": 1.0},
+            out_dir=out_dir,
+        )
+        paths.extend([p, j])
+
+    # 2. agent_vollstrecker
+    vs_idle = [_draw_agent_vollstrecker_frame(y, 0) for y in (0, 1, 0, -1)]
+    vs_walk = [_draw_agent_vollstrecker_frame(y, 0) for y in (0, -1, 0, 1)]
+    vs_windup = [_draw_agent_vollstrecker_frame(-1, -1), _draw_agent_vollstrecker_frame(0, -1)]
+    vs_attack = [_draw_agent_vollstrecker_frame(1, 2), _draw_agent_vollstrecker_frame(0, 1)]
+    vs_hurt = [_draw_agent_vollstrecker_frame(1, 0), _draw_agent_vollstrecker_frame(0, 0)]
+    vs_dead = [_draw_agent_vollstrecker_frame(2, 0)]
+    vs_anims = {
+        "idle": vs_idle,
+        "walk": vs_walk,
+        "windup": vs_windup,
+        "attack": vs_attack,
+        "hurt": vs_hurt,
+        "dead": vs_dead,
+    }
+    p, j = save_sheet(
+        "charaktere",
+        "agent_vollstrecker",
+        vs_anims,
+        anchor=(11, 24),
+        fps={"idle": 5.0, "walk": 7.0, "windup": 6.0, "attack": 10.0, "hurt": 8.0, "dead": 1.0},
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
+
+    # 3. agent_abteilungsleiter
+    al_idle = [_draw_agent_abteilungsleiter_frame(y, w) for y, w in ((0, 0), (-1, 1), (0, 0), (1, -1))]
+    al_fly = [_draw_agent_abteilungsleiter_frame(y, 0) for y in (-1, -2, -1, 0)]
+    al_windup = [_draw_agent_abteilungsleiter_frame(-1, 0), _draw_agent_abteilungsleiter_frame(-2, 1)]
+    al_attack = [_draw_agent_abteilungsleiter_frame(0, 1), _draw_agent_abteilungsleiter_frame(1, 0)]
+    al_hurt = [_draw_agent_abteilungsleiter_frame(1, 0), _draw_agent_abteilungsleiter_frame(0, 0)]
+    al_dead = [_draw_agent_abteilungsleiter_frame(2, 0)]
+    al_anims = {
+        "idle": al_idle,
+        "fly": al_fly,
+        "windup": al_windup,
+        "attack": al_attack,
+        "hurt": al_hurt,
+        "dead": al_dead,
+    }
+    glow = [{"offset": [12, 3], "color": [255, 215, 0], "radius": 14}]
+    p, j = save_sheet(
+        "charaktere",
+        "agent_abteilungsleiter",
+        al_anims,
+        anchor=(12, 26),
+        fps={"idle": 5.0, "fly": 7.0, "windup": 6.0, "attack": 10.0, "hurt": 8.0, "dead": 1.0},
+        glow=glow,
+        out_dir=out_dir,
+    )
+    paths.extend([p, j])
+
+    return paths
 
 
 def build_evil_and_hq_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
