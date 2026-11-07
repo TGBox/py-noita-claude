@@ -280,6 +280,37 @@ KONFETTI_KANONE = CreatureSpec(
     windup_time=0.5, recover_time=0.2, drops_sample="probe_glibberkern", sample_chance=0.35, pearls=12,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Krümelreich (Card C04): ameisenkrieger, blattlaus, arbeiterameise, harzspucker
+# ---------------------------------------------------------------------------
+
+AMEISENKRIEGER = CreatureSpec(
+    "ameisenkrieger", "Ameisenkrieger", width=18, height=12, hp=22, flying=False, speed=70, sight=420,
+    melee_damage=7, melee_cooldown=0.7, jump_speed=140, stance="hostile", faction="insekten",
+    group_size=(4, 8), abilities=(Ability("melee"), Ability("dig", "kruemel"), Ability("hunt")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_zuckerkristall", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+BLATTLAUS = CreatureSpec(
+    "blattlaus", "Blattlaus", width=12, height=10, hp=10, flying=False, speed=25, sight=200,
+    stance="passive", faction="insekten", abilities=(Ability("graze", "zucker"),),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_ameisenduft", sample_chance=0.35, pearls=4,
+)  # fmt: skip
+
+ARBEITERAMEISE = CreatureSpec(
+    "arbeiterameise", "Arbeiterameise", width=14, height=10, hp=18, flying=False, speed=65, sight=380,
+    melee_damage=5, melee_cooldown=0.8, jump_speed=120, stance="neutral", faction="insekten",
+    abilities=(Ability("steal", "pickup"), Ability("dig", "kruemel"), Ability("pack")),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_zuckerkristall", sample_chance=0.35, pearls=6,
+)  # fmt: skip
+
+HARZSPUCKER = CreatureSpec(
+    "harzspucker", "Harzspucker", width=16, height=14, hp=34, flying=False, speed=40, sight=400,
+    patterns=(), ranged_cooldown=2.0, ranged_range=300, stance="hostile", faction="insekten",
+    abilities=(Ability("ranged", "resin"), Ability("aura", "slow", 36.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_ameisenduft", sample_chance=0.35, pearls=12,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -290,6 +321,7 @@ SPECIES: dict[str, CreatureSpec] = {
         FLEISCHMADE, BLUTEGEL, SAEURESPUCKER, ZOTTENWURM,
         AKTENFRESSER, STEMPLER, PARAGRAPHENREITER, KAFFEEGOLEM,
         HUEPFLING, GLIBBERTEILER, ZUCKERWATTE_WOLKE, KONFETTI_KANONE,
+        AMEISENKRIEGER, BLATTLAUS, ARBEITERAMEISE, HARZSPUCKER,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
@@ -583,6 +615,8 @@ class EnemyManager:
         spec = SPECIES.get(species, MAGGOT)
         c = Creature(spec, round(x), round(y), random.Random())
         c.species = species
+        if species == "blattlaus":
+            c.giver = True
         self.creatures.append(c)
         return c
 
