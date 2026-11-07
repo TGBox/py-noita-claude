@@ -394,6 +394,45 @@ KIRCHENKRAKE = CreatureSpec(
     windup_time=0.6, recover_time=0.2, drops_sample="probe_glockensplitter", sample_chance=0.35, pearls=40,
 )  # fmt: skip
 
+# ---------------------------------------------------------------------------
+# Zwischenbosse Teil 1 (Card C10): pfuetzenwurm, aktenwolf, manege_clown, harzgeneral, sporenherz
+# ---------------------------------------------------------------------------
+
+PFUETZENWURM = CreatureSpec(
+    "pfuetzenwurm", "Pfützenwurm", width=24, height=14, hp=160, flying=False, speed=40, sight=450,
+    stance="hostile", faction="parasiten", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("burrow", "flesh"), Ability("ranged", "acid")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_blutklumpen", pearls=25,
+)  # fmt: skip
+
+AKTENWOLF = CreatureSpec(
+    "aktenwolf", "Aktenwolf", width=22, height=16, hp=180, flying=False, speed=65, sight=500,
+    stance="hostile", faction="akten", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("morph", "alpha", 0.5), Ability("aura", "stamp_tax", 42.0)),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_stempelkissen", pearls=30,
+)  # fmt: skip
+
+MANEGE_CLOWN = CreatureSpec(
+    "manege_clown", "Manege-Clown", width=18, height=22, hp=150, flying=False, speed=48, sight=440,
+    stance="hostile", faction="gelee", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("split", "clown"), Ability("ranged", "bomb")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glibberkern", pearls=25,
+)  # fmt: skip
+
+HARZGENERAL = CreatureSpec(
+    "harzgeneral", "Harzgeneral", width=24, height=20, hp=190, flying=False, speed=35, sight=460,
+    stance="hostile", faction="insekten", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "ameisenkrieger", 2.0), Ability("ranged", "resin")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_zuckerkristall", pearls=30,
+)  # fmt: skip
+
+SPORENHERZ = CreatureSpec(
+    "sporenherz", "Sporenherz", width=26, height=26, hp=170, flying=True, speed=20, sight=450,
+    stance="hostile", faction="pilze", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "sporenwerfer", 2.0), Ability("aura", "poison", 48.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_plattennadel", pearls=28,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
 SPECIES: dict[str, CreatureSpec] = {
     spec.key: spec
@@ -408,6 +447,7 @@ SPECIES: dict[str, CreatureSpec] = {
         TUERSTEHERPILZ, SPORENSCHNORRER, SPORENWERFER, LEUCHTMOTTE,
         MOENCHSFISCH, ORGELAAL, GLOCKENQUALLE, KORALLENWAECHTER,
         TRAMPOLINWAL, KIRCHENKRAKE,
+        PFUETZENWURM, AKTENWOLF, MANEGE_CLOWN, HARZGENERAL, SPORENHERZ,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
