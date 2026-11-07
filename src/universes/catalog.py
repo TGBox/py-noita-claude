@@ -93,7 +93,7 @@ UNIVERSES: tuple[Universe, ...] = (
     Universe(
         "kruemelreich", "Krümelreich",
         "Du bist etwa so groß wie ein Brotkrümel. Das Brot ist größer. Die Ameisen auch.",
-        rule="rule_tiny", shape="breit", ambient=0.7, material_set="koerper",
+        rule="rule_tiny", shape="breit", ambient=0.7, material_set="kruemelreich",
         regions=(
             Region("fliesenwueste", "Fliesenwüste"),
             Region("unter_kuehlschrank", "Unter Kühlschrank", (("ambient", 0.2),)),
