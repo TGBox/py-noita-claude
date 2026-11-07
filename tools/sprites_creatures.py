@@ -108,6 +108,10 @@ def build_creature_sheets(
                 anims["swim"] = [_draw_creature_frame(species, u_key, y) for y in (-1, 0, 1, 0)]
             elif species == "harzspucker":
                 anims["shoot"] = [_draw_creature_frame(species, u_key, 0, True), _draw_creature_frame(species, u_key, 1, True)]
+            elif species == "huepfling":
+                anims["squash"] = [_draw_creature_frame(species, u_key, 2), _draw_creature_frame(species, u_key, -2)]
+            elif species == "glibberteiler":
+                anims["split"] = [_draw_creature_frame(species, u_key, 0, True), _draw_creature_frame(species, u_key, 1, True)]
 
             first = idle_frames[0]
             anchor = (first.width // 2, first.height - 2)
