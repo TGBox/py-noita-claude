@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from src import materials as mat
 from src.universes.gen import common
 from src.universes.gen.aktenhalde import generate_aktenhalde
+from src.universes.gen.fleischwelt import generate_fleischwelt
 from src.worldgen import Level
 
 if TYPE_CHECKING:
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 GENERATORS: dict[str, Callable[[World, Universe, int, int], Level]] = {
     "aktenhalde": generate_aktenhalde,
+    "fleischwelt": generate_fleischwelt,
 }
 
 SHAPE_TOPOLOGY = {
