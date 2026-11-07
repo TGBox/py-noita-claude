@@ -187,7 +187,9 @@ class Game:
 
     def _apply_options(self) -> None:
         options = self.options
-        self.audio.set_volumes(options.effects / settings_store.STEPS, options.music / settings_store.STEPS)
+        self.audio.set_volumes(
+            options.effects / settings_store.STEPS, options.music / settings_store.STEPS
+        )
         self.lighting = options.lighting
         if options.fullscreen != self.is_fullscreen:
             self.toggle_fullscreen()
@@ -231,7 +233,8 @@ class Game:
                     self._menu_step(-event.y)
             elif self.editor.open:
                 if event.type == pygame.KEYDOWN and (
-                    event.key == pygame.K_ESCAPE or "inventory" in self.bindings.actions_for(event.key)
+                    event.key == pygame.K_ESCAPE
+                    or "inventory" in self.bindings.actions_for(event.key)
                 ):
                     self.editor.toggle()
                 else:
@@ -316,7 +319,12 @@ class Game:
             self._menu_step(-1)
         elif key in (pygame.K_DOWN, pygame.K_s):
             self._menu_step(1)
-        elif self.state == "options" and key in (pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d):
+        elif self.state == "options" and key in (
+            pygame.K_LEFT,
+            pygame.K_a,
+            pygame.K_RIGHT,
+            pygame.K_d,
+        ):
             self._change_option(-1 if key in (pygame.K_LEFT, pygame.K_a) else 1)
         elif key in (pygame.K_RETURN, pygame.K_SPACE):
             if self.state == "options":
@@ -327,7 +335,9 @@ class Game:
             action = controls_rows()[self.menu_index][0]
             if action in ACTION_BY_KEY:
                 self.bindings.reset(action)
-                self._save_bindings(f"{ACTION_BY_KEY[action].label_de}: Standard wiederhergestellt.")
+                self._save_bindings(
+                    f"{ACTION_BY_KEY[action].label_de}: Standard wiederhergestellt."
+                )
         elif key == pygame.K_ESCAPE:
             self._menu_back()
 
@@ -438,7 +448,10 @@ class Game:
             self.saved_run = None
         self.run.favoured_blocks, self.run.start_pearls = self.records.unlocks()
         self.run.log.clear()  # entries from before the run started (title screen)
-        self.run.new_run()
+        if sandbox:
+            self.run.new_run()
+        else:
+            self.run.start_multiverse_run()
         self._begin(fortgesetzt=False, sandbox=sandbox)
 
     def _continue_run(self) -> None:
@@ -468,8 +481,12 @@ class Game:
         self.run.god_mode = False
         self.run.known_blocks = set(self.records.blocks)
         self.run.known_blocks.update(k for w in self.run.inventory.wands for k in w.slots if k)
-        known = set(self.records.blocks) | {k for w in self.run.inventory.wands for k in w.slots if k}
-        self.editor.palette = [block.key for block in BLOCKS if block.key in known] if sandbox else []
+        known = set(self.records.blocks) | {
+            k for w in self.run.inventory.wands for k in w.slots if k
+        }
+        self.editor.palette = (
+            [block.key for block in BLOCKS if block.key in known] if sandbox else []
+        )
         self.editor.palette_mode = sandbox
         self.editor.page = 0
         self.run_recorded = False
@@ -552,6 +569,15 @@ class Game:
     # ------------------------------------------------------------------ input
 
     def _on_key(self, key: int) -> None:
+        if self.run.menu_mode:
+            was_in_workshop = self.run.in_workshop
+            handled = self.run.handle_menu_input(key)
+            if not handled and key == pygame.K_ESCAPE:
+                self.run.menu_mode = ""
+            if self.run.in_workshop != was_in_workshop:
+                self._snap_camera()
+            return
+
         if key == pygame.K_ESCAPE:
             self._go("paused")
             return
@@ -694,7 +720,9 @@ class Game:
             my += round(pad.move[1] * PAD_CURSOR_SPEED * dt)
             pygame.mouse.set_pos((mx, my))
         if "x" in pad.pressed:  # like a right click: between the wand in hand and the bag
-            self.editor.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(mx, my)), self.run)
+            self.editor.handle_event(
+                pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(mx, my)), self.run
+            )
         if "y" in pad.pressed:
             self.editor.sort_mode = (self.editor.sort_mode + 1) % len(SORT_MODES)
             self.run.inventory.sort_bag(SORT_MODES[self.editor.sort_mode][0])
@@ -738,8 +766,10 @@ class Game:
         in_menu_music = self.state in ("title", "codex") or (
             self.state in ("options", "controls") and self.menu_return == "title"
         )
-        self.audio.play_music("sanktum" if in_menu_music or self.run.in_sanctum else self.run.depth.key)
-        if self.editor.open or self.state != "playing":
+        self.audio.play_music(
+            "sanktum" if in_menu_music or self.run.in_sanctum else self.run.depth.key
+        )
+        if self.editor.open or self.state != "playing" or bool(self.run.menu_mode):
             self.hover = None
             return  # menus and the inventory pause the game
         self.log.frame(dt)
@@ -806,6 +836,16 @@ class Game:
         self._save_checkpoint()
         self._record_run()
         self.notice_time = max(0.0, self.notice_time - dt)
+        if self.run.in_workshop and self.run.workshop_layout is not None:
+            from src.workshop import station_at
+
+            st = station_at(
+                self.run.workshop_layout, int(self.run.player.x), int(self.run.player.y), radius=16
+            )
+            if st is not None:
+                btn = self._key_name("pickup")
+                self.notice = f"[{btn}] {st.name}"
+                self.notice_time = 0.1
         if self.run.depth_index != depth_before or self.run.in_sanctum != sanctum_before:
             self.log.flush_frames(self._place)
             self._place = self._where()
@@ -849,7 +889,9 @@ class Game:
         cam_x = int(min(max(self.camera[0] + jitter_x, 0), world.width - VIEW_WIDTH))
         cam_y = int(min(max(self.camera[1] + jitter_y, 0), world.height - VIEW_HEIGHT))
         if self.lighting:
-            ambient = min(1.0, self.run.depth.ambient * self.run.darkness * self.run.rule.light_factor())
+            ambient = min(
+                1.0, self.run.depth.ambient * self.run.darkness * self.run.rule.light_factor()
+            )
             self.renderer.refresh(self.run.world, cam_x, cam_y, self._lights(), ambient)
         else:
             self.renderer.refresh(self.run.world, cam_x, cam_y)
@@ -860,7 +902,9 @@ class Game:
         self.screen = pygame.display.get_surface()
         self.viewport.resize(*self.screen.get_size())
         self.screen.fill(COLOR_BACKGROUND)
-        scaled = pygame.transform.scale(self.canvas, (self.viewport.target_width, self.viewport.target_height))
+        scaled = pygame.transform.scale(
+            self.canvas, (self.viewport.target_width, self.viewport.target_height)
+        )
         self.screen.blit(scaled, (self.viewport.offset_x, self.viewport.offset_y))
         if self.fade > 0:
             veil = pygame.Surface(scaled.get_size())
@@ -885,13 +929,42 @@ class Game:
         else:
             if self.state == "playing":  # the pause menu covers the whole screen
                 if self.options.damage_numbers:
-                    self.hud.draw_floaters(self.screen, self.viewport, self.floaters.items, self.last_cam)
+                    self.hud.draw_floaters(
+                        self.screen, self.viewport, self.floaters.items, self.last_cam
+                    )
                 self.hud.draw(self.screen, self.viewport, self._hud_state())
+                if self.run.menu_mode:
+                    if self.run.menu_mode == "portal_select":
+                        from src.menus import draw_portal_select_menu
+
+                        draw_portal_select_menu(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run.plan.offers() if self.run.plan else [],
+                            self.run.portal_index,
+                        )
+                    else:
+                        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+                        overlay.fill((0, 0, 0, 180))
+                        self.screen.blit(overlay, (0, 0))
+                        msg = ui.font(24).render(
+                            "Noch nicht verfügbar – [Esc]", True, (240, 200, 100)
+                        )
+                        self.screen.blit(
+                            msg,
+                            (
+                                self.screen.get_width() // 2 - msg.get_width() // 2,
+                                self.screen.get_height() // 2 - msg.get_height() // 2,
+                            ),
+                        )
             if self.editor.open:
                 self.editor.draw(self.screen, self.run)
             if self.state == "paused":
                 controls = help_lines(self.bindings, self.gamepad.state.connected)
-                self.menu_rects = menus.draw_pause(self.screen, self._run_summary(), self.menu_index, controls)
+                self.menu_rects = menus.draw_pause(
+                    self.screen, self._run_summary(), self.menu_index, controls
+                )
         pygame.display.flip()
 
     def _lights(self) -> list[tuple[float, float, float, float]]:
@@ -902,7 +975,9 @@ class Game:
             lights.append((*run.player.center, PLAYER_LIGHT_RADIUS, 1.0))
         for projectile in run.projectiles.items:
             radius = projectile.form.light or 26.0
-            lights.append((projectile.x, projectile.y, radius, 0.8 if projectile.form.light else 0.45))
+            lights.append(
+                (projectile.x, projectile.y, radius, 0.8 if projectile.form.light else 0.45)
+            )
         if not run.depth.final:
             strength = 0.7 if run.exit_open else 0.25
             lights.append((*run.level.exit, 48.0, strength))
@@ -1036,24 +1111,36 @@ class Game:
             if player.polymorphed > 0:  # a maggot instead of you
                 frame = int(self.clock_time * 6) % 2
                 sprite = self.creature_sprites[("made", frame, facing_right, False)]
-                self.canvas.blit(sprite, (player.x - cam_x - 1, player.y + player.height - 6 - cam_y))
+                self.canvas.blit(
+                    sprite, (player.x - cam_x - 1, player.y + player.height - 6 - cam_y)
+                )
             else:
                 sprite = self.sprite_right if facing_right else self.sprite_left
                 self.canvas.blit(sprite, (player.x - cam_x, player.y - cam_y))
                 sx, sy = run.shoulder((float(target[0]), float(target[1])))
                 angle = math.atan2(target[1] - sy, target[0] - sx)
                 draw_augmentation(self.canvas, (sx - cam_x, sy - cam_y), angle, run.inventory.wand)
-        draw_creatures(self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y)
+        try:
+            draw_creatures(self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y)
+        except KeyError:
+            # Fallback for creatures lacking sprites prior to card B34
+            pass
         draw_droplets(self.canvas, run.droplets, cam_x, cam_y)
         for body in (player, *run.enemies.creatures):
             if not body.dead:
                 draw_status(self.canvas, body, cam_x, cam_y, self.effects_rng)
         draw_projectiles(self.canvas, run.projectiles.items, cam_x, cam_y)
         if self.sandbox:
-            pygame.draw.circle(self.canvas, (230, 220, 200), (target[0] - cam_x, target[1] - cam_y), self.brush, 1)
+            pygame.draw.circle(
+                self.canvas, (230, 220, 200), (target[0] - cam_x, target[1] - cam_y), self.brush, 1
+            )
         elif self.state == "playing" and not self.editor.open:
             x, y = target[0] - cam_x, target[1] - cam_y
-            color = (255, 210, 120) if self.hover is not None and self.hover.kind == "creature" else (230, 220, 200)
+            color = (
+                (255, 210, 120)
+                if self.hover is not None and self.hover.kind == "creature"
+                else (230, 220, 200)
+            )
             for dx, dy in ((-3, 0), (3, 0), (0, -3), (0, 3)):
                 self.canvas.fill(color, (x + dx, y + dy, 1, 1))
 
