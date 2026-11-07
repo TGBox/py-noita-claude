@@ -56,7 +56,7 @@ from src.projectiles import Blast, ProjectileSystem
 from src.records import Records
 from src.rules import RULE_KEYS, Rule, apply_player_rules
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
-from src.spells import CATALOG
+from src.spells import CATALOG, Block, resolve_payload_material
 from src.universes.catalog import BY_KEY as UNIVERSE_BY_KEY
 from src.universes.catalog import UNIVERSES
 from src.universes.model import SHAPES, Universe
@@ -171,6 +171,7 @@ class Run:
         self.player = Player(0, 0)
         self.enemies = EnemyManager()
         self.projectiles = ProjectileSystem()
+        self.projectiles.payload_resolver = self._resolve_payload
         self.pickups: list[Pickup] = []
         self.inventory = Inventory(list(STARTER_WANDS), self.rng)
         self.depth_index = 0
@@ -341,6 +342,9 @@ class Run:
     def cycle_flask(self, step: int = 1) -> None:
         if self.flasks:
             self.flask_index = (self.flask_index + step) % len(self.flasks)
+
+    def _resolve_payload(self, block: Block) -> str | None:
+        return resolve_payload_material(block, self.flask, tuple(mat.KEYS), mat.BASE_KEYS, self.rng)
 
     def select_flask(self, index: int) -> None:
         if 0 <= index < len(self.flasks):
@@ -1644,7 +1648,9 @@ class Run:
         # Fallback to thirds of the height
         if self.universe.regions:
             h = max(1, self.world.height)
-            index = min(len(self.universe.regions) - 1, max(0, int(y / (h / len(self.universe.regions)))))
+            index = min(
+                len(self.universe.regions) - 1, max(0, int(y / (h / len(self.universe.regions))))
+            )
             return self.universe.regions[index]
         return None
 
