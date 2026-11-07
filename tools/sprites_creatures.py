@@ -457,18 +457,20 @@ def _draw_ameisenkrieger(offset_y: int = 0, spear_jab: int = 0, leg_stride: int 
 
 
 def _draw_blattlaus(offset_y: int = 0, crawl: int = 0) -> PixelCanvas:
-    c = PixelCanvas(16, 14)
+    c = PixelCanvas(14, 12)
     pal = UNIVERSE_PALETTES["kruemelreich"]
-    # Fat light-green aphid body with babyface
-    draw_shaded_ellipse(c, 8, 7 + offset_y, 5, 4, pal["glow"])
-    # Milk bucket pattern on back
-    draw_shaded_rect(c, 6, 5 + offset_y, 10, 8 + offset_y, pal["accent"])
-    # Tiny crawling legs
+    # Very round plump droplet aphid
+    draw_shaded_ellipse(c, 7, 6 + offset_y, 5, 4, pal["glow"])
+    # Milk droplets pattern
+    c.set_px(7, 4 + offset_y, (255, 255, 255, 255))
+    c.set_px(8, 4 + offset_y, (255, 255, 255, 255))
+    draw_shaded_rect(c, 5, 6 + offset_y, 9, 8 + offset_y, pal["accent"])
+    # Tiny stubby legs
     draw_shaded_rect(
-        c, max(1, 4 - crawl), 11 + offset_y, min(14, 7 - crawl), 13 + offset_y, pal["primary"]
+        c, max(1, 3 - crawl), 10 + offset_y, min(12, 5 - crawl), 11 + offset_y, pal["primary"]
     )
     draw_shaded_rect(
-        c, max(1, 9 + crawl), 11 + offset_y, min(14, 12 + crawl), 13 + offset_y, pal["primary"]
+        c, max(1, 9 + crawl), 10 + offset_y, min(12, 11 + crawl), 11 + offset_y, pal["primary"]
     )
     apply_dark_outline(c)
     return c
