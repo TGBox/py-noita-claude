@@ -1838,7 +1838,29 @@ class Run:
 
     def choose_next_universe(self, index: int) -> None:
         """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""
-        raise NotImplementedError("Card E11")
+        from src.universes.catalog import ALL_UNIVERSES
+
+        offer = self.plan.choose(index)
+        u_key = offer.universe
+        self.universe_key = u_key
+        self.universe = ALL_UNIVERSES.get(u_key, self.universe)
+        self.boss_slot = offer.boss is not None
+        self.in_workshop = False
+        self.menu_mode = ""
+
+        # Enter the chosen universe
+        self.enter_depth(self.depth_index)
+
+        # Apply and consume active next_boost
+        boost = self.next_boost
+        self.next_boost = ""
+        if boost == "flux":
+            for wand in self.inventory.wands:
+                wand.spec = replace(wand.spec, mana_regen=round(wand.spec.mana_regen * 1.2))
+        elif boost == "damage":
+            self.projectiles.player_damage = getattr(self.projectiles, "player_damage", 1.0) * 1.1
+        elif boost == "speed":
+            self.player.speed_scale = getattr(self.player, "speed_scale", 1.0) * 1.1
 
     def enter_headquarters(self) -> None:
         """Enter the authority headquarters for the true ending (Contract V17, Card F10)."""

@@ -87,6 +87,7 @@ class Player(Body):
             self.vy = max(-LIQUID_MAX_SPEED, min(LIQUID_MAX_SPEED, self.vy))
 
         speed = LEVITATE_RUN_SPEED if self.levitating else RUN_SPEED
+        speed *= getattr(self, "speed_scale", 1.0)
         # Apply haste_time effect to run speed
         if self.haste_time > 0:
             speed *= 1.3

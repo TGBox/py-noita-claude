@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import Any
 
 import pygame
 
@@ -64,7 +65,10 @@ PAUSE_ITEMS: tuple[MenuItem, ...] = (
 
 def controls_rows() -> list[tuple[str, str]]:
     """(key, label) of every row of the controls screen: actions, then two buttons."""
-    return [(a.key, a.label_de) for a in ACTIONS] + [("reset", "Alle zurücksetzen"), ("back", "Zurück")]
+    return [(a.key, a.label_de) for a in ACTIONS] + [
+        ("reset", "Alle zurücksetzen"),
+        ("back", "Zurück"),
+    ]
 
 
 def help_lines(bindings: Bindings, pad: bool = False) -> list[tuple[str, str]]:
@@ -154,15 +158,37 @@ class Menus:
         # the logo: a pulsing, dripping word
         red = (int(150 + 70 * pulse), 18, 34)
         size = round(128 * s)
-        logo = ui.text(screen, "CLOITA", (cx, height * 0.2), size, red, heading=True, bold=True, anchor="center")
+        logo = ui.text(
+            screen,
+            "CLOITA",
+            (cx, height * 0.2),
+            size,
+            red,
+            heading=True,
+            bold=True,
+            anchor="center",
+        )
         for k in range(7):  # blood running down from the letters
             x = logo.x + (k * 0.153 + 0.05) * logo.width
             length = (math.sin(clock * 0.7 + k * 1.7) * 0.5 + 0.5) * 34 * s + 6 * s
-            pygame.draw.line(screen, (120, 10, 24), (x, logo.bottom - 18 * s), (x, logo.bottom - 18 * s + length), max(2, round(3 * s)))
-            pygame.draw.circle(screen, (150, 14, 30), (int(x), int(logo.bottom - 18 * s + length)), max(2, round(3 * s)))
+            pygame.draw.line(
+                screen,
+                (120, 10, 24),
+                (x, logo.bottom - 18 * s),
+                (x, logo.bottom - 18 * s + length),
+                max(2, round(3 * s)),
+            )
+            pygame.draw.circle(
+                screen,
+                (150, 14, 30),
+                (int(x), int(logo.bottom - 18 * s + length)),
+                max(2, round(3 * s)),
+            )
         ui.text(screen, "Ein Abstieg in das lebende Fleisch", (cx, logo.bottom + 4 * s), round(20 * s), ui.DIM,
                 heading=True, anchor="midtop")  # fmt: skip
-        rects = self._list(screen, items, selected, height * 0.36, width=round(360 * s), height=round(36 * s))
+        rects = self._list(
+            screen, items, selected, height * 0.36, width=round(360 * s), height=round(36 * s)
+        )
         if records:
             box_h = round((18 + 22 * len(records)) * s)
             box = ui.panel(screen, (cx - round(330 * s), height - box_h - round(54 * s), round(660 * s), box_h),
@@ -192,7 +218,9 @@ class Menus:
         total = column + gap + info_w
         left = (width - total) // 2
         top = round(70 * s)
-        ui.text(screen, "Pause", (left, top - round(50 * s)), round(44 * s), ui.ACCENT, heading=True)
+        ui.text(
+            screen, "Pause", (left, top - round(50 * s)), round(44 * s), ui.ACCENT, heading=True
+        )
         rects = self._list(screen, PAUSE_ITEMS, selected, top + round(10 * s), width=column,
                            height=round(38 * s), x=left)  # fmt: skip
         # the run so far
@@ -200,12 +228,19 @@ class Menus:
         info_h = round((34 + 22 * len(summary)) * s)
         box = ui.panel(screen, (info_x, top, info_w, info_h), title="Dieser Lauf")
         for index, line in enumerate(summary):
-            ui.text(screen, line, (box.x + round(14 * s), box.y + round((34 + index * 22) * s)), round(15 * s))
+            ui.text(
+                screen,
+                line,
+                (box.x + round(14 * s), box.y + round((34 + index * 22) * s)),
+                round(15 * s),
+            )
         # the controls, always at hand
         rows = (len(controls) + 1) // 2
         controls_top = box.bottom + round(16 * s)
         row_h = round(18 * s)
-        box = ui.panel(screen, (info_x, controls_top, info_w, round(40 * s) + rows * row_h), title="Steuerung")
+        box = ui.panel(
+            screen, (info_x, controls_top, info_w, round(40 * s) + rows * row_h), title="Steuerung"
+        )
         for index, (binding, action) in enumerate(controls):
             column_x = box.x + round(14 * s) + (index // rows) * (info_w // 2)
             y = box.y + round(32 * s) + (index % rows) * row_h
@@ -215,7 +250,9 @@ class Menus:
 
     # ---------------------------------------------------------------- options
 
-    def draw_options(self, screen: pygame.Surface, options: Options, selected: int) -> list[pygame.Rect]:
+    def draw_options(
+        self, screen: pygame.Surface, options: Options, selected: int
+    ) -> list[pygame.Rect]:
         ui.shade(screen, 200)
         s = ui.scale_of(screen)
         width, height = screen.get_size()
@@ -230,23 +267,46 @@ class Menus:
             rect = pygame.Rect(box.x + round(30 * s), box.y + round(66 * s) + index * (row_h + round(8 * s)),
                                panel_w - round(60 * s), row_h)  # fmt: skip
             ui.button(screen, rect, "", selected=index == selected)
-            ui.text(screen, title, (rect.x + round(14 * s), rect.centery), round(19 * s), anchor="midleft")
+            ui.text(
+                screen,
+                title,
+                (rect.x + round(14 * s), rect.centery),
+                round(19 * s),
+                anchor="midleft",
+            )
             value = getattr(options, name)
             if isinstance(value, bool):
                 ui.text(screen, "an" if value else "aus", (rect.right - round(16 * s), rect.centery), round(19 * s),
                         ui.GOLD if value else ui.DIM, bold=True, anchor="midright")  # fmt: skip
             else:
-                bar = (rect.right - round(196 * s), rect.centery - round(5 * s), round(180 * s), round(10 * s))
+                bar = (
+                    rect.right - round(196 * s),
+                    rect.centery - round(5 * s),
+                    round(180 * s),
+                    round(10 * s),
+                )
                 ui.bar(screen, bar, value / 10, (176, 70, 70))
             rects.append(rect)
         hint = "Hoch/Runter: wählen | Links/Rechts oder Klick: ändern | ESC: zurück"
-        ui.text(screen, hint, (box.centerx, box.bottom + round(12 * s)), round(14 * s), ui.DIM, anchor="midtop")
+        ui.text(
+            screen,
+            hint,
+            (box.centerx, box.bottom + round(12 * s)),
+            round(14 * s),
+            ui.DIM,
+            anchor="midtop",
+        )
         return rects
 
     # --------------------------------------------------------------- controls
 
     def draw_controls(
-        self, screen: pygame.Surface, bindings: Bindings, selected: int, capturing: bool, note: str = ""
+        self,
+        screen: pygame.Surface,
+        bindings: Bindings,
+        selected: int,
+        capturing: bool,
+        note: str = "",
     ) -> list[pygame.Rect]:
         ui.shade(screen, 210)
         s = ui.scale_of(screen)
@@ -273,7 +333,9 @@ class Menus:
         for index in range(first, min(len(rows), first + visible)):
             key, label = rows[index]
             y = list_top + (index - first) * row_h
-            rect = pygame.Rect(box.x + round(20 * s), y, panel_w - round(40 * s), row_h - round(3 * s))
+            rect = pygame.Rect(
+                box.x + round(20 * s), y, panel_w - round(40 * s), row_h - round(3 * s)
+            )
             rects[index] = rect
             chosen = index == selected
             if chosen:
@@ -282,7 +344,13 @@ class Menus:
             if key in action_groups and action_groups[key] != group:
                 group = action_groups[key]
             if key in action_groups:
-                ui.text(screen, label, (rect.x + round(10 * s), rect.centery), round(15 * s), anchor="midleft")
+                ui.text(
+                    screen,
+                    label,
+                    (rect.x + round(10 * s), rect.centery),
+                    round(15 * s),
+                    anchor="midleft",
+                )
                 binding = "Taste drücken ..." if chosen and capturing else bindings.describe(key)
                 ui.text(screen, binding, (key_x, rect.centery), round(15 * s), ui.GOLD if chosen else ui.TEXT,
                         bold=True, anchor="midleft")  # fmt: skip
@@ -300,7 +368,14 @@ class Menus:
         ui.text(screen, note or hint, (box.centerx, box.bottom - round(50 * s)), round(14 * s),
                 ui.ACCENT if note else ui.DIM, anchor="midtop")  # fmt: skip
         fixed = "Fest: ESC Pause | 1-4 / Mausrad Augmentation | 5-8 Phiole | Controller: linker Stick laufen, rechter Stick zielen"
-        ui.text(screen, fixed, (box.centerx, box.bottom - round(28 * s)), round(13 * s), ui.DIM, anchor="midtop")
+        ui.text(
+            screen,
+            fixed,
+            (box.centerx, box.bottom - round(28 * s)),
+            round(13 * s),
+            ui.DIM,
+            anchor="midtop",
+        )
         return rects
 
     # ------------------------------------------------------------------ codex
@@ -309,7 +384,9 @@ class Menus:
         ui.shade(screen, 220)
         s = ui.scale_of(screen)
         width, height = screen.get_size()
-        box = ui.panel(screen, (round(20 * s), round(16 * s), width - round(40 * s), height - round(32 * s)))
+        box = ui.panel(
+            screen, (round(20 * s), round(16 * s), width - round(40 * s), height - round(32 * s))
+        )
         blocks, creatures = codex_entries(records)
         known = sum(1 for _, seen in blocks if seen)
         ui.text(screen, "Kodex", (box.centerx, box.y + round(10 * s)), round(34 * s), ui.ACCENT, heading=True,
@@ -320,7 +397,14 @@ class Menus:
             found = sum(1 for b in pool if b.key in records.blocks)
             counts.append(f"{CATEGORY_DE[category]}: {found}/{len(pool)}")
         heading = f"Bausteine: {known}/{len(blocks)}   –   " + "   ".join(counts)
-        ui.text(screen, heading, (box.centerx, box.y + round(54 * s)), round(16 * s), ui.GOLD, anchor="midtop")
+        ui.text(
+            screen,
+            heading,
+            (box.centerx, box.y + round(54 * s)),
+            round(16 * s),
+            ui.GOLD,
+            anchor="midtop",
+        )
         left, right = box.x + round(20 * s), box.right - round(20 * s)
         column_width = (right - left) / CODEX_COLUMNS
         found = [b for b in BLOCKS if b.key in records.blocks]
@@ -334,9 +418,18 @@ class Menus:
             ui.text(screen, block.name_de, (x + line + 2, y), round(14 * s))
         if len(found) > len(shown):
             more = f"... und {len(found) - len(shown)} weitere"
-            ui.text(screen, more, (box.centerx, height * 0.63), round(14 * s), ui.DIM, anchor="midtop")
+            ui.text(
+                screen, more, (box.centerx, height * 0.63), round(14 * s), ui.DIM, anchor="midtop"
+            )
         if not found:
-            ui.text(screen, "Noch nichts gefunden.", (box.centerx, top + 20), round(16 * s), ui.DIM, anchor="midtop")
+            ui.text(
+                screen,
+                "Noch nichts gefunden.",
+                (box.centerx, top + 20),
+                round(16 * s),
+                ui.DIM,
+                anchor="midtop",
+            )
         top = height * 0.68
         met = sum(1 for _, seen in creatures if seen)
         ui.text(screen, f"Kreaturen: {met}/{len(creatures)}", (box.centerx, top), round(16 * s), ui.GOLD,
@@ -348,7 +441,13 @@ class Menus:
                     ui.TEXT if seen else ui.DIM)  # fmt: skip
         ui.text(screen, unlock_line(records), (box.centerx, box.bottom - round(56 * s)), round(15 * s), ui.ACCENT,
                 anchor="midtop")  # fmt: skip
-        ui.text(screen, "ESC: Zurück", (box.centerx, box.bottom - round(30 * s)), round(15 * s), anchor="midtop")
+        ui.text(
+            screen,
+            "ESC: Zurück",
+            (box.centerx, box.bottom - round(30 * s)),
+            round(15 * s),
+            anchor="midtop",
+        )
 
 
 def draw_archive_menu(
@@ -360,3 +459,90 @@ def draw_archive_menu(
 ) -> None:
     """Draw the discovery archive with its 5 tabs (Contracts V22, V23)."""
     raise NotImplementedError("Card G05")
+
+
+def draw_portal_select_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    offers: list[Any],
+    selected_index: int,
+) -> None:
+    """Draw the portal universe selection overlay (Contract V22, Card E11)."""
+    from src.universes.catalog import ALL_UNIVERSES
+
+    s = surface.get_width() / 1280
+    overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+    overlay.fill((10, 8, 16, 210))
+    surface.blit(overlay, (0, 0))
+
+    title = font.render("PORTALRAHMEN: WÄHLE EIN UNIVERSUM", True, (240, 220, 160))
+    surface.blit(title, (surface.get_width() // 2 - title.get_width() // 2, int(40 * s)))
+
+    sub = small_font.render("Reise durch das Portal in eine andere Realität", True, (180, 180, 200))
+    surface.blit(sub, (surface.get_width() // 2 - sub.get_width() // 2, int(75 * s)))
+
+    card_w = int(320 * s)
+    card_h = int(220 * s)
+    gap = int(40 * s)
+    total_w = len(offers) * card_w + max(0, len(offers) - 1) * gap
+    start_x = (surface.get_width() - total_w) // 2
+    y0 = int(120 * s)
+
+    for i, offer in enumerate(offers):
+        u_key = getattr(offer, "universe", "")
+        u = ALL_UNIVERSES.get(u_key)
+        u_name = u.name if u else u_key.title()
+        u_rule = u.rule if u else ""
+        u_rank = getattr(offer, "rank", 1)
+        boss = getattr(offer, "boss", None)
+
+        is_sel = i == selected_index
+        rect = pygame.Rect(start_x + i * (card_w + gap), y0, card_w, card_h)
+
+        bg_col = (30, 25, 45, 230) if not is_sel else (50, 40, 75, 240)
+        border_col = (120, 100, 160) if not is_sel else (255, 215, 80)
+        card_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        card_surf.fill(bg_col)
+        pygame.draw.rect(
+            card_surf, border_col, card_surf.get_rect(), width=3 if is_sel else 1, border_radius=6
+        )
+        surface.blit(card_surf, rect.topleft)
+
+        # Name
+        name_txt = font.render(u_name, True, (255, 255, 255) if is_sel else (210, 210, 220))
+        surface.blit(name_txt, (rect.x + 16, rect.y + 16))
+
+        # Rank
+        stars_txt = "★" * u_rank
+        rank_txt = small_font.render(f"Rang {u_rank} {stars_txt}", True, (240, 180, 60))
+        surface.blit(rank_txt, (rect.x + 16, rect.y + 55))
+
+        # Rule
+        rule_txt = small_font.render(f"Regel: {u_rule}", True, (160, 200, 240))
+        surface.blit(rule_txt, (rect.x + 16, rect.y + 85))
+
+        # Boss status
+        if boss:
+            boss_txt = small_font.render(f"Zwischengegner: {boss}", True, (255, 100, 100))
+        else:
+            boss_txt = small_font.render("Kein Zwischengegner", True, (140, 160, 140))
+        surface.blit(boss_txt, (rect.x + 16, rect.y + 115))
+
+        # Hint
+        sel_hint = small_font.render(
+            f"[{i + 1}] Auswählen" if not is_sel else "[ENTER] Durchschreiten",
+            True,
+            (255, 215, 80) if is_sel else (140, 140, 150),
+        )
+        surface.blit(sel_hint, (rect.x + 16, rect.bottom - 30))
+
+    help_txt = small_font.render(
+        "[1] / [2]: Wahl  |  [Pfeiltasten]: Auswählen  |  [ENTER]: Bestätigen  |  [ESC]: Zurück",
+        True,
+        (160, 160, 180),
+    )
+    surface.blit(
+        help_txt,
+        (surface.get_width() // 2 - help_txt.get_width() // 2, surface.get_height() - int(45 * s)),
+    )
