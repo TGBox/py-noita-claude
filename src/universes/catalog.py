@@ -76,7 +76,7 @@ UNIVERSES: tuple[Universe, ...] = (
         "glibbria", "Glibbria",
         "Ein Planet aus Wackelpudding. Alles federt. Niemand stirbt am Fall – nur an allem "
         "anderen.",
-        rule="rule_bounce", shape="inseln", ambient=0.6, material_set="koerper",
+        rule="rule_bounce", shape="inseln", ambient=0.6, material_set="glibbria",
         regions=(
             Region("gelee_huegel", "Geleehügel"), Region("kaugummi_hoehlen", "Kaugummihöhlen"),
             Region("sirupkueste", "Sirupküste"),

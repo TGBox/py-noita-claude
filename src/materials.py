@@ -20,6 +20,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+import typing
+
+if typing.TYPE_CHECKING:
+    from src.reactions import Reaction
 
 AIR = 0
 BEDROCK = 1
@@ -483,8 +487,69 @@ _FILES = (  # Aktenhalde
     ),
 )
 
-LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES)}
-assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES), "duplicate material key"
+_GLIBBRIA = (
+    _m(
+        "glibber",
+        "Glibber",
+        SOLID,
+        255,
+        (100, 220, 160),
+        grain=6,
+        hardness=1,
+        description_de="Grüner, federnder Wackelpudding.",
+    ),
+    _m(
+        "glibber_rot",
+        "Roter Glibber",
+        SOLID,
+        255,
+        (230, 80, 110),
+        grain=6,
+        hardness=1,
+        flammability=0.3,
+        description_de="Brennbarer süßer Gelee.",
+    ),
+    _m(
+        "brausesirup",
+        "Brausesirup",
+        LIQUID,
+        32,
+        (240, 160, 40),
+        fluidity=3,
+        description_de="Prickelnder, klebriger Sirup.",
+    ),
+    _m(
+        "schaum",
+        "Zuckerschaum",
+        GAS,
+        -1,
+        (240, 240, 255),
+        description_de="Leichter Schaum auf Brauselachen.",
+    ),
+    _m(
+        "kaugummi",
+        "Kaugummi",
+        SOLID,
+        255,
+        (230, 130, 180),
+        grain=4,
+        hardness=2,
+        description_de="Zäh und extrem klebrig.",
+    ),
+    _m(
+        "zuckerguss",
+        "Zuckerguss",
+        SOLID,
+        255,
+        (250, 245, 235),
+        grain=4,
+        hardness=1,
+        description_de="Knusprige Schicht, karamellisiert bei Hitze.",
+    ),
+)
+
+LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA)}
+assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA), "duplicate material key"
 
 BASE_KEYS: tuple[str, ...] = tuple(m.key for m in _BASE)
 
@@ -772,7 +837,47 @@ FLEISCHWELT = MaterialSet(
     ),
 )
 
-SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE)}
+GLIBBRIA = MaterialSet(
+    "glibbria",
+    (
+        *BASE_KEYS,
+        "glibber",
+        "glibber_rot",
+        "brausesirup",
+        "schaum",
+        "kaugummi",
+        "zuckerguss",
+    ),
+)
+
+SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA)}
+
+
+def _init_set_reactions() -> None:
+    from src.reactions import Reaction
+
+    global GLIBBRIA
+    GLIBBRIA = MaterialSet(
+        "glibbria",
+        (
+            *BASE_KEYS,
+            "glibber",
+            "glibber_rot",
+            "brausesirup",
+            "schaum",
+            "kaugummi",
+            "zuckerguss",
+        ),
+        reactions=(
+            Reaction("fire", "glibber_rot", "fire", "smoke", 0.05),
+            Reaction("fire", "brausesirup", "fire", "smoke", 0.05),
+            Reaction("fire", "zuckerguss", "fire", "smoke", 0.05),
+        ),
+    )
+    SETS["glibbria"] = GLIBBRIA
+
+
+_init_set_reactions()
 # Sets changed by a universe rule (e.g. flammability), keyed "<set>+<rule><rank>".
 DERIVED: dict[str, MaterialSet] = {}
 
