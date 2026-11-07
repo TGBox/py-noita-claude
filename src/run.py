@@ -931,7 +931,17 @@ class Run:
         for creature in self.enemies.creatures:
             for key in list(creature.ability_cooldowns):
                 creature.ability_cooldowns[key] = max(0.0, creature.ability_cooldowns[key] - dt)
-        died = self.enemies.update(self.world, dt, self.player, self.projectiles, everywhere)
+        out_events: list[tuple[str, dict[str, Any]]] = []
+        died = self.enemies.update(
+            self.world, dt, self.player, self.projectiles, everywhere,
+            grudges=self.grudges, on_beat=True, out_events=out_events,
+        )
+        for creature in died:
+            for ability in getattr(creature.spec, "abilities", ()):
+                if ability.kind == "split":
+                    from src.behaviour import handle_split_on_death
+                    handle_split_on_death(creature, ability, out_events)
+        self._handle_creature_events(out_events)
         self._prop_blasts: list[Blast] = []
         for creature in died:
             self._on_death(creature)
@@ -1712,6 +1722,13 @@ class Run:
         if "blutdurst" in self.perks and not self.player.dead:
             self.player.hp = min(self.player.max_hp, self.player.hp + BLOODLUST_HEAL)
         self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
+        gold_amount = max(1, int(creature.spec.hp / 12))
+        self.pickups.append(Pickup(cx, cy, kind="gold", amount=gold_amount))
+        sample_key = creature.spec.drops_sample or getattr(self.universe, "sample_key", "")
+        if sample_key:
+            sample_chance = getattr(creature.spec, "sample_chance", 0.35)
+            if getattr(creature.spec, "is_mid_boss", False) or getattr(creature.spec, "is_boss", False) or getattr(creature.spec, "boss", False) or self.rng.random() < sample_chance:
+                self.pickups.append(Pickup(cx, cy, kind="sample", item_key=sample_key, amount=1))
         self.events.append("blast_big" if creature.spec.boss else "kill")
         if creature.spec.boss:
             self._log(
@@ -1730,6 +1747,40 @@ class Run:
                     self.pickups.append(Pickup(cx, cy, block=random_block(self.rng)))
         elif self.rng.random() < DROP_CHANCE:
             self.pickups.append(Pickup(cx, cy, block=random_block(self.rng)))
+
+    def _handle_creature_events(self, events: list[tuple[str, dict[str, Any]]]) -> None:
+        """Card C16: process split, steal, summon and noise events from creature update."""
+        for event_name, payload in events:
+            if event_name == "split":
+                species = str(payload.get("species", ""))
+                x = float(payload.get("x", 0.0))
+                y = float(payload.get("y", 0.0))
+                gen = int(payload.get("generation", 0))
+                for dx in (-8.0, 8.0):
+                    child = self.enemies.spawn(species, x + dx, y)
+                    child.generation = gen + 1
+            elif event_name == "steal_return":
+                x = float(payload.get("x", 0.0))
+                y = float(payload.get("y", 0.0))
+                kind = str(payload.get("kind", "gold"))
+                item_key = str(payload.get("item_key", ""))
+                amount = int(payload.get("amount", 1))
+                self.pickups.append(Pickup(x, y, kind=kind, item_key=item_key, amount=amount))
+            elif event_name == "summon":
+                target_species = str(payload.get("target_species", ""))
+                x = float(payload.get("x", 0.0))
+                y = float(payload.get("y", 0.0))
+                count = int(payload.get("count", 1))
+                for _ in range(count):
+                    self.enemies.spawn(target_species, x, y)
+            elif event_name == "noise":
+                x = float(payload.get("x", 0.0))
+                y = float(payload.get("y", 0.0))
+                radius = float(payload.get("radius", 80.0))
+                wake_events: list[tuple[str, dict[str, Any]]] = []
+                self.enemies.on_noise(x, y, radius, wake_events)
+                if wake_events:
+                    self.events.append("wake")
 
     def _apply_blast(self, blast: Blast, bodies: list[Body]) -> None:
         reach = blast.radius + BLAST_REACH

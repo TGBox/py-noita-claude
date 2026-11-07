@@ -261,7 +261,7 @@ HUEPFLING = CreatureSpec(
 GLIBBERTEILER = CreatureSpec(
     "glibberteiler", "Glibberteiler", width=18, height=14, hp=40, flying=False, speed=40, sight=380,
     melee_damage=9, melee_cooldown=0.8, jump_speed=150, stance="hostile", faction="gelee",
-    abilities=(Ability("melee"), Ability("hunt"), Ability("split", "glibber"), Ability("armor")),
+    abilities=(Ability("melee"), Ability("hunt"), Ability("split", "glibberteiler"), Ability("armor")),
     windup_time=0.5, recover_time=0.2, weak_material="fire", drops_sample="probe_glibberkern",
     sample_chance=0.35, pearls=10,
 )  # fmt: skip
