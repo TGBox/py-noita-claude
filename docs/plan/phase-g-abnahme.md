@@ -5,19 +5,16 @@
 
 ---
 
-## G01 — HUD-Erweiterung: Gold, Fahndungssterne, Proben-Beutel & Event-/Challenge-Banner (`src/hud.py`) (`V22`)
+## G01 — HUD nach Bibel 08: Flux, Gold, Siegel, Universum & Rang, Takt, Atem, Proben, Ereignis (`src/hud.py`) (`V22` §2)
 
 - **Größe:** S
-- **Abhängigkeiten:** `D14`, `F02`, `F14`, `B32`
+- **Abhängigkeiten:** `D14`, `D23`, `F02`, `F14`, `B32`
 - **Ziel-Dateien:** `src/hud.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`), `src/hud.py`, `tests/spec/test_phase_g.py` (`-k g01`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22` §2), `docs/bibel/08-ui-und-texte.md` („Oberfläche umbenennen“), `src/hud.py`, `tests/spec/test_phase_g.py` (`-k g01`)
 - **Aufgabe:**
-  1. Erweitere `draw_hud` in `src/hud.py` (mit optionalen Keyword-Parametern bzw. Zugriff auf `run`-Attribute, sodass alte Aufrufe kompatibel bleiben) um:
-     - Gold-Zähler (`Gold: <run.gold>`) und `0..5` Fahndungssterne (`run.wanted.stars`) oben rechts,
-     - Proben-Beutel-Anzeige (`Proben: <belegt>/12`),
-     - kompakte Statuszeile für aktives Sekundärereignis (`run.event`) und aktive Prüfung (`run.challenge`).
+  1. Erweitere `draw_hud` in `src/hud.py` um alle Anzeigen aus `V22` §2 (alte Aufrufe bleiben gültig): Flux-Leiste, Gold mit Siegeln, „Universum x/6“ mit Rang-Sternen, Takt-Punkt, Atem-Leiste unter Wasser, Proben-Zähler sowie eine Zeile für Ereignis und Herausforderung.
 - **Akzeptanzkriterien:**
-  - `draw_hud` rendert sowohl mit den bisherigen Positions-Argumenten als auch mit aktivem `gold`, `wanted`, `event` und `challenge` fehlerfrei auf ein Offscreen-Surface.
+  - `Renderer(surface).draw(run)` zeichnet mit Gold, 3 Sternen, aktivem Ereignis und angenommener Herausforderung fehlerfrei; ohne diese Werte ebenfalls.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g01 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -60,7 +57,7 @@
 - **Ziel-Dateien:** `src/records.py`, `src/perks.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/records.py`, `src/perks.py`, `tests/spec/test_phase_g.py` (`-k g04`)
 - **Aufgabe:**
-  1. Erweitere `Records` in `src/records.py` um `blueprints: list[str]`, `universes: list[str]`, `evil_selves: list[str]`, `badges: int = 0`, `best_rank: str = "Praktikantin"` und aktualisiere `discover(self, kind: str, key: str)` für `"block"`, `"blueprint"`, `"universe"`, `"evil_self"`, `"badge"` und `"creature"` exakt nach `V23`.
+  1. Erweitere `Records` in `src/records.py` um `blueprints: list[str]`, `universes: list[str]`, `evil_selves: list[str]`, `badges: int = 0`, `best_rank: str = "Praktikantin"`, `endings: list[str]` und aktualisiere `discover(self, kind: str, key: str)` für `"block"`, `"blueprint"`, `"universe"`, `"evil_self"`, `"badge"`, `"ending"` und `"creature"` exakt nach `V23`.
   2. Implementiere `RANKS`, `compute_score(...)` und `rank_for_score(score)` in `src/records.py` sowie `PERK_ALIASES` und `resolve_perk_key(key)` in `src/perks.py`.
 - **Akzeptanzkriterien:**
   - `records.discover("universe", "sporenklub")` trägt `"sporenklub"` in `records.universes` ein, ohne `records.creatures` oder `total_kills` zu verändern.
@@ -86,12 +83,12 @@
 ## G06 — Sieges-/Todes-Endbildschirm mit Punktestand & Rang-Abrechnung (`src/menus.py`, `src/run.py`) (`V23`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `G04`
+- **Abhängigkeiten:** `G04`, `F07`
 - **Ziel-Dateien:** `src/menus.py`, `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/menus.py`, `src/run.py`, `tests/spec/test_phase_g.py` (`-k g06`)
 - **Aufgabe:**
   1. Berechne auf `Run` (`src/run.py`) über `final_score(self) -> int` und `final_rank(self) -> str` den Endpunktestand mittels `compute_score` (`depth`, `kills`, `gold`, gesammelte Proben, gewonnene Challenges, besiegte Bosse, `victory`, `true_ending`) und aktualisiere bei Run-Ende `self.records.best_rank`.
-  2. Zeige im Game-Over- und Victory-Overlay (`src/menus.py`) die Aufschlüsselung von `final_score()`, den erreichten Rang (`final_rank()`) und bei `true_ending == True` den Sondertitel `"Wahres Ende: Realitäts-Rebellin"` an.
+  2. Zeige im Game-Over- und Victory-Overlay (`src/menus.py`) die Aufschlüsselung von `final_score()`, den erreichten Rang (`final_rank()`) bei `true_ending == True` den Sondertitel `"Wahres Ende: Realitäts-Rebellin"` und bei `run.ending == "boese"` den Titel `"Böses Ende: Die Hälfte des Multiversums"` an; trage das Ende mit `records.discover("ending", …)` ein (`"normal"`, `"wahr"` oder `"boese"`).
 - **Akzeptanzkriterien:**
   - Ein gewonnener Run mit `true_ending=True` erreicht mindestens den Rang `"Erz-Klonologin"` bzw. `"Realitäts-Rebellin"` und aktualisiert `records.best_rank`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g06 -q && uv run pytest --ignore=tests/spec -q`

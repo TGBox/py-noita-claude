@@ -1,4 +1,4 @@
-"""Contract V20: Spell module fabricator and recipes (Card E06)."""
+"""Contract V20: the fabricator builds modules from blueprints (Card E06)."""
 
 from __future__ import annotations
 
@@ -9,18 +9,22 @@ if TYPE_CHECKING:
     from .run import Run
 
 MAX_BUILDS_PER_VISIT: int = 3
+TIER2_SAMPLES: tuple[str, ...] = ("probe_knochen", "probe_aether", "probe_schatten")
+TIER3_SAMPLES: tuple[str, ...] = ("probe_gold", "probe_kern")
 
 
 @dataclass(frozen=True)
 class Recipe:
     block_key: str
     rarity_tier: int
-    samples: tuple[tuple[str, int], ...]
+    universe_samples: int
+    universe: str | None
+    special_samples: tuple[str, ...]
+    blueprint_shards: int
     gold: int
 
 
-def build_cost(block_key: str) -> Recipe:
-    """Return the deterministic Recipe for block_key."""
+def build_cost(block_key: str, stage: int = 1) -> Recipe:
     raise NotImplementedError("Card E06")
 
 
@@ -31,18 +35,8 @@ class Fabricator:
     def reset_visit(self) -> None:
         self.builds_this_visit = 0
 
-    def can_build(
-        self,
-        block_key: str,
-        *,
-        unlocked_blueprints: set[str],
-        gold: int,
-        sample_counts: dict[str, int],
-    ) -> tuple[bool, str]:
-        """Check whether block_key can be fabricated and return (ok, status_de)."""
+    def can_build(self, run: Run, block_key: str) -> tuple[bool, str]:
         raise NotImplementedError("Card E06")
 
     def craft(self, run: Run, block_key: str) -> tuple[bool, str]:
-        """Consume samples and gold on run, increment builds_this_visit, and return (ok, msg_de)."""
         raise NotImplementedError("Card E06")
-

@@ -111,7 +111,7 @@ Beide nutzen die vorhandene Physik. Einsatz Gold, Belohnung Gold, Proben oder Sc
 **Physik-o-Mat (`minigame_automat`)** – Einsatz 30 Gold
 
 - Ein kleines Feld (160×120) in einem Rahmen; Cloita hat eine feste Waffe / ein Werkzeug und 10–20 Sekunden.
-- 8 Rätsel im Pool (4 klassische Bibel-Rätsel + 4 Elementar-Rätsel, zufällig oder nach Schlüssel wählbar):
+- 7 Rätsel im MVP-Pool (4 klassische + 3 Elementar-Rätsel, zufällig oder nach Schlüssel wählbar); das achte kommt mit Strom im Wasser in Phase 2:
   1. *Füll das Glas (`glas_fuellen`):* Wasser in einem Becken oben soll in ein Glas unten fließen; nur durch Sprengen und Graben.
   2. *Rette die Vase (`vase_retten`):* einen Turm sprengen, ohne dass die Vase zerbricht.
   3. *Zünde die Kerze (`kerze_zuenden`):* über Öl, Papier und Wasser eine Kerze entzünden.
@@ -119,7 +119,7 @@ Beide nutzen die vorhandene Physik. Einsatz Gold, Belohnung Gold, Proben oder Sc
   5. *Lava-Brücke (`lava_water`):* Wasserrinne öffnen, damit Lava zu einer tragfähigen Steinbrücke erstarrt.
   6. *Säure-Tresor (`acid_gold`):* Säure gezielt durch Kalkstein ätzen lassen, um die Goldkammer freizulegen.
   7. *Docht-Kette (`oil_fire`):* Ölspur legen und entzünden, sodass alle 3 Dochte brennen.
-  8. *Stromkreis (`electricity_water`):* Salzwasser-Leitung zwischen zwei Elektroden schließen, um den Empfänger unter Strom zu setzen.
+  8. *Stromkreis (`electricity_water`, Phase 2 mit `rule_electric`):* Salzwasser-Leitung zwischen zwei Elektroden schließen, um den Empfänger unter Strom zu setzen.
 - Belohnung: Gold, eine Probe oder ein Schub (`next_boost`) für das nächste Universum.
 
 **Schießstand (`minigame_schiessstand`)** – Einsatz 20 Gold

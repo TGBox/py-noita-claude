@@ -1,4 +1,4 @@
-"""Contract V18: Workshop hub layout and 12 interactive stations (Card E01)."""
+"""Contract V18: the workshop hub and its 12 stations (Card E01)."""
 
 from __future__ import annotations
 
@@ -17,7 +17,10 @@ class Station:
     name: str
     rect: tuple[int, int, int, int]
     prompt_de: str
-    sprite_key: str
+
+    @property
+    def sprite_key(self) -> str:
+        return self.key
 
 
 @dataclass(frozen=True)
@@ -26,7 +29,7 @@ class WorkshopLayout:
     height: int
     spawn: tuple[int, int]
     klonita_pos: tuple[int, int]
-    trader_pos: tuple[int, int]
+    trader_slots: tuple[tuple[int, int], tuple[int, int]]
     target_dummy_pos: tuple[int, int]
     stations: dict[str, Station]
 
@@ -43,7 +46,7 @@ STATION_ALIASES: dict[str, str] = {
 
 
 def generate_workshop(world: World) -> WorkshopLayout:
-    """Build the 640x360 workshop hall in world and return its WorkshopLayout."""
+    """Build the 640x360 workshop in world and return its layout."""
     raise NotImplementedError("Card E01")
 
 
@@ -53,5 +56,5 @@ def station_at(
     cell_y: int,
     radius: int = 10,
 ) -> Station | None:
-    """Return the nearest Station within radius cells of (cell_x, cell_y), or None."""
+    """Return the nearest station whose rect is within radius cells of (cell_x, cell_y)."""
     raise NotImplementedError("Card E01")

@@ -224,14 +224,15 @@ def test_b25_item_icons_part1(tmp_path: Path) -> None:
 
     build_item_icon_sheets(tmp_path)
     for k in (
-        "gold_klein",
-        "gold_mittel",
-        "gold_gross",
-        "stab",
+        "gold_muenze",
+        "gold_haufen_s",
+        "gold_haufen_m",
+        "gold_haufen_l",
+        "waffe",
         "modul",
-        "gabe",
-        "flasche_voll",
-        "flasche_leer",
+        "experiment",
+        "kolben_voll",
+        "kolben_leer",
         "lebenskapsel",
         "kokon",
     ):
@@ -247,10 +248,10 @@ def test_b26_item_icons_part2(tmp_path: Path) -> None:
         "wuerfel",
         "erinnerungssplitter",
         "bauplan_splitter",
-        "beutekiste",
-        "dienstmarke",
+        "fundkiste",
+        "dienstausweis",
         "formular_stempel",
-        "portal_stein",
+        "wackelportal",
     ):
         _assert_sheet_quality(tmp_path, "gegenstaende", k)
 
@@ -270,12 +271,12 @@ def test_b28_env_station_sheets_part1(tmp_path: Path) -> None:
 
     build_env_prop_sheets(tmp_path)
     for k in (
-        "portal_stein",
-        "werkbank",
-        "fabrikator",
-        "experimentier_liege",
-        "haendler_stand",
-        "zapfhahn",
+        "ws_portal",
+        "ws_werkbank",
+        "ws_fabrikator",
+        "ws_liege",
+        "ws_haendler",
+        "ws_zapfhahn",
     ):
         _assert_sheet_quality(tmp_path, "umgebung", k)
 
@@ -286,12 +287,12 @@ def test_b29_env_station_sheets_part2(tmp_path: Path) -> None:
 
     build_env_prop_sheets(tmp_path)
     for k in (
-        "physik_o_mat",
-        "schiessstand",
-        "archiv_pult",
-        "klonita_sofa",
-        "akten_schredder",
-        "flaschen_brunnen",
+        "ws_automat",
+        "ws_schiessstand",
+        "ws_archiv",
+        "ws_couch",
+        "ws_shredder",
+        "ws_well",
         "portal_headquarters",
         "trainings_attrappe",
     ):

@@ -14,6 +14,7 @@
 
 ## SemVer v1.7.9
 
+- 2026-11-05 (efd97a2): fix: fix phase plan to align with the bible
 - 2026-11-05 (cba645d): feat(karte-a01): Proben- und Regions-SchlÃ¼ssel angleichen
 - 2026-11-05 (d627406): fix: fix card run
 - 2026-11-05 (5383147): feat: add new infos and run script for the first test card run with ollama

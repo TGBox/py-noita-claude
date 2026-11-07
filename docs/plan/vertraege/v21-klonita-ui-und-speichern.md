@@ -130,37 +130,31 @@ Alle Macken teilen sich `quirk_used_in_universe`: höchstens **eine** Macke je U
 | `"shiny_poke"` | explosive Kiste oder instabiles Fass näher als `40 px` | stupst es an (*„Oh, glänzt das?“*) | `F13` |
 | `"loud_sneeze"` | schlafende Kreatur näher als `90 px` | `run.emit("noise", x=self.x, y=self.y, radius=90.0)` | `F13` |
 | `"sample_nibble"` | `>= 5` Proben im Inventar | nascht `1` Tier-1-Probe, lässt sofort `15` Gold fallen (*„Schmeckt nach Wissenschaft!“*) | `F13` |
-| `"tip_trader"` | Kreatur mit `spec.stance == "trader"` näher als `60 px` und `run.gold >= 5` | `run.gold -= min(run.gold, run.rng.randint(5, 15))` (*„Für Ihre Mühe!“*) | `F17` |
+| `"tip_trader"` | `run.in_workshop`, ein Händler steht da (`run.traders`), Klonita ist näher als `60 px` an einem `layout.trader_slots`-Platz und `run.gold >= 5` | `run.gold -= min(run.gold, run.rng.randint(5, 15))` (*„Für Ihre Mühe!“*) | `F17` |
 | `"feed_creature"` | Kreatur mit `spec.stance` in `("peaceful", "passive", "territorial", "neutral")` näher als `24 px` | Kreatur heilt `20 %` ihres `max_hp` (höchstens bis `max_hp`) | `F17` |
 | `"warn_enemy"` | Kreatur mit `spec.stance == "hostile"` näher als `120 px` | `creature.dodge_charges += 1`; das nächste Geschoss der Spielerin, das diese Kreatur treffen würde, fliegt durch (`dodge_charges -= 1`, kein Schaden) (*„Pass auf, sie schießt gleich!“*) | `F17` |
 
-### 4. Kommentar-Datenbank (`src/klonita_lines.py`)
+### 4. Spruch-Datenbank (`src/klonita_lines.py`, Bibel 08 „Textmengen“)
+
+`LINES: dict[str, tuple[str, ...]]`; jeder Spruch höchstens 60 Zeichen. Mindestanzahl je Thema (`LINE_COUNTS`):
+
+| Thema | Anzahl | Thema | Anzahl |
+| --- | --- | --- | --- |
+| `"enter_universe"` (allgemein) | 8 | `"enter_<universum>"` (je MVP-Universum) | 3 |
+| `"player_hurt"` | 6 | `"kill_peaceful"` | 6 |
+| `"klonita_hit"` | 6 | `"klonita_up"` | 6 |
+| `"point_secret"` | 5 | `"event_warn_<universum>"` (je MVP-Universum) | 2 |
+| `"boss_spawn"` | 4 | `"boss_dead"` | 4 |
+| `"couch"` | 12 | `"drink_good"` / `"drink_bad"` | 4 / 4 |
+| `"trader_robbed"` | 3 | `"player_death"` | 5 |
+| `"called"` / `"dismissed"` | 5 / 5 | `"player_low_hp"`, `"memory_shard"` | 3 / 3 |
+| `"wanted_high"`, `"helper_carry"`, `"quirk_tip_trader"`, `"quirk_feed_creature"`, `"quirk_warn_enemy"`, `"default"` | je 2 | | |
 
 ```python
-LINES: dict[str, tuple[str, ...]] = {
-    # Kanonische 6 MVP-Universen (Bibel Kap. 03 & 08):
-    "enter_fleischwelt": (...),
-    "enter_aktenhalde": (...),
-    "enter_glibbria": (...),
-    "enter_kruemelreich": (...),
-    "enter_sporenklub": (...),
-    "enter_abtei": (...),
-    # Auto-Trigger & Situationen:
-    "player_low_hp": (...),
-    "boss_spawn": (...),
-    "wanted_high": (...),
-    "event_start": (...),
-    "couch": (...),
-    "memory_shard": (...),
-    "helper_point": (...),
-    "helper_carry": (...),
-    "quirk_tip_trader": (...),
-    "quirk_feed_creature": (...),
-    "quirk_warn_enemy": (...),
-}
+LINE_COUNTS: dict[str, int]   # Thema -> Mindestanzahl laut Tabelle (Platzhalter <universum> ausgeschrieben)
 
 def line_for(topic: str, rng: random.Random) -> str:
-    """Wählt deterministisch einen deutschen Spruch zum Thema topic (Fallback auf 'default')."""
+    """Wählt einen Spruch zum Thema topic (unbekanntes Thema: "default")."""
 ```
 
 ---
@@ -176,23 +170,27 @@ class SpeechBubble:
     text: str             # Deutscher Anzeigetext
     x: float              # Welt-X oder Anker-X
     y: float              # Welt-Y oder Anker-Y
-    ttl: float = 3.2      # Verbleibende Lebensdauer in Sekunden
+    ttl: float = 3.0      # Bibel 08: 3 s sichtbar
     color: tuple[int, int, int] = (235, 225, 255)
 ```
 
 - `Run.bubbles: list[SpeechBubble]` hält maximal `3` gleichzeitige Sprechblasen (älteste wird verdrängt).
-- `Run.say(speaker: str, text: str, x: float, y: float, ttl: float = 3.2, color: tuple[int, int, int] = (235, 225, 255)) -> None` fügt eine Blase hinzu.
+- Bibel 08: Text höchstens 60 Zeichen (länger wird mit „…“ gekürzt); je Sprecher höchstens alle `8 s` eine neue Blase (`Run.say` verwirft frühere Aufrufe still). Boss- und Ich-Zeilen laufen über `boss_line` am oberen Bildschirmrand und zählen nicht mit.
+- `Run.say(speaker: str, text: str, x: float, y: float, ttl: float = 3.0, color: tuple[int, int, int] = (235, 225, 255)) -> None` fügt eine Blase hinzu.
 - `Run.boss_line(text_de: str) -> None` erzeugt eine hervorgehobene Boss-Sprechblase und setzt das Boss-Phasenbanner für `3.0 s`.
 
-### 2. HUD-Erweiterung (`src/hud.py`)
+### 2. HUD-Erweiterung (`src/hud.py`, Bibel 08 „Oberfläche umbenennen“)
 
-`draw_hud` rendert zusätzlich zu HP, Luft, Mana, Zauberstäben, Flasche und Perks:
+`draw_hud` rendert zusätzlich zu Leben (Herz), Schweben (Jetpack-Sohle), Waffe und Kolben:
 
-- **Gold-Anzeige:** Münz-Icon + `run.gold` oben rechts.
-- **Fahndungssterne:** `0..5` Behörden-Sterne (`run.wanted.stars`) neben der Gold-Anzeige (ausgegraut bei `0`, gelb/rot pulsierend ab `1`).
-- **Proben-Beutel-Zusammenfassung:** Anzahl belegter Proben-Slots (`len([s for s in inv.samples if s]) / 12`).
-- **Aktives Event / aktive Challenge:** Einzeiliger kompakter Statusbalken unter der Regionsanzeige (`event.spec.name` + Restzeit bzw. `challenge.spec.name` + Status).
-- **Sprechblasen:** Rendert `run.bubbles` in Bildschirmkoordinaten über dem jeweiligen Sprecher (geklemmt an den sichtbaren Viewport).
+- **Flux:** Leiste in `flux` mit Flux-Symbol statt „Mana“.
+- **Gold:** Münz-Symbol + `run.gold` oben rechts; daneben `0..5` Siegel (`run.wanted.stars`).
+- **Universum:** „Universum x/6“ (`run.plan.slot`) + Rang als 1–3 Sterne (`run.plan.rank`).
+- **Takt:** kleiner pulsierender Punkt neben der Fluxleiste, wenn `run.rule.beat_interval > 0`.
+- **Atem:** Luftblasen-Leiste über Cloita, nur unter Wasser.
+- **Proben:** `Proben: <belegt>/12`.
+- **Ereignis & Herausforderung:** eine Zeile für `run.event` (Name + Restzeit) und `run.quest` (Text + Fortschritt).
+- **Sprechblasen:** `run.bubbles` über dem Sprecher, an den Bildrand geklemmt.
 
 ### 3. Menü-Modi (`src/menus.py`)
 
@@ -234,8 +232,9 @@ class Records:
     blueprints: list[str] = field(default_factory=list)   # NEU
     universes: list[str] = field(default_factory=list)    # NEU
     evil_selves: list[str] = field(default_factory=list)  # NEU
-    badges: int = 0                                       # NEU: höchste/gesammelte Dienstmarken
+    badges: int = 0                                       # NEU: gesammelte Dienstausweise
     best_rank: str = "Praktikantin"                       # NEU
+    endings: list[str] = field(default_factory=list)      # NEU: "normal", "wahr", "boese"
 ```
 
 #### Kanonische `Records.discover(self, kind: str, key: str = "") -> None`-Verzweigung
@@ -245,6 +244,7 @@ class Records:
 - `kind == "universe"`: fügt `key` zu `self.universes` hinzu (falls noch nicht enthalten).
 - `kind == "evil_self"`: fügt `key` zu `self.evil_selves` hinzu (falls noch nicht enthalten).
 - `kind == "badge"`: erhöht `self.badges += 1`.
+- `kind == "ending"`: fügt `key` (`"normal"`, `"wahr"`, `"boese"`) zu `self.endings` hinzu (falls noch nicht enthalten).
 - `kind == "creature"` (oder Legacy-1-Argument-Aufruf `discover(block_key)`): bei `key == ""` wird `kind` zu `self.blocks` hinzugefügt; sonst erhöht `self.creatures[key] = self.creatures.get(key, 0) + 1` und `self.total_kills += 1`.
 
 ### 2. Kanonische Rang-Berechnung (`compute_score` & `rank_for_score` in `src/records.py`)
@@ -304,6 +304,9 @@ Zusätzlich zu den bestehenden Feldern in `save_state()` / `restore()` werden im
 "grudges": [[a, b] for (a, b) in sorted(self.grudges)],
 "event": self.event.to_data() if self.event else None,
 "challenge": self.challenge.to_data() if self.challenge else None,
+"quest": self.quest.to_data() if self.quest else None,
+"ending": self.ending,
+"experiment_rerolls": self.experiment_rerolls,
 "klonita": self.klonita.to_data(),
 "samples": list(self.inventory.samples),
 "level_meta": {

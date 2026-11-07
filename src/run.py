@@ -1505,24 +1505,32 @@ class Run:
         raise NotImplementedError("Card A16")
 
     def enter_workshop(self) -> None:
-        """Transition the run into the between-universes workshop (Card E02)."""
-        raise NotImplementedError("Card E02")
+        """Move the run into the workshop between universes (Contract V18, Card E10)."""
+        raise NotImplementedError("Card E10")
 
-    def choose_next_universe(self, index: int) -> bool:
-        """Select portal offer ``index`` in the workshop and enter that universe (Card E02)."""
-        raise NotImplementedError("Card E02")
+    def choose_next_universe(self, index: int) -> None:
+        """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""
+        raise NotImplementedError("Card E11")
 
     def enter_headquarters(self) -> None:
-        """Transition into the authority headquarters final stage (Card F08)."""
-        raise NotImplementedError("Card F08")
+        """Enter the authority headquarters for the true ending (Contract V17, Card F10)."""
+        raise NotImplementedError("Card F10")
 
-    def say(self, speaker: str, text: str, x: float, y: float, duration: float = 2.8) -> None:
-        """Spawn a floating speech bubble in the world (Card F14 / G02)."""
+    def say(
+        self,
+        speaker: str,
+        text: str,
+        x: float,
+        y: float,
+        ttl: float = 3.0,
+        color: tuple[int, int, int] = (235, 225, 255),
+    ) -> None:
+        """Show a speech bubble above (x, y) (Contract V22, Card F14)."""
         raise NotImplementedError("Card F14")
 
-    def boss_line(self, boss_key: str, trigger: str, x: float, y: float) -> None:
-        """Trigger a boss dialogue bubble for ``trigger`` (Card F13)."""
-        raise NotImplementedError("Card F13")
+    def boss_line(self, text_de: str) -> None:
+        """Show a boss line at the top of the screen (Contract V22, Card F14)."""
+        raise NotImplementedError("Card F14")
 
     def handle_menu_input(self, key: int) -> bool:
         """Handle keyboard navigation for modal overlays (Card G09)."""

@@ -72,4 +72,3 @@ def apply_arena_hazard(hazard: str, dt: float, boss: Creature, run: Run) -> None
 def make_boss_script(boss: Creature) -> BossScript | None:
     """Return the matching BossScript instance for boss.species, or None."""
     raise NotImplementedError("Cards F03..F06")
-

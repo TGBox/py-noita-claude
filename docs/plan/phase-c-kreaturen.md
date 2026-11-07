@@ -187,19 +187,19 @@
 
 ---
 
-## C14 — Behörden-Agenten, Böse Ichs & `"ober_cloita"` in `src/enemies.py` (`V15`, `V17`)
+## C14 — Behörden-Agenten, böse Ichs, Rat & `"ober_cloita"` in `src/enemies.py` (`V15`, `V17`)
 
 - **Größe:** S
 - **Abhängigkeiten:** `C12`
 - **Ziel-Dateien:** `src/enemies.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`, `V17`), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c14`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`, `V17`), `docs/bibel/05-gegner.md` („Behörden-Agenten“, „Böse Ichs“, „Wahres Ende“), `src/enemies.py`, `tests/spec/test_phase_c.py` (`-k c14`)
 - **Aufgabe:**
-  1. Registriere in `SPECIES` (`src/enemies.py`):
-     - die 4 Behörden-Agenten (`faction="behoerde"`): `"agent_streife"` (sowie Alias `"agent_sachbearbeiter"`), `"agent_drohne"` (`fly`), `"agent_vollstrecker"` (`Ability("reflect", "briefcase")`), `"agent_abteilungsleiter"` (`Ability("summon", "agent_sachbearbeiter", 1.0)`)
-     - die 3 Bösen Ichs (`faction="boese_ichs"`, `is_boss=True`): `"boese_kaiserin"`, `"boese_gute"`, `"boese_omega"`
-     - den Hauptquartier-Endboss `"ober_cloita"` (`faction="behoerde"`, `is_boss=True`, `hp=650.0`).
+  1. Registriere in `SPECIES` (`src/enemies.py`) mit Leben aus Bibel 05:
+     - die 4 Agenten (`faction="behoerde"`): `"agent_streife"` 45 (Alias `"agent_sachbearbeiter"`), `"agent_drohne"` 15 (`flying`), `"agent_vollstrecker"` 120 (`Ability("reflect", "briefcase")`), `"agent_abteilungsleiter"` 160 (`flying`, `Ability("summon", "agent_streife", 1.0)`),
+     - die 3 bösen Ichs (`faction="boese_ichs"`, `is_boss=True`): `"boese_kaiserin"` 3500, `"boese_gute"` 3200, `"boese_omega"` 3800,
+     - `"ratsmitglied"` 90 (`faction="behoerde"`, `ranged`, Agenten-Optik mit Robe) und `"ober_cloita"` 6000 (`faction="behoerde"`, `is_boss=True`, 96×96).
 - **Akzeptanzkriterien:**
-  - Alle Behörden-Agenten, Bösen Ichs und `"ober_cloita"` sind in `SPECIES` vorhanden und lassen sich über `EnemyManager.spawn` instanziieren.
+  - Alle genannten Arten stehen mit den Leben aus Bibel 05 in `SPECIES` und lassen sich über `EnemyManager.spawn` erzeugen.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_c.py -k c14 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

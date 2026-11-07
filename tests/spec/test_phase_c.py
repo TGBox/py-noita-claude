@@ -119,18 +119,20 @@ def test_c12_mvp_end_bosses() -> None:
 def test_c14_agents_evil_selves_and_ober_cloita() -> None:
     from src.enemies import SPECIES
 
-    for k in (
-        "agent_streife",
-        "agent_sachbearbeiter",
-        "agent_drohne",
-        "agent_vollstrecker",
-        "agent_abteilungsleiter",
-        "boese_kaiserin",
-        "boese_gute",
-        "boese_omega",
-        "ober_cloita",
-    ):
-        assert k in SPECIES
+    hp = {
+        "agent_streife": 45,
+        "agent_drohne": 15,
+        "agent_vollstrecker": 120,
+        "agent_abteilungsleiter": 160,
+        "boese_kaiserin": 3500,
+        "boese_gute": 3200,
+        "boese_omega": 3800,
+        "ratsmitglied": 90,
+        "ober_cloita": 6000,
+    }
+    for key, value in hp.items():
+        assert SPECIES[key].hp == value, key
+    assert "agent_sachbearbeiter" in SPECIES
 
 
 def test_c15_creature_projectile_status_effects() -> None:

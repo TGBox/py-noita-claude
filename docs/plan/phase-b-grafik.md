@@ -312,9 +312,9 @@
 - **Ziel-Dateien:** `tools/sprites_items.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`, `pickup_sprite_key`), `docs/bibel/07-gegenstaende-und-werkstatt.md` („Gegenstände in der Welt“), `tests/spec/test_phase_b.py` (`-k b25`)
 - **Aufgabe:**
-  1. Ergänze in `tools/sprites_items.py` die Funktion `build_item_icon_sheets(out_dir)` mit `12×12`-Sprites unter `gegenstaende/` für `"gold_klein"`, `"gold_mittel"`, `"gold_gross"`, `"stab"`, `"modul"`, `"gabe"`, `"flasche_voll"`, `"flasche_leer"`, `"lebenskapsel"`, `"kokon"`.
+  1. Ergänze in `tools/sprites_items.py` die Funktion `build_item_icon_sheets(out_dir)` mit `12×12`-Sprites unter `gegenstaende/` für `"gold_muenze"`, `"gold_haufen_s"`, `"gold_haufen_m"`, `"gold_haufen_l"`, `"waffe"`, `"modul"`, `"experiment"`, `"kolben_voll"`, `"kolben_leer"`, `"lebenskapsel"`, `"kokon"`.
 - **Akzeptanzkriterien:**
-  - Alle 10 Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
+  - Alle 11 Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b25 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -326,7 +326,7 @@
 - **Ziel-Dateien:** `tools/sprites_items.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v11-gegenstaende-und-ereignisbus.md` (`V11`, `pickup_sprite_key`), `docs/bibel/07-gegenstaende-und-werkstatt.md` („Gegenstände in der Welt“), `tests/spec/test_phase_b.py` (`-k b26`)
 - **Aufgabe:**
-  1. Ergänze in `build_item_icon_sheets` `12×12`-Sprites unter `gegenstaende/` für `"auge"`, `"wuerfel"`, `"erinnerungssplitter"`, `"bauplan_splitter"`, `"beutekiste"`, `"dienstmarke"`, `"formular_stempel"`, `"portal_stein"`.
+  1. Ergänze in `build_item_icon_sheets` `12×12`-Sprites unter `gegenstaende/` für `"auge"`, `"wuerfel"`, `"erinnerungssplitter"`, `"bauplan_splitter"`, `"fundkiste"`, `"dienstausweis"`, `"formular_stempel"`, `"wackelportal"`.
 - **Akzeptanzkriterien:**
   - Alle 8 Sprites existieren unter `gegenstaende/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b26 -q && uv run pytest --ignore=tests/spec -q`
@@ -354,7 +354,7 @@
 - **Ziel-Dateien:** `tools/sprites_env.py`, `tools/sprites.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`, Spalte `sprite_key`), `docs/bibel/07-gegenstaende-und-werkstatt.md` („Die Werkstatt“), `tests/spec/test_phase_b.py` (`-k b28`)
 - **Aufgabe:**
-  1. Erstelle `tools/sprites_env.py` mit `build_env_prop_sheets(out_dir)` (und binde es in `tools/sprites.py` ein) und den Stations-Sprites (`24×24` bis `48×48` px, `idle` 2–4 und `use` 2–4 Frames) unter `umgebung/` für die `sprite_key`s `"portal_stein"`, `"werkbank"`, `"fabrikator"`, `"experimentier_liege"`, `"haendler_stand"`, `"zapfhahn"`.
+  1. Erstelle `tools/sprites_env.py` mit `build_env_prop_sheets(out_dir)` (und binde es in `tools/sprites.py` ein) und den Stations-Sprites (Größe der Station laut Bibel 07, `idle` 2–4 und `use` 2–4 Frames) unter `umgebung/` für die `sprite_key`s `"ws_portal"`, `"ws_werkbank"`, `"ws_fabrikator"`, `"ws_liege"`, `"ws_haendler"`, `"ws_zapfhahn"`.
 - **Akzeptanzkriterien:**
   - Alle 6 Sprites existieren unter `umgebung/` und erfüllen `V8`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b28 -q && uv run pytest --ignore=tests/spec -q`
@@ -368,7 +368,7 @@
 - **Ziel-Dateien:** `tools/sprites_env.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v05-sprites-und-teile.md` (`V8`), `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`, Spalte `sprite_key`), `tests/spec/test_phase_b.py` (`-k b29`)
 - **Aufgabe:**
-  1. Ergänze in `build_env_prop_sheets` die Sprites unter `umgebung/` für `"physik_o_mat"`, `"schiessstand"`, `"archiv_pult"`, `"klonita_sofa"`, `"akten_schredder"`, `"flaschen_brunnen"`, `"portal_headquarters"`, `"trainings_attrappe"`.
+  1. Ergänze in `build_env_prop_sheets` die Sprites unter `umgebung/` für `"ws_automat"`, `"ws_schiessstand"`, `"ws_archiv"`, `"ws_couch"`, `"ws_shredder"`, `"ws_well"`, `"portal_headquarters"`, `"trainings_attrappe"`.
 - **Akzeptanzkriterien:**
   - Zusammen mit `B28` hat jede Station in `STATIONS` ein Sprite `umgebung/<station.sprite_key>` nach `V8`; dazu `"portal_headquarters"` und `"trainings_attrappe"`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_b.py -k b29 -q && uv run pytest --ignore=tests/spec -q`

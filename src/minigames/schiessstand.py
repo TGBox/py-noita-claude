@@ -1,4 +1,4 @@
-"""Contract V20: Schiessstand target-shooting minigame (Card E09)."""
+"""Contract V20: the shooting range minigame (Card E09)."""
 
 from __future__ import annotations
 
@@ -11,17 +11,18 @@ from . import Minigame
 class ShootingTarget:
     x: float
     y: float
-    vx: float = 20.0
+    kind: str
+    visible_time: float
     hit: bool = False
-    is_authority_dummy: bool = False
 
 
 class SchiessstandMinigame(Minigame):
     key: str = "schiessstand"
     title_de: str = "Schießstand"
-    time_limit: float = 15.0
+    stake: int = 20
+    time_limit: float = 30.0
 
     def __init__(self, seed: int = 0) -> None:
         super().__init__(seed=seed)
         self.targets: list[ShootingTarget] = []
-
+        self.score: int = 0
