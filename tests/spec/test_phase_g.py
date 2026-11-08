@@ -500,3 +500,85 @@ def test_g21_hit_flash_keeps_sprites_and_gold_is_auto_collected() -> None:
     run.update(0.016, Controls())
     assert run.gold == gold + 7
 
+def _stand_at(run, station_key: str) -> None:
+    x0, y0, x1, y1 = run.workshop_layout.stations[station_key].rect
+    run.player.x, run.player.y = (x0 + x1) / 2, (y0 + y1) / 2
+
+
+def test_g22_workshop_menus_by_keyboard() -> None:
+    from src.fabricator import build_cost
+    from src.run import Controls, Run
+
+    run = Run(seed=22)
+    run.start_multiverse_run()
+    run.gold = 5000
+
+    _stand_at(run, "ws_haendler")
+    run.update(0.016, Controls(pickup=True))
+    assert run.menu_mode == "trader"
+    gold = run.gold
+    assert run.handle_menu_input(pygame.K_RETURN) is True
+    assert run.gold < gold, "Enter at the trader buys the selected offer"
+    assert run.handle_menu_input(pygame.K_ESCAPE) is True and run.menu_mode == ""
+
+    _stand_at(run, "ws_liege")
+    run.update(0.016, Controls(pickup=True))
+    assert run.menu_mode == "experiment"
+    assert run.handle_menu_input(pygame.K_DOWN) is True
+    assert run.handle_menu_input(pygame.K_RETURN) is True
+    assert run.experiment_picked is True
+    run.handle_menu_input(pygame.K_ESCAPE)
+    assert run.menu_mode == ""
+
+    rec = build_cost("spark")
+    for key, count in rec.samples:
+        run.inventory.add_sample(key, count * 3)
+    _stand_at(run, "ws_fabrikator")
+    run.update(0.016, Controls(pickup=True))
+    assert run.menu_mode == "fabricator"
+    gold = run.gold
+    for _ in range(80):  # select the spark recipe, whatever its place in the list
+        if run.handle_menu_input(pygame.K_RETURN) and run.gold < gold:
+            break
+        run.handle_menu_input(pygame.K_DOWN)
+    assert run.gold < gold, "Enter at the fabricator builds a module"
+    assert run.handle_menu_input(pygame.K_ESCAPE) is True and run.menu_mode == ""
+
+
+def test_g23_game_draws_workshop_menus(monkeypatch) -> None:
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    from src import main as game_main
+
+    monkeypatch.setattr(game_main.records, "delete_run", lambda *a, **k: None)
+    monkeypatch.setattr(game_main.records, "save_run", lambda *a, **k: None)
+    shown: list[str] = []
+    real_text = game_main.ui.text
+
+    def spy(screen, content, *args, **kwargs):  # type: ignore[no-untyped-def]
+        shown.append(str(content))
+        return real_text(screen, content, *args, **kwargs)
+
+    monkeypatch.setattr(game_main.ui, "text", spy)
+    game = game_main.Game()
+    game._start_run()
+    run = game.run
+    run.gold = 5000
+    for key, mode in (
+        ("ws_haendler", "trader"), ("ws_liege", "experiment"), ("ws_fabrikator", "fabricator"),
+        ("ws_schiessstand", "minigame"),
+    ):  # fmt: skip
+        _stand_at(run, key)
+        run.interact_station()
+        assert run.menu_mode == mode, key
+        shown.clear()
+        game.update(0.016)
+        game.draw()
+        assert not any("Noch nicht verfügbar" in s for s in shown), f"{mode} menu is not drawn"
+        game._on_key(pygame.K_ESCAPE)
+        assert run.menu_mode == "" and game.state == "playing"
+
+    _stand_at(run, "ws_werkbank")
+    run.interact_station()
+    game.update(0.016)
+    assert game.editor.open, "the workbench opens the backpack"
+

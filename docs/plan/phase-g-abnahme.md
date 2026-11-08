@@ -1,4 +1,4 @@
-# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (16 atomare S-Karten: `G01`–`G16`)
+# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (18 atomare S-Karten: `G01`–`G16`, `G22`, `G23`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_g.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Karten folgen `V22`–`V23` aus [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) und `V14` aus [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md).
@@ -243,4 +243,40 @@
 - **Akzeptanzkriterien:**
   - Für Aktenhalde, Fleischwelt und Abtei: Python und Rust-Kern nutzen denselben Materialsatz, Einheimische und Unter-Zwischenboss sind da, eine Sekunde Spiel und der Weg zurück in die Werkstatt laufen ohne Fehler; Feuer verbrennt Papier in der Aktenhalde.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k "g14 or g15 or g16" -q && uv run pytest --ignore=tests/spec -q`, dann Playtest.
+
+---
+
+## G22 — Werkstatt-Menüs per Tastatur bedienen: Händler, Fabrikator, Liege, Minispiel (`src/run.py`) (`V18`, `V22`)
+
+*(Plan-Korrektur nach Playtest 2026-11-08: Die Menü-Karten E12–E16 bauen Logik und Zeichenfunktionen, aber keine Karte verbindet Tasten damit; `G09` hängt an `F08`/`G05` und kommt erst viel später.)*
+
+- **Größe:** S
+- **Abhängigkeiten:** `E12`, `E13`, `E14`, `E16`
+- **Ziel-Dateien:** `src/run.py`
+- **Zu lesender Kontext:** `src/run.py` nur `handle_menu_input`, `interact_station`, `craft_selected_recipe`, `buy_trader_offer`, `pick_experiment`, `reroll_experiments`, `step_minigame` (gezielt suchen); `tests/spec/test_phase_g.py` (`-k g22`)
+- **Aufgabe:**
+  1. Erweitere `Run.handle_menu_input(key)` um `"fabricator"`, `"trader"`, `"experiment"` und `"minigame"`: Pfeiltasten bzw. `W`/`S` bewegen `self.menu_index` (umlaufend über die Einträge des Menüs), `Enter`/`E` bestätigen (Bauen, Kaufen, Experiment wählen), `R` würfelt Händler-Angebote bzw. Experimente neu, `T` kauft beim Händler mit Proben (`use_samples=True`), `Escape` schließt (`menu_mode = ""`, `menu_index = 0`; ein laufendes Minispiel gilt als verloren). Rückgabe `True`, wenn die Taste verbraucht wurde.
+  2. `"trader"` bedient den Händler, dessen Platz (`layout.trader_slots`) der Spielerin am nächsten ist (`self.active_trader_key`, gesetzt in `interact_station`).
+  3. `"portal_select"` bleibt wie in `G14`.
+- **Akzeptanzkriterien:**
+  - Am Händlerplatz: [E], Enter kauft das erste Angebot (Gold sinkt); an der Liege: [E], Enter wählt ein Experiment; am Fabrikator: [E], Enter baut ein Modul, wenn Gold und Proben reichen; Escape schließt jedes dieser Menüs.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k "g14 or g22" -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## G23 — Werkstatt im Spiel: Menüs zeichnen, Werkbank, Minispiel-Maus, Stations-Grafiken (`src/main.py`) (`V18`, `V22`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `G22`, `B29`
+- **Ziel-Dateien:** `src/main.py`
+- **Zu lesender Kontext:** `src/main.py` nur `draw`, `_on_key`, `handle_events`, `_draw_station_placeholders`; `src/menus.py` (`draw_fabricator_menu`, `draw_trader_menu`, `draw_experiment_menu` bzw. die Namen aus `E12`/`E13`/`E16`, `draw_minigame_overlay`), `src/sprite_render.py` (`SheetCache`, `blit_frame`), `tests/spec/test_phase_g.py` (`-k g23`)
+- **Aufgabe:**
+  1. `draw`: Für `"fabricator"`, `"trader"`, `"experiment"` und `"minigame"` die zugehörige Zeichenfunktion aus `src/menus.py` aufrufen (mit `self.run.menu_index`). Der Hinweis „Noch nicht verfügbar“ erscheint nur noch für Menüs, deren Karte fehlt (`"archive"`).
+  2. Werkbank: Setzt `run.inventory_open`, öffnet `main.py` den Rucksack-Editor (`self.editor`) und setzt das Feld zurück.
+  3. Minispiel: Mausklick im Menü `"minigame"` ruft `run.step_minigame(dt, action="shoot", cursor=…)` mit der Position im Minispiel-Fenster auf; jedes Bild läuft `step_minigame(dt)`.
+  4. Stations-Grafiken: `_draw_station_placeholders` zeichnet für jede Station ihr Sheet `umgebung/<sprite_key>` (`self.sheet_cache`, `blit_frame`), sobald es existiert; Rahmen und Name nur noch, wenn das Sheet fehlt. Der Name erscheint zusätzlich, wenn die Spielerin an der Station steht.
+  5. Alle Werkstatt-Menüs im Stil der Spielmenüs (`ui.shade`, `ui.panel`, `ui.text`) wie `draw_portal_select_menu`.
+- **Akzeptanzkriterien:**
+  - Im echten `Game` zeichnet jedes der vier Menüs ohne Fehler und ohne „Noch nicht verfügbar“; die Werkbank öffnet den Rucksack.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k "g15 or g23" -q && uv run pytest --ignore=tests/spec -q`, dann Playtest in der Werkstatt.
 
