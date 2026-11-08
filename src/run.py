@@ -21,6 +21,7 @@ from src.bosses import BossScript
 from src.challenges import Challenge
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
+from src.economy import boss_gold, creature_gold, mid_boss_gold
 from src.enemies import SPECIES, Creature, EnemyManager, populate, spawn_boss
 from src.events import Event
 from src.flask import ABSORB_RATE, CAPACITY, POUR_RATE, REACH, Droplet, Flask, ThrownFlask
@@ -58,7 +59,7 @@ from src.rules import RULE_KEYS, Rule, apply_player_rules
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
 from src.spells import CATALOG, Block, resolve_payload_material
 from src.universes.catalog import BY_KEY as UNIVERSE_BY_KEY
-from src.universes.catalog import UNIVERSES
+from src.universes.catalog import MID_BOSSES, UNIVERSES
 from src.universes.gen.common import region_bands
 from src.universes.model import SHAPES, Universe
 from src.wand import PRESETS, Shot, Wand, WandSpec
@@ -259,6 +260,7 @@ class Run:
         self.inventory_open: bool = False
         self.boss_script: BossScript | None = None
         self.records: Records = Records()
+        self._gold_vein_remainder: int = 0
         self.universe: Universe = UNIVERSE_BY_KEY.get(universe_key, UNIVERSES[0])
         self.portal_index: int = 0
         self.new_run()
@@ -483,9 +485,7 @@ class Run:
     def can_edit_wands(self) -> bool:
         """Like Noita's Holy Mountain: rebuilding augmentations needs a sanctum, the
         workshop (multiverse run) or a perk."""
-        return (
-            self.in_sanctum or self.in_workshop or self.sandbox or "flinke_haende" in self.perks
-        )
+        return self.in_sanctum or self.in_workshop or self.sandbox or "flinke_haende" in self.perks
 
     def enter_sanctum(self) -> None:
         """The safe chamber after depth ``depth_index``: heal, shop, choose a perk."""
@@ -1010,6 +1010,20 @@ class Run:
             self._kick(controls.aim)
 
         self._step_world(dt, area)
+        cells_destroyed = self.world.take_destroyed_cells()
+        gold_cells = self.world.take_destroyed_gold_vein_cells()
+        if cells_destroyed > 0 or gold_cells > 0:
+            self.emit("cells_destroyed", count=cells_destroyed, gold_vein_cells=gold_cells)
+        if gold_cells > 0:
+            total_gold_cells = self._gold_vein_remainder + gold_cells
+            n_drops = total_gold_cells // 6
+            self._gold_vein_remainder = total_gold_cells % 6
+            px, py = self.player.center
+            for _ in range(n_drops):
+                self.pickups.append(Pickup(px, py, kind="gold", amount=5))
+            if gold_cells >= 18 and self.rng.random() < 0.25:
+                self.pickups.append(Pickup(px, py, kind="sample", item_key="probe_gold", amount=1))
+
         everywhere = area or (0, 0, self.world.width, self.world.height)
         for creature in self.enemies.creatures:
             for key in list(creature.ability_cooldowns):
@@ -2030,9 +2044,7 @@ class Run:
         The n-th universe of the run uses the n-th organism depth as its terrain template,
         so caves grow with the run; a boss slot keeps the depth's boss chamber.
         """
-        natives = tuple(
-            (key, NATIVES_PER_SPECIES) for key in universe.natives if key in SPECIES
-        )
+        natives = tuple((key, NATIVES_PER_SPECIES) for key in universe.natives if key in SPECIES)
         if universe.big and universe.big in SPECIES:
             natives += ((universe.big, 1),)
         slot = self.plan.slot if self.plan is not None else 1
@@ -2137,7 +2149,23 @@ class Run:
         if "blutdurst" in self.perks and not self.player.dead:
             self.player.hp = min(self.player.max_hp, self.player.hp + BLOODLUST_HEAL)
         self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
-        gold_amount = max(1, int(creature.spec.hp / 12))
+        rank = self.plan.rank if self.plan is not None else self.rank
+        mid_boss_keys = {boss for pairs in MID_BOSSES.values() for boss, _ in pairs}
+        if (
+            getattr(creature.spec, "is_boss", False) or getattr(creature.spec, "boss", False)
+        ) and creature.spec.key in mid_boss_keys:
+            gold_amount = boss_gold(rank)
+        elif getattr(creature.spec, "is_mid_boss", False):
+            gold_amount = mid_boss_gold(rank)
+        else:
+            is_big = bool(
+                getattr(creature.spec, "big", False)
+                or (
+                    self.universe is not None
+                    and getattr(self.universe, "big", None) == creature.spec.key
+                )
+            )
+            gold_amount = creature_gold(rank, self.rng, big=is_big)
         self.pickups.append(Pickup(cx, cy, kind="gold", amount=gold_amount))
         sample_key = creature.spec.drops_sample or getattr(self.universe, "sample_key", "")
         if sample_key:
