@@ -258,6 +258,7 @@ class Run:
         self.experiment_picked: bool = False
         self.experiment_offers: list[str] = []
         self.experiment_rerolls: int = 0
+        self.dummy_damage_total: float = 0.0
         self.active_traders: list[Any] = []
         self.trader_offers: dict[str, list[Any]] = {}
         self.selected_trader_key: str = ""
@@ -1842,6 +1843,38 @@ class Run:
         self.droplets.clear()
         self.chunks.clear()
 
+        # Spawn target dummy in workshop (Card E15)
+        import dataclasses
+
+        dummy_x, dummy_y = self.workshop_layout.target_dummy_pos
+        c = self.enemies.spawn("made", dummy_x, dummy_y)
+        c.species = "trainings_attrappe"
+        c.spec = dataclasses.replace(
+            c.spec,
+            key="trainings_attrappe",
+            name_de="Trainings-Attrappe",
+            stance="peaceful",
+            speed=0,
+            stationary=True,
+            melee_damage=0,
+            hp=9999,
+        )
+        c.max_hp = 9999.0
+        c.hp = 9999.0
+
+        def _dummy_hurt(amount: float, cause: str = "", _orig=c.hurt, _creature=c) -> None:
+            if amount > 0:
+                self.dummy_damage_total += amount
+                cx, cy = _creature.center
+                self.say("Attrappe", f"{int(amount)} Schaden", cx, cy - 10)
+                _creature.hp = _creature.max_hp
+                _creature.dead = False
+                if _creature.flash_cooldown <= 0:
+                    _creature.flash = 0.1
+                    _creature.flash_cooldown = 0.3
+
+        c.hurt = _dummy_hurt
+
         # Contract V18 reset visit rules
         self.wanted.on_workshop()
         if self.fabricator is None:
@@ -2276,7 +2309,15 @@ class Run:
         color: tuple[int, int, int] = (235, 225, 255),
     ) -> None:
         """Show a speech bubble above (x, y) (Contract V22, Card F14)."""
-        raise NotImplementedError("Card F14")
+        self.bubbles.append(
+            SpeechBubble(
+                speaker=speaker,
+                text=text,
+                world_x=x,
+                world_y=y,
+                remaining=ttl,
+            )
+        )
 
     def boss_line(self, text_de: str) -> None:
         """Show a boss line at the top of the screen (Contract V22, Card F14)."""
