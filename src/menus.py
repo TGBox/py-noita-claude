@@ -666,3 +666,111 @@ def draw_trader_menu(
         ui.DIM,
         anchor="center",
     )
+
+
+def draw_fabricator_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+    selected_index: int,
+) -> None:
+    """Draw the fabricator craft menu (Contracts V20 §1, V22; Card E12)."""
+    from src.fabricator import MAX_BUILDS_PER_VISIT, build_cost
+    from src.samples import SAMPLE_NAMES
+    from src.spells import BLOCKS
+
+    ui.shade(surface, 205)
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    body = round(14 * s)
+
+    built = getattr(getattr(run, "fabricator", None), "builds_this_visit", 0)
+    left = max(0, MAX_BUILDS_PER_VISIT - built)
+
+    ui.text(
+        surface,
+        "Der Fabrikator",
+        (sw / 2, 35 * s),
+        round(28 * s),
+        ui.GOLD,
+        heading=True,
+        anchor="center",
+    )
+    sub = f"Bauten diesen Besuch verbleibend: {left} von {MAX_BUILDS_PER_VISIT}"
+    ui.text(
+        surface,
+        sub,
+        (sw / 2, 68 * s),
+        round(15 * s),
+        ui.TEXT if left > 0 else (235, 100, 100),
+        anchor="center",
+    )
+
+    blueprints = list(getattr(getattr(run, "records", None), "blueprints", []))
+    if not blueprints:
+        ui.text(
+            surface,
+            "Keine Baupläne gefunden! Finde Bauplan-Splitter in den Welten.",
+            (sw / 2, sh / 2),
+            round(18 * s),
+            ui.DIM,
+            anchor="center",
+        )
+    else:
+        # Display recipes in a scrollable list or cards
+        card_w, card_h = round(440 * s), round(52 * s)
+        gap = round(8 * s)
+        visible_count = min(len(blueprints), 6)
+        start_idx = max(0, min(selected_index - 2, len(blueprints) - visible_count))
+        top = round(105 * s)
+        x = (sw - card_w) // 2
+
+        for i in range(start_idx, min(len(blueprints), start_idx + visible_count)):
+            bp_key = blueprints[i]
+            block = BLOCKS.get(bp_key)
+            name = block.name_de if block else bp_key
+            selected = i == selected_index
+            rec = build_cost(bp_key, getattr(getattr(run, "plan", None), "slot", 0) + 1)
+            can_craft, reason = (
+                run.fabricator.can_build(run, bp_key) if run.fabricator else (False, "")
+            )
+
+            rect = pygame.Rect(x, top + (i - start_idx) * (card_h + gap), card_w, card_h)
+            ui.panel(surface, rect, alpha=245 if selected else 215)
+            if selected:
+                pygame.draw.rect(surface, ui.GOLD, rect.inflate(4, 4), 2)
+
+            cx, cy = rect.x + round(12 * s), rect.y + round(8 * s)
+            title_col = ui.GOLD if selected else (ui.TEXT if can_craft else ui.DIM)
+            ui.text(surface, name, (cx, cy), round(16 * s), title_col, bold=selected)
+
+            # Details: Gold, samples, shards
+            cost_parts = [f"{rec.gold} Gold", f"{rec.universe_samples}x Universums-Probe"]
+            if rec.blueprint_shards:
+                cost_parts.append(f"{rec.blueprint_shards}x Splitter")
+            if rec.special_samples:
+                spec_names = "/".join(SAMPLE_NAMES.get(k, k) for k in rec.special_samples[:2])
+                cost_parts.append(f"1x {spec_names}")
+            cost_line = " · ".join(cost_parts)
+            ui.text(surface, cost_line, (cx, cy + round(20 * s)), body, (180, 200, 220))
+
+            status_col = (100, 220, 120) if can_craft else (235, 120, 100)
+            status_txt = "[Enter] Bauen" if can_craft else reason
+            ui.text(
+                surface,
+                status_txt,
+                (rect.right - round(12 * s), cy + round(10 * s)),
+                body,
+                status_col,
+                anchor="topright",
+            )
+
+    ui.text(
+        surface,
+        "Pfeiltasten: Bauplan wählen  |  [Enter]: Modul bauen  |  [Esc]: Zurück",
+        (sw / 2, sh - 35 * s),
+        round(14 * s),
+        ui.DIM,
+        anchor="center",
+    )
