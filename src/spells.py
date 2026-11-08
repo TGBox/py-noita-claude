@@ -269,89 +269,89 @@ BLOCKS: tuple[Block, ...] = (
     ),
     # Mutationen (modifiers)
     Block(
-        "beschleunigung", "Beschleunigung", Category.MODIFIER, mana=3,
-        description_de="Nächste Drüse fliegt schneller.", speed_factor=1.75,
+        "beschleunigung", "Turbo", Category.MODIFIER, mana=3,
+        description_de="Nächstes Geschoss fliegt schneller.", speed_factor=1.75,
     ),
     Block(
-        "sprengkraft", "Sprengkraft", Category.MODIFIER, mana=12, cast_delay=0.1,
+        "sprengkraft", "Sprengladung", Category.MODIFIER, mana=12, cast_delay=0.1,
         description_de="Größere Explosion.", blast_bonus=6,
     ),
     Block(
-        "umkehr", "Schwerkraftumkehr", Category.MODIFIER, mana=4,
-        description_de="Nächste Drüse fällt nach oben.", flip_gravity=True,
+        "umkehr", "Antigrav", Category.MODIFIER, mana=4,
+        description_de="Nächstes Geschoss fällt nach oben.", flip_gravity=True,
     ),
     Block(
-        "zielsuche", "Zielsuche", Category.MODIFIER, mana=8,
-        description_de="Nächste Drüse lenkt zum Mauszeiger.", homing=True,
+        "zielsuche", "Zielsuchkopf", Category.MODIFIER, mana=8,
+        description_de="Lenkt zum Mauszeiger.", homing=True,
     ),
     Block(
-        "doppel", "Doppelzauber", Category.MODIFIER, mana=2,
-        description_de="Zieht zwei Gruppen auf einmal.", multicast=2,
+        "doppel", "Doppellauf", Category.MODIFIER, mana=2,
+        description_de="Zwei Gruppen auf einmal.", multicast=2,
     ),
     Block(
-        "durchbohren", "Durchbohren", Category.MODIFIER, mana=10,
-        description_de="Nächste Drüse fliegt durch Kreaturen hindurch.", pierce=True,
+        "durchbohren", "Panzerbrechend", Category.MODIFIER, mana=10,
+        description_de="Fliegt durch Kreaturen hindurch.", pierce=True,
     ),
     Block(
-        "abprall", "Abprall", Category.MODIFIER, mana=5,
-        description_de="Nächste Drüse prallt dreimal von Wänden ab.", bounce_bonus=3,
+        "abprall", "Gummierung", Category.MODIFIER, mana=5,
+        description_de="Prallt dreimal von Wänden ab.", bounce_bonus=3,
     ),
     Block(
-        "brandbeschleuniger", "Brandbeschleuniger", Category.MODIFIER, mana=8,
-        description_de="Getroffene Kreaturen fangen Feuer.", ignites=True,
+        "brandbeschleuniger", "Brandsatz", Category.MODIFIER, mana=8,
+        description_de="Getroffene fangen Feuer.", ignites=True,
     ),
     Block(
-        "langlebigkeit", "Langlebigkeit", Category.MODIFIER, mana=4,
-        description_de="Nächste Drüse fliegt doppelt so lange, aber langsamer.",
+        "langlebigkeit", "Langstrecke", Category.MODIFIER, mana=4,
+        description_de="Fliegt doppelt so lange, aber langsamer.",
         lifetime_factor=2.0, speed_factor=0.8,
     ),
     Block(
-        "dreifach", "Dreifachzauber", Category.MODIFIER, mana=3, cast_delay=0.05,
-        description_de="Zieht drei Gruppen auf einmal.", multicast=3,
+        "dreifach", "Dreifachlauf", Category.MODIFIER, mana=3, cast_delay=0.05,
+        description_de="Drei Gruppen auf einmal.", multicast=3,
     ),
     Block(
         "vierfach", "Vierfachzauber", Category.MODIFIER, mana=5, cast_delay=0.1,
         description_de="Zieht vier Gruppen auf einmal.", multicast=4,
     ),
     Block(
-        "achterkreis", "Achterkreis", Category.MODIFIER, mana=12, uses=15, cast_delay=0.2,
-        description_de="Zieht acht Gruppen und verschießt sie im Kreis um dich.",
+        "achterkreis", "Rundumschlag (L15)", Category.MODIFIER, mana=12, uses=15, cast_delay=0.2,
+        description_de="Acht Gruppen im Kreis um dich.",
         multicast=8, formation=6.283185 / 8,
     ),
     Block(
-        "faecher", "Fächer", Category.MODIFIER, mana=6, cast_delay=0.1,
-        description_de="Zieht fünf Gruppen und fächert sie weit auf.", multicast=5, formation=0.3,
+        "faecher", "Fächerdüse", Category.MODIFIER, mana=6, cast_delay=0.1,
+        description_de="Fünf Gruppen, weit aufgefächert.", multicast=5, formation=0.3,
     ),
     Block(
-        "vorne_hinten", "Vorne und hinten", Category.MODIFIER, mana=4,
-        description_de="Zieht zwei Gruppen: eine nach vorne, eine nach hinten.",
+        "vorne_hinten", "Rückspiegel", Category.MODIFIER, mana=4,
+        description_de="Eine Gruppe nach vorn, eine nach hinten.",
         multicast=2, formation=3.141593,
     ),
     Block(
-        "beschleunigung_stark", "Rasende Drüse", Category.MODIFIER, mana=10,
-        description_de="Nächste Drüse fliegt zweieinhalbmal so schnell.", speed_factor=2.5,
+        "beschleunigung_stark", "Überturbo", Category.MODIFIER, mana=10,
+        description_de="Zweieinhalbmal so schnell. Hält nicht lange.", speed_factor=2.5,
     ),
     Block(
-        "sprengkern", "Sprengkern", Category.MODIFIER, mana=25, cast_delay=0.2,
-        description_de="Viel größere Explosion.", blast_bonus=12,
+        "sprengkern", "Taschen-Atomkern", Category.MODIFIER, mana=25, cast_delay=0.2,
+        description_de="Viel größere Explosion. Nicht schütteln.", blast_bonus=12,
     ),
     Block(
-        "kurzlebig", "Kurzlebigkeit", Category.MODIFIER, mana=1, cast_delay=-0.05,
-        description_de="Nächste Drüse vergeht nach halber Zeit, dafür zauberst du schneller.",
+        "kurzlebig", "Kurzstrecke", Category.MODIFIER, mana=1, cast_delay=-0.05,
+        description_de="Vergeht nach halber Zeit, dafür schneller schießen.",
         lifetime_factor=0.5,
     ),
     Block(
-        "giftzahn", "Giftzahn", Category.MODIFIER, mana=9,
-        description_de="Nächste Drüse trifft deutlich härter und brennt sich ein.",
+        "giftzahn", "Wucht", Category.MODIFIER, mana=9,
+        description_de="Trifft deutlich härter.",
         damage_bonus=10, ignites=True,
     ),
     Block(
-        "blutpreis", "Blutpreis", Category.MODIFIER, mana=-60, cast_delay=0.25,
-        description_de="Gibt 60 Mana, kostet aber eine längere Pause.",
+        "blutpreis", "Fluxpumpe", Category.MODIFIER, mana=-60, cast_delay=0.25,
+        description_de="Gibt 60 Flux, kostet eine längere Pause.",
     ),
     Block(
-        "dauerladung", "Dauerladung", Category.MODIFIER, mana=20,
-        description_de="Die Augmentation lädt nach diesem Durchgang fast sofort nach.",
+        "dauerladung", "Schnelllader", Category.MODIFIER, mana=20,
+        description_de="Lädt nach diesem Durchgang fast sofort.",
         recharge_bonus=-0.8,
     ),
     Block(
@@ -402,11 +402,11 @@ BLOCKS: tuple[Block, ...] = (
         description_de="Zieht zehn Gruppen und fächert sie breit.", multicast=10, formation=0.12,
     ),
     Block(
-        "schwerelos", "Schwerelosigkeit", Category.MODIFIER, mana=2,
-        description_de="Nächste Drüse fällt nicht.", gravity_factor=0.0,
+        "schwerelos", "Schwebefeld", Category.MODIFIER, mana=2,
+        description_de="Nächstes Geschoss fällt gar nicht.", gravity_factor=0.0,
     ),
     Block(
-        "schwere_ladung", "Schwere Ladung", Category.MODIFIER, mana=7, cast_delay=0.1,
+        "schwere_ladung", "Bleimantel", Category.MODIFIER, mana=7, cast_delay=0.1,
         description_de="Mehr Schaden, aber langsamer.", damage_bonus=12, speed_factor=0.6,
     ),
     Block(
@@ -438,8 +438,8 @@ BLOCKS: tuple[Block, ...] = (
         description_de="Gibt beim Zaubern 30 Mana zurück.",
     ),
     Block(
-        "hast", "Hast", Category.MODIFIER, mana=4, cast_delay=-0.15,
-        description_de="Verkürzt die Pause bis zum nächsten Zauber.",
+        "hast", "Abzugsfeder", Category.MODIFIER, mana=4, cast_delay=-0.15,
+        description_de="Kürzere Pause bis zum nächsten Schuss.",
     ),
     Block(
         "schnellladung", "Schnellladung", Category.MODIFIER, mana=8,
