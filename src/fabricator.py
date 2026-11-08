@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from src.economy import fabricator_gold
 from src.samples import SAMPLES
-from src.spells import BLOCKS, Category
+from src.spells import BLOCKS, Category, resolve_block_key
 
 if TYPE_CHECKING:
     from .run import Run
@@ -27,6 +27,18 @@ class Recipe:
     blueprint_shards: int
     gold: int
 
+    @property
+    def samples(self) -> tuple[tuple[str, int], ...]:
+        """Convenience property for required samples (e.g. for testing / UI)."""
+        res: list[tuple[str, int]] = []
+        if self.universe:
+            res.append((f"probe_{self.universe}", self.universe_samples))
+        else:
+            res.append(("probe_gallenstein", self.universe_samples))
+        for sp in self.special_samples:
+            res.append((sp, 1))
+        return tuple(res)
+
 
 def _universe_for_material(material: str | None) -> str | None:
     if not material:
@@ -43,7 +55,7 @@ def _universe_for_material(material: str | None) -> str | None:
 
 
 def build_cost(block_key: str, stage: int = 1) -> Recipe:
-    block = BLOCKS[block_key]
+    block = BLOCKS[resolve_block_key(block_key)]
     tier = block.rarity_tier
 
     # Category sample requirements:
@@ -154,16 +166,12 @@ class Fabricator:
         if recipe.universe:
             # Must be from recipe.universe
             available = sum(
-                inv.sample_count(k)
-                for k, s in SAMPLES.items()
-                if s.universe_key == recipe.universe
+                inv.sample_count(k) for k, s in SAMPLES.items() if s.universe_key == recipe.universe
             )
         else:
             # Any of the 12 universe samples
             available = sum(
-                inv.sample_count(k)
-                for k, s in SAMPLES.items()
-                if s.universe_key != "allgemein"
+                inv.sample_count(k) for k, s in SAMPLES.items() if s.universe_key != "allgemein"
             )
 
         if available < recipe.universe_samples:
@@ -246,13 +254,9 @@ class Fabricator:
         # Determine which universe samples to take (the ones with the most stock first)
         needed_u = recipe.universe_samples
         if recipe.universe:
-            candidate_keys = [
-                k for k, s in SAMPLES.items() if s.universe_key == recipe.universe
-            ]
+            candidate_keys = [k for k, s in SAMPLES.items() if s.universe_key == recipe.universe]
         else:
-            candidate_keys = [
-                k for k, s in SAMPLES.items() if s.universe_key != "allgemein"
-            ]
+            candidate_keys = [k for k, s in SAMPLES.items() if s.universe_key != "allgemein"]
 
         # Sort candidate keys by available count descending
         sorted_candidates = sorted(
