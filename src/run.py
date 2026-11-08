@@ -255,6 +255,7 @@ class Run:
         self.couch_used: bool = False
         self.minigames_played: set[str] = set()
         self.experiment_picked: bool = False
+        self.experiment_offers: list[str] = []
         self.experiment_rerolls: int = 0
         self.active_traders: list[Any] = []
         self.trader_offers: dict[str, list[Any]] = {}
@@ -1850,6 +1851,7 @@ class Run:
         self.couch_used = False
         self.minigames_played = set()
         self.experiment_picked = False
+        self.experiment_offers = []
 
         # Reset / populate active traders for workshop
         self.active_traders = traders_for_workshop(self.plan.visited)
@@ -1902,7 +1904,14 @@ class Run:
                 self.flask = Flask("water", CAPACITY)
                 self.messages.append("Kolben kostenlos mit Wasser gefüllt.")
         elif key == "ws_liege":
-            self.menu_mode = "experiment"
+            if not self.experiment_picked:
+                if not self.experiment_offers:
+                    self._roll_experiments()
+                self.menu_mode = "experiment"
+            else:
+                self.messages.append(
+                    "Für diesen Besuch hast du bereits ein Selbstexperiment gewählt."
+                )
         elif key == "ws_fabrikator":
             self.menu_mode = "fabricator"
         elif key == "ws_werkbank":
@@ -1998,6 +2007,47 @@ class Run:
             self.events.append("pickup")
             return True, msg
         return ok, msg
+
+    def _roll_experiments(self) -> None:
+        """Roll 3 distinct perks not yet picked (Card E16)."""
+        available = [p.key for p in PERKS if p.key not in self.perks]
+        if len(available) >= 3:
+            self.experiment_offers = self.rng.sample(available, 3)
+        else:
+            self.experiment_offers = list(available)
+
+    def pick_experiment(self, index: int) -> bool:
+        """Pick an experiment offer by index (Contracts V18, V19 §1; Card E16)."""
+        if self.experiment_picked:
+            return False
+        if index < 0 or index >= len(self.experiment_offers):
+            return False
+        perk_key = self.experiment_offers[index]
+        self.apply_perk(perk_key)
+        self.experiment_picked = True
+        self.events.append("perk")
+        return True
+
+    def reroll_experiments(self) -> bool:
+        """Reroll the experiment couch offers (Contracts V18, V19 §1; Card E16)."""
+        from src.economy import experiment_reroll_price
+
+        if self.experiment_picked:
+            return False
+
+        # First consume free reroll from inventory if available
+        if getattr(self.inventory, "rerolls", 0) > 0:
+            self.inventory.rerolls -= 1
+        else:
+            price = experiment_reroll_price(self.experiment_rerolls)
+            if self.gold < price:
+                return False
+            self.gold -= price
+            self.experiment_rerolls += 1
+
+        self._roll_experiments()
+        self.events.append("pickup")
+        return True
 
     def choose_next_universe(self, index: int) -> None:
         """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""
