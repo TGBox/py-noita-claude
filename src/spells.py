@@ -448,30 +448,30 @@ BLOCKS: tuple[Block, ...] = (
     ),
     # Nerven (triggers)
     Block(
-        "nerv_aufprall", "Aufprall-Nerv", Category.TRIGGER, mana=6,
+        "nerv_aufprall", "Aufschlagzünder", Category.TRIGGER, mana=6,
         description_de="Setzt die nächste Gruppe beim Aufprall frei.", trigger=Trigger.IMPACT,
     ),
     Block(
-        "nerv_zeit", "Zeit-Nerv", Category.TRIGGER, mana=6,
-        description_de="Setzt die nächste Gruppe nach kurzer Zeit frei.", trigger=Trigger.TIMER,
+        "nerv_zeit", "Zeitzünder", Category.TRIGGER, mana=6,
+        description_de="Nach kurzer Zeit.", trigger=Trigger.TIMER,
     ),
     Block(
-        "nerv_ende", "End-Nerv", Category.TRIGGER, mana=6,
-        description_de="Setzt die nächste Gruppe am Ende des Flugs frei.", trigger=Trigger.END,
+        "nerv_ende", "Endzünder", Category.TRIGGER, mana=6,
+        description_de="Am Ende des Flugs.", trigger=Trigger.END,
     ),
     Block(
-        "nerv_naesse", "Nässe-Nerv", Category.TRIGGER, mana=4,
-        description_de="Setzt die nächste Gruppe frei, wenn die Drüse Flüssigkeit trifft.",
+        "nerv_naesse", "Nässezünder", Category.TRIGGER, mana=4,
+        description_de="Sobald das Geschoss in Flüssigkeit eintaucht.",
         trigger=Trigger.WET,
     ),
     # Sekrete (payloads)
     Block("sekret_blut", "Blutfüllung", Category.PAYLOAD, mana=6, material="blood", description_de="Macht alles rot und glitschig."),
     Block("sekret_talg", "Talgsekret", Category.PAYLOAD, mana=8, material="tallow", retired=True),
     Block("sekret_saeure", "Säurefüllung", Category.PAYLOAD, mana=14, material="acid", description_de="Frisst sich durch fast alles."),
-    Block("sekret_feuer", "Feuersekret", Category.PAYLOAD, mana=10, material="fire"),
+    Block("sekret_feuer", "Feuerfüllung", Category.PAYLOAD, mana=10, material="fire"),
     Block("sekret_sporen", "Sporensekret", Category.PAYLOAD, mana=10, material="spores", retired=True),
     Block("sekret_schleim", "Schleimsekret", Category.PAYLOAD, mana=8, material="mucus", retired=True),
-    Block("sekret_rauch", "Rauchsekret", Category.PAYLOAD, mana=3, material="smoke"),
+    Block("sekret_rauch", "Rauchfüllung", Category.PAYLOAD, mana=3, material="smoke"),
     Block(
         "sekret_glut", "Glutfüllung", Category.PAYLOAD, mana=30, uses=12, material="magma",
         description_de="Heiß, langsam, sehr endgültig.",
