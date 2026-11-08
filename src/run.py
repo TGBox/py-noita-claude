@@ -541,6 +541,7 @@ class Run:
             # materials (aliases of its set) and given the V9 fields (Card G19)
             organism = generate_level(self.world, depth, self.seed + index)
             self.level = self._dress_universe_level(organism)
+            self._add_universe_features()
             self._ensure_universe_paths()
         elif self.universe_key != "fleischwelt":
             self.level = generate_level(
@@ -1932,6 +1933,31 @@ class Run:
             quest_giver=giver,
         )
 
+    def _add_universe_features(self) -> None:
+        """The one or two things that make a universe more than recoloured caves (bible 03)."""
+        if self.universe.key == "aktenhalde":
+            self._add_firebreaks()
+
+    def _add_firebreaks(self) -> None:
+        """Aktenhalde "Brandabschnitte": walls of non-burning ink paper cut the paper mass
+        into sections of at most FIREBREAK_CELL, so one fire never eats the whole universe.
+        Only paper cells are replaced; tunnels and caves stay open."""
+        w = self.world
+        paper, wall = mat.MAT_ID.get("papier"), mat.MAT_ID.get("tintenpapier")
+        if paper is None or wall is None or paper == wall:
+            return
+        step_x, step_y = FIREBREAK_CELL
+        for x0 in range(step_x, w.width, step_x):
+            for x in range(x0, min(w.width, x0 + FIREBREAK_THICKNESS)):
+                for y in range(w.height):
+                    if w.get(x, y) == paper:
+                        w.set_cell(x, y, wall)
+        for y0 in range(step_y, w.height, step_y):
+            for y in range(y0, min(w.height, y0 + FIREBREAK_THICKNESS)):
+                for x in range(w.width):
+                    if w.get(x, y) == paper:
+                        w.set_cell(x, y, wall)
+
     def _clamp_rect(self, x0: int, y0: int, x1: int, y1: int) -> tuple[int, int, int, int]:
         w, h = self.world.width, self.world.height
         x0, y0 = max(0, min(x0, w - 2)), max(0, min(y0, h - 2))
@@ -2217,6 +2243,8 @@ def _unpack(text: str) -> bytes:
     return zlib.decompress(base64.b64decode(text.encode("ascii")))
 
 
+FIREBREAK_CELL = (320, 240)  # Aktenhalde: paper sections between ink-paper walls (cells)
+FIREBREAK_THICKNESS = 3
 NATIVES_PER_SPECIES = 4  # natives of each species per universe level (before area scaling)
 # region layout per universe (bible 03), used for region effects on organism-built levels
 UNIVERSE_TOPOLOGY = {

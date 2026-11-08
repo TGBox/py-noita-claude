@@ -439,3 +439,37 @@ def test_g18_new_pickup_kinds_have_labels_and_tooltips() -> None:
         assert item.label_de
         assert describe_pickup(item).title
 
+def test_g20_aktenhalde_firebreaks() -> None:
+    """Playtest: one fire burnt the whole Aktenhalde. Paper must come in sections."""
+    from src import materials as mat
+    from src.run import FIREBREAK_CELL, Run
+    from src.universes.catalog import ALL_UNIVERSES
+
+    run = Run(seed=20)
+    run.start_multiverse_run()
+    run.enter_universe(ALL_UNIVERSES["aktenhalde"])
+    w = run.world
+    paper = mat.MAT_ID["papier"]
+    step = 2
+    gw, gh = w.width // step, w.height // step
+    seen = bytearray(gw * gh)
+    for start in range(gw * gh):
+        if seen[start] or w.get((start % gw) * step, (start // gw) * step) != paper:
+            continue
+        seen[start] = 1
+        stack, x0, x1, y0, y1 = [start], gw, 0, gh, 0
+        while stack:
+            i = stack.pop()
+            gx, gy = i % gw, i // gw
+            x0, x1, y0, y1 = min(x0, gx), max(x1, gx), min(y0, gy), max(y1, gy)
+            for nx, ny in ((gx + 1, gy), (gx - 1, gy), (gx, gy + 1), (gx, gy - 1)):
+                j = ny * gw + nx
+                if 0 <= nx < gw and 0 <= ny < gh and not seen[j]:
+                    if w.get(nx * step, ny * step) == paper:
+                        seen[j] = 1
+                        stack.append(j)
+        width, height = (x1 - x0 + 1) * step, (y1 - y0 + 1) * step
+        assert width <= FIREBREAK_CELL[0] + step and height <= FIREBREAK_CELL[1] + step, (
+            f"paper section {width}x{height} has no firebreak"
+        )
+
