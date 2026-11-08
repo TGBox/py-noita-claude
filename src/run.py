@@ -257,6 +257,9 @@ class Run:
         self.experiment_picked: bool = False
         self.experiment_rerolls: int = 0
         self.active_traders: list[Any] = []
+        self.trader_offers: dict[str, list[Any]] = {}
+        self.selected_trader_key: str = ""
+        self.selected_offer_index: int = 0
         self.inventory_open: bool = False
         self.boss_script: BossScript | None = None
         self.records: Records = Records()
@@ -264,6 +267,14 @@ class Run:
         self.universe: Universe = UNIVERSE_BY_KEY.get(universe_key, UNIVERSES[0])
         self.portal_index: int = 0
         self.new_run()
+
+    @property
+    def traders(self) -> list[Any]:
+        return self.active_traders
+
+    @traders.setter
+    def traders(self, val: list[Any]) -> None:
+        self.active_traders = val
 
     # ---------------------------------------------------------------- flow
 
@@ -1795,7 +1806,7 @@ class Run:
     def enter_workshop(self) -> None:
         """Move the run into the workshop between universes (Contract V18, Card E10)."""
         from src.fabricator import Fabricator
-        from src.traders import traders_for_workshop
+        from src.traders import generate_offers, traders_for_workshop
         from src.universes.plan import RunPlan
         from src.workshop import WORKSHOP_SIZE, generate_workshop
 
@@ -1842,6 +1853,12 @@ class Run:
 
         # Reset / populate active traders for workshop
         self.active_traders = traders_for_workshop(self.plan.visited)
+        self.trader_offers = {}
+        stage = (self.plan.slot + 1) if self.plan is not None else 1
+        for trader in self.active_traders:
+            self.trader_offers[trader.key] = generate_offers(
+                trader, stage, self.rng, price_factor=self.price_factor
+            )
 
     def interact_station(self) -> None:
         """Interact with the nearest workshop station (Contract V18, Card E10)."""
@@ -1891,7 +1908,24 @@ class Run:
         elif key == "ws_werkbank":
             self.inventory_open = True
         elif key == "ws_haendler":
-            self.menu_mode = "trader"
+            if self.active_traders:
+                # Pick the nearest trader on the trader slots
+                if len(self.active_traders) == 1:
+                    self.selected_trader_key = self.active_traders[0].key
+                else:
+                    slots = self.workshop_layout.trader_slots
+                    px = self.player.x
+                    d0 = abs(px - slots[0][0])
+                    d1 = abs(px - slots[1][0])
+                    idx = 0 if d0 <= d1 else 1
+                    if idx < len(self.active_traders):
+                        self.selected_trader_key = self.active_traders[idx].key
+                    else:
+                        self.selected_trader_key = self.active_traders[0].key
+                self.selected_offer_index = 0
+                self.menu_mode = "trader"
+            else:
+                self.messages.append("Noch keine Händler da.")
         elif key == "ws_archiv":
             self.menu_mode = "archive"
         elif key == "ws_portal":
@@ -1906,6 +1940,27 @@ class Run:
                 self.messages.append("Keine Akten vorhanden.")
             else:
                 self.messages.append("Zu wenig Gold zum Schreddern.")
+
+    def buy_trader_offer(
+        self, trader_key: str, index: int, *, use_samples: bool = False
+    ) -> tuple[bool, str]:
+        """Buy offer `index` from trader `trader_key` (Contracts V19 §2, Card E13)."""
+        from src.traders import TRADERS, buy_offer
+
+        offers = self.trader_offers.get(trader_key, [])
+        if index < 0 or index >= len(offers):
+            return False, "Angebot existiert nicht."
+
+        trader = TRADERS.get(trader_key)
+        if trader is None:
+            return False, "Händler existiert nicht."
+
+        offer = offers[index]
+        ok, msg = buy_offer(self, trader, offer, use_samples=use_samples)
+        if ok:
+            offers.pop(index)
+            self.events.append("pickup")
+        return ok, msg
 
     def choose_next_universe(self, index: int) -> None:
         """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""

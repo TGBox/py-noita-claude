@@ -536,3 +536,133 @@ def draw_portal_select_menu(
 
     ui.text(surface, "[1]/[2] oder Pfeiltasten: wählen  |  [Enter]: durchschreiten  |  [Esc]: zurück",
             (sw / 2, sh - 40 * s), round(14 * s), ui.DIM, anchor="center")  # fmt: skip
+
+
+def draw_trader_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+    trader_key: str,
+    selected_index: int,
+) -> None:
+    """Draw the trader buy menu (Contracts V19 §2, V22; Card E13)."""
+    from src.samples import SAMPLE_NAMES
+    from src.spells import BLOCKS
+    from src.traders import TRADERS
+
+    trader = TRADERS.get(trader_key)
+    if trader is None:
+        return
+
+    ui.shade(surface, 205)
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    body = round(14 * s)
+    line_h = round(18 * s)
+
+    ui.text(
+        surface,
+        trader.name,
+        (sw / 2, 35 * s),
+        round(28 * s),
+        ui.GOLD,
+        heading=True,
+        anchor="center",
+    )
+    ui.text(
+        surface,
+        f'"{trader.greeting_de}"',
+        (sw / 2, 68 * s),
+        round(15 * s),
+        ui.TEXT,
+        anchor="center",
+    )
+    ui.text(
+        surface,
+        f"Eigenheit: {trader.quirk_de}",
+        (sw / 2, 92 * s),
+        round(13 * s),
+        ui.DIM,
+        anchor="center",
+    )
+
+    offers = run.trader_offers.get(trader_key, [])
+    if not offers:
+        ui.text(
+            surface, "Alles ausverkauft!", (sw / 2, sh / 2), round(20 * s), ui.DIM, anchor="center"
+        )
+    else:
+        card_w, card_h, gap = round(260 * s), round(220 * s), round(20 * s)
+        total = len(offers) * card_w + max(0, len(offers) - 1) * gap
+        x = (sw - total) // 2
+        top = round(120 * s)
+        pad = round(14 * s)
+        width = card_w - 2 * pad
+
+        for i, offer in enumerate(offers):
+            selected = i == selected_index
+            rect = pygame.Rect(x + i * (card_w + gap), top, card_w, card_h)
+            ui.panel(surface, rect, alpha=245 if selected else 215)
+            if selected:
+                pygame.draw.rect(surface, ui.GOLD, rect.inflate(6, 6), 2)
+
+            cx, cy = rect.x + pad, rect.y + pad
+            if offer.kind == "block":
+                block = BLOCKS.get(offer.key)
+                name = block.name_de if block else offer.key
+                desc = block.description_de if block else ""
+            else:
+                blessing_labels = {
+                    "mana_max": "Geweihter Stab (+10 % Mana)",
+                    "recharge": "Geweihter Stab (-10 % Ladezeit)",
+                    "capacity": "Geweihter Stab (+1 Kapazität)",
+                }
+                name = blessing_labels.get(offer.blessing, "Geweihter Stab")
+                desc = "Ein von Bruder Flosse gesegneter Zauberstab."
+
+            ui.text(
+                surface,
+                name,
+                (cx, cy),
+                round(16 * s),
+                ui.GOLD if selected else ui.TEXT,
+                heading=True,
+            )
+            cy += round(28 * s)
+            for line in ui.wrap(desc, body, width)[:3]:
+                ui.text(surface, line, (cx, cy), body, ui.DIM)
+                cy += line_h
+
+            # Cost
+            gold_price = round(offer.gold_cost * getattr(run, "price_factor", 1.0))
+            cost_str = f"Preis: {gold_price} Gold"
+            if offer.sample_cost:
+                samples_str = ", ".join(
+                    f"{count}x {SAMPLE_NAMES.get(k, k)}" for k, count in offer.sample_cost
+                )
+                cost_str += f" oder {samples_str} [T]"
+
+            can_afford = run.gold >= gold_price
+            price_color = ui.GOLD if can_afford else (235, 100, 100)
+            ui.text(
+                surface, cost_str, (cx, rect.bottom - round(48 * s)), body, price_color, bold=True
+            )
+
+            hint = "[Enter] Kaufen" if selected else f"[{i + 1}] Wählen"
+            ui.text(
+                surface,
+                hint,
+                (cx, rect.bottom - round(24 * s)),
+                body,
+                ui.GOLD if selected else ui.DIM,
+            )
+
+    ui.text(
+        surface,
+        "Pfeiltasten/[1-4]: Angebot wählen  |  [Enter]: Kaufen  |  [T]: Proben-Tausch  |  [Esc]: Zurück",
+        (sw / 2, sh - 35 * s),
+        round(14 * s),
+        ui.DIM,
+        anchor="center",
+    )
