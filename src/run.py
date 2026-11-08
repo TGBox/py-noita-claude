@@ -254,6 +254,7 @@ class Run:
         self.fabricator: Any = None
         self.couch_used: bool = False
         self.minigames_played: set[str] = set()
+        self.active_minigame: Any = None
         self.experiment_picked: bool = False
         self.experiment_offers: list[str] = []
         self.experiment_rerolls: int = 0
@@ -1850,6 +1851,7 @@ class Run:
 
         self.couch_used = False
         self.minigames_played = set()
+        self.active_minigame = None
         self.experiment_picked = False
         self.experiment_offers = []
 
@@ -1939,6 +1941,34 @@ class Run:
             self.menu_mode = "archive"
         elif key == "ws_portal":
             self.menu_mode = "portal_select"
+        elif key == "ws_automat":
+            from src.economy import PHYSIK_STAKE
+            from src.minigames.physik_o_mat import make_physik_puzzle
+
+            if "ws_automat" not in self.minigames_played and self.gold >= PHYSIK_STAKE:
+                self.gold -= PHYSIK_STAKE
+                self.minigames_played.add("ws_automat")
+                mg_seed = self.seed + len(self.minigames_played)
+                self.active_minigame = make_physik_puzzle(None, seed=mg_seed)
+                self.menu_mode = "minigame"
+            elif "ws_automat" in self.minigames_played:
+                self.messages.append("Für diesen Besuch bereits gespielt.")
+            else:
+                self.messages.append("Zu wenig Gold für den Physik-o-Mat.")
+        elif key == "ws_schiessstand":
+            from src.economy import SCHIESS_STAKE
+            from src.minigames.schiessstand import SchiessstandMinigame
+
+            if "ws_schiessstand" not in self.minigames_played and self.gold >= SCHIESS_STAKE:
+                self.gold -= SCHIESS_STAKE
+                self.minigames_played.add("ws_schiessstand")
+                mg_seed = self.seed + len(self.minigames_played)
+                self.active_minigame = SchiessstandMinigame(seed=mg_seed)
+                self.menu_mode = "minigame"
+            elif "ws_schiessstand" in self.minigames_played:
+                self.messages.append("Für diesen Besuch bereits gespielt.")
+            else:
+                self.messages.append("Zu wenig Gold für den Schießstand.")
         elif key == "ws_shredder":
             cost = self.wanted.bribe_cost()
             if self.gold >= cost and self.wanted.level > 0.0:
@@ -2048,6 +2078,29 @@ class Run:
         self._roll_experiments()
         self.events.append("pickup")
         return True
+
+    def step_minigame(
+        self,
+        dt: float,
+        action: str | None = None,
+        cursor: tuple[int, int] = (80, 60),
+    ) -> Any:
+        """Step the active minigame, handle payout upon victory (Card E14)."""
+        if self.active_minigame is None:
+            return None
+
+        res = self.active_minigame.step(dt, action=action, cursor=cursor)
+        if res is not None:
+            if res.won:
+                if res.reward_gold:
+                    self.gold += res.reward_gold
+                if res.reward_sample:
+                    self.inventory.add_sample(res.reward_sample, 1)
+                if res.next_boost:
+                    self.next_boost = res.next_boost
+            if res.message_de:
+                self.messages.append(res.message_de)
+        return res
 
     def choose_next_universe(self, index: int) -> None:
         """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""
