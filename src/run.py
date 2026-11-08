@@ -59,6 +59,7 @@ from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WI
 from src.spells import CATALOG, Block, resolve_payload_material
 from src.universes.catalog import BY_KEY as UNIVERSE_BY_KEY
 from src.universes.catalog import UNIVERSES
+from src.universes.gen.common import region_bands
 from src.universes.model import SHAPES, Universe
 from src.wand import PRESETS, Shot, Wand, WandSpec
 from src.workshop import WorkshopLayout
@@ -480,8 +481,11 @@ class Run:
 
     @property
     def can_edit_wands(self) -> bool:
-        """Like Noita's Holy Mountain: rebuilding augmentations needs a sanctum (or a perk)."""
-        return self.in_sanctum or self.sandbox or "flinke_haende" in self.perks
+        """Like Noita's Holy Mountain: rebuilding augmentations needs a sanctum, the
+        workshop (multiverse run) or a perk."""
+        return (
+            self.in_sanctum or self.in_workshop or self.sandbox or "flinke_haende" in self.perks
+        )
 
     def enter_sanctum(self) -> None:
         """The safe chamber after depth ``depth_index``: heal, shop, choose a perk."""
@@ -532,15 +536,19 @@ class Run:
             self.on_generate(depth.name_de)
         self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
-        if self.universe_key != "fleischwelt" or self.plan is not None:
+        if self.plan is not None:
+            # multiverse run: the proven organism generator, dressed in the universe's
+            # materials (aliases of its set) and given the V9 fields (Card G19)
+            organism = generate_level(self.world, depth, self.seed + index)
+            self.level = self._dress_universe_level(organism)
+            self._ensure_universe_paths()
+        elif self.universe_key != "fleischwelt":
             self.level = generate_level(
                 self.world, depth, self.seed + index, universe=self.universe
             )
             # generators activate their base set; Python must use the core's (rule) set again
             if mat.ACTIVE is not self._world_set:
                 mat.activate(self._world_set)
-            if self.plan is not None:
-                self._ensure_universe_paths()
         else:
             self.level = generate_level(self.world, depth)
         if self.mirror:
@@ -1892,11 +1900,64 @@ class Run:
         self.in_workshop = False
         self.menu_mode = ""
         route = list(self.route)
-        route[self.depth_index] = self._universe_depth(universe)
+        route[self.depth_index] = self._universe_depth(universe, boss_slot)
         self.route = tuple(route)
         self.enter_depth(self.depth_index)
         # bible 02: the anchor point is open unless a Zwischengegner guards it (boss slot)
         self.exit_open = not self.boss_slot
+
+    def _dress_universe_level(self, level: Level) -> Level:
+        """Universe fields (V9) for an organism level: regions, arenas, quest giver."""
+        w = self.world
+        rng = random.Random(self.seed * 7919 + (self.plan.slot if self.plan else 0))
+        topology = UNIVERSE_TOPOLOGY.get(self.universe.key, "vertical")
+        bands = region_bands(w.width, w.height, topology)
+        regions = [(r.key, band) for r, band in zip(self.universe.regions, bands, strict=False)]
+        mid = self._open_spot(rng, level.spawn, min_dist=w.width * 0.3)
+        if mid is None:
+            mid = (w.width // 2, w.height // 2)
+        mid_arena = self._clamp_rect(mid[0] - 30, mid[1] - 60, mid[0] + 30, mid[1])
+        boss_arena = (0, 0, 0, 0)
+        if level.arena is not None:  # boss slot: the depth's guarded chamber
+            ax, ay = level.arena
+            boss_arena = self._clamp_rect(int(ax) - 40, int(ay) - 30, int(ax) + 40, int(ay) + 30)
+        giver = self._open_spot(rng, level.spawn, min_dist=40, max_dist=260) or level.spawn
+        return replace(
+            level,
+            universe_key=self.universe.key,
+            exit_point=level.exit,
+            mid_boss_arena=mid_arena,
+            boss_arena=boss_arena,
+            regions=regions,
+            quest_giver=giver,
+        )
+
+    def _clamp_rect(self, x0: int, y0: int, x1: int, y1: int) -> tuple[int, int, int, int]:
+        w, h = self.world.width, self.world.height
+        x0, y0 = max(0, min(x0, w - 2)), max(0, min(y0, h - 2))
+        return (x0, y0, max(x0 + 1, min(x1, w)), max(y0 + 1, min(y1, h)))
+
+    def _open_spot(
+        self,
+        rng: random.Random,
+        spawn: tuple[int, int],
+        min_dist: float = 0.0,
+        max_dist: float = float("inf"),
+    ) -> tuple[int, int] | None:
+        """A floor point with room for a large body above it, at a distance from spawn."""
+        w = self.world
+        for _ in range(600):
+            x = rng.randint(40, w.width - 40)
+            y = rng.randint(40, w.height - 40)
+            if w.get(x, y) != mat.AIR:
+                continue
+            while y < w.height - 3 and w.get(x, y + 1) == mat.AIR:
+                y += 1
+            if not w.rect_blocked(x, y + 1, 1, 1) or w.rect_blocked(x - 12, y - 30, 24, 30):
+                continue
+            if min_dist <= math.dist((x, y), spawn) <= max_dist:
+                return (x, y)
+        return None
 
     def _ensure_universe_paths(self) -> None:
         """Dig passages so the start reaches the anchor point, the arenas and the quest giver.
@@ -1914,15 +1975,21 @@ class Run:
         for target in targets:
             ensure_path(self.world, level.spawn, target)
 
-    def _universe_depth(self, universe: Universe) -> Depth:
-        """An organism depth re-dressed as ``universe`` (material set, rule, natives)."""
+    def _universe_depth(self, universe: Universe, boss_slot: bool = False) -> Depth:
+        """An organism depth re-dressed as ``universe`` (material set, rule, natives).
+
+        The n-th universe of the run uses the n-th organism depth as its terrain template,
+        so caves grow with the run; a boss slot keeps the depth's boss chamber.
+        """
         natives = tuple(
             (key, NATIVES_PER_SPECIES) for key in universe.natives if key in SPECIES
         )
         if universe.big and universe.big in SPECIES:
             natives += ((universe.big, 1),)
+        slot = self.plan.slot if self.plan is not None else 1
+        template = DEPTHS[min(len(DEPTHS) - 2, max(0, slot - 1))]  # never the final depth
         return replace(
-            DEPTHS[0],
+            template,
             key=universe.key,
             name_de=universe.name_de,
             walkers=0,
@@ -1930,7 +1997,8 @@ class Run:
             spitters=0,
             bloats=0,
             extra=natives,
-            boss=None,
+            wall="fleisch",  # flesh walls: the universe's main material forms the mass
+            boss=universe.boss if boss_slot else None,
             final=False,
             ambient=universe.ambient,
             material_set=universe.material_set,
@@ -2149,7 +2217,12 @@ def _unpack(text: str) -> bytes:
     return zlib.decompress(base64.b64decode(text.encode("ascii")))
 
 
-NATIVES_PER_SPECIES = 3  # natives of each species per universe level (before area scaling)
+NATIVES_PER_SPECIES = 4  # natives of each species per universe level (before area scaling)
+# region layout per universe (bible 03), used for region effects on organism-built levels
+UNIVERSE_TOPOLOGY = {
+    "fleischwelt": "vertical", "aktenhalde": "horizontal", "glibbria": "islands",
+    "kruemelreich": "top_split", "sporenklub": "vertical", "abtei": "vertical",
+}  # fmt: skip
 
 
 NEW_PICKUP_KINDS = frozenset(

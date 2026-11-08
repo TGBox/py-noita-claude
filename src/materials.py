@@ -1100,6 +1100,14 @@ def _init_set_reactions() -> None:
             "kaugummi",
             "zuckerguss",
         ),
+        # the organism generator's materials, re-dressed as jelly (cave walls, ribs, pools)
+        aliases=(
+            ("flesh", "glibber"), ("growth", "glibber"), ("sinew", "glibber_rot"),
+            ("bone", "zuckerguss"), ("enamel", "zuckerguss"), ("spent", "zuckerguss"),
+            ("crust", "kaugummi"), ("blood", "brausesirup"), ("pus", "brausesirup"),
+            ("acid", "brausesirup"), ("mucus", "brausesirup"), ("spores", "schaum"),
+            ("fume", "schaum"),
+        ),  # fmt: skip
         reactions=(
             Reaction("fire", "glibber_rot", "fire", "smoke", 0.05),
             Reaction("fire", "brausesirup", "fire", "smoke", 0.05),
@@ -1118,6 +1126,12 @@ def _init_set_reactions() -> None:
             "fliese",
             "staubfluse",
         ),
+        aliases=(
+            ("flesh", "kruemel"), ("growth", "kruemel"), ("sinew", "kruemel"),
+            ("bone", "fliese"), ("enamel", "fliese"), ("spent", "fliese"), ("crust", "fliese"),
+            ("bone_dust", "brosel"), ("blood", "honig"), ("pus", "karamell"),
+            ("acid", "karamell"), ("mucus", "honig"),
+        ),  # fmt: skip
         reactions=(
             Reaction("fire", "zucker", "fire", "karamell", 0.05),
         ),
@@ -1132,6 +1146,13 @@ def _init_set_reactions() -> None:
             "neonsaft",
             "nebel",
         ),
+        aliases=(
+            ("flesh", "pilzfleisch"), ("growth", "pilzfleisch"), ("sinew", "pilzhut"),
+            ("bone", "pilzhut"), ("enamel", "pilzhut"), ("spent", "pilzhut"),
+            ("crust", "pilzhut"), ("bone_dust", "leuchtsporen"), ("blood", "neonsaft"),
+            ("pus", "neonsaft"), ("acid", "neonsaft"), ("mucus", "neonsaft"),
+            ("spores", "nebel"), ("fume", "nebel"),
+        ),  # fmt: skip
     )
     ABTEI = MaterialSet(
         "abtei",
@@ -1144,6 +1165,13 @@ def _init_set_reactions() -> None:
             "algen",
             "weihrauch",
         ),
+        aliases=(
+            ("flesh", "mauerwerk"), ("bone", "mauerwerk"), ("spent", "mauerwerk"),
+            ("crust", "mauerwerk"), ("enamel", "glockenbronze"), ("growth", "algen"),
+            ("sinew", "algen"), ("blood", "water"), ("pus", "water"), ("acid", "water"),
+            ("mucus", "water"), ("tallow", "kerzenwachs"), ("spores", "weihrauch"),
+            ("fume", "weihrauch"),
+        ),  # fmt: skip
         reactions=(
             Reaction("fire", "kerzenwachs", "fire", "smoke", 0.05),
             Reaction("algen", "water", "algen", "algen", 0.01),
