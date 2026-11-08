@@ -220,7 +220,9 @@ class Pickup:
             return "Neue Perks würfeln"
         if self.portal:
             return "Weltenportal: in die nächste Parallelwelt (härter, reichere Beute)"
-        block: Block = CATALOG[self.block or ""]
+        if self.block is None or self.block not in CATALOG:
+            return _kind_label(self)  # gold, samples & co. have no block (Contract V11)
+        block: Block = CATALOG[self.block]
         return f"{block.category.value}: {block.name_de}"
 
     def update(self, world: World, dt: float) -> None:
@@ -458,3 +460,26 @@ def pickup_sprite_key(pickup: Pickup) -> str:
             return "wackelportal"
         # If no legacy field is set, return a default
         return "gold_muenze"
+
+KIND_LABELS_DE: dict[str, str] = {
+    "life_capsule": "Lebenskapsel",
+    "memory_shard": "Erinnerungssplitter",
+    "blueprint_shard": "Bauplan-Splitter",
+    "crate": "Kiste",
+    "badge": "Abzeichen",
+    "formular_stempel": "Formularstempel",
+}
+
+
+def _kind_label(item: Pickup) -> str:
+    """German label of a pickup that is not a block (gold, samples and the other V11 kinds)."""
+    if item.kind == "gold":
+        return f"{item.amount} Gold"
+    if item.kind == "sample":
+        from src.samples import SAMPLES
+
+        sample = SAMPLES.get(item.item_key)
+        name = sample.name if sample is not None else item.item_key
+        return f"Probe: {name}" + (f" ×{item.amount}" if item.amount > 1 else "")
+    return KIND_LABELS_DE.get(item.kind, item.kind or item.item_key or "Gegenstand")
+

@@ -230,7 +230,7 @@ def describe_pickup(
         perk = PERK_BY_KEY[item.perk]
         title, color = f"Perk: {perk.name_de}", perk.color
         lines = [perk.description_de, "E: Wählen (die anderen verschwinden)"]
-    elif item.block is not None:
+    elif item.block in CATALOG:  # gold, samples & co. carry no block
         spec = CATALOG[item.block]
         title, block = spec.name_de, spec.key
         lines = block_lines(spec)

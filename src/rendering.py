@@ -1086,7 +1086,7 @@ def draw_pickups(
             for k, key in enumerate(item.wand.blocks[:5]):
                 color = _mix(block_color(CATALOG[key]), ARM_FLESH, NODE_FLESH_MIX)
                 canvas.fill(color, (x - 4 + k * 2, y - 3 + bob - k // 3, 2, 2))
-        elif item.block is not None:
+        elif item.block in CATALOG:  # gold, samples & co. carry no block
             color = block_color(CATALOG[item.block])
             unknown = known is not None and item.block not in known
             if unknown:  # a pulsing golden frame and a spark: something new

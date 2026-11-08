@@ -424,3 +424,18 @@ def test_g17_universes_are_playable_and_visible() -> None:
                 (ASSET_ROOT / cat / f"{key}.png").is_file()
                 for cat in ("kreaturen", "bosse", "charaktere")
             ), f"sheet for {key} missing"
+
+def test_g18_new_pickup_kinds_have_labels_and_tooltips() -> None:
+    """Playtest crash: hovering over gold dropped by a creature raised KeyError ''."""
+    from src.hover import describe_pickup
+    from src.loot import Pickup
+
+    for item in (
+        Pickup(0, 0, kind="gold", amount=5),
+        Pickup(0, 0, kind="sample", item_key="probe_stempelkissen", amount=1),
+        Pickup(0, 0, kind="life_capsule", amount=10),
+        Pickup(0, 0, kind="blueprint_shard"),
+    ):
+        assert item.label_de
+        assert describe_pickup(item).title
+
