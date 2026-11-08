@@ -774,3 +774,117 @@ def draw_fabricator_menu(
         ui.DIM,
         anchor="center",
     )
+
+
+def draw_experiment_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+    selected_index: int,
+) -> None:
+    """Draw the experiment couch selection overlay (Contracts V18, V19 §1; Card E16)."""
+    from src.economy import experiment_reroll_price
+    from src.perks import PERK_BY_KEY
+
+    ui.shade(surface, 205)
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    body = round(14 * s)
+    line_h = round(18 * s)
+
+    ui.text(
+        surface,
+        "Die Experimentierliege",
+        (sw / 2, 35 * s),
+        round(28 * s),
+        ui.GOLD,
+        heading=True,
+        anchor="center",
+    )
+    ui.text(
+        surface,
+        "Wähle ein Selbstexperiment für diesen Besuch. Die Wirkung bleibt dauerhaft.",
+        (sw / 2, 68 * s),
+        round(15 * s),
+        ui.TEXT,
+        anchor="center",
+    )
+
+    offers = getattr(run, "experiment_offers", [])
+    if getattr(run, "experiment_picked", False):
+        ui.text(
+            surface,
+            "Du hast für diesen Besuch bereits ein Experiment gewählt!",
+            (sw / 2, sh / 2),
+            round(20 * s),
+            ui.GOOD,
+            anchor="center",
+        )
+    elif not offers:
+        ui.text(
+            surface,
+            "Keine Experimente verfügbar.",
+            (sw / 2, sh / 2),
+            round(20 * s),
+            ui.DIM,
+            anchor="center",
+        )
+    else:
+        card_w, card_h, gap = round(320 * s), round(240 * s), round(24 * s)
+        total = len(offers) * card_w + max(0, len(offers) - 1) * gap
+        x = (sw - total) // 2
+        top = round(110 * s)
+        pad = round(16 * s)
+        width = card_w - 2 * pad
+
+        for i, perk_key in enumerate(offers):
+            selected = i == selected_index
+            rect = pygame.Rect(x + i * (card_w + gap), top, card_w, card_h)
+            ui.panel(surface, rect, alpha=245 if selected else 215)
+            if selected:
+                pygame.draw.rect(surface, ui.GOLD, rect.inflate(6, 6), 2)
+
+            perk = PERK_BY_KEY.get(perk_key)
+            name = perk.name_de if perk else perk_key
+            desc = perk.desc_de if perk else ""
+
+            cx, cy = rect.x + pad, rect.y + pad
+            ui.text(
+                surface,
+                name,
+                (cx, cy),
+                round(18 * s),
+                ui.GOLD if selected else ui.TEXT,
+                heading=True,
+            )
+            cy += round(32 * s)
+            for line in ui.wrap(desc, body, width)[:5]:
+                ui.text(surface, line, (cx, cy), body)
+                cy += line_h
+
+            hint = "[Enter] Experiment wählen" if selected else f"[{i + 1}] Auswählen"
+            ui.text(
+                surface,
+                hint,
+                (cx, rect.bottom - round(26 * s)),
+                body,
+                ui.GOLD if selected else ui.DIM,
+            )
+
+    # Reroll cost info
+    free_rerolls = getattr(getattr(run, "inventory", None), "rerolls", 0)
+    if free_rerolls > 0:
+        reroll_info = f"[R] Neu würfeln (Gratis: noch {free_rerolls})"
+    else:
+        reroll_cost = experiment_reroll_price(getattr(run, "experiment_rerolls", 0))
+        reroll_info = f"[R] Neu würfeln ({reroll_cost} Gold)"
+
+    ui.text(
+        surface,
+        f"Pfeiltasten/[1-3]: wählen  |  [Enter]: anwenden  |  {reroll_info}  |  [Esc]: Zurück",
+        (sw / 2, sh - 35 * s),
+        round(14 * s),
+        ui.DIM,
+        anchor="center",
+    )

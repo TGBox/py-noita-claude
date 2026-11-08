@@ -38,6 +38,7 @@ class Inventory:
         self.bag: list[str | None] = [None] * BAG_SIZE
         self.counts: list[int] = [0] * BAG_SIZE  # stack size per bag slot (0 = empty)
         self.samples: list[tuple[str, int] | None] = [None] * 12  # sample slots (Contract V11)
+        self.rerolls: int = 0
         self.active = 0
 
     def add_sample(self, key: str, count: int = 1) -> int:
