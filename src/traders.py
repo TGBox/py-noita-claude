@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -175,4 +175,48 @@ def buy_offer(
     use_samples: bool = False,
 ) -> tuple[bool, str]:
     """Execute a purchase and return (ok, German message)."""
-    raise NotImplementedError("Card E05")
+    # 1. DJ Lamelle beat check
+    if trader.key == "npc_dj":
+        t = getattr(run, "time", None)
+        if t is None:
+            t = getattr(run, "time_in_depth", None)
+        if t is None:
+            t = run.stats.get("time", 0.0)
+        if int(t / 0.75) % 2 != 0:
+            return False, "Nicht im Takt!"
+
+    # 2. Payment
+    if use_samples:
+        if not offer.sample_cost:
+            return False, "Kein Proben-Tausch möglich."
+        cost_dict = dict(offer.sample_cost)
+        if not run.inventory.take_samples(cost_dict):
+            return False, "Zu wenige Proben."
+    else:
+        cost = round(offer.gold_cost * getattr(run, "price_factor", 1.0))
+        if run.gold < cost:
+            return False, "Zu wenig Gold."
+        run.gold -= cost
+
+    # 3. Deliver item
+    if offer.kind == "block":
+        run.inventory.add_block(offer.key)
+        return True, "Modul gekauft."
+    elif offer.kind == "wand":
+        from src.loot import Pickup, generate_wand
+
+        stage = getattr(getattr(run, "plan", None), "slot", 0) + 1
+        wand_spec = generate_wand(run.rng, level=stage)
+        if offer.blessing == "mana_max":
+            wand_spec = replace(wand_spec, mana_max=round(wand_spec.mana_max * 1.1))
+        elif offer.blessing == "recharge":
+            wand_spec = replace(wand_spec, recharge=round(wand_spec.recharge * 0.9, 3))
+        elif offer.blessing == "capacity":
+            wand_spec = replace(wand_spec, capacity=wand_spec.capacity + 1)
+        dropped = run.inventory.add_wand(wand_spec)
+        if dropped is not None:
+            px, py = run.player.center
+            run.pickups.append(Pickup(px, py, wand=dropped))
+        return True, "Waffe gekauft."
+
+    return False, "Unbekanntes Angebot."
