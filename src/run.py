@@ -63,7 +63,7 @@ from src.universes.model import SHAPES, Universe
 from src.wand import PRESETS, Shot, Wand, WandSpec
 from src.workshop import WorkshopLayout
 from src.world import World
-from src.worldgen import Level, generate_level, generate_sanctum
+from src.worldgen import Level, ensure_path, generate_level, generate_sanctum
 
 SIM_DT = 1.0 / SIM_HZ
 BLAST_DAMAGE = 3.0  # damage per blast radius cell at point blank
@@ -539,6 +539,8 @@ class Run:
             # generators activate their base set; Python must use the core's (rule) set again
             if mat.ACTIVE is not self._world_set:
                 mat.activate(self._world_set)
+            if self.plan is not None:
+                self._ensure_universe_paths()
         else:
             self.level = generate_level(self.world, depth)
         if self.mirror:
@@ -1895,6 +1897,22 @@ class Run:
         self.enter_depth(self.depth_index)
         # bible 02: the anchor point is open unless a Zwischengegner guards it (boss slot)
         self.exit_open = not self.boss_slot
+
+    def _ensure_universe_paths(self) -> None:
+        """Dig passages so the start reaches the anchor point, the arenas and the quest giver.
+
+        The universe generators do not guarantee this themselves (first playtest: trapped in
+        Glibbria's start area). Same repair as the organism levels use (flying allowed).
+        """
+        level = self.level
+        targets = [level.exit]
+        for arena in (level.mid_boss_arena, level.boss_arena):
+            if arena and arena != (0, 0, 0, 0):
+                targets.append(((arena[0] + arena[2]) // 2, (arena[1] + arena[3]) // 2))
+        if level.quest_giver is not None:
+            targets.append(level.quest_giver)
+        for target in targets:
+            ensure_path(self.world, level.spawn, target)
 
     def _universe_depth(self, universe: Universe) -> Depth:
         """An organism depth re-dressed as ``universe`` (material set, rule, natives)."""

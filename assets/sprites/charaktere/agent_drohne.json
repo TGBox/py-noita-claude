@@ -1,0 +1,68 @@
+{
+  "frame_size": [
+    18,
+    18
+  ],
+  "anchor": [
+    9,
+    14
+  ],
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 4,
+      "fps": 6.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "walk": {
+      "row": 1,
+      "frames": 4,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "windup": {
+      "row": 2,
+      "frames": 2,
+      "fps": 6.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "attack": {
+      "row": 3,
+      "frames": 2,
+      "fps": 10.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "hurt": {
+      "row": 4,
+      "frames": 2,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "dead": {
+      "row": 5,
+      "frames": 1,
+      "fps": 1.0,
+      "loop": true,
+      "next_anim": "idle"
+    }
+  },
+  "glow": [
+    {
+      "offset": [
+        9,
+        8
+      ],
+      "color": [
+        255,
+        50,
+        50
+      ],
+      "radius": 12
+    }
+  ]
+}

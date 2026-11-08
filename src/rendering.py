@@ -685,8 +685,8 @@ def draw_creatures(
         key = creature.spec.key
         x, y = creature.x - cam_x, creature.y - cam_y
 
-        # If sheet_cache is available, render via procedural sheets & rigs
-        if sheet_cache is not None:
+        # Sprite sheets and rigs where the sheet files exist; otherwise the legacy drawing
+        if sheet_cache is not None and _has_sheets(sheet_cache, creature):
             facing_right = creature.facing >= 0
             is_windup = getattr(creature, "state", "") == "windup"
             flash = 1.0 if is_windup else (1.0 if getattr(creature, "flash", 0.0) > 0.0 else 0.0)
@@ -703,7 +703,8 @@ def draw_creatures(
                 for _part_key, wx, wy, sheet_name in rig.world_parts(
                     creature.x, creature.y, flip_x=not facing_right
                 ):
-                    sheet, meta = sheet_cache.get("bosse", sheet_name)
+                    category = _rig_category(sheet_cache, sheet_name)
+                    sheet, meta = sheet_cache.get(category, sheet_name)
                     st = anim_state if anim_state in meta.anims else "idle"
                     anim = Animator(meta, st)
                     blit_frame(
@@ -719,15 +720,7 @@ def draw_creatures(
                         flash=flash,
                     )
             else:
-                # Determine category
-                if key.startswith(("agent_", "boese_")) or key == "ober_cloita":
-                    category = "charaktere"
-                elif getattr(creature.spec, "boss", False):
-                    category = "bosse"
-                else:
-                    category = "kreaturen"
-
-                sheet, meta = sheet_cache.get(category, key)
+                sheet, meta = sheet_cache.get(_sheet_category(creature), key)
                 st = anim_state if anim_state in meta.anims else "idle"
                 anim = Animator(meta, st)
                 blit_frame(
@@ -773,9 +766,49 @@ def draw_creatures(
             sprite = sprites.get((key, frame, facing, creature.flash > 0))
             if sprite is not None:
                 canvas.blit(sprite, (x, y))
+        else:  # no sheet and no legacy sprite: never leave a creature invisible
+            _draw_placeholder(canvas, creature, x, y)
         if creature.hp < creature.max_hp:
             width = max(1, round(creature.width * creature.hp / creature.max_hp))
             canvas.fill(HEALTH_BAR, (x, y - 3, width, 1))
+
+
+PLACEHOLDER_FILL = (190, 70, 170)
+PLACEHOLDER_EDGE = (40, 10, 40)
+
+
+def _sheet_category(creature: Creature) -> str:
+    key = creature.spec.key
+    if key.startswith(("agent_", "boese_")) or key == "ober_cloita":
+        return "charaktere"
+    return "bosse" if getattr(creature.spec, "boss", False) else "kreaturen"
+
+
+def _has_file(cache: SheetCache, category: str, name: str) -> bool:
+    return (cache.root / category / f"{name}.png").is_file()
+
+
+def _rig_category(cache: SheetCache, name: str) -> str:
+    return "bosse" if _has_file(cache, "bosse", name) else "kreaturen"
+
+
+def _has_sheets(cache: SheetCache, creature: Creature) -> bool:
+    """True if every sheet this creature is drawn from exists on disk."""
+    from src.procbody import RIG_LAYOUTS
+
+    key = creature.spec.key
+    if key in RIG_LAYOUTS:
+        return all(
+            _has_file(cache, _rig_category(cache, part.sheet_name), part.sheet_name)
+            for part in RIG_LAYOUTS[key].parts
+        )
+    return _has_file(cache, _sheet_category(creature), key)
+
+
+def _draw_placeholder(canvas: pygame.Surface, creature: Creature, x: int, y: int) -> None:
+    rect = pygame.Rect(x, y, max(2, creature.width), max(2, creature.height))
+    canvas.fill(PLACEHOLDER_FILL, rect)
+    pygame.draw.rect(canvas, PLACEHOLDER_EDGE, rect, 1)
 
 
 WORM_SKIN = (150, 168, 92)

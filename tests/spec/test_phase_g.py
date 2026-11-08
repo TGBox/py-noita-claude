@@ -378,3 +378,47 @@ def test_g16_universe_entry_end_to_end() -> None:
     for _ in range(300):
         w.step()
     assert paper_left() < before * 0.8, "fire did not burn the paper"
+
+def test_g17_universes_are_playable_and_visible() -> None:
+    """First-playtest regressions: no trapped start, no invisible creatures."""
+    from src.enemies import SPECIES
+    from src.materials import BLOCKS_BODY, KIND, LIQUID
+    from src.native import byte_view, reachable
+    from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
+    from src.procbody import RIG_LAYOUTS
+    from src.run import Run
+    from src.sprite_render import ASSET_ROOT
+    from src.universes.catalog import ALL_UNIVERSES
+
+    box = (PLAYER_WIDTH + 2, PLAYER_HEIGHT + 2)
+    for seed in (1, 2, 3):
+        run = Run(seed=seed)
+        run.start_multiverse_run()
+        for u in ALL_UNIVERSES.values():
+            run.enter_universe(u)
+            w, level = run.world, run.level
+            blocking = [int(b or k == LIQUID) for b, k in zip(BLOCKS_BODY, KIND, strict=False)]
+            goal = (level.exit[0] - PLAYER_WIDTH // 2, level.exit[1] - PLAYER_HEIGHT // 2)
+            found, _ = reachable(
+                byte_view(w.grid), w.width, w.height, blocking, box,
+                (level.spawn[0] - 1, level.spawn[1] - 2), goal,
+            )  # fmt: skip
+            assert found, f"{u.key} seed {seed}: the anchor point cannot be reached from the start"
+
+    # every creature a universe spawns has its sprite sheets on disk (otherwise it is drawn
+    # as a placeholder box)
+    keys = set()
+    for u in ALL_UNIVERSES.values():
+        keys.update(u.natives)
+        keys.update(k for k in (u.big, u.mid_boss, u.boss) if k)
+    for key in sorted(keys):
+        assert key in SPECIES, f"{key} is spawned but not registered"
+        if key in RIG_LAYOUTS:
+            names = {part.sheet_name for part in RIG_LAYOUTS[key].parts}
+            for name in names:
+                assert any(
+                    (ASSET_ROOT / cat / f"{name}.png").is_file() for cat in ("bosse", "kreaturen")
+                ), f"rig sheet {name} for {key} missing"
+        else:
+            cat = "bosse" if SPECIES[key].boss else "kreaturen"
+            assert (ASSET_ROOT / cat / f"{key}.png").is_file(), f"sheet {cat}/{key} missing"
