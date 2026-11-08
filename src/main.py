@@ -154,6 +154,9 @@ class Game:
         self.renderer = WorldRenderer(self.run.world, VIEW_WIDTH, VIEW_HEIGHT)
         self.sprite_right, self.sprite_left = build_player_sprites()
         self.creature_sprites = build_creature_sprites()
+        from src.sprite_render import SheetCache
+
+        self.sheet_cache = SheetCache()  # sprite sheets of the universe creatures (B34)
         self.camera = [0.0, 0.0]
         self.shake = 0.0
         self.sandbox = False
@@ -939,13 +942,18 @@ class Game:
                     if self.run.menu_mode == "portal_select":
                         from src.menus import draw_portal_select_menu
 
+                        offers = self.run.plan.offers() if self.run.plan else []
                         draw_portal_select_menu(
-                            self.screen,
-                            ui.font(20),
-                            ui.font(14),
-                            self.run.plan.offers() if self.run.plan else [],
-                            self.run.portal_index,
+                            self.screen, ui.font(20), ui.font(14), offers, self.run.portal_index
                         )
+                        if not offers:  # after the sixth universe (evil self: Card F18)
+                            w, h = self.screen.get_size()
+                            ui.text(
+                                self.screen,
+                                "Alle sechs Universen bereist. Das Böse Ich und das "
+                                "Hauptquartier folgen in einer späteren Version. [Esc]",
+                                (w / 2, h / 2), 20, ui.GOLD, anchor="center",
+                            )  # fmt: skip
                     else:
                         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
                         overlay.fill((0, 0, 0, 180))
@@ -1152,11 +1160,10 @@ class Game:
                 sx, sy = run.shoulder((float(target[0]), float(target[1])))
                 angle = math.atan2(target[1] - sy, target[0] - sx)
                 draw_augmentation(self.canvas, (sx - cam_x, sy - cam_y), angle, run.inventory.wand)
-        try:
-            draw_creatures(self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y)
-        except KeyError:
-            # Fallback for creatures lacking sprites prior to card B34
-            pass
+        draw_creatures(
+            self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y,
+            sheet_cache=self.sheet_cache,
+        )  # fmt: skip
         draw_droplets(self.canvas, run.droplets, cam_x, cam_y)
         for body in (player, *run.enemies.creatures):
             if not body.dead:
