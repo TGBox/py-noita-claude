@@ -565,7 +565,6 @@ def test_g23_game_draws_workshop_menus(monkeypatch) -> None:
     run.gold = 5000
     for key, mode in (
         ("ws_haendler", "trader"), ("ws_liege", "experiment"), ("ws_fabrikator", "fabricator"),
-        ("ws_schiessstand", "minigame"),
     ):  # fmt: skip
         _stand_at(run, key)
         run.interact_station()
@@ -576,6 +575,11 @@ def test_g23_game_draws_workshop_menus(monkeypatch) -> None:
         assert not any("Noch nicht verfügbar" in s for s in shown), f"{mode} menu is not drawn"
         game._on_key(pygame.K_ESCAPE)
         assert run.menu_mode == "" and game.state == "playing"
+
+    for key in ("ws_automat", "ws_schiessstand"):  # switched off after the playtest
+        _stand_at(run, key)
+        run.interact_station()
+        assert run.menu_mode == "" and any("Außer Betrieb" in m for m in run.messages)
 
     _stand_at(run, "ws_werkbank")
     run.interact_station()

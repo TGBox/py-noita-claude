@@ -100,3 +100,8 @@ Die Sheets erfüllen `V8` (eigene Silhouette, echte Bewegung), sind aber nur **M
 - **Gut gelungen, als Maßstab:** `aktenwolf`, `kirchenkrake`, `glockenqualle`, `orgelaal`, `blutegel`, `abt_kieme`, `oberstempler`, `trampolinwal`, `npc_kuester`.
 
 Vorgehen später: eigene Karten je Gruppe, mit Vorschaubildern (alle Frames vergrößert nebeneinander) zur Abnahme durch den Nutzer.
+
+### Minispiele (`E07`–`E09`, `E14`, Stand 2026-11-08)
+
+Physik-o-Mat und Schießstand sind nach dem Playtest **stillgelegt** (`MINIGAMES_ENABLED = False` in `src/run.py`; die Stationen melden „Außer Betrieb“). Die Rätsel waren keine echten Rätsel (Kerze direkt anklicken, Ameisen laufen von selbst), der Schießstand zeigte alle 30 Ziele gleichzeitig. Code und Tests bleiben; neu gestaltet wird gemeinsam mit dem Nutzer, wenn der Kern-Loop sitzt.
+

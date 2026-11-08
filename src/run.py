@@ -1988,6 +1988,9 @@ class Run:
             self.menu_mode = "archive"
         elif key == "ws_portal":
             self.menu_mode = "portal_select"
+        elif key in ("ws_automat", "ws_schiessstand") and not MINIGAMES_ENABLED:
+            name = "Physik-o-Mat" if key == "ws_automat" else "Schießstand"
+            self.messages.append(f"{name}: Außer Betrieb. Wird gerade umgebaut.")
         elif key == "ws_automat":
             from src.economy import PHYSIK_STAKE
             from src.minigames.physik_o_mat import make_physik_puzzle
@@ -2671,6 +2674,9 @@ NEW_PICKUP_KINDS = frozenset(
         "formular_stempel",
     }
 )
+# Playtest 2026-11-08: Physik-o-Mat and Schießstand were not fun; switched off until they are
+# redesigned together with the user (code and tests of E07-E09/E14 stay in place).
+MINIGAMES_ENABLED = False
 AUTO_PICKUP_KINDS = frozenset({"gold", "sample", "blueprint_shard", "memory_shard", "badge"})
 BLUEPRINT_SHARDS_NEEDED = 3
 MILK_COOLDOWN = 8.0  # seconds before a giver can be milked again
