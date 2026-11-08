@@ -245,8 +245,21 @@ class Game:
             elif event.type == pygame.KEYDOWN:
                 self._on_key(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 2, 3):
-                for action in self.bindings.actions_for(f"maus{event.button}"):
-                    self._on_action(action)
+                if self.run.menu_mode == "minigame" and self.run.active_minigame is not None:
+                    # Minigame frame is 340x260 centered in window
+                    sw, sh = self.screen.get_size()
+                    s = sw / 640.0
+                    frame_w, frame_h = round(340 * s), round(260 * s)
+                    frame_x = (sw - frame_w) // 2
+                    frame_y = (sh - frame_h) // 2
+                    mx, my = event.pos
+                    # Normalize / scale to minigame internal coordinates (160x120)
+                    mg_x = int((mx - frame_x) * (160.0 / frame_w))
+                    mg_y = int((my - frame_y) * (120.0 / frame_h))
+                    self.run.step_minigame(0.0, action="shoot", cursor=(mg_x, mg_y))
+                else:
+                    for action in self.bindings.actions_for(f"maus{event.button}"):
+                        self._on_action(action)
             elif event.type == pygame.MOUSEWHEEL:
                 if self.sandbox:  # the wheel picks the paint material
                     self.paint_index = (self.paint_index - event.y) % len(PAINT_MATERIALS)
@@ -772,8 +785,14 @@ class Game:
         self.audio.play_music(
             "sanktum" if in_menu_music or self.run.in_sanctum else self.run.depth.key
         )
+        if getattr(self.run, "inventory_open", False):
+            self.run.inventory_open = False
+            self.editor.open = True
+            self.editor.page = 0
         if self.editor.open or self.state != "playing" or bool(self.run.menu_mode):
             self.hover = None
+            if self.run.menu_mode == "minigame":
+                self.run.step_minigame(dt)
             return  # menus and the inventory pause the game
         self.log.frame(dt)
         keys = pygame.key.get_pressed()
@@ -954,6 +973,47 @@ class Game:
                                 "Hauptquartier folgen in einer späteren Version. [Esc]",
                                 (w / 2, h / 2), 20, ui.GOLD, anchor="center",
                             )  # fmt: skip
+                    elif self.run.menu_mode == "trader":
+                        from src.menus import draw_trader_menu
+
+                        t_key = self.run.active_trader_key or self.run.selected_trader_key
+                        draw_trader_menu(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                            t_key,
+                            self.run.menu_index,
+                        )
+                    elif self.run.menu_mode == "experiment":
+                        from src.menus import draw_experiment_menu
+
+                        draw_experiment_menu(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                            self.run.menu_index,
+                        )
+                    elif self.run.menu_mode == "fabricator":
+                        from src.menus import draw_fabricator_menu
+
+                        draw_fabricator_menu(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                            self.run.menu_index,
+                        )
+                    elif self.run.menu_mode == "minigame":
+                        from src.menus import draw_minigame_overlay
+
+                        draw_minigame_overlay(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                        )
                     else:
                         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
                         overlay.fill((0, 0, 0, 180))
@@ -1007,22 +1067,76 @@ class Game:
         return lights
 
     def _draw_station_placeholders(self, cam_x: int, cam_y: int) -> None:
-        """Framed, named boxes for the workshop stations until their sprites exist (B28/B29)."""
+        """Draw station sheets or fallback boxes for workshop stations (B28/B29/G23)."""
         layout = self.run.workshop_layout
         if layout is None:
             return
         vp = self.viewport
         size = max(10, round(12 * ui.scale_of(self.screen)))
+        from src.sprite_render import ASSET_ROOT, blit_frame
+        from src.sprites import Animator
+
+        near_st = None
+        if self.run.player is not None:
+            from src.workshop import station_at
+
+            near_st = station_at(layout, int(self.run.player.x), int(self.run.player.y), radius=16)
+
         for station in layout.stations.values():
             x0, y0, x1, y1 = station.rect
-            left = vp.offset_x + (x0 - cam_x) * vp.scale
-            top = vp.offset_y + (y0 - cam_y) * vp.scale
-            rect = pygame.Rect(
-                round(left), round(top), round((x1 - x0) * vp.scale), round((y1 - y0) * vp.scale)
-            )
-            pygame.draw.rect(self.screen, ui.GOLD, rect, max(1, round(vp.scale / 2)))
-            ui.text(self.screen, station.name, (rect.centerx, rect.top - size), size, ui.GOLD,
-                    anchor="center")  # fmt: skip
+            sprite_key = getattr(station, "sprite_key", station.key)
+            sheet_exists = (ASSET_ROOT / "umgebung" / f"{sprite_key}.png").exists() and (
+                ASSET_ROOT / "umgebung" / f"{sprite_key}.json"
+            ).exists()
+
+            is_player_here = near_st is not None and near_st.key == station.key
+
+            if sheet_exists:
+                sheet, meta = self.sheet_cache.get("umgebung", sprite_key)
+                anim = Animator(meta)
+                if is_player_here and "use" in meta.anims:
+                    anim.play("use")
+                else:
+                    anim.play("idle")
+                # Station center in world coords
+                cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+                blit_frame(self.canvas, sheet, meta, anim, cx, cy, cam_x, cam_y)
+
+                if is_player_here:
+                    left = vp.offset_x + (x0 - cam_x) * vp.scale
+                    top = vp.offset_y + (y0 - cam_y) * vp.scale
+                    rect = pygame.Rect(
+                        round(left),
+                        round(top),
+                        round((x1 - x0) * vp.scale),
+                        round((y1 - y0) * vp.scale),
+                    )
+                    ui.text(
+                        self.screen,
+                        station.name,
+                        (rect.centerx, rect.top - size),
+                        size,
+                        ui.GOLD,
+                        anchor="center",
+                    )
+            else:
+                left = vp.offset_x + (x0 - cam_x) * vp.scale
+                top = vp.offset_y + (y0 - cam_y) * vp.scale
+                rect = pygame.Rect(
+                    round(left),
+                    round(top),
+                    round((x1 - x0) * vp.scale),
+                    round((y1 - y0) * vp.scale),
+                )
+                pygame.draw.rect(self.screen, ui.GOLD, rect, max(1, round(vp.scale / 2)))
+                ui.text(
+                    self.screen,
+                    station.name,
+                    (rect.centerx, rect.top - size),
+                    size,
+                    ui.GOLD,
+                    anchor="center",
+                )
 
     def _hud_state(self) -> HudState:
         run = self.run
