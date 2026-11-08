@@ -777,7 +777,7 @@ PLACEHOLDER_FILL = (190, 70, 170)
 PLACEHOLDER_EDGE = (40, 10, 40)
 
 
-SHEET_CATEGORIES = ("kreaturen", "bosse", "charaktere")
+SHEET_CATEGORIES = ("kreaturen", "bosse", "charaktere", "umgebung")  # umgebung: the dummy
 
 
 def _sheet_category(creature: Creature, cache: SheetCache | None = None) -> str:

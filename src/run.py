@@ -1869,9 +1869,7 @@ class Run:
 
         def _dummy_hurt(amount: float, cause: str = "", _orig=c.hurt, _creature=c) -> None:
             if amount > 0:
-                self.dummy_damage_total += amount
-                cx, cy = _creature.center
-                self.say("Attrappe", f"{int(amount)} Schaden", cx, cy - 10)
+                self.dummy_damage_total += amount  # damage numbers come from the floaters
                 _creature.hp = _creature.max_hp
                 _creature.dead = False
                 if _creature.flash_cooldown <= 0:

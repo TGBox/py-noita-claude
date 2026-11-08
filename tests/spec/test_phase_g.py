@@ -582,3 +582,32 @@ def test_g23_game_draws_workshop_menus(monkeypatch) -> None:
     game.update(0.016)
     assert game.editor.open, "the workbench opens the backpack"
 
+def test_g24_workshop_dummy_survives_hits_and_stations_are_drawn(monkeypatch) -> None:
+    """Playtest: shooting the training dummy crashed; station sprites never showed."""
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    from src import main as game_main
+    from src import sprite_render
+    from src.run import Controls
+
+    monkeypatch.setattr(game_main.records, "delete_run", lambda *a, **k: None)
+    monkeypatch.setattr(game_main.records, "save_run", lambda *a, **k: None)
+    game = game_main.Game()
+    game._start_run()
+    run = game.run
+    dummy = next(c for c in run.enemies.creatures if c.species == "trainings_attrappe")
+    for _ in range(3):
+        dummy.hurt(12.0, "Test")
+        run.update(0.016, Controls())
+    assert run.dummy_damage_total >= 36 and not dummy.dead
+
+    drawn: list[object] = []
+    real = sprite_render.blit_frame
+
+    def spy(target, *args, **kwargs):  # type: ignore[no-untyped-def]
+        drawn.append(target)
+        return real(target, *args, **kwargs)
+
+    monkeypatch.setattr(sprite_render, "blit_frame", spy)
+    game.draw()
+    assert sum(t is game.canvas for t in drawn) >= 10, "station sprites must go onto the canvas"
+

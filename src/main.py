@@ -918,6 +918,8 @@ class Game:
         else:
             self.renderer.refresh(self.run.world, cam_x, cam_y)
         self.canvas.blit(self.renderer.surface, (0, 0))
+        if self.run.in_workshop:
+            self._draw_station_sprites(cam_x, cam_y)  # world art: before the canvas is scaled
         self._draw_entities(cam_x, cam_y)
         self.last_cam = (cam_x, cam_y)
 
@@ -1066,6 +1068,33 @@ class Game:
                 lights.append((item.x, item.y - 3, 18.0, 0.35))
         return lights
 
+    def _draw_station_sprites(self, cam_x: int, cam_y: int) -> None:
+        """Station sheets (umgebung/<sprite_key>) onto the world canvas, standing on the
+        station's floor line; "use" plays while the player stands at the station."""
+        layout = self.run.workshop_layout
+        if layout is None:
+            return
+        from src.sprite_render import ASSET_ROOT, blit_frame
+        from src.sprites import Animator
+        from src.workshop import station_at
+
+        px, py = self.run.player.center
+        near = station_at(layout, int(px), int(py), radius=16)
+        for station in layout.stations.values():
+            key = getattr(station, "sprite_key", station.key)
+            if not (ASSET_ROOT / "umgebung" / f"{key}.png").is_file():
+                continue
+            sheet, meta = self.sheet_cache.get("umgebung", key)
+            using = near is not None and near.key == station.key and "use" in meta.anims
+            anim = Animator(meta, "use" if using else "idle")
+            anim.update(self.clock_time % 60.0)
+            x0, _, x1, y1 = station.rect
+            fh = meta.frame_size[1]
+            blit_frame(
+                self.canvas, sheet, meta, anim, (x0 + x1) / 2.0, y1 - fh + meta.anchor[1],
+                cam_x, cam_y,
+            )  # fmt: skip
+
     def _draw_station_placeholders(self, cam_x: int, cam_y: int) -> None:
         """Draw station sheets or fallback boxes for workshop stations (B28/B29/G23)."""
         layout = self.run.workshop_layout
@@ -1098,9 +1127,7 @@ class Game:
                     anim.play("use")
                 else:
                     anim.play("idle")
-                # Station center in world coords
-                cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
-                blit_frame(self.canvas, sheet, meta, anim, cx, cy, cam_x, cam_y)
+                # the sprite itself is drawn by _draw_station_sprites onto the canvas
 
                 if is_player_here:
                     left = vp.offset_x + (x0 - cam_x) * vp.scale
