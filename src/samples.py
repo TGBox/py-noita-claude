@@ -177,3 +177,5 @@ SAMPLE_ALIASES: dict[str, str] = {
     "glockensplitter": "probe_glockensplitter",
     "kerzenstumpf": "probe_kerzenstumpf",
 }
+
+SAMPLE_NAMES: dict[str, str] = {k: s.name for k, s in SAMPLES.items()}

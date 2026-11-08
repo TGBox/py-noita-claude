@@ -677,6 +677,10 @@ class _BlockCatalogTuple(tuple[Block, ...]):
     def items(self):
         return CATALOG.items()
 
+    def get(self, key: str, default: Any = None) -> Any:
+        k = resolve_block_key(key)
+        return CATALOG.get(k, default)
+
     def __getitem__(self, key: int | slice | str) -> Any:  # type: ignore[override]
         if isinstance(key, str):
             k = resolve_block_key(key)

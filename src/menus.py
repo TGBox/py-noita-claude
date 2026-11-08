@@ -847,7 +847,7 @@ def draw_experiment_menu(
 
             perk = PERK_BY_KEY.get(perk_key)
             name = perk.name_de if perk else perk_key
-            desc = perk.desc_de if perk else ""
+            desc = getattr(perk, "description_de", getattr(perk, "desc_de", "")) if perk else ""
 
             cx, cy = rect.x + pad, rect.y + pad
             ui.text(
