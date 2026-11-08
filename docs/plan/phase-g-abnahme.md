@@ -1,4 +1,4 @@
-# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (15 atomare S-Karten: `G01`–`G15`)
+# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (16 atomare S-Karten: `G01`–`G16`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_g.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Karten folgen `V22`–`V23` aus [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) und `V14` aus [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md).
@@ -225,4 +225,22 @@
 - **Akzeptanzkriterien:**
   - Ein neuer Lauf aus dem Titelmenü beginnt in der Werkstatt; das Portal-Menü lässt sich im laufenden Spiel öffnen, mit Escape schließen und mit Enter bestätigen; danach steht die Spielerin im gewählten Universum.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g15 -q && uv run pytest --ignore=tests/spec -q`, danach einmal von Hand: `uv run python -m src.main`, „Neues Spiel“, zum Portalrahmen laufen, [E], Universum wählen.
+
+---
+
+## G16 — Universums-Einstieg Ende-zu-Ende: Materialsatz im Kern, Einheimische, HUD, Werkstatt-Platzhalter (`V9`, `V18`)
+
+*(Plan-Korrektur nach dem ersten Playtest 2026-11-08, direkt umgesetzt: Universen liefen über das alte Tiefen-System – Rust-Kern mit falschem Materialsatz, keine Einheimischen, HUD „Tiefe 1/7“, unsichtbare Stationen.)*
+
+- **Größe:** S
+- **Abhängigkeiten:** `G15`
+- **Ziel-Dateien:** `src/run.py`, `src/main.py` (dazu `src/hud.py`: Feld `HudState.depth_caption`)
+- **Aufgabe:**
+  1. `Run.enter_universe(universe, *, boss_slot=False)`: ersetzt die aktuelle Tiefe durch `_universe_depth(universe)` (Materialsatz, Regel, Licht, Name und je Art `NATIVES_PER_SPECIES` Einheimische + Großkreatur) und ruft `enter_depth`; `choose_next_universe` nutzt sie. Nach dem Generator wird der Satz, den der Rust-Kern simuliert (`_world_set`), in Python wieder aktiviert.
+  2. Mit `RunPlan` (`run.plan is not None`) nutzt auch die Fleischwelt ihren Universums-Generator; `new_run()` setzt `plan = None`; `rank` kommt aus `plan.current.rank`.
+  3. `enter_workshop` lädt die vorhandene Welt neu (`world.reload`) statt eine zweite `World` anzulegen.
+  4. HUD: „Universum n/6 · Rang r“ bzw. „Werkstatt“, Hinweis am Ankerpunkt; Werkstatt-Stationen als gerahmte Platzhalter mit Namen, bis `B28`/`B29` Sprites liefern.
+- **Akzeptanzkriterien:**
+  - Für Aktenhalde, Fleischwelt und Abtei: Python und Rust-Kern nutzen denselben Materialsatz, Einheimische und Unter-Zwischenboss sind da, eine Sekunde Spiel und der Weg zurück in die Werkstatt laufen ohne Fehler; Feuer verbrennt Papier in der Aktenhalde.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k "g14 or g15 or g16" -q && uv run pytest --ignore=tests/spec -q`, dann Playtest.
 

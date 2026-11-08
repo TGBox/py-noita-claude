@@ -283,6 +283,7 @@ class Run:
         self.enter_workshop()
 
     def new_run(self) -> None:
+        self.plan = None  # the old organism descent (sandbox): no multiverse plan
         self._reset()
         self.enter_depth(0)
 
@@ -531,10 +532,13 @@ class Run:
             self.on_generate(depth.name_de)
         self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
-        if self.universe_key != "fleischwelt":
+        if self.universe_key != "fleischwelt" or self.plan is not None:
             self.level = generate_level(
                 self.world, depth, self.seed + index, universe=self.universe
             )
+            # generators activate their base set; Python must use the core's (rule) set again
+            if mat.ACTIVE is not self._world_set:
+                mat.activate(self._world_set)
         else:
             self.level = generate_level(self.world, depth)
         if self.mirror:
@@ -554,7 +558,7 @@ class Run:
             more(depth.bloats),
             extra=tuple((key, more(count)) for key, count in depth.extra),
         )
-        if self.universe_key != "fleischwelt":
+        if self.universe_key != "fleischwelt" or self.plan is not None:
             if getattr(self.universe, "mid_boss", None):
                 mid_arena = getattr(self.level, "mid_boss_arena", None)
                 if mid_arena and mid_arena != (0, 0, 0, 0):
@@ -640,6 +644,8 @@ class Run:
     @property
     def rank(self) -> int:
         """Rank 1-3 of the current depth (the seven organism depths spread over three)."""
+        if self.plan is not None and self.plan.current is not None:
+            return self.plan.current.rank  # multiverse run: rank of the chosen universe
         return 1 + self.depth_index * 3 // max(1, len(self.route))
 
     def _apply_rule(self, depth: Depth) -> mat.MaterialSet:
@@ -669,6 +675,7 @@ class Run:
         material_set = self._apply_rule(depth)
         if mat.ACTIVE is not material_set:
             mat.activate(material_set)
+        self._world_set = material_set  # what the native core simulates (see enter_depth)
         width, height = depth.size or self.default_size
         if not self.world.fits(material_set.key, width, height):
             self.world.reload(width, height)
@@ -1752,7 +1759,8 @@ class Run:
         self.exit_open = False  # the workshop has no anchor point; the portal frame leads on
 
         # Build workshop world and layout
-        self.world = World(*WORKSHOP_SIZE)
+        # reuse the world object (renderer and systems hold it) and close the old native core
+        self.world.reload(*WORKSHOP_SIZE)
         self.workshop_layout = generate_workshop(self.world)
 
         # Place player at workshop spawn and fully heal
@@ -1856,17 +1864,7 @@ class Run:
         from src.universes.catalog import ALL_UNIVERSES
 
         offer = self.plan.choose(index)
-        u_key = offer.universe
-        self.universe_key = u_key
-        self.universe = ALL_UNIVERSES.get(u_key, self.universe)
-        self.boss_slot = offer.boss is not None
-        self.in_workshop = False
-        self.menu_mode = ""
-
-        # Enter the chosen universe
-        self.enter_depth(self.depth_index)
-        # bible 02: the anchor point is open unless a Zwischengegner guards it (boss slot)
-        self.exit_open = not self.boss_slot
+        self.enter_universe(ALL_UNIVERSES[offer.universe], boss_slot=offer.boss is not None)
 
         # Apply and consume active next_boost
         boost = self.next_boost
@@ -1878,6 +1876,49 @@ class Run:
             self.projectiles.player_damage = getattr(self.projectiles, "player_damage", 1.0) * 1.1
         elif boost == "speed":
             self.player.speed_scale = getattr(self.player, "speed_scale", 1.0) * 1.1
+
+    def enter_universe(self, universe: Universe, *, boss_slot: bool = False) -> None:
+        """Generate ``universe`` and put the player at its start (Card G16).
+
+        The level still runs through ``enter_depth``, but with a depth built from the
+        universe: its material set is active in Python *and* in the native core before the
+        generator runs, and its rule, light and natives replace the old organism depth.
+        """
+        self.universe_key = universe.key
+        self.universe = universe
+        self.boss_slot = boss_slot
+        self.in_workshop = False
+        self.menu_mode = ""
+        route = list(self.route)
+        route[self.depth_index] = self._universe_depth(universe)
+        self.route = tuple(route)
+        self.enter_depth(self.depth_index)
+        # bible 02: the anchor point is open unless a Zwischengegner guards it (boss slot)
+        self.exit_open = not self.boss_slot
+
+    def _universe_depth(self, universe: Universe) -> Depth:
+        """An organism depth re-dressed as ``universe`` (material set, rule, natives)."""
+        natives = tuple(
+            (key, NATIVES_PER_SPECIES) for key in universe.natives if key in SPECIES
+        )
+        if universe.big and universe.big in SPECIES:
+            natives += ((universe.big, 1),)
+        return replace(
+            DEPTHS[0],
+            key=universe.key,
+            name_de=universe.name_de,
+            walkers=0,
+            flyers=0,
+            spitters=0,
+            bloats=0,
+            extra=natives,
+            boss=None,
+            final=False,
+            ambient=universe.ambient,
+            material_set=universe.material_set,
+            rule=universe.rule if universe.rule in RULE_KEYS else "",
+            size=None,  # the run's default size for now; SHAPES sizes come after the playtest
+        )
 
     def enter_headquarters(self) -> None:
         """Enter the authority headquarters for the true ending (Contract V17, Card F10)."""
@@ -2088,6 +2129,9 @@ def _pack(buffer: bytearray) -> str:
 
 def _unpack(text: str) -> bytes:
     return zlib.decompress(base64.b64decode(text.encode("ascii")))
+
+
+NATIVES_PER_SPECIES = 3  # natives of each species per universe level (before area scaling)
 
 
 NEW_PICKUP_KINDS = frozenset(

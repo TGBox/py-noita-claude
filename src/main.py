@@ -906,6 +906,8 @@ class Game:
             self.canvas, (self.viewport.target_width, self.viewport.target_height)
         )
         self.screen.blit(scaled, (self.viewport.offset_x, self.viewport.offset_y))
+        if self.state == "playing" and self.run.in_workshop:
+            self._draw_station_placeholders(cam_x, cam_y)
         if self.fade > 0:
             veil = pygame.Surface(scaled.get_size())
             veil.set_alpha(int(255 * self.fade))
@@ -996,9 +998,32 @@ class Game:
                 lights.append((item.x, item.y - 3, 18.0, 0.35))
         return lights
 
+    def _draw_station_placeholders(self, cam_x: int, cam_y: int) -> None:
+        """Framed, named boxes for the workshop stations until their sprites exist (B28/B29)."""
+        layout = self.run.workshop_layout
+        if layout is None:
+            return
+        vp = self.viewport
+        size = max(10, round(12 * ui.scale_of(self.screen)))
+        for station in layout.stations.values():
+            x0, y0, x1, y1 = station.rect
+            left = vp.offset_x + (x0 - cam_x) * vp.scale
+            top = vp.offset_y + (y0 - cam_y) * vp.scale
+            rect = pygame.Rect(
+                round(left), round(top), round((x1 - x0) * vp.scale), round((y1 - y0) * vp.scale)
+            )
+            pygame.draw.rect(self.screen, ui.GOLD, rect, max(1, round(vp.scale / 2)))
+            ui.text(self.screen, station.name, (rect.centerx, rect.top - size), size, ui.GOLD,
+                    anchor="center")  # fmt: skip
+
     def _hud_state(self) -> HudState:
         run = self.run
-        banner = run.depth.name_de if run.time_in_depth < BANNER_TIME else ""
+        depth_name, caption = run.depth.name_de, ""
+        if run.in_workshop:
+            depth_name, caption = "Werkstatt", "Zwischen den Welten"
+        elif run.plan is not None:
+            caption = f"Universum {run.plan.slot}/6 · Rang {run.rank}"
+        banner = depth_name if run.time_in_depth < BANNER_TIME and not run.in_workshop else ""
         if banner and run.ng:
             banner = f"{banner} (Neues Spiel+ {run.ng})"
         if banner and run.parallel:
@@ -1018,6 +1043,12 @@ class Game:
                 prompt = f"{key}: Aufheben – {item.label_de}"
         elif run.near_exit() and not run.exit_open and run.depth.boss:
             prompt = "Der Durchgang ist verschlossen. Besiege den Wächter."
+        elif run.plan is not None and not run.in_workshop and run.near_exit():
+            prompt = (
+                "Der Ankerpunkt: Hier geht es zurück in die Werkstatt."
+                if run.exit_open
+                else "Der Ankerpunkt ist versiegelt. Besiege den Zwischengegner."
+            )
         elif run.near_secret():
             prompt = "Hinter der Wand pulsiert etwas."
         outcome = "true_victory" if run.true_ending else run.outcome
@@ -1029,9 +1060,10 @@ class Game:
         return HudState(
             player=run.player,
             inventory=run.inventory,
-            depth_name=run.depth.name_de,
+            depth_name=depth_name,
             depth_number=run.next_depth_number,
             depth_total=len(DEPTHS),
+            depth_caption=caption,
             fps=self.clock.get_fps(),
             sandbox=self.sandbox,
             banner=banner,

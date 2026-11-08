@@ -331,3 +331,50 @@ def test_g15_game_loop_workshop_and_portal_menu(monkeypatch) -> None:
     assert game.run.universe_key == offers[0].universe
     game.update(0.016)
     game.draw()
+
+def test_g16_universe_entry_end_to_end() -> None:
+    """Workshop -> universe -> workshop as the game does it, checked like a playtest."""
+    from src import materials as mat
+    from src.run import Controls, Run
+    from src.universes.catalog import ALL_UNIVERSES
+
+    run = Run(seed=16)
+    run.start_multiverse_run()
+    for key in ("aktenhalde", "fleischwelt", "abtei"):
+        u = ALL_UNIVERSES[key]
+        run.enter_universe(u)
+        assert run.in_workshop is False
+        # the native core must simulate the same material table Python uses
+        assert mat.ACTIVE is not None and mat.ACTIVE.key.split("+")[0] == u.material_set
+        core_set = run.world.material_set
+        assert core_set == mat.ACTIVE.key, f"{key}: core runs {core_set}, Python {mat.ACTIVE.key}"
+        assert run.level.universe_key == key
+        assert run.depth.name_de == u.name_de
+        species = {c.species for c in run.enemies.creatures}
+        assert species & set(u.natives), f"{key}: none of its natives {u.natives} spawned"
+        assert u.mid_boss in species, f"{key}: mid-boss {u.mid_boss} missing"
+        for _ in range(60):  # a second of play must not crash
+            run.update(0.016, Controls())
+        run.enter_workshop()
+        assert run.in_workshop is True
+        for _ in range(30):
+            run.update(0.016, Controls())
+
+    # paper burns in the Aktenhalde (fire spreads through the native core)
+    run.enter_universe(ALL_UNIVERSES["aktenhalde"])
+    w = run.world
+    paper = mat.MAT_ID["papier"]
+    x0, y0, size = 60, 60, 24
+    w.fill_rect(x0, y0, x0 + size, y0 + size, paper)
+    w.wake_all()
+
+    def paper_left() -> int:
+        return sum(
+            w.get(x, y) == paper for y in range(y0, y0 + size) for x in range(x0, x0 + size)
+        )
+
+    before = paper_left()
+    w.ignite(x0 + size // 2, y0 + size // 2)
+    for _ in range(300):
+        w.step()
+    assert paper_left() < before * 0.8, "fire did not burn the paper"

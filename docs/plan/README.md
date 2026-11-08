@@ -1,12 +1,12 @@
 # Atomarer Umsetzungsplan (`py-noita-claude`)
 
-Dieser Ordner enthält den **vollständigen, in 153 reine S-Karten zerlegten Implementierungsplan** für die Fertigstellung von `py-noita-claude` gemäß der Design-Bibel ([docs/bibel/00-uebersicht.md](../bibel/00-uebersicht.md)) und dem [ADR zu atomaren Aufgabenkarten](../adr/2026-11-01-atomare-aufgabenkarten.md).
+Dieser Ordner enthält den **vollständigen, in 154 reine S-Karten zerlegten Implementierungsplan** für die Fertigstellung von `py-noita-claude` gemäß der Design-Bibel ([docs/bibel/00-uebersicht.md](../bibel/00-uebersicht.md)) und dem [ADR zu atomaren Aufgabenkarten](../adr/2026-11-01-atomare-aufgabenkarten.md).
 
 ---
 
 ## 1. Grundprinzipien für ausführende Modelle
 
-1. **Nur Größe S & schreibgeschützte Vorab-Tests (`tests/spec/`):** Jede der **153 Karten** (`A01`–`G15`; die IDs `B06`, `B10`, `B13`, `C07`, `C08`, `C13`, `D07`–`D09` sind entfallen) ist so zugeschnitten, dass ein einzelnes kostengünstiges Modell sie in einem Durchgang fehlerfrei umsetzen kann:
+1. **Nur Größe S & schreibgeschützte Vorab-Tests (`tests/spec/`):** Jede der **154 Karten** (`A01`–`G16`; die IDs `B06`, `B10`, `B13`, `C07`, `C08`, `C13`, `D07`–`D09` sind entfallen) ist so zugeschnitten, dass ein einzelnes kostengünstiges Modell sie in einem Durchgang fehlerfrei umsetzen kann:
    - **Umfang:** maximal `60–80` geänderte/neue Code-Zeilen pro Karte.
    - **Dateien:** `1–2` Zieldateien ausschließlich unter `src/` oder `tools/`.
    - **Vorab geschriebene Abnahmetests:** Alle Abnahmetests für sämtliche Karten (`A01`–`G10`) existieren bereits vorab unter [`tests/spec/`](../../tests/spec) (`test_phase_a.py` bis `test_phase_g.py`). Ausführende Modelle schreiben **keine** eigenen Tests und dürfen Dateien unter `tests/` **niemals** editieren!
@@ -36,7 +36,7 @@ Dieser Ordner enthält den **vollständigen, in 153 reine S-Karten zerlegten Imp
 
 ---
 
-## 3. Phasen-Übersicht & Karten-Zählung (153 S-Karten)
+## 3. Phasen-Übersicht & Karten-Zählung (154 S-Karten)
 
 Die Pool-Universen `schrott`, `kuchen` und `spule` gehören nicht zum MVP; sie werden in Phase J der Erweiterung gebaut (`docs/erweiterung/03-universen-erweiterung.md`).
 
@@ -48,7 +48,7 @@ Die Pool-Universen `schrott`, `kuchen` und `spule` gehören nicht zum MVP; sie w
 | **Phase D** | [phase-d-universen.md](phase-d-universen.md) | `D01`–`D29` | **26 S** | Materialsätze (`D17`–`D21`) und alle 6 MVP-Universums-Generatoren (`fleischwelt`, `aktenhalde`, `glibbria`, `kruemelreich`, `sporenklub`, `abtei`), `worldgen`-Dispatch, 6 Universums-Events (`src/events.py`; Sekundärereignisse → Phase 2, J07), alle 6 Prüfungen + 6 Universums-Herausforderungen (`src/challenges.py`, `D22`–`D29`), deterministischer Playtest-Bot (`src/bot.py`) |
 | **Phase E** | [phase-e-werkstatt.md](phase-e-werkstatt.md) | `E01`–`E16` | **16 S** | `640×360`-Werkstatt & 12 Stationen, Wirtschaftsformeln & Goldader-Drops, 6 Händler (`Herr Pansen`..`Bruder Flosse`) mit allen Sonderregeln, Fabrikator, 7 Physik-o-Mat-Rätsel + Schießstand, Experimentierliege, Werkstatt-Menüs & Trainings-Attrappe |
 | **Phase F** | [phase-f-behoerde-bosse-klonita.md](phase-f-behoerde-bosse-klonita.md) | `F01`–`F19` | **19 S** | Fahndungssystem (`Wanted`) & Agenten-Spawns, mehrphasige Boss-Skripte für alle 6 Universums-Zwischengegner, 3 Böse Ichs mit Echos, Heimatwelten & Endkampf, Kaiserin-Angebot (böses Ende), 3-stufiges Hauptquartier & `"ober_cloita"`, Klonita-Begleiterin (Hilfen + Bibel-Aktionen Zeigen/Tragen/Umarmen, 6 Macken) & Sprechblasen |
-| **Phase G** | [phase-g-abnahme.md](phase-g-abnahme.md) | `G01`–`G15` | **15 S** | HUD-Erweiterung, Sprechblasen- & Boss-Banner-Rendering, Hover-Infos, `Records` & 5-Reiter-Archiv, Endbildschirm mit Rang-Abrechnung, vollständiges Save/Load-Schema, Menü-Tastatursteuerung & Bot-Vollabnahme über alle 6 MVP-Universen, Modul-Anzeigenamen nach Bibel 06 (`G11`–`G13`) |
+| **Phase G** | [phase-g-abnahme.md](phase-g-abnahme.md) | `G01`–`G16` | **16 S** | HUD-Erweiterung, Sprechblasen- & Boss-Banner-Rendering, Hover-Infos, `Records` & 5-Reiter-Archiv, Endbildschirm mit Rang-Abrechnung, vollständiges Save/Load-Schema, Menü-Tastatursteuerung & Bot-Vollabnahme über alle 6 MVP-Universen, Modul-Anzeigenamen nach Bibel 06 (`G11`–`G13`) |
 
 ---
 
@@ -62,7 +62,7 @@ flowchart TD
     D["Phase D: Materialsätze, Universen, Events, Challenges & Bot (D01–D29)"]
     E["Phase E: Werkstatt, Wirtschaft, Händler & Minispiele (E01–E16)"]
     F["Phase F: Behörde, Boss-Phasen, Böse Ichs, HQ & Klonita (F01–F19)"]
-    G["Phase G: HUD, Archiv, Save/Load & Vollabnahme (G01–G15)"]
+    G["Phase G: HUD, Archiv, Save/Load & Vollabnahme (G01–G16)"]
 
     A --> B
     A --> C

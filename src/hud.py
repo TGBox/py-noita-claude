@@ -51,6 +51,7 @@ class HudState:
     depth_total: int
     fps: float
     sandbox: bool = False
+    depth_caption: str = ""  # replaces "Tiefe n/m" (multiverse runs: universe slot, workshop)
     banner: str = ""
     prompt: str = ""
     boss: Creature | None = None
@@ -195,7 +196,7 @@ class Hud:
         height = round((52 + 17 * perk_rows) * s) + (round(6 * s) if perk_rows else 0)
         x = right - width
         ui.panel(screen, (x, y, width, height), alpha=200)
-        number = f"Tiefe {state.depth_number}/{state.depth_total}"
+        number = state.depth_caption or f"Tiefe {state.depth_number}/{state.depth_total}"
         ui.text(screen, number, (x + round(10 * s), y + round(7 * s)), round(13 * s), ui.DIM)
         ui.text(screen, state.depth_name, (x + round(10 * s), y + round(22 * s)), round(19 * s),
                 heading=True)  # fmt: skip
