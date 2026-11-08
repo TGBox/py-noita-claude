@@ -1962,6 +1962,43 @@ class Run:
             self.events.append("pickup")
         return ok, msg
 
+    def craft_selected_recipe(self, block_key: str) -> tuple[bool, str]:
+        """Craft a module from a discovered blueprint at the fabricator (Card E12)."""
+        from src.fabricator import Fabricator
+        from src.loot import Pickup
+
+        if self.fabricator is None:
+            self.fabricator = Fabricator()
+
+        inv = self.inventory
+        can_fit = inv.can_add(block_key)
+
+        if can_fit:
+            ok, msg = self.fabricator.craft(self, block_key)
+            if ok:
+                self.events.append("pickup")
+            return ok, msg
+
+        # If bag is full, temporarily make space to let craft deduct materials and add block, then pop it out to Pickup
+        # Or check if can_build would succeed without bag check
+        ok, reason = self.fabricator.can_build(self, block_key)
+        if not ok and reason != "Rucksack ist voll.":
+            return False, reason
+
+        # Temporarily free a slot
+        last_item = inv.bag[-1]
+        inv.bag[-1] = None
+        ok, msg = self.fabricator.craft(self, block_key)
+        inv.bag[-1] = last_item
+
+        if ok:
+            # Drop the crafted module as a Pickup
+            px, py = self.player.center
+            self.pickups.append(Pickup(px, py, block=block_key))
+            self.events.append("pickup")
+            return True, msg
+        return ok, msg
+
     def choose_next_universe(self, index: int) -> None:
         """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""
         from src.universes.catalog import ALL_UNIVERSES
