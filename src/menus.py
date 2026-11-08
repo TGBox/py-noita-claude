@@ -890,530 +890,118 @@ def draw_experiment_menu(
     )
 
 
+MINIGAME_TOOLS: tuple[tuple[str, str], ...] = (
+    ("blast", "Sprengen"), ("dig", "Graben"), ("ignite", "Zünden"), ("pour", "Gießen"),
+)  # fmt: skip
+_minigame_sheets: dict[str, Any] = {}
+
+
+def minigame_view(surface: pygame.Surface) -> tuple[pygame.Rect, int]:
+    """Screen rectangle of the 160x120 minigame field and its integer zoom."""
+    from src.minigames import MINIGAME_WORLD_SIZE
+
+    mw, mh = MINIGAME_WORLD_SIZE
+    sw, sh = surface.get_size()
+    zoom = max(1, min((sw - 160) // mw, (sh - 260) // mh))
+    rect = pygame.Rect((sw - mw * zoom) // 2, (sh - mh * zoom) // 2 + 10, mw * zoom, mh * zoom)
+    return rect, zoom
+
+
+def _minigame_world_surface(world: Any) -> pygame.Surface:
+    """The minigame world, one pixel per cell, in the active material colours."""
+    from src import materials as mat
+
+    image = pygame.image.frombuffer(bytes(world.grid), (world.width, world.height), "P")
+    colors = [m.color for m in mat.MATERIALS]
+    image.set_palette(colors + [(255, 0, 255)] * (256 - len(colors)))
+    return image
+
+
+def _target_sprite(kind: str, size: int) -> pygame.Surface | None:
+    """First idle frame of the agent / Klonita sheet, scaled to ``size`` pixels high."""
+    from src.sprite_render import ASSET_ROOT
+
+    name = "klonita" if kind == "klonita" else "agent_streife"
+    key = f"{name}:{size}"
+    if key not in _minigame_sheets:
+        surf = None
+        png = ASSET_ROOT / "charaktere" / f"{name}.png"
+        if png.is_file():
+            from src.sprites import load_sheet_meta
+
+            meta = load_sheet_meta(png.with_suffix(".json"))
+            sheet = pygame.image.load(str(png)).convert_alpha()
+            fw, fh = meta.frame_size
+            row = meta.anims["idle"].row if "idle" in meta.anims else 0
+            frame = sheet.subsurface((0, row * fh, fw, fh))
+            surf = pygame.transform.scale(frame, (max(1, fw * size // fh), size))
+        _minigame_sheets[key] = surf
+    return _minigame_sheets[key]
+
+
 def draw_minigame_overlay(
     surface: pygame.Surface,
     font: pygame.font.Font,
     small_font: pygame.font.Font,
     run: Any,
 ) -> None:
-    """Draw the active minigame overlay / frame (Contract V20 §2, Card E14)."""
-    sw, sh = surface.get_size()
-    s = sw / 640.0
+    """Draw the active minigame: its field, the targets or the puzzle world, the tools
+    and the result (Contract V20 §2, Card E14; made visible after the playtest)."""
     mg = getattr(run, "active_minigame", None)
     if mg is None:
         return
-
-    # Draw dark overlay background
-    overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 180))
-    surface.blit(overlay, (0, 0))
-
-    # Minigame frame
-    frame_w, frame_h = round(340 * s), round(260 * s)
-    frame_x = (sw - frame_w) // 2
-    frame_y = (sh - frame_h) // 2
-    frame_rect = pygame.Rect(frame_x, frame_y, frame_w, frame_h)
-    ui.panel(surface, frame_rect, alpha=235)
-    pygame.draw.rect(surface, ui.GOLD, frame_rect, 2)
-
-    title = getattr(mg, "title_de", "Minispiel")
-    ui.text(
-        surface,
-        title,
-        (sw / 2, frame_y + 16 * s),
-        round(18 * s),
-        ui.GOLD,
-        heading=True,
-        anchor="center",
-    )
-
-    time_left = max(
-        0.0, getattr(mg, "time_limit", 15.0) - getattr(mg, "elapsed", getattr(mg, "_elapsed", 0.0))
-    )
-    ui.text(
-        surface,
-        f"Zeit: {time_left:4.1f}s",
-        (frame_x + 20 * s, frame_y + 16 * s),
-        round(14 * s),
-        ui.TEXT,
-    )
-
-    if hasattr(mg, "score"):
-        ui.text(
-            surface,
-            f"Punkte: {mg.score}",
-            (frame_x + frame_w - 20 * s, frame_y + 16 * s),
-            round(14 * s),
-            ui.GOLD,
-            anchor="topright",
-        )
-
-    # Render minigame area if world or targets present
-    center_y = frame_y + frame_h // 2
-    if hasattr(mg, "targets"):
-        # Schiessstand
-        ui.text(
-            surface,
-            "Klicke die Agenten (+1), meide Klonita (-3)!",
-            (sw / 2, center_y - 20 * s),
-            round(13 * s),
-            ui.DIM,
-            anchor="center",
-        )
-    else:
-        # Physik-o-Mat
-        ui.text(
-            surface,
-            "Löse das physikalische Rätsel!",
-            (sw / 2, center_y - 20 * s),
-            round(13 * s),
-            ui.DIM,
-            anchor="center",
-        )
-
-    if mg.result is not None:
-        res = mg.result
-        res_color = ui.GREEN if res.won else ui.RED
-        ui.text(
-            surface,
-            res.message_de,
-            (sw / 2, center_y + 20 * s),
-            round(16 * s),
-            res_color,
-            heading=True,
-            anchor="center",
-        )
-
-    ui.text(
-        surface,
-        "[Esc] Beenden / Zurück",
-        (sw / 2, frame_y + frame_h - 22 * s),
-        round(12 * s),
-        ui.DIM,
-        anchor="center",
-    )
-
-
-def draw_trader_menu(
-    surface: pygame.Surface,
-    font: pygame.font.Font,
-    small_font: pygame.font.Font,
-    run: Any,
-    trader_key: str,
-    selected_index: int,
-) -> None:
-    """Draw the trader buy menu (Contracts V19 §2, V22; Card E13)."""
-    from src.samples import SAMPLE_NAMES
-    from src.spells import BLOCKS
-    from src.traders import TRADERS
-
-    trader = TRADERS.get(trader_key)
-    if trader is None:
-        return
-
-    ui.shade(surface, 205)
+    ui.shade(surface, 215)
     sw, sh = surface.get_size()
     s = ui.scale_of(surface)
-    body = round(14 * s)
-    line_h = round(18 * s)
+    view, zoom = minigame_view(surface)
+    ui.panel(surface, view.inflate(round(40 * s), round(150 * s)), alpha=240)
+    title = getattr(mg, "title_de", "") or "Minispiel"
+    ui.text(surface, title, (sw / 2, view.top - 62 * s), round(24 * s), ui.GOLD, heading=True,
+            anchor="center")  # fmt: skip
+    elapsed = getattr(mg, "_elapsed", None)
+    elapsed = getattr(mg, "elapsed", 0.0) if elapsed is None else elapsed
+    left = max(0.0, getattr(mg, "time_limit", 15.0) - elapsed)
+    ui.text(surface, f"Zeit: {left:4.1f} s", (view.left, view.top - 30 * s), round(15 * s))
+    if hasattr(mg, "score"):
+        ui.text(surface, f"Punkte: {mg.score}", (view.right, view.top - 30 * s), round(15 * s),
+                ui.GOLD, anchor="topright")  # fmt: skip
 
-    ui.text(
-        surface,
-        trader.name,
-        (sw / 2, 35 * s),
-        round(28 * s),
-        ui.GOLD,
-        heading=True,
-        anchor="center",
-    )
-    ui.text(
-        surface,
-        f'"{trader.greeting_de}"',
-        (sw / 2, 68 * s),
-        round(15 * s),
-        ui.TEXT,
-        anchor="center",
-    )
-    ui.text(
-        surface,
-        f"Eigenheit: {trader.quirk_de}",
-        (sw / 2, 92 * s),
-        round(13 * s),
-        ui.DIM,
-        anchor="center",
-    )
-
-    offers = run.trader_offers.get(trader_key, [])
-    if not offers:
-        ui.text(
-            surface, "Alles ausverkauft!", (sw / 2, sh / 2), round(20 * s), ui.DIM, anchor="center"
-        )
-    else:
-        card_w, card_h, gap = round(260 * s), round(220 * s), round(20 * s)
-        total = len(offers) * card_w + max(0, len(offers) - 1) * gap
-        x = (sw - total) // 2
-        top = round(120 * s)
-        pad = round(14 * s)
-        width = card_w - 2 * pad
-
-        for i, offer in enumerate(offers):
-            selected = i == selected_index
-            rect = pygame.Rect(x + i * (card_w + gap), top, card_w, card_h)
-            ui.panel(surface, rect, alpha=245 if selected else 215)
-            if selected:
-                pygame.draw.rect(surface, ui.GOLD, rect.inflate(6, 6), 2)
-
-            cx, cy = rect.x + pad, rect.y + pad
-            if offer.kind == "block":
-                block = BLOCKS.get(offer.key)
-                name = block.name_de if block else offer.key
-                desc = block.description_de if block else ""
+    if hasattr(mg, "targets"):  # Schießstand: a plain range with the targets
+        pygame.draw.rect(surface, (52, 40, 44), view)
+        size = max(12, 14 * zoom)
+        for target in mg.targets:
+            if target.hit:
+                continue
+            cx, cy = view.x + int(target.x * zoom), view.y + int(target.y * zoom)
+            sprite = _target_sprite(target.kind, size)
+            if sprite is not None:
+                surface.blit(sprite, sprite.get_rect(center=(cx, cy)))
             else:
-                blessing_labels = {
-                    "mana_max": "Geweihter Stab (+10 % Mana)",
-                    "recharge": "Geweihter Stab (-10 % Ladezeit)",
-                    "capacity": "Geweihter Stab (+1 Kapazität)",
-                }
-                name = blessing_labels.get(offer.blessing, "Geweihter Stab")
-                desc = "Ein von Bruder Flosse gesegneter Zauberstab."
-
-            ui.text(
-                surface,
-                name,
-                (cx, cy),
-                round(16 * s),
-                ui.GOLD if selected else ui.TEXT,
-                heading=True,
-            )
-            cy += round(28 * s)
-            for line in ui.wrap(desc, body, width)[:3]:
-                ui.text(surface, line, (cx, cy), body, ui.DIM)
-                cy += line_h
-
-            # Cost
-            gold_price = round(offer.gold_cost * getattr(run, "price_factor", 1.0))
-            cost_str = f"Preis: {gold_price} Gold"
-            if offer.sample_cost:
-                samples_str = ", ".join(
-                    f"{count}x {SAMPLE_NAMES.get(k, k)}" for k, count in offer.sample_cost
-                )
-                cost_str += f" oder {samples_str} [T]"
-
-            can_afford = run.gold >= gold_price
-            price_color = ui.GOLD if can_afford else (235, 100, 100)
-            ui.text(
-                surface, cost_str, (cx, rect.bottom - round(48 * s)), body, price_color, bold=True
-            )
-
-            hint = "[Enter] Kaufen" if selected else f"[{i + 1}] Wählen"
-            ui.text(
-                surface,
-                hint,
-                (cx, rect.bottom - round(24 * s)),
-                body,
-                ui.GOLD if selected else ui.DIM,
-            )
-
-    ui.text(
-        surface,
-        "Pfeiltasten/[1-4]: Angebot wählen  |  [Enter]: Kaufen  |  [T]: Proben-Tausch  |  [Esc]: Zurück",
-        (sw / 2, sh - 35 * s),
-        round(14 * s),
-        ui.DIM,
-        anchor="center",
-    )
-
-
-def draw_fabricator_menu(
-    surface: pygame.Surface,
-    font: pygame.font.Font,
-    small_font: pygame.font.Font,
-    run: Any,
-    selected_index: int,
-) -> None:
-    """Draw the fabricator craft menu (Contracts V20 §1, V22; Card E12)."""
-    from src.fabricator import MAX_BUILDS_PER_VISIT, build_cost
-    from src.samples import SAMPLE_NAMES
-    from src.spells import BLOCKS
-
-    ui.shade(surface, 205)
-    sw, sh = surface.get_size()
-    s = ui.scale_of(surface)
-    body = round(14 * s)
-
-    built = getattr(getattr(run, "fabricator", None), "builds_this_visit", 0)
-    left = max(0, MAX_BUILDS_PER_VISIT - built)
-
-    ui.text(
-        surface,
-        "Der Fabrikator",
-        (sw / 2, 35 * s),
-        round(28 * s),
-        ui.GOLD,
-        heading=True,
-        anchor="center",
-    )
-    sub = f"Bauten diesen Besuch verbleibend: {left} von {MAX_BUILDS_PER_VISIT}"
-    ui.text(
-        surface,
-        sub,
-        (sw / 2, 68 * s),
-        round(15 * s),
-        ui.TEXT if left > 0 else (235, 100, 100),
-        anchor="center",
-    )
-
-    blueprints = list(getattr(getattr(run, "records", None), "blueprints", []))
-    if not blueprints:
-        ui.text(
-            surface,
-            "Keine Baupläne gefunden! Finde Bauplan-Splitter in den Welten.",
-            (sw / 2, sh / 2),
-            round(18 * s),
-            ui.DIM,
-            anchor="center",
-        )
-    else:
-        # Display recipes in a scrollable list or cards
-        card_w, card_h = round(440 * s), round(52 * s)
-        gap = round(8 * s)
-        visible_count = min(len(blueprints), 6)
-        start_idx = max(0, min(selected_index - 2, len(blueprints) - visible_count))
-        top = round(105 * s)
-        x = (sw - card_w) // 2
-
-        for i in range(start_idx, min(len(blueprints), start_idx + visible_count)):
-            bp_key = blueprints[i]
-            block = BLOCKS.get(bp_key)
-            name = block.name_de if block else bp_key
-            selected = i == selected_index
-            rec = build_cost(bp_key, getattr(getattr(run, "plan", None), "slot", 0) + 1)
-            can_craft, reason = (
-                run.fabricator.can_build(run, bp_key) if run.fabricator else (False, "")
-            )
-
-            rect = pygame.Rect(x, top + (i - start_idx) * (card_h + gap), card_w, card_h)
-            ui.panel(surface, rect, alpha=245 if selected else 215)
-            if selected:
-                pygame.draw.rect(surface, ui.GOLD, rect.inflate(4, 4), 2)
-
-            cx, cy = rect.x + round(12 * s), rect.y + round(8 * s)
-            title_col = ui.GOLD if selected else (ui.TEXT if can_craft else ui.DIM)
-            ui.text(surface, name, (cx, cy), round(16 * s), title_col, bold=selected)
-
-            # Details: Gold, samples, shards
-            cost_parts = [f"{rec.gold} Gold", f"{rec.universe_samples}x Universums-Probe"]
-            if rec.blueprint_shards:
-                cost_parts.append(f"{rec.blueprint_shards}x Splitter")
-            if rec.special_samples:
-                spec_names = "/".join(SAMPLE_NAMES.get(k, k) for k in rec.special_samples[:2])
-                cost_parts.append(f"1x {spec_names}")
-            cost_line = " · ".join(cost_parts)
-            ui.text(surface, cost_line, (cx, cy + round(20 * s)), body, (180, 200, 220))
-
-            status_col = (100, 220, 120) if can_craft else (235, 120, 100)
-            status_txt = "[Enter] Bauen" if can_craft else reason
-            ui.text(
-                surface,
-                status_txt,
-                (rect.right - round(12 * s), cy + round(10 * s)),
-                body,
-                status_col,
-                anchor="topright",
-            )
-
-    ui.text(
-        surface,
-        "Pfeiltasten: Bauplan wählen  |  [Enter]: Modul bauen  |  [Esc]: Zurück",
-        (sw / 2, sh - 35 * s),
-        round(14 * s),
-        ui.DIM,
-        anchor="center",
-    )
-
-
-def draw_experiment_menu(
-    surface: pygame.Surface,
-    font: pygame.font.Font,
-    small_font: pygame.font.Font,
-    run: Any,
-    selected_index: int,
-) -> None:
-    """Draw the experiment couch selection overlay (Contracts V18, V19 §1; Card E16)."""
-    from src.economy import experiment_reroll_price
-    from src.perks import PERK_BY_KEY
-
-    ui.shade(surface, 205)
-    sw, sh = surface.get_size()
-    s = ui.scale_of(surface)
-    body = round(14 * s)
-    line_h = round(18 * s)
-
-    ui.text(
-        surface,
-        "Die Experimentierliege",
-        (sw / 2, 35 * s),
-        round(28 * s),
-        ui.GOLD,
-        heading=True,
-        anchor="center",
-    )
-    ui.text(
-        surface,
-        "Wähle ein Selbstexperiment für diesen Besuch. Die Wirkung bleibt dauerhaft.",
-        (sw / 2, 68 * s),
-        round(15 * s),
-        ui.TEXT,
-        anchor="center",
-    )
-
-    offers = getattr(run, "experiment_offers", [])
-    if getattr(run, "experiment_picked", False):
-        ui.text(
-            surface,
-            "Du hast für diesen Besuch bereits ein Experiment gewählt!",
-            (sw / 2, sh / 2),
-            round(20 * s),
-            ui.GOOD,
-            anchor="center",
-        )
-    elif not offers:
-        ui.text(
-            surface,
-            "Keine Experimente verfügbar.",
-            (sw / 2, sh / 2),
-            round(20 * s),
-            ui.DIM,
-            anchor="center",
-        )
-    else:
-        card_w, card_h, gap = round(320 * s), round(240 * s), round(24 * s)
-        total = len(offers) * card_w + max(0, len(offers) - 1) * gap
-        x = (sw - total) // 2
-        top = round(110 * s)
-        pad = round(16 * s)
-        width = card_w - 2 * pad
-
-        for i, perk_key in enumerate(offers):
-            selected = i == selected_index
-            rect = pygame.Rect(x + i * (card_w + gap), top, card_w, card_h)
-            ui.panel(surface, rect, alpha=245 if selected else 215)
-            if selected:
-                pygame.draw.rect(surface, ui.GOLD, rect.inflate(6, 6), 2)
-
-            perk = PERK_BY_KEY.get(perk_key)
-            name = perk.name_de if perk else perk_key
-            desc = perk.description_de if perk else ""
-
-            cx, cy = rect.x + pad, rect.y + pad
-            ui.text(
-                surface,
-                name,
-                (cx, cy),
-                round(18 * s),
-                ui.GOLD if selected else ui.TEXT,
-                heading=True,
-            )
-            cy += round(32 * s)
-            for line in ui.wrap(desc, body, width)[:5]:
-                ui.text(surface, line, (cx, cy), body)
-                cy += line_h
-
-            hint = "[Enter] Experiment wählen" if selected else f"[{i + 1}] Auswählen"
-            ui.text(
-                surface,
-                hint,
-                (cx, rect.bottom - round(26 * s)),
-                body,
-                ui.GOLD if selected else ui.DIM,
-            )
-
-    # Reroll cost info
-    free_rerolls = getattr(getattr(run, "inventory", None), "rerolls", 0)
-    if free_rerolls > 0:
-        reroll_info = f"[R] Neu würfeln (Gratis: noch {free_rerolls})"
-    else:
-        reroll_cost = experiment_reroll_price(getattr(run, "experiment_rerolls", 0))
-        reroll_info = f"[R] Neu würfeln ({reroll_cost} Gold)"
-
-    ui.text(
-        surface,
-        f"Pfeiltasten/[1-3]: wählen  |  [Enter]: anwenden  |  {reroll_info}  |  [Esc]: Zurück",
-        (sw / 2, sh - 35 * s),
-        round(14 * s),
-        ui.DIM,
-        anchor="center",
-    )
-
-
-def draw_minigame_overlay(
-    surface: pygame.Surface,
-    font: pygame.font.Font,
-    small_font: pygame.font.Font,
-    run: Any,
-) -> None:
-    """Draw the active minigame overlay / frame (Contract V20 §2, Card E14)."""
-    sw, sh = surface.get_size()
-    s = sw / 640.0
-    mg = getattr(run, "active_minigame", None)
-    if mg is None:
-        return
-
-    # Draw dark overlay background
-    overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 180))
-    surface.blit(overlay, (0, 0))
-
-    # Minigame frame
-    frame_w, frame_h = round(340 * s), round(260 * s)
-    frame_x = (sw - frame_w) // 2
-    frame_y = (sh - frame_h) // 2
-    frame_rect = pygame.Rect(frame_x, frame_y, frame_w, frame_h)
-    ui.panel(surface, frame_rect, alpha=235)
-    pygame.draw.rect(surface, ui.GOLD, frame_rect, 2)
-
-    title = getattr(mg, "title_de", "Minispiel")
-    ui.text(surface, title, (sw / 2, frame_y + 16 * s), round(18 * s), ui.GOLD, heading=True, anchor="center")
-
-    time_left = max(0.0, getattr(mg, "time_limit", 15.0) - getattr(mg, "elapsed", getattr(mg, "_elapsed", 0.0)))
-    ui.text(
-        surface,
-        f"Zeit: {time_left:4.1f}s",
-        (frame_x + 20 * s, frame_y + 16 * s),
-        round(14 * s),
-        ui.TEXT,
-    )
-
-    if hasattr(mg, "score"):
-        ui.text(
-            surface,
-            f"Punkte: {mg.score}",
-            (frame_x + frame_w - 20 * s, frame_y + 16 * s),
-            round(14 * s),
-            ui.GOLD,
-            anchor="topright",
-        )
-
-    # Render minigame area if world or targets present
-    center_y = frame_y + frame_h // 2
-    if hasattr(mg, "targets"):
-        # Schiessstand
-        ui.text(surface, "Klicke die Agenten (+1), meide Klonita (-3)!", (sw / 2, center_y - 20 * s), round(13 * s), ui.DIM, anchor="center")
-    else:
-        # Physik-o-Mat
-        ui.text(surface, "Löse das physikalische Rätsel!", (sw / 2, center_y - 20 * s), round(13 * s), ui.DIM, anchor="center")
+                color = (235, 110, 100) if target.kind == "agent" else (180, 140, 240)
+                pygame.draw.circle(surface, color, (cx, cy), size // 2)
+        hint = "Klick: schießen  |  Agent +1, Klonita −3"
+    else:  # Physik-o-Mat: the puzzle world itself
+        field = _minigame_world_surface(mg.world)
+        surface.blit(pygame.transform.scale(field, view.size), view.topleft)
+        for ax in getattr(mg, "custom_state", {}).get("ants", []):
+            ay = mg.custom_state.get("ants_y", 90.0)
+            ant = (view.x + int(ax * zoom), view.y + int(ay * zoom))
+            pygame.draw.circle(surface, (30, 20, 20), ant, max(2, zoom))
+        tool = getattr(run, "minigame_tool", "blast")
+        x = view.left
+        for i, (key, label) in enumerate(MINIGAME_TOOLS):
+            text = f"[{i + 1}] {label}"
+            rect = ui.text(surface, text, (x, view.bottom + 12 * s), round(15 * s),
+                           ui.GOLD if key == tool else ui.DIM, bold=key == tool)  # fmt: skip
+            x = rect.right + round(22 * s)
+        hint = "Werkzeug wählen, dann ins Bild klicken"
+    pygame.draw.rect(surface, ui.GOLD, view, 1)
 
     if mg.result is not None:
         res = mg.result
-        res_color = ui.GREEN if res.won else ui.RED
-        ui.text(surface, res.message_de, (sw / 2, center_y + 20 * s), round(16 * s), res_color, heading=True, anchor="center")
-
-    ui.text(
-        surface,
-        "[Esc] Beenden / Zurück",
-        (sw / 2, frame_y + frame_h - 22 * s),
-        round(12 * s),
-        ui.DIM,
-        anchor="center",
-    )
-
+        ui.text(surface, res.message_de, (sw / 2, view.centery), round(26 * s),
+                ui.GOOD if res.won else ui.BAD, heading=True, anchor="center")  # fmt: skip
+        hint = "[Esc] Zurück in die Werkstatt"
+    else:
+        hint += "  |  [Esc] Aufgeben"
+    ui.text(surface, hint, (sw / 2, view.bottom + 44 * s), round(14 * s), ui.DIM, anchor="center")

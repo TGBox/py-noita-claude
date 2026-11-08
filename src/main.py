@@ -246,17 +246,7 @@ class Game:
                 self._on_key(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 2, 3):
                 if self.run.menu_mode == "minigame" and self.run.active_minigame is not None:
-                    # Minigame frame is 340x260 centered in window
-                    sw, sh = self.screen.get_size()
-                    s = sw / 640.0
-                    frame_w, frame_h = round(340 * s), round(260 * s)
-                    frame_x = (sw - frame_w) // 2
-                    frame_y = (sh - frame_h) // 2
-                    mx, my = event.pos
-                    # Normalize / scale to minigame internal coordinates (160x120)
-                    mg_x = int((mx - frame_x) * (160.0 / frame_w))
-                    mg_y = int((my - frame_y) * (120.0 / frame_h))
-                    self.run.step_minigame(0.0, action="shoot", cursor=(mg_x, mg_y))
+                    self._click_minigame(event.pos)
                 else:
                     for action in self.bindings.actions_for(f"maus{event.button}"):
                         self._on_action(action)
@@ -583,6 +573,18 @@ class Game:
         records.save(self.records)  # keep Kodex finds even if the game is closed now
 
     # ------------------------------------------------------------------ input
+
+    def _click_minigame(self, pos: tuple[int, int]) -> None:
+        """A click on the minigame field: shoot (Schießstand) or use the chosen tool."""
+        from src.menus import minigame_view
+
+        view, zoom = minigame_view(self.screen)
+        if not view.collidepoint(pos):
+            return
+        cell = ((pos[0] - view.x) // zoom, (pos[1] - view.y) // zoom)
+        mg = self.run.active_minigame
+        action = "shoot" if hasattr(mg, "targets") else getattr(self.run, "minigame_tool", "blast")
+        self.run.step_minigame(0.0, action=action, cursor=cell)
 
     def _on_key(self, key: int) -> None:
         if self.run.menu_mode:

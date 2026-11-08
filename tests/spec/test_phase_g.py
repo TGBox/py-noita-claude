@@ -611,3 +611,35 @@ def test_g24_workshop_dummy_survives_hits_and_stations_are_drawn(monkeypatch) ->
     game.draw()
     assert sum(t is game.canvas for t in drawn) >= 10, "station sprites must go onto the canvas"
 
+def test_g25_minigames_are_visible_and_playable(monkeypatch) -> None:
+    """Playtest: the Physik-o-Mat puzzle was invisible and clicks did nothing."""
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    from src import main as game_main
+    from src.menus import minigame_view
+    from src.minigames.physik_o_mat import make_physik_puzzle, solve_actions
+
+    monkeypatch.setattr(game_main.records, "delete_run", lambda *a, **k: None)
+    monkeypatch.setattr(game_main.records, "save_run", lambda *a, **k: None)
+    game = game_main.Game()
+    game._start_run()
+    run = game.run
+
+    run.active_minigame = make_physik_puzzle("glas_fuellen", seed=1)
+    run.menu_mode = "minigame"
+    before = bytes(run.active_minigame.world.grid)
+    game.draw()
+    view, zoom = minigame_view(game.screen)
+    plain = game.screen.get_at((view.x + 1, view.y + 1))
+    assert any(  # the puzzle world is on screen, not just a text
+        game.screen.get_at((view.x + x * zoom, view.y + y * zoom)) != plain
+        for x in range(0, 160, 4)
+        for y in range(0, 120, 4)
+    )
+    action, (cx, cy) = solve_actions("glas_fuellen")[0]
+    keys = {"blast": pygame.K_1, "dig": pygame.K_2, "ignite": pygame.K_3, "pour": pygame.K_4}
+    game._on_key(keys[action])
+    game._click_minigame((view.x + cx * zoom + zoom // 2, view.y + cy * zoom + zoom // 2))
+    assert bytes(run.active_minigame.world.grid) != before, "a click must change the puzzle"
+    game._on_key(pygame.K_ESCAPE)
+    assert run.menu_mode == ""
+

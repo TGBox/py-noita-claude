@@ -255,6 +255,7 @@ class Run:
         self.couch_used: bool = False
         self.minigames_played: set[str] = set()
         self.active_minigame: Any = None
+        self.minigame_tool = "blast"  # Physik-o-Mat tool chosen with [1]-[4]
         self.experiment_picked: bool = False
         self.experiment_offers: list[str] = []
         self.experiment_rerolls: int = 0
@@ -2457,6 +2458,12 @@ class Run:
             return False
 
         if self.menu_mode == "minigame":
+            tools = {
+                pygame.K_1: "blast", pygame.K_2: "dig", pygame.K_3: "ignite", pygame.K_4: "pour",
+            }  # fmt: skip
+            if key in tools:  # Physik-o-Mat: the tool a click applies (see main._click_minigame)
+                self.minigame_tool = tools[key]
+                return True
             if key == pygame.K_ESCAPE:
                 from src.minigames import MinigameResult
 

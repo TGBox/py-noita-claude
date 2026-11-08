@@ -36,12 +36,7 @@ class PhysikPuzzle(Minigame):
         roll = self.rng.random()
         if roll < 0.333:
             gold = self.stake * 2
-            return MinigameResult(
-                completed=True,
-                won=True,
-                reward_gold=gold,
-                message_de=f"Rätsel gelöst! +{gold} Gold",
-            )
+            return MinigameResult(completed=True, won=True, reward_gold=gold, message_de=f"Rätsel gelöst! +{gold} Gold")
         elif roll < 0.666:
             u_samples = sorted([k for k, s in SAMPLES.items() if s.universe_key != "allgemein"])
             chosen_sample = self.rng.choice(u_samples)
@@ -54,10 +49,7 @@ class PhysikPuzzle(Minigame):
         else:
             boost = self.rng.choice(NEXT_BOOST_KEYS)
             return MinigameResult(
-                completed=True,
-                won=True,
-                next_boost=boost,
-                message_de=f"Rätsel gelöst! Schub: {boost}",
+                completed=True, won=True, next_boost=boost, message_de=f"Rätsel gelöst! Schub: {boost}"
             )
 
     def on_action(self, action: str, cursor: tuple[int, int]) -> None:
@@ -250,3 +242,4 @@ def solve_actions(puzzle_key: str) -> list[tuple[str, tuple[int, int]]]:
             ("ignite", (122, 85)),
         ]
     return []
+
