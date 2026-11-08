@@ -847,7 +847,7 @@ def draw_experiment_menu(
 
             perk = PERK_BY_KEY.get(perk_key)
             name = perk.name_de if perk else perk_key
-            desc = getattr(perk, "description_de", getattr(perk, "desc_de", "")) if perk else ""
+            desc = perk.description_de if perk else ""
 
             cx, cy = rect.x + pad, rect.y + pad
             ui.text(
@@ -992,3 +992,428 @@ def draw_minigame_overlay(
         ui.DIM,
         anchor="center",
     )
+
+
+def draw_trader_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+    trader_key: str,
+    selected_index: int,
+) -> None:
+    """Draw the trader buy menu (Contracts V19 §2, V22; Card E13)."""
+    from src.samples import SAMPLE_NAMES
+    from src.spells import BLOCKS
+    from src.traders import TRADERS
+
+    trader = TRADERS.get(trader_key)
+    if trader is None:
+        return
+
+    ui.shade(surface, 205)
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    body = round(14 * s)
+    line_h = round(18 * s)
+
+    ui.text(
+        surface,
+        trader.name,
+        (sw / 2, 35 * s),
+        round(28 * s),
+        ui.GOLD,
+        heading=True,
+        anchor="center",
+    )
+    ui.text(
+        surface,
+        f'"{trader.greeting_de}"',
+        (sw / 2, 68 * s),
+        round(15 * s),
+        ui.TEXT,
+        anchor="center",
+    )
+    ui.text(
+        surface,
+        f"Eigenheit: {trader.quirk_de}",
+        (sw / 2, 92 * s),
+        round(13 * s),
+        ui.DIM,
+        anchor="center",
+    )
+
+    offers = run.trader_offers.get(trader_key, [])
+    if not offers:
+        ui.text(
+            surface, "Alles ausverkauft!", (sw / 2, sh / 2), round(20 * s), ui.DIM, anchor="center"
+        )
+    else:
+        card_w, card_h, gap = round(260 * s), round(220 * s), round(20 * s)
+        total = len(offers) * card_w + max(0, len(offers) - 1) * gap
+        x = (sw - total) // 2
+        top = round(120 * s)
+        pad = round(14 * s)
+        width = card_w - 2 * pad
+
+        for i, offer in enumerate(offers):
+            selected = i == selected_index
+            rect = pygame.Rect(x + i * (card_w + gap), top, card_w, card_h)
+            ui.panel(surface, rect, alpha=245 if selected else 215)
+            if selected:
+                pygame.draw.rect(surface, ui.GOLD, rect.inflate(6, 6), 2)
+
+            cx, cy = rect.x + pad, rect.y + pad
+            if offer.kind == "block":
+                block = BLOCKS.get(offer.key)
+                name = block.name_de if block else offer.key
+                desc = block.description_de if block else ""
+            else:
+                blessing_labels = {
+                    "mana_max": "Geweihter Stab (+10 % Mana)",
+                    "recharge": "Geweihter Stab (-10 % Ladezeit)",
+                    "capacity": "Geweihter Stab (+1 Kapazität)",
+                }
+                name = blessing_labels.get(offer.blessing, "Geweihter Stab")
+                desc = "Ein von Bruder Flosse gesegneter Zauberstab."
+
+            ui.text(
+                surface,
+                name,
+                (cx, cy),
+                round(16 * s),
+                ui.GOLD if selected else ui.TEXT,
+                heading=True,
+            )
+            cy += round(28 * s)
+            for line in ui.wrap(desc, body, width)[:3]:
+                ui.text(surface, line, (cx, cy), body, ui.DIM)
+                cy += line_h
+
+            # Cost
+            gold_price = round(offer.gold_cost * getattr(run, "price_factor", 1.0))
+            cost_str = f"Preis: {gold_price} Gold"
+            if offer.sample_cost:
+                samples_str = ", ".join(
+                    f"{count}x {SAMPLE_NAMES.get(k, k)}" for k, count in offer.sample_cost
+                )
+                cost_str += f" oder {samples_str} [T]"
+
+            can_afford = run.gold >= gold_price
+            price_color = ui.GOLD if can_afford else (235, 100, 100)
+            ui.text(
+                surface, cost_str, (cx, rect.bottom - round(48 * s)), body, price_color, bold=True
+            )
+
+            hint = "[Enter] Kaufen" if selected else f"[{i + 1}] Wählen"
+            ui.text(
+                surface,
+                hint,
+                (cx, rect.bottom - round(24 * s)),
+                body,
+                ui.GOLD if selected else ui.DIM,
+            )
+
+    ui.text(
+        surface,
+        "Pfeiltasten/[1-4]: Angebot wählen  |  [Enter]: Kaufen  |  [T]: Proben-Tausch  |  [Esc]: Zurück",
+        (sw / 2, sh - 35 * s),
+        round(14 * s),
+        ui.DIM,
+        anchor="center",
+    )
+
+
+def draw_fabricator_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+    selected_index: int,
+) -> None:
+    """Draw the fabricator craft menu (Contracts V20 §1, V22; Card E12)."""
+    from src.fabricator import MAX_BUILDS_PER_VISIT, build_cost
+    from src.samples import SAMPLE_NAMES
+    from src.spells import BLOCKS
+
+    ui.shade(surface, 205)
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    body = round(14 * s)
+
+    built = getattr(getattr(run, "fabricator", None), "builds_this_visit", 0)
+    left = max(0, MAX_BUILDS_PER_VISIT - built)
+
+    ui.text(
+        surface,
+        "Der Fabrikator",
+        (sw / 2, 35 * s),
+        round(28 * s),
+        ui.GOLD,
+        heading=True,
+        anchor="center",
+    )
+    sub = f"Bauten diesen Besuch verbleibend: {left} von {MAX_BUILDS_PER_VISIT}"
+    ui.text(
+        surface,
+        sub,
+        (sw / 2, 68 * s),
+        round(15 * s),
+        ui.TEXT if left > 0 else (235, 100, 100),
+        anchor="center",
+    )
+
+    blueprints = list(getattr(getattr(run, "records", None), "blueprints", []))
+    if not blueprints:
+        ui.text(
+            surface,
+            "Keine Baupläne gefunden! Finde Bauplan-Splitter in den Welten.",
+            (sw / 2, sh / 2),
+            round(18 * s),
+            ui.DIM,
+            anchor="center",
+        )
+    else:
+        # Display recipes in a scrollable list or cards
+        card_w, card_h = round(440 * s), round(52 * s)
+        gap = round(8 * s)
+        visible_count = min(len(blueprints), 6)
+        start_idx = max(0, min(selected_index - 2, len(blueprints) - visible_count))
+        top = round(105 * s)
+        x = (sw - card_w) // 2
+
+        for i in range(start_idx, min(len(blueprints), start_idx + visible_count)):
+            bp_key = blueprints[i]
+            block = BLOCKS.get(bp_key)
+            name = block.name_de if block else bp_key
+            selected = i == selected_index
+            rec = build_cost(bp_key, getattr(getattr(run, "plan", None), "slot", 0) + 1)
+            can_craft, reason = (
+                run.fabricator.can_build(run, bp_key) if run.fabricator else (False, "")
+            )
+
+            rect = pygame.Rect(x, top + (i - start_idx) * (card_h + gap), card_w, card_h)
+            ui.panel(surface, rect, alpha=245 if selected else 215)
+            if selected:
+                pygame.draw.rect(surface, ui.GOLD, rect.inflate(4, 4), 2)
+
+            cx, cy = rect.x + round(12 * s), rect.y + round(8 * s)
+            title_col = ui.GOLD if selected else (ui.TEXT if can_craft else ui.DIM)
+            ui.text(surface, name, (cx, cy), round(16 * s), title_col, bold=selected)
+
+            # Details: Gold, samples, shards
+            cost_parts = [f"{rec.gold} Gold", f"{rec.universe_samples}x Universums-Probe"]
+            if rec.blueprint_shards:
+                cost_parts.append(f"{rec.blueprint_shards}x Splitter")
+            if rec.special_samples:
+                spec_names = "/".join(SAMPLE_NAMES.get(k, k) for k in rec.special_samples[:2])
+                cost_parts.append(f"1x {spec_names}")
+            cost_line = " · ".join(cost_parts)
+            ui.text(surface, cost_line, (cx, cy + round(20 * s)), body, (180, 200, 220))
+
+            status_col = (100, 220, 120) if can_craft else (235, 120, 100)
+            status_txt = "[Enter] Bauen" if can_craft else reason
+            ui.text(
+                surface,
+                status_txt,
+                (rect.right - round(12 * s), cy + round(10 * s)),
+                body,
+                status_col,
+                anchor="topright",
+            )
+
+    ui.text(
+        surface,
+        "Pfeiltasten: Bauplan wählen  |  [Enter]: Modul bauen  |  [Esc]: Zurück",
+        (sw / 2, sh - 35 * s),
+        round(14 * s),
+        ui.DIM,
+        anchor="center",
+    )
+
+
+def draw_experiment_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+    selected_index: int,
+) -> None:
+    """Draw the experiment couch selection overlay (Contracts V18, V19 §1; Card E16)."""
+    from src.economy import experiment_reroll_price
+    from src.perks import PERK_BY_KEY
+
+    ui.shade(surface, 205)
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    body = round(14 * s)
+    line_h = round(18 * s)
+
+    ui.text(
+        surface,
+        "Die Experimentierliege",
+        (sw / 2, 35 * s),
+        round(28 * s),
+        ui.GOLD,
+        heading=True,
+        anchor="center",
+    )
+    ui.text(
+        surface,
+        "Wähle ein Selbstexperiment für diesen Besuch. Die Wirkung bleibt dauerhaft.",
+        (sw / 2, 68 * s),
+        round(15 * s),
+        ui.TEXT,
+        anchor="center",
+    )
+
+    offers = getattr(run, "experiment_offers", [])
+    if getattr(run, "experiment_picked", False):
+        ui.text(
+            surface,
+            "Du hast für diesen Besuch bereits ein Experiment gewählt!",
+            (sw / 2, sh / 2),
+            round(20 * s),
+            ui.GOOD,
+            anchor="center",
+        )
+    elif not offers:
+        ui.text(
+            surface,
+            "Keine Experimente verfügbar.",
+            (sw / 2, sh / 2),
+            round(20 * s),
+            ui.DIM,
+            anchor="center",
+        )
+    else:
+        card_w, card_h, gap = round(320 * s), round(240 * s), round(24 * s)
+        total = len(offers) * card_w + max(0, len(offers) - 1) * gap
+        x = (sw - total) // 2
+        top = round(110 * s)
+        pad = round(16 * s)
+        width = card_w - 2 * pad
+
+        for i, perk_key in enumerate(offers):
+            selected = i == selected_index
+            rect = pygame.Rect(x + i * (card_w + gap), top, card_w, card_h)
+            ui.panel(surface, rect, alpha=245 if selected else 215)
+            if selected:
+                pygame.draw.rect(surface, ui.GOLD, rect.inflate(6, 6), 2)
+
+            perk = PERK_BY_KEY.get(perk_key)
+            name = perk.name_de if perk else perk_key
+            desc = perk.description_de if perk else ""
+
+            cx, cy = rect.x + pad, rect.y + pad
+            ui.text(
+                surface,
+                name,
+                (cx, cy),
+                round(18 * s),
+                ui.GOLD if selected else ui.TEXT,
+                heading=True,
+            )
+            cy += round(32 * s)
+            for line in ui.wrap(desc, body, width)[:5]:
+                ui.text(surface, line, (cx, cy), body)
+                cy += line_h
+
+            hint = "[Enter] Experiment wählen" if selected else f"[{i + 1}] Auswählen"
+            ui.text(
+                surface,
+                hint,
+                (cx, rect.bottom - round(26 * s)),
+                body,
+                ui.GOLD if selected else ui.DIM,
+            )
+
+    # Reroll cost info
+    free_rerolls = getattr(getattr(run, "inventory", None), "rerolls", 0)
+    if free_rerolls > 0:
+        reroll_info = f"[R] Neu würfeln (Gratis: noch {free_rerolls})"
+    else:
+        reroll_cost = experiment_reroll_price(getattr(run, "experiment_rerolls", 0))
+        reroll_info = f"[R] Neu würfeln ({reroll_cost} Gold)"
+
+    ui.text(
+        surface,
+        f"Pfeiltasten/[1-3]: wählen  |  [Enter]: anwenden  |  {reroll_info}  |  [Esc]: Zurück",
+        (sw / 2, sh - 35 * s),
+        round(14 * s),
+        ui.DIM,
+        anchor="center",
+    )
+
+
+def draw_minigame_overlay(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+) -> None:
+    """Draw the active minigame overlay / frame (Contract V20 §2, Card E14)."""
+    sw, sh = surface.get_size()
+    s = sw / 640.0
+    mg = getattr(run, "active_minigame", None)
+    if mg is None:
+        return
+
+    # Draw dark overlay background
+    overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 180))
+    surface.blit(overlay, (0, 0))
+
+    # Minigame frame
+    frame_w, frame_h = round(340 * s), round(260 * s)
+    frame_x = (sw - frame_w) // 2
+    frame_y = (sh - frame_h) // 2
+    frame_rect = pygame.Rect(frame_x, frame_y, frame_w, frame_h)
+    ui.panel(surface, frame_rect, alpha=235)
+    pygame.draw.rect(surface, ui.GOLD, frame_rect, 2)
+
+    title = getattr(mg, "title_de", "Minispiel")
+    ui.text(surface, title, (sw / 2, frame_y + 16 * s), round(18 * s), ui.GOLD, heading=True, anchor="center")
+
+    time_left = max(0.0, getattr(mg, "time_limit", 15.0) - getattr(mg, "elapsed", getattr(mg, "_elapsed", 0.0)))
+    ui.text(
+        surface,
+        f"Zeit: {time_left:4.1f}s",
+        (frame_x + 20 * s, frame_y + 16 * s),
+        round(14 * s),
+        ui.TEXT,
+    )
+
+    if hasattr(mg, "score"):
+        ui.text(
+            surface,
+            f"Punkte: {mg.score}",
+            (frame_x + frame_w - 20 * s, frame_y + 16 * s),
+            round(14 * s),
+            ui.GOLD,
+            anchor="topright",
+        )
+
+    # Render minigame area if world or targets present
+    center_y = frame_y + frame_h // 2
+    if hasattr(mg, "targets"):
+        # Schiessstand
+        ui.text(surface, "Klicke die Agenten (+1), meide Klonita (-3)!", (sw / 2, center_y - 20 * s), round(13 * s), ui.DIM, anchor="center")
+    else:
+        # Physik-o-Mat
+        ui.text(surface, "Löse das physikalische Rätsel!", (sw / 2, center_y - 20 * s), round(13 * s), ui.DIM, anchor="center")
+
+    if mg.result is not None:
+        res = mg.result
+        res_color = ui.GREEN if res.won else ui.RED
+        ui.text(surface, res.message_de, (sw / 2, center_y + 20 * s), round(16 * s), res_color, heading=True, anchor="center")
+
+    ui.text(
+        surface,
+        "[Esc] Beenden / Zurück",
+        (sw / 2, frame_y + frame_h - 22 * s),
+        round(12 * s),
+        ui.DIM,
+        anchor="center",
+    )
+
