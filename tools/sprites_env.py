@@ -21,6 +21,14 @@ from tools.sprites import (
 # ws_liege: 48x24
 # ws_haendler: 72x32
 # ws_zapfhahn: 16x24
+# ws_automat: 24x36
+# ws_schiessstand: 64x24
+# ws_archiv: 24x32
+# ws_couch: 40x18
+# ws_shredder: 16x20
+# ws_well: 16x18
+# portal_headquarters: 48x56
+# trainings_attrappe: 20x28
 
 WOOD_RAMP = make_ramp((130, 85, 45))
 METAL_RAMP = make_ramp((120, 130, 145))
@@ -29,6 +37,9 @@ PORTAL_RAMP = make_ramp((80, 140, 220))
 CLOTH_RAMP = make_ramp((160, 50, 60))
 GLOW_RAMP = make_ramp((100, 220, 240))
 FLESH_RAMP = make_ramp((170, 70, 80))
+STONE_RAMP = make_ramp((110, 115, 125))
+WATER_RAMP = make_ramp((60, 150, 220))
+COUCH_RAMP = make_ramp((90, 60, 120))
 
 
 def _draw_ws_portal(active: bool = False, frame: int = 0) -> PixelCanvas:
@@ -143,21 +154,178 @@ def _draw_ws_zapfhahn(active: bool = False, frame: int = 0) -> PixelCanvas:
     return c
 
 
+def _draw_ws_automat(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 24x36 arcade cabinet
+    c = PixelCanvas(24, 36)
+    draw_shaded_rect(c, 2, 4, 21, 35, METAL_RAMP)
+    # Marquee top
+    draw_shaded_rect(c, 3, 2, 20, 7, BRASS_RAMP)
+    # Screen
+    draw_shaded_rect(c, 4, 9, 19, 21, PORTAL_RAMP if active else make_ramp((30, 45, 60)))
+    # Control panel / joystick
+    draw_shaded_rect(c, 3, 22, 20, 26, WOOD_RAMP)
+    c.set_px(8, 23, (240, 40, 40, 255))
+    c.set_px(14, 24, (240, 240, 50, 255))
+    c.set_px(17, 24, (50, 220, 80, 255))
+    # Coin door
+    draw_shaded_rect(c, 6, 28, 17, 34, make_ramp((40, 40, 45)))
+    if active:
+        # Screen glow animation
+        c.set_px(10 + (frame % 3) * 2, 14, (255, 255, 255, 255))
+        c.set_px(11, 15 + (frame % 2), (100, 240, 255, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_ws_schiessstand(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 64x24 shooting range counter & targets
+    c = PixelCanvas(64, 24)
+    # Wooden counter / booth
+    draw_shaded_rect(c, 2, 10, 61, 23, WOOD_RAMP)
+    # Back wall / target lane
+    draw_shaded_rect(c, 4, 2, 59, 10, STONE_RAMP)
+    # Targets on counter / background
+    draw_shaded_ellipse(c, 16, 6, 4, 4, CLOTH_RAMP)
+    draw_shaded_ellipse(c, 32, 5, 4, 4, BRASS_RAMP)
+    draw_shaded_ellipse(c, 48, 6, 4, 4, CLOTH_RAMP)
+    if active:
+        # Swaying target or muzzle flash
+        c.set_px(31 + (frame % 3), 4, (255, 240, 80, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_ws_archiv(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 24x32 wooden filing cabinet
+    c = PixelCanvas(24, 32)
+    draw_shaded_rect(c, 2, 2, 21, 31, WOOD_RAMP)
+    # 3 Drawer panels with brass handles
+    for dy in (4, 13, 22):
+        draw_shaded_rect(c, 4, dy, 19, dy + 7, make_ramp((110, 70, 35)))
+        draw_shaded_rect(c, 10, dy + 3, 13, dy + 5, BRASS_RAMP)
+    if active:
+        # Top drawer slightly open / papers visible
+        draw_shaded_rect(c, 6, 6, 17, 8, make_ramp((240, 235, 220)))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_ws_couch(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 40x18 plush couch
+    c = PixelCanvas(40, 18)
+    # Backrest
+    draw_shaded_rect(c, 2, 2, 37, 10, COUCH_RAMP)
+    # Cushions / seat
+    draw_shaded_rect(c, 4, 8, 35, 14, CLOTH_RAMP)
+    # Armrests
+    draw_shaded_ellipse(c, 4, 9, 3, 5, COUCH_RAMP)
+    draw_shaded_ellipse(c, 35, 9, 3, 5, COUCH_RAMP)
+    # Wooden feet
+    draw_shaded_rect(c, 5, 14, 8, 17, WOOD_RAMP)
+    draw_shaded_rect(c, 31, 14, 34, 17, WOOD_RAMP)
+    if active:
+        # Pillow depression / warm sparkle
+        c.set_px(20 + frame, 9, (255, 230, 240, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_ws_shredder(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 16x20 document shredder
+    c = PixelCanvas(16, 20)
+    # Waste bin
+    draw_shaded_rect(c, 2, 7, 13, 19, make_ramp((60, 65, 75)))
+    # Shredder head
+    draw_shaded_rect(c, 1, 2, 14, 7, METAL_RAMP)
+    # Feed slot
+    draw_shaded_rect(c, 4, 3, 11, 4, make_ramp((20, 20, 25)))
+    if active:
+        # Paper feeding in / scraps
+        c.set_px(7, 2, (250, 250, 250, 255))
+        c.set_px(8, 8 + (frame % 3), (240, 240, 220, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_ws_well(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 16x18 stone fountain / well
+    c = PixelCanvas(16, 18)
+    # Stone basin
+    draw_shaded_rect(c, 1, 6, 14, 17, STONE_RAMP)
+    # Water surface
+    draw_shaded_ellipse(c, 8, 8, 5, 3, WATER_RAMP)
+    # Spout
+    draw_shaded_rect(c, 6, 2, 9, 6, BRASS_RAMP)
+    if active:
+        # Water splashing
+        c.set_px(8, 7 + (frame % 2), (200, 240, 255, 255))
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_portal_headquarters(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 48x56 ornate grand portal to authority headquarters
+    c = PixelCanvas(48, 56)
+    # Heavy stone pillars & arch
+    draw_shaded_rect(c, 2, 6, 45, 55, STONE_RAMP)
+    draw_shaded_ellipse(c, 24, 16, 22, 14, BRASS_RAMP)
+    # Inner gate
+    draw_shaded_rect(c, 10, 16, 37, 55, make_ramp((30, 25, 45)))
+    draw_shaded_ellipse(c, 24, 24, 14, 12, PORTAL_RAMP if active else make_ramp((60, 50, 80)))
+    # Authority emblem / eye at top
+    draw_shaded_ellipse(c, 24, 8, 6, 4, BRASS_RAMP)
+    c.set_px(24, 8, (240, 50, 50, 255))
+    if active:
+        pulse_r = (frame % 3) * 3 + 8
+        draw_shaded_ellipse(c, 24, 34, pulse_r, pulse_r + 4, GLOW_RAMP)
+    apply_dark_outline(c)
+    return c
+
+
+def _draw_trainings_attrappe(active: bool = False, frame: int = 0) -> PixelCanvas:
+    # 20x28 straw / wooden dummy on spring stand
+    c = PixelCanvas(20, 28)
+    # Base stand & spring
+    draw_shaded_rect(c, 4, 24, 15, 27, WOOD_RAMP)
+    draw_shaded_rect(c, 8, 19, 11, 24, METAL_RAMP)
+    # Straw torso & dummy target
+    draw_shaded_rect(c, 4, 7, 15, 19, make_ramp((170, 140, 75)))
+    # Head / burlap sack
+    draw_shaded_ellipse(c, 10, 4, 4, 4, make_ramp((180, 150, 85)))
+    # Bullseye on chest
+    c.set_px(10, 13, (240, 40, 40, 255))
+    c.set_px(9, 13, (255, 255, 255, 255))
+    c.set_px(11, 13, (255, 255, 255, 255))
+    if active:
+        # Wobble / hit effect
+        c.set_px(6 + frame, 10, (255, 240, 100, 255))
+    apply_dark_outline(c)
+    return c
+
+
 def build_env_prop_sheets(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Build umgebung/<key>.{png,json} for stations and environment props (Cards B28..B30)."""
     produced: list[Path] = []
 
-    # B28 Stations (6):
-    builders_b28 = [
+    # B28 & B29 Stations:
+    builders = [
         ("ws_portal", _draw_ws_portal),
         ("ws_werkbank", _draw_ws_werkbank),
         ("ws_fabrikator", _draw_ws_fabrikator),
         ("ws_liege", _draw_ws_liege),
         ("ws_haendler", _draw_ws_haendler),
         ("ws_zapfhahn", _draw_ws_zapfhahn),
+        ("ws_automat", _draw_ws_automat),
+        ("ws_schiessstand", _draw_ws_schiessstand),
+        ("ws_archiv", _draw_ws_archiv),
+        ("ws_couch", _draw_ws_couch),
+        ("ws_shredder", _draw_ws_shredder),
+        ("ws_well", _draw_ws_well),
+        ("portal_headquarters", _draw_portal_headquarters),
+        ("trainings_attrappe", _draw_trainings_attrappe),
     ]
 
-    for key, builder in builders_b28:
+    for key, builder in builders:
         idle_frames = [builder(active=False, frame=i) for i in range(2)]
         use_frames = [builder(active=True, frame=i) for i in range(3)]
         w, h = idle_frames[0].width, idle_frames[0].height
