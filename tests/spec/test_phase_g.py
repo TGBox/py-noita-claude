@@ -420,5 +420,7 @@ def test_g17_universes_are_playable_and_visible() -> None:
                     (ASSET_ROOT / cat / f"{name}.png").is_file() for cat in ("bosse", "kreaturen")
                 ), f"rig sheet {name} for {key} missing"
         else:
-            cat = "bosse" if SPECIES[key].boss else "kreaturen"
-            assert (ASSET_ROOT / cat / f"{key}.png").is_file(), f"sheet {cat}/{key} missing"
+            assert any(
+                (ASSET_ROOT / cat / f"{key}.png").is_file()
+                for cat in ("kreaturen", "bosse", "charaktere")
+            ), f"sheet for {key} missing"

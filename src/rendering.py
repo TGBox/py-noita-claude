@@ -720,7 +720,7 @@ def draw_creatures(
                         flash=flash,
                     )
             else:
-                sheet, meta = sheet_cache.get(_sheet_category(creature), key)
+                sheet, meta = sheet_cache.get(_sheet_category(creature, sheet_cache), key)
                 st = anim_state if anim_state in meta.anims else "idle"
                 anim = Animator(meta, st)
                 blit_frame(
@@ -777,8 +777,17 @@ PLACEHOLDER_FILL = (190, 70, 170)
 PLACEHOLDER_EDGE = (40, 10, 40)
 
 
-def _sheet_category(creature: Creature) -> str:
+SHEET_CATEGORIES = ("kreaturen", "bosse", "charaktere")
+
+
+def _sheet_category(creature: Creature, cache: SheetCache | None = None) -> str:
+    """Folder of the creature's sheet: the first one that holds it (mid-bosses are not
+    flagged as bosses but live in bosse/), else a guess from the key."""
     key = creature.spec.key
+    if cache is not None:
+        for category in SHEET_CATEGORIES:
+            if _has_file(cache, category, key):
+                return category
     if key.startswith(("agent_", "boese_")) or key == "ober_cloita":
         return "charaktere"
     return "bosse" if getattr(creature.spec, "boss", False) else "kreaturen"
@@ -802,7 +811,7 @@ def _has_sheets(cache: SheetCache, creature: Creature) -> bool:
             _has_file(cache, _rig_category(cache, part.sheet_name), part.sheet_name)
             for part in RIG_LAYOUTS[key].parts
         )
-    return _has_file(cache, _sheet_category(creature), key)
+    return _has_file(cache, _sheet_category(creature, cache), key)
 
 
 def _draw_placeholder(canvas: pygame.Surface, creature: Creature, x: int, y: int) -> None:
