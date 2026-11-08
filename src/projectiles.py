@@ -190,7 +190,8 @@ class ProjectileSystem:
                 resolver = self.payload_resolver if team == PLAYER_TEAM else None
                 projectile = build(shot, x, y, angle + spread, team, resolve=resolver)
                 projectile.gravity *= self.gravity_scale
-                projectile.bounces += self.bounce_bonus.get(team, 0)
+                if projectile.blast <= 0:  # explosive shots still blow up on walls
+                    projectile.bounces += self.bounce_bonus.get(team, 0)
                 projectile.damage *= damage_factor
                 if pellets > 1:
                     factor = self._rng.uniform(0.8, 1.1)

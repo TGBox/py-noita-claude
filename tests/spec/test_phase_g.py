@@ -473,3 +473,30 @@ def test_g20_aktenhalde_firebreaks() -> None:
             f"paper section {width}x{height} has no firebreak"
         )
 
+def test_g21_hit_flash_keeps_sprites_and_gold_is_auto_collected() -> None:
+    """Playtest: hit creatures turned into white squares; gold needed many clicks."""
+    from src.loot import Pickup
+    from src.run import Controls, Run
+    from src.sprite_render import blit_frame
+    from src.sprites import AnimSpec, Animator, SheetMeta
+
+    sheet = pygame.Surface((8, 8), pygame.SRCALPHA)
+    sheet.fill((0, 0, 0, 0))
+    sheet.fill((200, 50, 50, 255), (2, 2, 4, 4))
+    meta = SheetMeta(frame_size=(8, 8), anchor=(4, 4), anims={"idle": AnimSpec(0, 1)}, glow=())
+    target = pygame.Surface((20, 20), pygame.SRCALPHA)
+    target.fill((0, 0, 0, 0))
+    blit_frame(target, sheet, meta, Animator(meta, "idle"), 10, 10, 0, 0, flash=1.0)
+    assert sheet.get_at((0, 0)).a == 0, "the flash must not change the cached sheet"
+    assert sheet.get_at((3, 3))[:3] == (200, 50, 50)
+    assert target.get_at((6, 6)).a == 0, "transparent pixels must stay transparent"
+    assert target.get_at((9, 9)).a == 255
+
+    run = Run(seed=21)
+    run.start_multiverse_run()
+    cx, cy = run.player.center
+    run.pickups.append(Pickup(cx, cy, kind="gold", amount=7))
+    gold = run.gold
+    run.update(0.016, Controls())
+    assert run.gold == gold + 7
+

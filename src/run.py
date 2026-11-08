@@ -1002,7 +1002,7 @@ class Run:
             if self.in_workshop and self.menu_mode == "":
                 self.interact_station()
             else:
-                self._pick_up()
+                self._pick_up_here()
         if alive and self.player.polymorphed <= 0:
             self._use_flask(controls, dt)
         self._kick_cooldown = max(0.0, self._kick_cooldown - dt)
@@ -1548,6 +1548,29 @@ class Run:
                 self.stats["pearls"] += item.pearls
                 self.pickups.remove(item)
                 self.events.append("pearl")
+        # gold, samples and shards are collected by walking over them (playtest: too many clicks)
+        for item in [i for i in self.pickups if i.kind in AUTO_PICKUP_KINDS and not i.price]:
+            if math.hypot(item.x - cx, item.y - cy) <= PICKUP_RANGE * 0.6:
+                self._pick_up_new_kind(item)
+
+    def _pick_up_here(self) -> None:
+        """[E]: take the nearest item, then every other free module lying in reach.
+
+        Wands, flasks, perks and shop items stay one per press (they are choices)."""
+        first = self.nearest_pickup()
+        if first is None:
+            return
+        self._pick_up(first)
+        cx, cy = self.player.center
+        for item in list(self.pickups):
+            if item is first or item.price or item.perk is not None or item.reroll:
+                continue
+            if item.portal or item.wand is not None or item.flask is not None:
+                continue
+            if item.block is None and item.kind not in NEW_PICKUP_KINDS:
+                continue
+            if item in self.pickups and math.hypot(item.x - cx, item.y - cy) <= PICKUP_RANGE:
+                self._pick_up(item)
 
     def _pick_up(self, item: Pickup | None = None) -> bool:
         if item is None:
@@ -2243,7 +2266,7 @@ def _unpack(text: str) -> bytes:
     return zlib.decompress(base64.b64decode(text.encode("ascii")))
 
 
-FIREBREAK_CELL = (320, 240)  # Aktenhalde: paper sections between ink-paper walls (cells)
+FIREBREAK_CELL = (160, 120)  # Aktenhalde: paper sections between ink-paper walls (cells)
 FIREBREAK_THICKNESS = 3
 NATIVES_PER_SPECIES = 4  # natives of each species per universe level (before area scaling)
 # region layout per universe (bible 03), used for region effects on organism-built levels
@@ -2265,6 +2288,7 @@ NEW_PICKUP_KINDS = frozenset(
         "formular_stempel",
     }
 )
+AUTO_PICKUP_KINDS = frozenset({"gold", "sample", "blueprint_shard", "memory_shard", "badge"})
 BLUEPRINT_SHARDS_NEEDED = 3
 MILK_COOLDOWN = 8.0  # seconds before a giver can be milked again
 MILK_DROPS = 4

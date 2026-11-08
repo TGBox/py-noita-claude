@@ -11,7 +11,7 @@ rule                   rank 1                      rank 2      rank 3
 =====================  ==========================  ==========  ============================
 ``rule_living_walls``  flesh regrows 1 cell/s per  twice that  three times
                        100 edge cells
-``rule_paperwork``     flammability x1.5           x2          x3
+``rule_paperwork``     flammability x1.2           x1.5        x2
 ``rule_bounce``        +2 bounces                  +3          +4, enemy shots bounce too
 ``rule_tiny``          gravity 50 %                45 %        40 %
 ``rule_beat``          beat 0.5 s, +25 % damage    0.4 s       0.33 s, +30 %
@@ -49,7 +49,7 @@ DESCRIPTIONS_DE = {
 
 RANK_PARAMS: dict[str, tuple[dict[str, Any], ...]] = {
     "rule_living_walls": ({"regrow": 1.0}, {"regrow": 2.0}, {"regrow": 3.0}),
-    "rule_paperwork": ({"flammability": 1.5}, {"flammability": 2.0}, {"flammability": 3.0}),
+    "rule_paperwork": ({"flammability": 1.2}, {"flammability": 1.5}, {"flammability": 2.0}),
     "rule_bounce": (
         {"bounces": 2, "enemy_bounces": 0},
         {"bounces": 3, "enemy_bounces": 0},

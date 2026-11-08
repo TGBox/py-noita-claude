@@ -108,18 +108,15 @@ def blit_frame(
     draw_x = screen_x - anchor_x
     draw_y = screen_y - anchor_y
 
-    # Apply flash effect (white overlay)
+    # Flash and tint work on a copy (the frame is a view into the cached sheet) and only
+    # change colour, never alpha: transparent pixels must stay transparent.
+    if flash > 0.0 or tint is not None:
+        frame = frame.copy()
     if flash > 0.0:
-        overlay = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
-        alpha = int(255 * flash)
-        overlay.fill((255, 255, 255, alpha))
-        frame.blit(overlay, (0, 0))
-
-    # Apply tint effect
+        lift = int(255 * min(1.0, flash))
+        frame.fill((lift, lift, lift, 0), special_flags=pygame.BLEND_RGBA_ADD)
     if tint is not None:
-        tint_surf = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
-        tint_surf.fill(tint + (255,))
-        frame.blit(tint_surf, (0, 0), special_flags=pygame.BLEND_MULT)
+        frame.fill((*tint, 255), special_flags=pygame.BLEND_RGBA_MULT)
 
     # Blit to target
     target.blit(frame, (draw_x, draw_y))

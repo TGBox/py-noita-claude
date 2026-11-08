@@ -468,81 +468,71 @@ def draw_portal_select_menu(
     offers: list[Any],
     selected_index: int,
 ) -> None:
-    """Draw the portal universe selection overlay (Contract V22, Card E11)."""
+    """Draw the portal universe selection overlay (Contract V22, Card E11).
+
+    Each offer is a panel in the game's menu style: name, pitch, rule with its effect,
+    rank, natives and the Zwischengegner waiting at the anchor point (bible 02).
+    """
+    from src.enemies import SPECIES
+    from src.rules import DESCRIPTIONS_DE, NAMES_DE
     from src.universes.catalog import ALL_UNIVERSES
 
-    s = surface.get_width() / 1280
-    overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-    overlay.fill((10, 8, 16, 210))
-    surface.blit(overlay, (0, 0))
+    ui.shade(surface, 205)
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    ui.text(surface, "Der Portalrahmen", (sw / 2, 38 * s), round(30 * s), ui.GOLD,
+            heading=True, anchor="center")  # fmt: skip
+    ui.text(surface, "Wohin soll die Reise gehen?", (sw / 2, 74 * s), round(15 * s), ui.DIM,
+            anchor="center")  # fmt: skip
 
-    title = font.render("PORTALRAHMEN: WÄHLE EIN UNIVERSUM", True, (240, 220, 160))
-    surface.blit(title, (surface.get_width() // 2 - title.get_width() // 2, int(40 * s)))
-
-    sub = small_font.render("Reise durch das Portal in eine andere Realität", True, (180, 180, 200))
-    surface.blit(sub, (surface.get_width() // 2 - sub.get_width() // 2, int(75 * s)))
-
-    card_w = int(320 * s)
-    card_h = int(220 * s)
-    gap = int(40 * s)
-    total_w = len(offers) * card_w + max(0, len(offers) - 1) * gap
-    start_x = (surface.get_width() - total_w) // 2
-    y0 = int(120 * s)
-
+    card_w, card_h, gap = round(400 * s), round(330 * s), round(36 * s)
+    total = len(offers) * card_w + max(0, len(offers) - 1) * gap
+    x = (sw - total) // 2
+    top = round(110 * s)
+    body = round(14 * s)
+    line_h = round(18 * s)
     for i, offer in enumerate(offers):
-        u_key = getattr(offer, "universe", "")
-        u = ALL_UNIVERSES.get(u_key)
-        u_name = getattr(u, "name_de", getattr(u, "name", u_key.title())) if u else u_key.title()
-        u_rule = u.rule if u else ""
-        u_rank = getattr(offer, "rank", 1)
+        u = ALL_UNIVERSES.get(getattr(offer, "universe", ""))
+        if u is None:
+            continue
+        selected = i == selected_index
+        rect = pygame.Rect(x + i * (card_w + gap), top, card_w, card_h)
+        ui.panel(surface, rect, alpha=245 if selected else 215)
+        if selected:
+            pygame.draw.rect(surface, ui.GOLD, rect.inflate(6, 6), 2)
+        pad = round(16 * s)
+        width = card_w - 2 * pad
+        cx, cy = rect.x + pad, rect.y + pad
+        ui.text(surface, u.name_de, (cx, cy), round(24 * s), ui.GOLD if selected else ui.TEXT,
+                heading=True)  # fmt: skip
+        cy += round(34 * s)
+        ui.text(surface, f"Rang {getattr(offer, 'rank', 1)} von 3", (cx, cy), body, ui.DIM)
+        cy += round(24 * s)
+        for line in ui.wrap(u.pitch_de, body, width)[:3]:
+            ui.text(surface, line, (cx, cy), body)
+            cy += line_h
+        cy += round(8 * s)
+        rule = NAMES_DE.get(u.rule, u.rule)
+        ui.text(surface, f"Regel: {rule}", (cx, cy), body, (160, 200, 240), bold=True)
+        cy += line_h
+        for line in ui.wrap(DESCRIPTIONS_DE.get(u.rule, ""), body, width)[:2]:
+            ui.text(surface, line, (cx, cy), body, ui.DIM)
+            cy += line_h
+        cy += round(8 * s)
+        natives = ", ".join(SPECIES[k].name_de for k in u.natives if k in SPECIES)
+        for line in ui.wrap(f"Bewohner: {natives}", body, width)[:2]:
+            ui.text(surface, line, (cx, cy), body, ui.DIM)
+            cy += line_h
         boss = getattr(offer, "boss", None)
-
-        is_sel = i == selected_index
-        rect = pygame.Rect(start_x + i * (card_w + gap), y0, card_w, card_h)
-
-        bg_col = (30, 25, 45, 230) if not is_sel else (50, 40, 75, 240)
-        border_col = (120, 100, 160) if not is_sel else (255, 215, 80)
-        card_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        card_surf.fill(bg_col)
-        pygame.draw.rect(
-            card_surf, border_col, card_surf.get_rect(), width=3 if is_sel else 1, border_radius=6
-        )
-        surface.blit(card_surf, rect.topleft)
-
-        # Name
-        name_txt = font.render(u_name, True, (255, 255, 255) if is_sel else (210, 210, 220))
-        surface.blit(name_txt, (rect.x + 16, rect.y + 16))
-
-        # Rank
-        stars_txt = "★" * u_rank
-        rank_txt = small_font.render(f"Rang {u_rank} {stars_txt}", True, (240, 180, 60))
-        surface.blit(rank_txt, (rect.x + 16, rect.y + 55))
-
-        # Rule
-        rule_txt = small_font.render(f"Regel: {u_rule}", True, (160, 200, 240))
-        surface.blit(rule_txt, (rect.x + 16, rect.y + 85))
-
-        # Boss status
         if boss:
-            boss_txt = small_font.render(f"Zwischengegner: {boss}", True, (255, 100, 100))
+            name = SPECIES[boss].name_de if boss in SPECIES else boss
+            warn, color = f"Am Ankerpunkt wartet: {name}", (235, 110, 100)
         else:
-            boss_txt = small_font.render("Kein Zwischengegner", True, (140, 160, 140))
-        surface.blit(boss_txt, (rect.x + 16, rect.y + 115))
+            warn, color = "Kein Zwischengegner am Ankerpunkt", (150, 175, 150)
+        ui.text(surface, warn, (cx, rect.bottom - round(52 * s)), body, color, bold=True)
+        hint = "[Enter] Durchschreiten" if selected else f"[{i + 1}] Auswählen"
+        ui.text(surface, hint, (cx, rect.bottom - round(28 * s)), body,
+                ui.GOLD if selected else ui.DIM)  # fmt: skip
 
-        # Hint
-        sel_hint = small_font.render(
-            f"[{i + 1}] Auswählen" if not is_sel else "[ENTER] Durchschreiten",
-            True,
-            (255, 215, 80) if is_sel else (140, 140, 150),
-        )
-        surface.blit(sel_hint, (rect.x + 16, rect.bottom - 30))
-
-    help_txt = small_font.render(
-        "[1] / [2]: Wahl  |  [Pfeiltasten]: Auswählen  |  [ENTER]: Bestätigen  |  [ESC]: Zurück",
-        True,
-        (160, 160, 180),
-    )
-    surface.blit(
-        help_txt,
-        (surface.get_width() // 2 - help_txt.get_width() // 2, surface.get_height() - int(45 * s)),
-    )
+    ui.text(surface, "[1]/[2] oder Pfeiltasten: wählen  |  [Enter]: durchschreiten  |  [Esc]: zurück",
+            (sw / 2, sh - 40 * s), round(14 * s), ui.DIM, anchor="center")  # fmt: skip
