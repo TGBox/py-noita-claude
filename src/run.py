@@ -262,7 +262,9 @@ class Run:
         self.active_traders: list[Any] = []
         self.trader_offers: dict[str, list[Any]] = {}
         self.selected_trader_key: str = ""
+        self.active_trader_key: str = ""
         self.selected_offer_index: int = 0
+        self.menu_index: int = 0
         self.inventory_open: bool = False
         self.boss_script: BossScript | None = None
         self.records: Records = Records()
@@ -292,11 +294,14 @@ class Run:
 
     def start_multiverse_run(self) -> None:
         """Start a run in the workshophub with universe progression (Card G14)."""
+        from src.spells import blocks_of_tier
         from src.universes.plan import RunPlan
 
         self._reset()
         self.plan = RunPlan(self.seed)
         self.portal_index = 0
+        for k in blocks_of_tier(1):
+            self.records.discover("blueprint", k)
         self.enter_workshop()
 
     def new_run(self) -> None:
@@ -1943,33 +1948,44 @@ class Run:
                 if not self.experiment_offers:
                     self._roll_experiments()
                 self.menu_mode = "experiment"
+                self.menu_index = 0
             else:
                 self.messages.append(
                     "Für diesen Besuch hast du bereits ein Selbstexperiment gewählt."
                 )
         elif key == "ws_fabrikator":
             self.menu_mode = "fabricator"
+            self.menu_index = 0
         elif key == "ws_werkbank":
             self.inventory_open = True
         elif key == "ws_haendler":
-            if self.active_traders:
-                # Pick the nearest trader on the trader slots
-                if len(self.active_traders) == 1:
-                    self.selected_trader_key = self.active_traders[0].key
-                else:
-                    slots = self.workshop_layout.trader_slots
-                    px = self.player.x
-                    d0 = abs(px - slots[0][0])
-                    d1 = abs(px - slots[1][0])
-                    idx = 0 if d0 <= d1 else 1
-                    if idx < len(self.active_traders):
-                        self.selected_trader_key = self.active_traders[idx].key
-                    else:
-                        self.selected_trader_key = self.active_traders[0].key
-                self.selected_offer_index = 0
-                self.menu_mode = "trader"
+            if not self.active_traders:
+                # Default trader so workshop shop works even before first universe
+                from src.traders import TRADERS, generate_offers
+
+                default_trader = TRADERS["npc_magenhaendler"]
+                self.active_traders = [default_trader]
+                self.trader_offers[default_trader.key] = generate_offers(
+                    default_trader, 1, self.rng, price_factor=self.price_factor
+                )
+
+            # Pick the nearest trader on the trader slots
+            if len(self.active_traders) == 1:
+                self.selected_trader_key = self.active_traders[0].key
             else:
-                self.messages.append("Noch keine Händler da.")
+                slots = self.workshop_layout.trader_slots
+                px = self.player.x
+                d0 = abs(px - slots[0][0])
+                d1 = abs(px - slots[1][0])
+                idx = 0 if d0 <= d1 else 1
+                if idx < len(self.active_traders):
+                    self.selected_trader_key = self.active_traders[idx].key
+                else:
+                    self.selected_trader_key = self.active_traders[0].key
+            self.active_trader_key = self.selected_trader_key
+            self.selected_offer_index = 0
+            self.menu_index = 0
+            self.menu_mode = "trader"
         elif key == "ws_archiv":
             self.menu_mode = "archive"
         elif key == "ws_portal":
@@ -2324,7 +2340,7 @@ class Run:
         raise NotImplementedError("Card F14")
 
     def handle_menu_input(self, key: int) -> bool:
-        """Handle keyboard navigation for modal overlays (Card G09, G14)."""
+        """Handle keyboard navigation for modal overlays (Card G09, G14, G22)."""
         import pygame
 
         if self.menu_mode == "portal_select":
@@ -2332,28 +2348,127 @@ class Run:
             if not offers:
                 if key == pygame.K_ESCAPE:
                     self.menu_mode = ""
+                    self.menu_index = 0
                     return True
                 return False
 
             if key in (pygame.K_UP, pygame.K_w):
                 self.portal_index = (self.portal_index - 1) % len(offers)
+                self.menu_index = self.portal_index
                 return True
             if key in (pygame.K_DOWN, pygame.K_s):
                 self.portal_index = (self.portal_index + 1) % len(offers)
+                self.menu_index = self.portal_index
                 return True
             if key in (pygame.K_1, pygame.K_2):
                 idx = 0 if key == pygame.K_1 else 1
                 if idx < len(offers):
                     self.portal_index = idx
+                    self.menu_index = idx
                     return True
             if key in (pygame.K_RETURN, pygame.K_e):
                 idx = self.portal_index
                 self.menu_mode = ""
                 self.portal_index = 0
+                self.menu_index = 0
                 self.choose_next_universe(idx)
                 return True
             if key == pygame.K_ESCAPE:
                 self.menu_mode = ""
+                self.menu_index = 0
+                return True
+            return False
+
+        if self.menu_mode == "trader":
+            t_key = self.active_trader_key or self.selected_trader_key
+            offers = self.trader_offers.get(t_key, [])
+            if key == pygame.K_ESCAPE:
+                self.menu_mode = ""
+                self.menu_index = 0
+                return True
+            if not offers:
+                return False
+            if key in (pygame.K_UP, pygame.K_w):
+                self.menu_index = (self.menu_index - 1) % len(offers)
+                self.selected_offer_index = self.menu_index
+                return True
+            if key in (pygame.K_DOWN, pygame.K_s):
+                self.menu_index = (self.menu_index + 1) % len(offers)
+                self.selected_offer_index = self.menu_index
+                return True
+            if key in (pygame.K_RETURN, pygame.K_e):
+                self.buy_trader_offer(t_key, self.menu_index)
+                if (
+                    self.menu_index >= len(self.trader_offers.get(t_key, []))
+                    and self.menu_index > 0
+                ):
+                    self.menu_index -= 1
+                    self.selected_offer_index = self.menu_index
+                return True
+            if key == pygame.K_t:
+                self.buy_trader_offer(t_key, self.menu_index, use_samples=True)
+                if (
+                    self.menu_index >= len(self.trader_offers.get(t_key, []))
+                    and self.menu_index > 0
+                ):
+                    self.menu_index -= 1
+                    self.selected_offer_index = self.menu_index
+                return True
+            return key == pygame.K_r
+
+        if self.menu_mode == "experiment":
+            offers = self.experiment_offers
+            if key == pygame.K_ESCAPE:
+                self.menu_mode = ""
+                self.menu_index = 0
+                return True
+            if not offers:
+                return False
+            if key in (pygame.K_UP, pygame.K_w):
+                self.menu_index = (self.menu_index - 1) % len(offers)
+                return True
+            if key in (pygame.K_DOWN, pygame.K_s):
+                self.menu_index = (self.menu_index + 1) % len(offers)
+                return True
+            if key in (pygame.K_RETURN, pygame.K_e):
+                self.pick_experiment(self.menu_index)
+                return True
+            if key == pygame.K_r:
+                self.reroll_experiments()
+                self.menu_index = 0
+                return True
+            return False
+
+        if self.menu_mode == "fabricator":
+            blueprints = list(getattr(getattr(self, "records", None), "blueprints", []))
+            if key == pygame.K_ESCAPE:
+                self.menu_mode = ""
+                self.menu_index = 0
+                return True
+            if not blueprints:
+                return False
+            if key in (pygame.K_UP, pygame.K_w):
+                self.menu_index = (self.menu_index - 1) % len(blueprints)
+                return True
+            if key in (pygame.K_DOWN, pygame.K_s):
+                self.menu_index = (self.menu_index + 1) % len(blueprints)
+                return True
+            if key in (pygame.K_RETURN, pygame.K_e):
+                if 0 <= self.menu_index < len(blueprints):
+                    self.craft_selected_recipe(blueprints[self.menu_index])
+                return True
+            return False
+
+        if self.menu_mode == "minigame":
+            if key == pygame.K_ESCAPE:
+                from src.minigames import MinigameResult
+
+                if self.active_minigame is not None and self.active_minigame.result is None:
+                    self.active_minigame.result = MinigameResult(
+                        completed=True, won=False, message_de="Aufgegeben."
+                    )
+                self.menu_mode = ""
+                self.menu_index = 0
                 return True
             return False
 

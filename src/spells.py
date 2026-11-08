@@ -679,7 +679,8 @@ class _BlockCatalogTuple(tuple[Block, ...]):
 
     def __getitem__(self, key: int | slice | str) -> Any:  # type: ignore[override]
         if isinstance(key, str):
-            return CATALOG[key]
+            k = resolve_block_key(key)
+            return CATALOG[k]
         return super().__getitem__(key)
 
 
@@ -690,6 +691,8 @@ BLOCKS = _BlockCatalogTuple(BLOCKS)
 MODULE_ALIASES: dict[str, str] = {
     # Geschosse (24)
     "flux_funke": "funke",
+    "spark": "funke",
+    "funken": "funke",
     "nadelschuss": "nadel",
     "huepfgranate": "gallenblase",
     "matschbatzen": "klumpen",
