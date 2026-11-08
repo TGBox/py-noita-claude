@@ -888,3 +888,107 @@ def draw_experiment_menu(
         ui.DIM,
         anchor="center",
     )
+
+
+def draw_minigame_overlay(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    run: Any,
+) -> None:
+    """Draw the active minigame overlay / frame (Contract V20 §2, Card E14)."""
+    sw, sh = surface.get_size()
+    s = sw / 640.0
+    mg = getattr(run, "active_minigame", None)
+    if mg is None:
+        return
+
+    # Draw dark overlay background
+    overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 180))
+    surface.blit(overlay, (0, 0))
+
+    # Minigame frame
+    frame_w, frame_h = round(340 * s), round(260 * s)
+    frame_x = (sw - frame_w) // 2
+    frame_y = (sh - frame_h) // 2
+    frame_rect = pygame.Rect(frame_x, frame_y, frame_w, frame_h)
+    ui.panel(surface, frame_rect, alpha=235)
+    pygame.draw.rect(surface, ui.GOLD, frame_rect, 2)
+
+    title = getattr(mg, "title_de", "Minispiel")
+    ui.text(
+        surface,
+        title,
+        (sw / 2, frame_y + 16 * s),
+        round(18 * s),
+        ui.GOLD,
+        heading=True,
+        anchor="center",
+    )
+
+    time_left = max(
+        0.0, getattr(mg, "time_limit", 15.0) - getattr(mg, "elapsed", getattr(mg, "_elapsed", 0.0))
+    )
+    ui.text(
+        surface,
+        f"Zeit: {time_left:4.1f}s",
+        (frame_x + 20 * s, frame_y + 16 * s),
+        round(14 * s),
+        ui.TEXT,
+    )
+
+    if hasattr(mg, "score"):
+        ui.text(
+            surface,
+            f"Punkte: {mg.score}",
+            (frame_x + frame_w - 20 * s, frame_y + 16 * s),
+            round(14 * s),
+            ui.GOLD,
+            anchor="topright",
+        )
+
+    # Render minigame area if world or targets present
+    center_y = frame_y + frame_h // 2
+    if hasattr(mg, "targets"):
+        # Schiessstand
+        ui.text(
+            surface,
+            "Klicke die Agenten (+1), meide Klonita (-3)!",
+            (sw / 2, center_y - 20 * s),
+            round(13 * s),
+            ui.DIM,
+            anchor="center",
+        )
+    else:
+        # Physik-o-Mat
+        ui.text(
+            surface,
+            "Löse das physikalische Rätsel!",
+            (sw / 2, center_y - 20 * s),
+            round(13 * s),
+            ui.DIM,
+            anchor="center",
+        )
+
+    if mg.result is not None:
+        res = mg.result
+        res_color = ui.GREEN if res.won else ui.RED
+        ui.text(
+            surface,
+            res.message_de,
+            (sw / 2, center_y + 20 * s),
+            round(16 * s),
+            res_color,
+            heading=True,
+            anchor="center",
+        )
+
+    ui.text(
+        surface,
+        "[Esc] Beenden / Zurück",
+        (sw / 2, frame_y + frame_h - 22 * s),
+        round(12 * s),
+        ui.DIM,
+        anchor="center",
+    )
