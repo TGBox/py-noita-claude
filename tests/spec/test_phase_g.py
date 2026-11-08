@@ -294,6 +294,15 @@ def test_g14_multiverse_run_starts_in_workshop_and_portal_keys() -> None:
     assert run.in_workshop is False and run.menu_mode == ""
     assert run.universe_key == offers[1].universe
 
+    # free slot: the anchor point is open and leads back to the workshop (bible 02)
+    assert run.exit_open is True
+    ex, ey = run.level.exit
+    run.player.x = ex - run.player.width // 2
+    run.player.y = ey - run.player.height // 2
+    run.update(0.016, Controls())
+    assert run.in_workshop is True and run.in_sanctum is False
+    assert run.plan.slot == 1 and len(run.plan.offers()) >= 1
+
 
 def test_g15_game_loop_workshop_and_portal_menu(monkeypatch) -> None:
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")

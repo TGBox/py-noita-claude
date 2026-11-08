@@ -1749,6 +1749,7 @@ class Run:
 
         self.in_workshop = True
         self.menu_mode = ""
+        self.exit_open = False  # the workshop has no anchor point; the portal frame leads on
 
         # Build workshop world and layout
         self.world = World(*WORKSHOP_SIZE)
@@ -1864,6 +1865,8 @@ class Run:
 
         # Enter the chosen universe
         self.enter_depth(self.depth_index)
+        # bible 02: the anchor point is open unless a Zwischengegner guards it (boss slot)
+        self.exit_open = not self.boss_slot
 
         # Apply and consume active next_boost
         boost = self.next_boost
@@ -2069,6 +2072,10 @@ class Run:
 
     def _descend(self) -> None:
         self.events.append("descend")
+        if self.plan is not None:  # multiverse run: the anchor point leads back to the workshop
+            if not self.in_workshop:
+                self.enter_workshop()
+            return
         if self.in_sanctum:
             self.enter_depth(self.depth_index + 1)
         elif self.depth_index + 1 < len(DEPTHS):
