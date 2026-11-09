@@ -82,3 +82,39 @@ class Minigame:
         return MinigameResult(
             completed=True, won=True, reward_gold=self.stake * 2, message_de="Geschafft!"
         )
+
+        self.elapsed += dt
+        if action is not None:
+            self.on_action(action, cursor)
+
+        # Step physics world
+        self.world.step()
+        self.tick(dt)
+
+        # Check win/loss
+        if not self.finished:
+            if self.check_win():
+                self.finish(won=True)
+            elif self.elapsed >= self.time_limit:
+                self.finish(won=False)
+
+        return self.result
+
+    def on_action(self, action: str, cursor: tuple[int, int]) -> None:
+        pass
+
+    def tick(self, dt: float) -> None:
+        pass
+
+    def check_win(self) -> bool:
+        return False
+
+    def finish(self, won: bool) -> None:
+        self.finished = True
+        if won:
+            self.result = self.make_win_result()
+        else:
+            self.result = MinigameResult(completed=True, won=False, message_de="Zeit abgelaufen!")
+
+    def make_win_result(self) -> MinigameResult:
+        return MinigameResult(completed=True, won=True, reward_gold=self.stake * 2, message_de="Geschafft!")
