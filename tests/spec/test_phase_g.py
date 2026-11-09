@@ -382,7 +382,7 @@ def test_g16_universe_entry_end_to_end() -> None:
 def test_g17_universes_are_playable_and_visible() -> None:
     """First-playtest regressions: no trapped start, no invisible creatures."""
     from src.enemies import SPECIES
-    from src.materials import BLOCKS_BODY, KIND, LIQUID
+    from src.materials import BLOCKS_BODY
     from src.native import byte_view, reachable
     from src.player import PLAYER_HEIGHT, PLAYER_WIDTH
     from src.procbody import RIG_LAYOUTS
@@ -397,7 +397,8 @@ def test_g17_universes_are_playable_and_visible() -> None:
         for u in ALL_UNIVERSES.values():
             run.enter_universe(u)
             w, level = run.world, run.level
-            blocking = [int(b or k == LIQUID) for b, k in zip(BLOCKS_BODY, KIND, strict=False)]
+            # liquids are passable: seas and flooded naves are swum through (G26)
+            blocking = [int(b) for b in BLOCKS_BODY]
             goal = (level.exit[0] - PLAYER_WIDTH // 2, level.exit[1] - PLAYER_HEIGHT // 2)
             found, _ = reachable(
                 byte_view(w.grid), w.width, w.height, blocking, box,
@@ -646,4 +647,43 @@ def test_g25_minigames_are_visible_and_playable(monkeypatch) -> None:
     assert bytes(run.active_minigame.world.grid) != before, "a click must change the puzzle"
     game._on_key(pygame.K_ESCAPE)
     assert run.menu_mode == ""
+
+def test_g26_universes_have_their_signature_terrain() -> None:
+    """Each universe is recognisable by what bible 03 promises, not just recoloured caves."""
+    from src import materials as mat
+    from src.run import Controls, Run
+    from src.universes.catalog import ALL_UNIVERSES
+
+    def share(w, keys, x0, y0, x1, y1, step=3) -> float:  # type: ignore[no-untyped-def]
+        want = {mat.MAT_ID[k] for k in keys}
+        cells = [w.get(x, y) for y in range(y0, y1, step) for x in range(x0, x1, step)]
+        return sum(c in want for c in cells) / max(1, len(cells))
+
+    run = Run(seed=26)
+    run.start_multiverse_run()
+    for key in ("fleischwelt", "aktenhalde", "glibbria", "kruemelreich", "sporenklub", "abtei"):
+        run.enter_universe(ALL_UNIVERSES[key])
+        w = run.world
+        W, H = w.width, w.height
+        if key == "fleischwelt":
+            assert share(w, ("enamel",), 0, 0, W, H // 3, 2) > 0.002, "teeth in the Schlund"
+            assert share(w, ("acid",), 0, H // 3, W, H * 2 // 3, 2) > 0.001, "acid in the stomach"
+        elif key == "aktenhalde":
+            assert share(w, ("tinte",), W * 2 // 3, H // 3, W, H, 2) > 0.001, "ink lakes"
+        elif key == "glibbria":
+            assert share(w, ("brausesirup",), 0, int(H * 0.9), W, H - 3) > 0.6, "syrup sea"
+            assert share(w, ("air",), 0, 0, W, H * 2 // 3) > 0.35, "open sky between islands"
+        elif key == "kruemelreich":
+            assert share(w, ("fliese",), 0, H // 3, W, H // 2, 1) > 0.008, "tiled kitchen floor"
+            assert share(w, ("air",), 0, H // 10, W, H // 3) > 0.6, "open kitchen above"
+        elif key == "sporenklub":
+            assert share(w, ("air",), W // 3, H * 2 // 5, W * 2 // 3, H // 2) > 0.8, "dance floor"
+            assert share(w, ("neonsaft",), 0, 0, W, H, 2) > 0.0002, "glowing neon juice"
+        elif key == "abtei":
+            assert share(w, ("water",), 0, H // 2, W, H) > 0.25, "flooded nave and crypt"
+            assert share(w, ("water",), 0, 0, W, H // 4) < 0.02, "dry bell tower"
+            assert share(w, ("glockenbronze",), 0, 0, W, H // 4, 1) > 0.001, "the great bell"
+        for _ in range(30):  # half a second of play in the new terrain
+            run.update(0.016, Controls())
+        run.enter_workshop()
 

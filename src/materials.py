@@ -514,7 +514,7 @@ _GLIBBRIA = (
         "Brausesirup",
         LIQUID,
         32,
-        (240, 160, 40),
+        (246, 160, 224),  # bible 03: #F6A0E0
         fluidity=3,
         description_de="Prickelnder, klebriger Sirup.",
     ),

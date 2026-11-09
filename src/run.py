@@ -58,6 +58,7 @@ from src.records import Records
 from src.rules import RULE_KEYS, Rule, apply_player_rules
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
 from src.spells import CATALOG, Block, resolve_payload_material
+from src.universes import features as universe_features
 from src.universes.catalog import BY_KEY as UNIVERSE_BY_KEY
 from src.universes.catalog import MID_BOSSES, UNIVERSES
 from src.universes.gen.common import region_bands
@@ -560,9 +561,16 @@ class Run:
             # multiverse run: the proven organism generator, dressed in the universe's
             # materials (aliases of its set) and given the V9 fields (Card G19)
             organism = generate_level(self.world, depth, self.seed + index)
+            rng = random.Random(self.seed * 31 + index + (self.plan.slot if self.plan else 0))
+            keep = [(*organism.spawn, 20), (*organism.exit, 20)]
+            shaped = universe_features.shape(self.world, self.universe.key, rng, keep)
             self.level = self._dress_universe_level(organism)
             self._add_universe_features()
             self._ensure_universe_paths()
+            universe_features.flood(
+                self.world, self.universe.key, rng, keep + self._level_keep(), shaped
+            )
+            self.world.wake_all()
         elif self.universe_key != "fleischwelt":
             self.level = generate_level(
                 self.world, depth, self.seed + index, universe=self.universe
@@ -2266,6 +2274,17 @@ class Run:
             if min_dist <= math.dist((x, y), spawn) <= max_dist:
                 return (x, y)
         return None
+
+    def _level_keep(self) -> list[tuple[int, int, int]]:
+        """Arenas and the quest giver stay dry when a universe floods (features.flood)."""
+        keep = []
+        for arena in (self.level.mid_boss_arena, self.level.boss_arena):
+            if arena and arena != (0, 0, 0, 0):
+                cx, cy = (arena[0] + arena[2]) // 2, (arena[1] + arena[3]) // 2
+                keep.append((cx, cy, max(arena[2] - arena[0], arena[3] - arena[1]) // 2 + 8))
+        if self.level.quest_giver is not None:
+            keep.append((*self.level.quest_giver, 16))
+        return keep
 
     def _ensure_universe_paths(self) -> None:
         """Dig passages so the start reaches the anchor point, the arenas and the quest giver.

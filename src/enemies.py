@@ -11,7 +11,7 @@ from src import materials as mat
 from src.behaviour import Ability, BehaviourContext, tick_abilities
 from src.body import ENEMY_TEAM, Body
 from src.factions import are_hostile
-from src.materials import AIR
+from src.materials import AIR, KIND, LIQUID
 from src.player import GRAVITY, MAX_FALL_SPEED
 from src.projectiles import ProjectileSystem
 from src.spells import CATALOG
@@ -1044,7 +1044,9 @@ def populate(
                 break
             x = rng.randint(20, world.width - 20)
             y = rng.randint(20, world.height - 20)
-            if world.get(x, y) != AIR or math.hypot(x - avoid[0], y - avoid[1]) < safe_radius:
+            cell = world.get(x, y)
+            swims = spec.flying and KIND[cell] == LIQUID  # fish & co. in flooded universes
+            if (cell != AIR and not swims) or math.hypot(x - avoid[0], y - avoid[1]) < safe_radius:
                 continue
             if spec.hangs:
                 while world.get(x, y - 1) == AIR and y > 3:
