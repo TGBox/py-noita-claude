@@ -673,7 +673,7 @@ _SPORENKLUB: tuple[Material, ...] = (
         GAS,
         -1,
         (160, 220, 190),
-        life=(300, 600),
+        life=(150, 255),  # life is stored in a byte
         description_de="Dichter Dunst, der den Tanzboden verhüllt.",
     ),
 )
@@ -736,7 +736,7 @@ _ABTEI: tuple[Material, ...] = (
         GAS,
         -1,
         (210, 200, 220),
-        life=(400, 800),
+        life=(200, 255),  # life is stored in a byte
         description_de="Duftender Nebel uralter Weihrauchkessel.",
     ),
 )

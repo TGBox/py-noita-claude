@@ -687,3 +687,10 @@ def test_g26_universes_have_their_signature_terrain() -> None:
             run.update(0.016, Controls())
         run.enter_workshop()
 
+
+def test_g27_material_lifetimes_fit_in_a_byte():
+    """World.life is a bytearray (u8 in the native core): no lifetime may exceed 255."""
+    from src.materials import LIBRARY
+
+    too_long = [k for k, m in LIBRARY.items() if max(*m.life, *m.burn_life) > 255]
+    assert too_long == []
