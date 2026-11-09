@@ -670,11 +670,16 @@ def test_g26_universes_have_their_signature_terrain() -> None:
             assert share(w, ("acid",), 0, H // 3, W, H * 2 // 3, 2) > 0.001, "acid in the stomach"
         elif key == "aktenhalde":
             assert share(w, ("tinte",), W * 2 // 3, H // 3, W, H, 2) > 0.001, "ink lakes"
+            core = share(w, ("tintenpapier",), 0, 0, W, H, 2)
+            assert core > share(w, ("papier",), 0, 0, W, H, 2), "only the cave lining burns"
         elif key == "glibbria":
             assert share(w, ("brausesirup",), 0, int(H * 0.9), W, H - 3) > 0.6, "syrup sea"
             assert share(w, ("air",), 0, 0, W, H * 2 // 3) > 0.35, "open sky between islands"
         elif key == "kruemelreich":
             assert share(w, ("fliese",), 0, H // 3, W, H // 2, 1) > 0.008, "tiled kitchen floor"
+            spawn_x, spawn_y = run.level.spawn
+            feet = spawn_y + run.player.height
+            assert any(w.get(spawn_x + 4, y) != mat.AIR for y in range(feet, feet + 12)), "perch"
             assert share(w, ("air",), 0, H // 10, W, H // 3) > 0.6, "open kitchen above"
         elif key == "sporenklub":
             assert share(w, ("air",), W // 3, H * 2 // 5, W * 2 // 3, H // 2) > 0.8, "dance floor"

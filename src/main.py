@@ -1238,7 +1238,7 @@ class Game:
             cursor=self._cursor_on_screen(target),
             outcome_keys=outcome_keys,
             log_path=str(self.log.path) if self.log.path else "",
-            eyes=run.eyes,
+            eyes=0 if run.plan is not None else run.eyes,  # Uraugen: classic descent only
             rule_line=describe_rule(run.rule) if run.rule.key else "",
             breath=(
                 run.rule.breath / run.rule.max_breath

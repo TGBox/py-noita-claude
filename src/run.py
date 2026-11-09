@@ -562,7 +562,9 @@ class Run:
             # materials (aliases of its set) and given the V9 fields (Card G19)
             organism = generate_level(self.world, depth, self.seed + index)
             rng = random.Random(self.seed * 31 + index + (self.plan.slot if self.plan else 0))
-            keep = [(*organism.spawn, 20), (*organism.exit, 20)]
+            sx, sy = organism.spawn  # top-left of the player's body
+            body = (sx + self.player.width // 2, sy + self.player.height // 2, 14)
+            keep = [body, (*organism.exit, 20)]
             shaped = universe_features.shape(self.world, self.universe.key, rng, keep)
             self.level = self._dress_universe_level(organism)
             self._add_universe_features()
@@ -1693,6 +1695,10 @@ class Run:
                 self.pickups.remove(item)
             self.events.append("pickup")
             return True
+        elif item.block is not None:
+            note = "Beutel voll: im Rucksack [Tab] Module ablegen."
+            if not self.messages or self.messages[-1] != note:
+                self.messages.append(note)
         return False
 
     def _pick_up_new_kind(self, item: Pickup) -> bool:
@@ -2236,6 +2242,8 @@ class Run:
         paper, wall = mat.MAT_ID.get("papier"), mat.MAT_ID.get("tintenpapier")
         if paper is None or wall is None or paper == wall:
             return
+        # the deep paper mass is ink-soaked: only the lining of the caves can burn
+        universe_features.paper_skin(w, paper, wall)
         step_x, step_y = FIREBREAK_CELL
         for x0 in range(step_x, w.width, step_x):
             for x in range(x0, min(w.width, x0 + FIREBREAK_THICKNESS)):

@@ -24,6 +24,7 @@ from src import materials as mat
 from src.world import BORDER
 
 Keep = list[tuple[int, int, int]]
+SKIN = 6  # Aktenhalde: burnable paper only this deep behind any open cell
 
 
 class _Cells:
@@ -40,7 +41,8 @@ class _Cells:
         return self.g[y * self.w + x] if self.inside(x, y) else mat.BEDROCK
 
     def put(self, x: int, y: int, value: int) -> None:
-        if self.inside(x, y) and not self.kept(x, y):
+        """Write a cell; keep circles only refuse matter (carving air buries nobody)."""
+        if self.inside(x, y) and (value == mat.AIR or not self.kept(x, y)):
             self.g[y * self.w + x] = value
 
     def kept(self, x: int, y: int) -> bool:
@@ -113,9 +115,41 @@ def _id(key: str) -> int:
 
 
 def shape(world: Any, key: str, rng: random.Random, keep: Keep) -> dict[str, Any]:
-    """Build the solid signature features of ``key``; returns state for ``flood``."""
+    """Build the solid signature features of ``key``; returns state for ``flood``.
+
+    The first two ``keep`` circles are spawn and exit: after the big carving they get a
+    ledge to stand on, so nobody starts or ends on a floating leftover of the caves."""
     builder = _SHAPERS.get(key)
-    return builder(_Cells(world, keep), rng) if builder else {}
+    if builder is None:
+        return {}
+    cells = _Cells(world, keep)
+    state = builder(cells, rng)
+    ledge = _id(PERCH.get(key, "rock"))
+    for x, y, r in keep[:2]:
+        _perch(cells, x, y, r, ledge)
+    return state
+
+
+PERCH = {
+    "fleischwelt": "bone",
+    "aktenhalde": "aktendeckel",
+    "glibbria": "zuckerguss",
+    "kruemelreich": "kruemel",
+    "sporenklub": "pilzhut",
+    "abtei": "mauerwerk",
+}
+
+
+def _perch(c: _Cells, x: int, y: int, r: int, ledge: int) -> None:
+    """Give the body at (x, y) ground: a ledge right under it if the carving left air."""
+    for fy in range(y, y + r + 4):
+        if c.solid(x, fy):
+            return  # standing on something already
+    feet = y + r // 2 + 3  # just below the feet of a body centred at (x, y)
+    for yy in range(feet, feet + 4):
+        for xx in range(x - 16, x + 17):
+            if c.inside(xx, yy) and c.get(xx, yy) == mat.AIR:
+                c.g[yy * c.w + xx] = ledge
 
 
 def _shape_fleischwelt(c: _Cells, rng: random.Random) -> dict[str, Any]:
@@ -174,10 +208,12 @@ def _shape_glibbria(c: _Cells, rng: random.Random) -> dict[str, Any]:
 
 
 def _shape_kruemelreich(c: _Cells, rng: random.Random) -> dict[str, Any]:
-    """Above: a kitchen floor of tiles with giant crumbs, sugar and a pea; the fridge's
-    dark underside on the right. Below the tiles: the ant colony in the caves."""
+    """Above: a kitchen floor of tiles with giant crumbs, sugar and a pea, furnished with
+    a cookie table and chairs, a tiled wall cabinet and the fridge's dark underside to
+    climb on. Below the tiles: the ant colony in the caves."""
     tile, crumb, sugar = _id("fliese"), _id("kruemel"), _id("zucker")
     fluff, brosel, pea = _id("staubfluse"), _id("brosel"), _id("rock")
+    air = {mat.AIR}
     floor = int(c.h * 0.42)
     c.rect(BORDER, BORDER, c.w - BORDER, floor, mat.AIR)  # the open kitchen
     x = BORDER
@@ -185,58 +221,118 @@ def _shape_kruemelreich(c: _Cells, rng: random.Random) -> dict[str, Any]:
         span = rng.randint(140, 220)
         c.rect(x, floor, min(x + span, c.w - BORDER), floor + 6, tile)
         x += span + rng.randint(22, 30)
-    fridge_x = int(c.w * 0.58)
-    c.rect(fridge_x, int(c.h * 0.14), c.w - BORDER, int(c.h * 0.14) + 10, tile)
+    fridge_x = int(c.w * 0.62)
+    fy = int(c.h * 0.14)
+    c.rect(fridge_x, fy, c.w - BORDER, fy + 12, tile)  # the fridge's underside ...
+    c.rect(fridge_x, fy + 12, fridge_x + 10, floor - 46, tile)  # ... its kick plate
     for _ in range(9):  # dust bunnies under the fridge
-        fx = rng.randint(fridge_x + 10, c.w - 20)
+        fx = rng.randint(fridge_x + 20, c.w - 20)
         rx, ry = rng.randint(7, 13), rng.randint(4, 7)
-        c.ellipse(fx, floor - ry, rx, ry, fluff, only={mat.AIR})
-    for _ in range(14):  # giant crumbs on the open floor, some piled up
+        c.ellipse(fx, floor - ry, rx, ry, fluff, only=air)
+    # wall cabinet on the left: tiled shelves from the floor up to the ceiling
+    shelf_w = rng.randint(110, 140)
+    c.rect(BORDER, BORDER, BORDER + 8, floor, tile, only=air)
+    for y in range(floor - 44, BORDER + 20, -44):
+        c.rect(BORDER, y, BORDER + shelf_w, y + 4, tile, only=air)
+        c.rect(BORDER + 18, y - 10, BORDER + 26, y, sugar, only=air)  # a sugar box
+    # the table: a cookie top on two legs, crumbs and a plate on it, chairs beside
+    tx = rng.randint(int(c.w * 0.24), int(c.w * 0.44))
+    top = floor - 112
+    half = rng.randint(100, 130)
+    c.rect(tx - half, top, tx + half, top + 8, crumb, only=air)
+    for leg in (tx - half + 10, tx + half - 18):
+        c.rect(leg, top + 8, leg + 8, floor, crumb, only=air)
+    c.rect(tx - 30, top - 3, tx + 30, top, tile, only=air)  # the plate
+    for side in (-1, 1):
+        sx = tx + side * (half + 34)
+        seat = floor - 54
+        c.rect(sx - 24, seat, sx + 24, seat + 6, crumb, only=air)
+        for leg in (sx - 22, sx + 18):
+            c.rect(leg, seat + 6, leg + 4, floor, crumb, only=air)
+        back = sx + side * 22
+        c.rect(min(back, back + side * 5), seat - 62, max(back, back + side * 5), seat, crumb,
+               only=air)  # fmt: skip
+    for _ in range(12):  # giant crumbs on the open floor, some piled up
         cx = rng.randint(30, c.w - 30)
-        rx, ry = rng.randint(14, 40), rng.randint(10, 28)
-        c.ellipse(cx, floor - ry + 3, rx, ry, crumb, only={mat.AIR})
+        rx, ry = rng.randint(14, 36), rng.randint(10, 24)
+        c.ellipse(cx, floor - ry + 3, rx, ry, crumb, only=air)
         if rng.random() < 0.4:
             c.ellipse(cx + rng.randint(-10, 10), floor - 2 * ry, rx * 2 // 3, ry * 2 // 3, crumb,
-                      only={mat.AIR})  # fmt: skip
-    for _ in range(3):  # crumb-and-sugar ledges to climb towards the fridge
-        lx, ly = rng.randint(40, c.w - 120), rng.randint(int(c.h * 0.16), floor - 60)
-        c.rect(lx, ly, lx + rng.randint(50, 90), ly + 6, crumb, only={mat.AIR})
+                      only=air)  # fmt: skip
+    for band in (70, 130, 190, 240):  # crumb ledges: a way up in every height band
+        for _ in range(2):
+            lx = rng.randint(c.w // 6, c.w - 140)
+            ly = floor - band + rng.randint(-10, 10)
+            if ly > fy + 24:
+                c.rect(lx, ly, lx + rng.randint(40, 80), ly + 6, crumb, only=air)
     for _ in range(24):  # sugar grains
         sx, size = rng.randint(30, c.w - 30), rng.randint(4, 9)
-        c.rect(sx, floor - size, sx + size, floor, sugar, only={mat.AIR})
-    px = rng.randint(c.w // 6, fridge_x - 60)  # the pea
-    c.ellipse(px, floor - 24, 24, 24, pea, only={mat.AIR})
+        c.rect(sx, floor - size, sx + size, floor, sugar, only=air)
+    px = rng.randint(fridge_x - 140, fridge_x - 40)  # the pea rolled towards the fridge
+    c.ellipse(px, floor - 24, 24, 24, pea, only=air)
     for i in range(6):  # colony chambers, the last one is the queen's
         r = 46 if i == 5 else rng.randint(20, 32)
         cx = rng.randint(80, c.w - 80) if i < 5 else c.w // 2 + rng.randint(-200, 200)
         cy = rng.randint(floor + 60, c.h - 60)
         c.ellipse(cx, cy, r, int(r * 0.7), mat.AIR)
-        c.rect(cx - r, cy + int(r * 0.7) - 4, cx + r, cy + int(r * 0.7) + 1, brosel, only={mat.AIR})
+        c.rect(cx - r, cy + int(r * 0.7) - 4, cx + r, cy + int(r * 0.7) + 1, brosel, only=air)
     return {"floor": floor}
 
 
 def _shape_sporenklub(c: _Cells, rng: random.Random) -> dict[str, Any]:
-    """The dance floor: one huge cavern with a flat cap floor, speaker towers at its ends
-    and cups along the floor that ``flood`` fills with glowing neon juice."""
-    cap = _id("pilzhut")
+    """The dance floor: a big cavern with a flat cap floor, galleries along its walls,
+    glowing mushrooms hanging from the roof as stepping stones, a DJ booth in the
+    middle, speaker towers at its ends and cups that ``flood`` fills with neon juice."""
+    cap, stem, glow = _id("pilzhut"), _id("pilzfleisch"), _id("leuchtsporen")
+    air = {mat.AIR}
     cx, cy = c.w // 2, c.h // 2
-    rx, ry = int(c.w * 0.32), int(c.h * 0.17)
+    rx, ry = int(c.w * 0.30), int(c.h * 0.13)
     c.ellipse(cx, cy, rx, ry, mat.AIR)
     floor = cy + ry // 2
-    for y in range(floor, cy + ry + 1):  # flat floor of caps inside the cavern
+
+    def half_width(y: int) -> int:
         dy = (y - cy) / ry
-        half = int(rx * math.sqrt(max(0.0, 1 - dy * dy)))
+        return int(rx * math.sqrt(max(0.0, 1 - dy * dy)))
+
+    for y in range(floor, cy + ry + 1):  # flat floor of caps inside the cavern
+        half = half_width(y)
         for x in range(cx - half, cx + half + 1):
             c.put(x, y, cap)
+    for side in (-1, 1):  # galleries along the walls, a glowing pile at each lip
+        for lift in (44, 88):
+            y = floor - lift
+            edge = cx + side * (half_width(y) + 6)
+            lip = edge - side * rng.randint(56, 84)
+            c.rect(min(edge, lip), y, max(edge, lip), y + 4, cap)
+            c.rect(lip - 3, y - 3, lip + 4, y, glow, only=air)
+    for i, x in enumerate(range(cx - rx // 2, cx + rx // 2 + 1, rx // 4)):  # hanging caps
+        y = floor - (58 if i % 2 else 100)
+        roof = y
+        while roof > BORDER and not c.solid(x, roof - 1):
+            roof -= 1
+        c.rect(x - 2, roof, x + 3, y, stem)
+        width = rng.randint(18, 26)
+        c.ellipse(x, y, width, 4, cap)
+        c.rect(x - width // 2, y - 6, x - width // 2 + 5, y - 3, glow, only=air)
     for side in (-1, 1):  # speaker towers
         tx = cx + side * int(rx * 0.78)
         c.rect(tx - 8, floor - 70, tx + 8, floor, cap)
         c.rect(tx - 12, floor - 74, tx + 12, floor - 70, cap)
+    c.rect(cx - 30, floor - 14, cx + 30, floor, cap)  # the DJ booth
+    for gx in (cx - 22, cx + 16):
+        c.rect(gx, floor - 18, gx + 6, floor - 14, glow, only=air)
     cups = []
     for x in range(cx - int(rx * 0.6), cx + int(rx * 0.6), 56):
+        if abs(x - cx) < 44:
+            continue  # the booth stands here
         c.rect(x - 6, floor - 6, x - 4, floor, cap)
         c.rect(x + 4, floor - 6, x + 6, floor, cap)
         cups.append((x, floor - 1))
+        sx = x + 28  # a small mushroom stool between two cups
+        if abs(sx - cx) >= 44 and rng.random() < 0.6:
+            height = rng.randint(16, 30)
+            c.rect(sx - 2, floor - height, sx + 2, floor, stem, only=air)
+            c.ellipse(sx, floor - height, 10, 3, cap, only=air)
     return {"cups": cups}
 
 
@@ -352,3 +448,39 @@ def _flood_below(c: _Cells, line: int, liquid: int, skip: Any = None) -> None:
         for x in range(BORDER, c.w - BORDER):
             if c.g[row + x] == mat.AIR and not c.kept(x, y) and not (skip and skip(x, y)):
                 c.g[row + x] = liquid
+
+
+# ------------------------------------------------------------------ paper skin
+
+
+def paper_skin(world: Any, paper: int, core: int, depth: int = SKIN) -> int:
+    """Aktenhalde: paper deeper than ``depth`` cells behind any open cell becomes the
+    non-burning ``core`` (ink-soaked stacks). A fire then eats the paper lining of the
+    caves instead of the whole universe. Returns how many cells changed.
+
+    Works row-wise on big integers with one byte per cell (fast without numpy)."""
+    w, h, g = world.width, world.height, world.grid
+    solid = (mat.SOLID, mat.POWDER)
+    kinds = list(mat.KIND)
+    open_table = bytes(1 if i < len(kinds) and kinds[i] not in solid else 0 for i in range(256))
+    paper_table = bytes(1 if i == paper else 0 for i in range(256))
+    full = int.from_bytes(b"\x01" * w, "little")
+    near = []
+    for y in range(h):
+        m = int.from_bytes(g[y * w : (y + 1) * w].translate(open_table), "little")
+        for _ in range(depth):
+            m |= (m << 8) | (m >> 8)
+        near.append(m & full)
+    for _ in range(depth):
+        near = [near[y] | (near[y - 1] if y else 0) | (near[y + 1] if y + 1 < h else 0)
+                for y in range(h)]  # fmt: skip
+    changed = 0
+    for y in range(h):
+        row = g[y * w : (y + 1) * w]
+        deep = int.from_bytes(row.translate(paper_table), "little") & (full ^ near[y])
+        if deep:
+            value = int.from_bytes(row, "little") - deep * paper + deep * core
+            g[y * w : (y + 1) * w] = value.to_bytes(w, "little")
+            changed += bin(deep).count("1")
+    return changed
+
