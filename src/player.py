@@ -30,6 +30,8 @@ LIQUID_RUN_FACTOR = 0.6
 ENERGY_RECHARGE = 6.0  # per second on the ground
 ENERGY_RECHARGE_AIR = 0.4  # per second in the air while not levitating
 STEP_UP = 6  # max ledge height the player walks up automatically
+STICKY_JUMP = 0.65  # jump speed while "klebrig" (chewing gum)
+FIZZY_JUMP = 1.5  # jump speed while "sprudelnd" (Brausesirup)
 # Jelly is a trampoline (Glibbria), mushroom caps bounce a little (Sporenklub). Landing
 # faster than BOUNCE_MIN_SPEED (a fall of about 30 cells; an ordinary hop lands softer)
 # throws the body back up with this share of the landing speed.
@@ -105,6 +107,11 @@ class Player(Body):
         self.levitating = False
         if jump_pressed and (self.on_ground or in_liquid):
             self.vy = -JUMP_SPEED * (0.6 if in_liquid and not self.on_ground else 1.0)
+            # status effects change the jump itself (once), not the speed in every frame
+            if self.sticky > 0:
+                self.vy *= STICKY_JUMP
+            if self.fizzy_time > 0:
+                self.vy *= FIZZY_JUMP
         elif levitate_held and not self.on_ground and self.energy > 0:
             self.levitating = True
             follow = min(1.0, LEVITATE_RESPONSE * dt)
@@ -140,14 +147,6 @@ class Player(Body):
             target += random.uniform(-0.5, 0.5) * speed
 
         self.vx += (target - self.vx) * min(1.0, RUN_RESPONSE * dt)
-
-        # Apply sticky effect to jump height
-        if self.sticky > 0:
-            self.vy *= 0.65
-
-        # Apply fizzy_time effect to jump height
-        if self.fizzy_time > 0:
-            self.vy *= 1.5
 
         impact = self.vy
         self.move(world, dt)

@@ -871,3 +871,39 @@ def test_g31_kruemelreich_abtei_and_fleischwelt_arenas_and_caches() -> None:
     share = sum(w.get(x, y) == acid for y in band for x in range(8, w.width - 8, 2))
     assert share > 800, "the stomach lake"
     assert any(p.kind == "gold" for p in run.pickups), "cache on the islet"
+
+
+def test_g32_sticky_and_fizzy_change_the_jump_once() -> None:
+    """Brausesirup used to multiply the speed in every frame (a hop shot through the roof),
+    chewing gum damped every fall. Both now scale the jump itself."""
+    from src.player import MAX_FALL_SPEED
+    from src.run import Run
+    from src.universes.catalog import ALL_UNIVERSES
+
+    run = Run(seed=26)
+    run.start_multiverse_run()
+    run.enter_universe(ALL_UNIVERSES["glibbria"])
+    player, w = run.player, run.world
+
+    def hop(**effects: float) -> tuple[int, float]:
+        player.place(*run.level.spawn)
+        player.vy = 0.0
+        for _ in range(60):
+            player.update(w, 0.016, 0, False, False)
+        for name, value in effects.items():
+            setattr(player, name, value)
+        ground, top, fastest = player.y, player.y, 0.0
+        player.update(w, 0.016, 0, True, False)
+        for _ in range(150):
+            player.update(w, 0.016, 0, False, False)
+            top, fastest = min(top, player.y), max(fastest, abs(player.vy))
+        for name in effects:
+            setattr(player, name, 0.0)
+        assert player.on_ground
+        return ground - top, fastest
+
+    normal, _ = hop()
+    fizzy, fastest = hop(fizzy_time=20.0)
+    sticky, _ = hop(sticky=5.0)
+    assert normal * 1.8 < fizzy < normal * 2.6 and fastest <= MAX_FALL_SPEED
+    assert normal * 0.3 < sticky < normal * 0.6

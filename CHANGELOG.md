@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.8.0
+
+- 2026-11-10 (3fcf34b): feat: all universes updated
+
 ## SemVer v1.7.13
 
-- 2026-11-10 (67a7f9a): feat: next universe
+- 2026-11-10 (c800173): feat: next universe
 - 2026-11-10 (6cccf6e): feat: update next level
 - 2026-11-10 (69a0467): fix: fable rework of aktenhalde and glibira
 
