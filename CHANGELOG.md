@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.7.13
+
+- 2026-11-10 (bc2716a): fix: fable rework of aktenhalde and glibira
+
 ## SemVer v1.7.12
 
-- 2026-11-09 (1f09263): fix: fix last round
+- 2026-11-09 (c849bae): fix: fix last round
 
 ## SemVer v1.7.10
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from src import materials as mat
 from src.body import PLAYER_TEAM, Body
 from src.world import World
 
@@ -29,6 +30,14 @@ LIQUID_RUN_FACTOR = 0.6
 ENERGY_RECHARGE = 6.0  # per second on the ground
 ENERGY_RECHARGE_AIR = 0.4  # per second in the air while not levitating
 STEP_UP = 6  # max ledge height the player walks up automatically
+# Glibbria: jelly is a trampoline. Landing on it faster than BOUNCE_MIN_SPEED (a fall of
+# about 30 cells; an ordinary hop lands softer) throws the body back up.
+BOUNCE_MATERIALS = ("glibber", "glibber_rot")
+BOUNCE_MIN_SPEED = 180.0
+BOUNCE_KEEP = 0.8  # share of the landing speed that comes back
+BOUNCE_BOOST = 1.15  # with jump pressed shortly before landing: higher than before
+BOUNCE_BUFFER = 0.25  # seconds a jump press counts for the boost
+BOUNCE_MAX_SPEED = 1.1 * MAX_FALL_SPEED
 
 
 class Player(Body):
@@ -42,6 +51,7 @@ class Player(Body):
         self.max_mana: float = 100.0
         super().__init__(int(x), int(y), PLAYER_WIDTH, PLAYER_HEIGHT, MAX_HP)
         self.step_up = STEP_UP
+        self._bounce_buffer = 0.0  # seconds left in which a jump press boosts a bounce
 
     @property
     def x(self) -> int:
@@ -58,6 +68,12 @@ class Player(Body):
     @y.setter
     def y(self, val: float) -> None:
         self._y = int(val)
+
+    def _on_bouncy(self, world: World) -> bool:
+        """Standing on jelly (any cell right under the feet)?"""
+        bouncy = {mat.MAT_ID.get(key, -1) for key in BOUNCE_MATERIALS}
+        row = self.y + self.height
+        return any(world.get(x, row) in bouncy for x in range(self.x, self.x + self.width))
 
     def place(self, x: int, y: int) -> None:
         super().place(x, y)
@@ -84,6 +100,7 @@ class Player(Body):
             move_dir, jump_pressed, levitate_held = 0, False, False
         self.unstick(world)
         in_liquid = self.in_liquid(world)
+        self._bounce_buffer = BOUNCE_BUFFER if jump_pressed else self._bounce_buffer - dt
 
         self.levitating = False
         if jump_pressed and (self.on_ground or in_liquid):
@@ -132,7 +149,13 @@ class Player(Body):
         if self.fizzy_time > 0:
             self.vy *= 1.5
 
+        impact = self.vy
         self.move(world, dt)
+        if self.on_ground and impact > BOUNCE_MIN_SPEED and not in_liquid and not self.dead:
+            if self._on_bouncy(world):
+                keep = BOUNCE_BOOST if self._bounce_buffer > 0 else BOUNCE_KEEP
+                self.vy = -min(impact * keep, BOUNCE_MAX_SPEED)
+                self.on_ground = False
         if self.on_ground and not self.levitating:
             self.energy = min(self.energy_max, self.energy + ENERGY_RECHARGE * dt)
         elif not levitate_held:

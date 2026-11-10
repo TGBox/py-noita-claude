@@ -557,6 +557,7 @@ class Run:
             self.on_generate(depth.name_de)
         self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
+        shaped: dict[str, Any] = {}
         if self.plan is not None:
             # multiverse run: the proven organism generator, dressed in the universe's
             # materials (aliases of its set) and given the V9 fields (Card G19)
@@ -565,8 +566,8 @@ class Run:
             sx, sy = organism.spawn  # top-left of the player's body
             body = (sx + self.player.width // 2, sy + self.player.height // 2, 14)
             keep = [body, (*organism.exit, 20)]
-            shaped = universe_features.shape(self.world, self.universe.key, rng, keep)
-            self.level = self._dress_universe_level(organism)
+            shaped = universe_features.shape(self.world, self.universe.key, rng, keep, organism)
+            self.level = self._dress_universe_level(organism, shaped)
             self._add_universe_features()
             self._ensure_universe_paths()
             universe_features.flood(
@@ -627,6 +628,7 @@ class Run:
             level=index + 1 + MIRROR_LOOT * abs(self.parallel),
             flasks=more(FLASKS_PER_DEPTH), hearts=1, cocoons=more(COCOONS_PER_DEPTH),
         )  # fmt: skip
+        self._fill_caches(shaped.get("caches", ()))
         self.thrown = []
         self.droplets = []
         if self.level.secret is not None:
@@ -2203,9 +2205,13 @@ class Run:
         # bible 02: the anchor point is open unless a Zwischengegner guards it (boss slot)
         self.exit_open = not self.boss_slot
 
-    def _dress_universe_level(self, level: Level) -> Level:
+    def _dress_universe_level(self, level: Level, shaped: dict[str, Any] | None = None) -> Level:
         """Universe fields (V9) for an organism level: regions, arenas, quest giver."""
         w = self.world
+        if shaped and shaped.get("exit"):  # the universe moved the anchor point (islands)
+            level = replace(level, exit=shaped["exit"])
+        if shaped and shaped.get("arena") and level.arena is not None:
+            level = replace(level, arena=shaped["arena"])
         rng = random.Random(self.seed * 7919 + (self.plan.slot if self.plan else 0))
         topology = UNIVERSE_TOPOLOGY.get(self.universe.key, "vertical")
         bands = region_bands(w.width, w.height, topology)
@@ -2214,6 +2220,8 @@ class Run:
         if mid is None:
             mid = (w.width // 2, w.height // 2)
         mid_arena = self._clamp_rect(mid[0] - 30, mid[1] - 60, mid[0] + 30, mid[1])
+        if shaped and shaped.get("mid_arena"):  # the universe built its own arena (bible 03)
+            mid_arena = self._clamp_rect(*shaped["mid_arena"])
         boss_arena = (0, 0, 0, 0)
         if level.arena is not None:  # boss slot: the depth's guarded chamber
             ax, ay = level.arena
@@ -2255,6 +2263,21 @@ class Run:
                 for x in range(w.width):
                     if w.get(x, y) == paper:
                         w.set_cell(x, y, wall)
+
+    def _fill_caches(self, lockers: Any) -> None:
+        """What waits in a universe's hiding places (Aktenschraenke behind paper doors,
+        Kaugummi-Hoehlen ...): gold in each, a sample in the first, a module in every third."""
+        rank = self.plan.rank if self.plan is not None else self.rank
+        for i, (x, y) in enumerate(lockers):
+            if self.mirror:
+                x = self.world.width - 1 - x
+            amount = creature_gold(rank, self.rng, big=True)
+            self.pickups.append(Pickup(x - 3, y - 2, kind="gold", amount=amount))
+            if i == 0 and self.universe.samples:
+                key = self.universe.samples[-1]
+                self.pickups.append(Pickup(x + 3, y - 2, kind="sample", item_key=key, amount=1))
+            elif i % 3 == 1:
+                self.pickups.append(Pickup(x + 3, y - 2, block=random_block(self.rng)))
 
     def _clamp_rect(self, x0: int, y0: int, x1: int, y1: int) -> tuple[int, int, int, int]:
         w, h = self.world.width, self.world.height
@@ -2679,8 +2702,8 @@ def _unpack(text: str) -> bytes:
     return zlib.decompress(base64.b64decode(text.encode("ascii")))
 
 
-FIREBREAK_CELL = (160, 120)  # Aktenhalde: paper sections between ink-paper walls (cells)
-FIREBREAK_THICKNESS = 3
+FIREBREAK_CELL = universe_features.FIREBREAK_CELL  # Aktenhalde: paper sections (cells)
+FIREBREAK_THICKNESS = universe_features.FIREBREAK_THICKNESS
 NATIVES_PER_SPECIES = 4  # natives of each species per universe level (before area scaling)
 # region layout per universe (bible 03), used for region effects on organism-built levels
 UNIVERSE_TOPOLOGY = {

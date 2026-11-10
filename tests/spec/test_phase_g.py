@@ -699,3 +699,94 @@ def test_g27_material_lifetimes_fit_in_a_byte():
 
     too_long = [k for k, m in LIBRARY.items() if max(*m.life, *m.burn_life) > 255]
     assert too_long == []
+
+
+def test_g28_aktenhalde_hall_lockers_and_tubes() -> None:
+    """Aktenhalde rework: Sitzungssaal as mid-boss arena, lockers with loot behind paper
+    doors, Rohrpost shafts between the thirds, desks and file stacks."""
+    from src import materials as mat
+    from src.run import Run
+    from src.universes import features
+    from src.universes.catalog import ALL_UNIVERSES
+
+    for seed in (3, 20, 26):
+        run = Run(seed=seed)
+        run.start_multiverse_run()
+        run.enter_universe(ALL_UNIVERSES["aktenhalde"])
+        w = run.world
+        paper, board = mat.MAT_ID["papier"], mat.MAT_ID["aktendeckel"]
+        x0, y0, x1, y1 = run.level.mid_boss_arena
+        assert (x1 - x0, y1 - y0) == features.HALL_SIZE, "the Sitzungssaal is the arena"
+        row = [w.get(x, y1) for x in range(x0 + 4, x1 - 4)]
+        assert row.count(paper) > len(row) * 0.6, "paper floor"
+        assert any(w.get(x, y1 - 10) == board for x in range(x0, x1)), "conference tables"
+        spawn = run.level.spawn
+        assert ((x0 + x1) / 2 - spawn[0]) ** 2 + ((y0 + y1) / 2 - spawn[1]) ** 2 > 250**2
+        gold = [p for p in run.pickups if p.kind == "gold"]
+        assert len(gold) >= 4, "lockers hold gold"
+        for item in gold:  # every locker is a closed cardboard box with a paper door
+            x, y = int(item.x) + 3, int(item.y)
+            ring = [w.get(xx, yy) for xx in range(x - 12, x + 12) for yy in range(y - 12, y + 6)]
+            assert board in ring and paper in ring
+        assert any(p.kind == "sample" for p in run.pickups), "one locker holds a sample"
+        third = w.width // 3
+        for tx in (third, 2 * third):  # a straight shaft near each boundary
+            open_rows = max(
+                sum(w.get(x, y) == mat.AIR for y in range(w.height // 9, w.height * 8 // 9))
+                for x in range(tx - 10, tx + 11)
+            )
+            assert open_rows > w.height * 0.55, "Rohrpost shaft"
+        run.enter_workshop()
+
+
+def test_g29_glibbria_islands_bowl_and_bounce() -> None:
+    """Glibbria rework: floating islands over the syrup sea, the mid-boss in a jelly bowl,
+    the anchor point on an island (never under the sea), gum caves with loot, and jelly
+    that throws a falling body back up."""
+    from src import materials as mat
+    from src.run import Run
+    from src.universes import features
+    from src.universes.catalog import ALL_UNIVERSES
+    from src.worldgen import ensure_path
+
+    for seed, boss_slot in ((3, False), (20, True), (26, False)):
+        run = Run(seed=seed)
+        run.start_multiverse_run()
+        run.enter_universe(ALL_UNIVERSES["glibbria"], boss_slot=boss_slot)
+        w, level = run.world, run.level
+        line = int(w.height * features.SEA_LEVEL)
+        jelly = mat.MAT_ID["glibber"]
+        sky = [w.get(x, y) for y in range(8, line, 4) for x in range(8, w.width - 8, 4)]
+        assert sky.count(mat.AIR) > len(sky) * 0.7, "open sky"
+        assert level.exit[1] < line - 40, "anchor point above the sea"
+        assert ensure_path(w, level.spawn, level.exit) == 0, "reachable without digging"
+        x0, y0, x1, y1 = level.mid_boss_arena
+        assert y1 < line and w.get((x0 + x1) // 2, y1 + 2) == jelly, "bowl floor"
+        assert w.get(x0 - 6, y1 - 12) == jelly and w.get(x1 + 5, y1 - 12) == jelly, "rims"
+        if boss_slot:
+            bx0, by0, bx1, by1 = level.boss_arena
+            assert by1 < line and bx0 <= level.exit[0] <= bx1, "boss bowl holds the anchor"
+        assert sum(p.kind == "gold" for p in run.pickups) >= 2, "gum caves hold loot"
+        run.enter_workshop()
+
+    run = Run(seed=26)
+    run.start_multiverse_run()
+    run.enter_universe(ALL_UNIVERSES["glibbria"])
+    player, w = run.player, run.world
+    sx, sy = run.level.spawn
+    player.place(sx, sy - 60)
+    player.vy = 0.0
+    rows = []
+    for _ in range(200):
+        player.update(w, 0.016, 0, False, False)
+        rows.append(player.y)
+    landed = rows.index(max(rows))
+    assert max(rows) - min(rows[landed:]) > 20, "a long fall bounces back up"
+    for _ in range(400):
+        player.update(w, 0.016, 0, False, False)
+    assert player.on_ground, "the bouncing dies down"
+    ground = player.y
+    player.update(w, 0.016, 0, True, False)  # an ordinary hop lands softly
+    for _ in range(120):
+        player.update(w, 0.016, 0, False, False)
+    assert player.on_ground and player.y == ground
