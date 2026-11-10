@@ -819,3 +819,55 @@ def test_g30_sporenklub_stage_cellar_mushrooms_and_back_rooms() -> None:
         for g in guards:
             assert not w.rect_blocked(int(g.x), int(g.y), g.spec.width, g.spec.height)
         run.enter_workshop()
+
+
+def test_g31_kruemelreich_abtei_and_fleischwelt_arenas_and_caches() -> None:
+    """Teacup arena and store rooms (Kruemelreich), flooded nave with an air dome and air
+    bells that stay dry (Abtei), stomach lake and bone hall (Fleischwelt)."""
+    from src import materials as mat
+    from src.run import Run
+    from src.universes import features
+    from src.universes.catalog import ALL_UNIVERSES
+
+    run = Run(seed=26)
+    run.start_multiverse_run()
+
+    run.enter_universe(ALL_UNIVERSES["kruemelreich"])
+    w = run.world
+    x0, y0, x1, y1 = run.level.mid_boss_arena
+    assert x1 - x0 == 2 * features.CUP_HALF, "the teacup is the arena"
+    china = mat.MAT_ID["fliese"]
+    assert w.get(x0 - 3, y1 - 30) == china and w.get(x1 + 2, y1 - 30) == china, "cup walls"
+    assert sum(p.kind == "gold" for p in run.pickups) == 3, "store rooms"
+    run.enter_workshop()
+
+    run.enter_universe(ALL_UNIVERSES["abtei"])
+    w = run.world
+    line = int(w.height * features.WATER_LINE)
+    x0, y0, x1, y1 = run.level.mid_boss_arena
+    assert (x1 - x0, y1 - y0) == features.NAVE_SIZE and y0 > line, "the flooded nave"
+    assert w.get((x0 + x1) // 2, y1 - 20) == mat.WATER
+    assert w.get((x0 + x1) // 2, y0 - 12) == mat.AIR, "air under the dome"
+
+    def air_below() -> int:
+        cells = range(line + 20, w.height - 8, 2)
+        return sum(w.get(x, y) == mat.AIR for y in cells for x in range(8, w.width - 8, 2))
+
+    before = air_below()
+    assert before > 800, "air bells in the flooded caves"
+    w.wake_all()
+    for _ in range(200):
+        w.step()
+    assert air_below() > before * 0.97, "the air bells do not run full"
+    run.enter_workshop()
+
+    run.enter_universe(ALL_UNIVERSES["fleischwelt"])
+    w = run.world
+    x0, y0, x1, y1 = run.level.mid_boss_arena
+    assert x1 - x0 == 2 * (features.BONE_HALL_RADIUS - 8), "the bone hall is the arena"
+    assert y0 > w.height // 2, "in the Knochenmark"
+    acid = mat.MAT_ID["acid"]
+    band = range(w.height // 3, w.height * 2 // 3, 2)
+    share = sum(w.get(x, y) == acid for y in band for x in range(8, w.width - 8, 2))
+    assert share > 800, "the stomach lake"
+    assert any(p.kind == "gold" for p in run.pickups), "cache on the islet"

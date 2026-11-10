@@ -33,6 +33,7 @@ class _Cells:
     def __init__(self, world: Any, keep: Keep) -> None:
         self.w, self.h, self.g = world.width, world.height, world.grid
         self.keep = keep
+        self.world = world
         self.level: Any = None
 
     def inside(self, x: int, y: int) -> bool:
@@ -166,7 +167,58 @@ def _shape_fleischwelt(c: _Cells, rng: random.Random) -> dict[str, Any]:
     for x, y in c.floors(0, 0, c.w, band, step=9):
         if rng.random() < 0.3:
             _tooth(c, x, y, -1, rng.randint(3, 6), enamel)
-    return {}
+    level = c.level
+    avoid = [(kx, ky, r + 60) for kx, ky, r in c.keep]
+    spots = ((getattr(level, "arena", None), 160), (getattr(level, "vault", None), 100))
+    for spot, radius in spots:
+        if spot:
+            avoid.append((spot[0], spot[1], radius))
+
+    def clear(x: int, y: int, reach: int) -> bool:
+        return all(math.dist((x, y), (ax, ay)) > reach + r for ax, ay, r in avoid)
+
+    state: dict[str, Any] = {"caches": []}
+    bone, flesh = _id("bone"), _id("flesh")
+    for _ in range(120):  # Magen: the stomach lake (flood pours the acid)
+        rx, ry = rng.randint(90, 120), rng.randint(38, 48)
+        cx = rng.randint(rx + 30, c.w - rx - 30)
+        cy = rng.randint(int(c.h * 0.42), int(c.h * 0.6))
+        if not clear(cx, cy, rx):
+            continue
+        c.ellipse(cx, cy, rx, ry, mat.AIR)
+        for x in range(cx - rx + 24, cx + rx - 30, 36):  # rib stones across the acid
+            if abs(x + 6 - cx) > 22:
+                c.rect(x, cy + 6, x + 12, cy + 9, bone)
+        c.rect(cx - 9, cy + 4, cx + 9, cy + ry, bone, only={mat.AIR})  # islet with the cache
+        state["lake"] = (cx, cy, rx, ry)
+        state["caches"].append((cx, cy + 2))
+        avoid.append((cx, cy, rx + 30))
+        break
+    spawn = c.keep[0][:2] if c.keep else (c.w // 2, 0)
+    for _ in range(200):  # Knochenmark: the round bone hall of the mid-boss
+        r = BONE_HALL_RADIUS
+        cx = rng.randint(r + 30, c.w - r - 30)
+        cy = rng.randint(int(c.h * 0.68), c.h - r - 24)
+        if not clear(cx, cy, r) or math.dist((cx, cy), spawn) < c.w * 0.3:
+            continue
+        c.ellipse(cx, cy, r + 5, r + 5, bone)
+        c.ellipse(cx, cy, r, r, mat.AIR)
+        floor = cy + int(r * 0.55)
+        c.ellipse(cx, cy, r, r, flesh, only={mat.AIR})  # refill ...
+        for y in range(cy - r, floor):  # ... and hollow out above the flesh floor
+            half = int(r * math.sqrt(max(0.0, 1 - ((y - cy) / r) ** 2)))
+            c.rect(cx - half, y, cx + half + 1, y + 1, mat.AIR)
+        for side in (-1, 1):  # two doors at floor level, each a passage to the next cave
+            edge = cx + side * int(r * 0.83)
+            reach = next((d for d in range(16, 220) if c.air(edge + side * d, floor - 10)), 16)
+            far = edge + side * reach
+            c.rect(min(edge, far), floor - 24, max(edge, far) + 1, floor, mat.AIR)
+        state["mid_arena"] = (cx - r + 8, floor - 60, cx + r - 8, floor)
+        break
+    return state
+
+
+BONE_HALL_RADIUS = 52  # Fleischwelt: the mid-boss's round bone hall
 
 
 def _tooth(c: _Cells, x: int, y: int, direction: int, length: int, value: int) -> None:
@@ -569,7 +621,7 @@ def _shape_kruemelreich(c: _Cells, rng: random.Random) -> dict[str, Any]:
         c.rect(BORDER, y, BORDER + shelf_w, y + 4, tile, only=air)
         c.rect(BORDER + 18, y - 10, BORDER + 26, y, sugar, only=air)  # a sugar box
     # the table: a cookie top on two legs, crumbs and a plate on it, chairs beside
-    tx = rng.randint(int(c.w * 0.24), int(c.w * 0.44))
+    tx = rng.randint(int(c.w * 0.22), int(c.w * 0.34))  # leaves room for the teacup
     top = floor - 112
     half = rng.randint(100, 130)
     c.rect(tx - half, top, tx + half, top + 8, crumb, only=air)
@@ -601,15 +653,38 @@ def _shape_kruemelreich(c: _Cells, rng: random.Random) -> dict[str, Any]:
     for _ in range(24):  # sugar grains
         sx, size = rng.randint(30, c.w - 30), rng.randint(4, 9)
         c.rect(sx, floor - size, sx + size, floor, sugar, only=air)
-    px = rng.randint(fridge_x - 140, fridge_x - 40)  # the pea rolled towards the fridge
+    px = rng.randint(fridge_x + 60, fridge_x + 160)  # the pea rolled under the fridge
     c.ellipse(px, floor - 24, 24, 24, pea, only=air)
+    cup = _teacup(c, fridge_x - 88, floor, tile, brosel)  # the mid-boss arena (bible 03)
+    caches = []
     for i in range(6):  # colony chambers, the last one is the queen's
         r = 46 if i == 5 else rng.randint(20, 32)
         cx = rng.randint(80, c.w - 80) if i < 5 else c.w // 2 + rng.randint(-200, 200)
         cy = rng.randint(floor + 60, c.h - 60)
         c.ellipse(cx, cy, r, int(r * 0.7), mat.AIR)
         c.rect(cx - r, cy + int(r * 0.7) - 4, cx + r, cy + int(r * 0.7) + 1, brosel, only=air)
-    return {"floor": floor}
+        if i < 3:  # three of them are store rooms
+            caches.append((cx, cy + int(r * 0.7) - 6))
+    return {"floor": floor, "mid_arena": cup, "caches": caches}
+
+
+CUP_HALF, CUP_HIGH = 62, 58  # Kruemelreich: the teacup's interior half width and height
+
+
+def _teacup(c: _Cells, cx: int, floor: int, china: int, leaves: int) -> tuple[int, int, int, int]:
+    """A teacup on the kitchen floor: china walls, tea leaves on the bottom, a handle to
+    climb. Returns the interior as arena rect."""
+    x0, x1 = cx - CUP_HALF, cx + CUP_HALF
+    c.rect(x0 - 5, floor - CUP_HIGH, x1 + 5, floor, mat.AIR)
+    c.rect(x0 - 14, floor, x1 + 14, floor + 6, china)  # the tiles under the cup are whole
+    c.rect(x0 - 5, floor - 4, x1 + 5, floor, china)
+    for wall in (x0 - 5, x1):
+        c.rect(wall, floor - CUP_HIGH, wall + 5, floor, china)
+    c.rect(x0, floor - 8, x1, floor - 4, leaves)
+    for y0, y1 in ((floor - 44, floor - 40), (floor - 22, floor - 18)):  # the handle
+        c.rect(x0 - 17, y0, x0 - 5, y1, china)
+    c.rect(x0 - 17, floor - 44, x0 - 13, floor - 18, china)
+    return (x0, floor - 64, x1, floor - 4)
 
 
 def _shape_sporenklub(c: _Cells, rng: random.Random) -> dict[str, Any]:
@@ -785,16 +860,94 @@ def _shape_abtei(c: _Cells, rng: random.Random) -> dict[str, Any]:
         if walls < 14 and rng.random() < 0.5:
             c.rect(x - 4, y - 14, x + 4, y - 1, glass, only={_id("mauerwerk")})
             walls += 1
-    chapels = []
-    for _ in range(5):
-        cx, cy = rng.randint(80, c.w - 80), rng.randint(int(c.h * 0.45), int(c.h * 0.8))
-        rx, ry = rng.randint(24, 34), rng.randint(18, 26)
-        c.ellipse(cx, cy, rx, ry, mat.AIR)
-        chapels.append((cx, cy, rx, ry))
+    rock = _id("mauerwerk")
+    line = int(c.h * WATER_LINE)
+
+    def solid(x0: int, y0: int, x1: int, y1: int, step: int = 3) -> bool:
+        return all(
+            c.get(x, y) == rock and not c.kept(x, y)
+            for y in range(y0, y1, step)
+            for x in range(x0, x1, step)
+        )
+
+    state: dict[str, Any] = {"chapels": [], "dry": [], "caches": []}
+    wide, high = NAVE_SIZE
+    for attempt in range(6000):  # the Kirchenschiff: flooded hall, air only under its dome
+        left = rng.randint(50, c.w - 50 - wide)
+        top = rng.randint(int(c.h * 0.45), int(c.h * 0.84) - high)
+        mid = left + wide // 2
+        rx, ry = (64, 38) if attempt < 2000 else (50, 30)  # a smaller dome fits more often
+        if not solid(mid - rx - 6, top - ry - 6, mid + rx + 7, top):
+            continue
+        if any(abs(mid - kx) < wide // 2 + r + 20 and abs(top + high // 2 - ky) < high // 2 + r + 20
+               for kx, ky, r in c.keep):  # fmt: skip
+            continue
+        c.rect(left, top, left + wide, top + high, mat.AIR)
+        c.rect(left - 2, top + high, left + wide + 2, top + high + 4, rock)
+        for side, edge in ((-1, left - 1), (1, left + wide)):  # doors to the nearest caves,
+            reach = next(  # so that no passage has to be dug in through the dome later
+                (d for d in range(1, 260) if c.air(edge + side * d, top + high - 10)), 0
+            )
+            if reach:
+                door = (edge + side * reach, edge)
+                c.rect(min(door), top + high - 26, max(door) + 1, top + high, mat.AIR)
+        if c.level is not None:  # and a guaranteed way in from the start, beside the dome
+            from src.worldgen import ensure_path
+
+            c.rect(left - 34, top + high - 26, left, top + high, mat.AIR)
+            ensure_path(c.world, c.level.spawn, (left - 28, top + high - 12))
+        c.ellipse(mid, top, rx, ry, mat.AIR)
+        for lx in (mid - rx, mid + rx - 26):  # ledges at the water line under the dome
+            c.rect(lx, top, lx + 26, top + 3, rock)
+        for px in (left + wide // 4, left + wide * 3 // 4):  # pillar stumps
+            c.rect(px - 3, top + 30, px + 3, top + high, rock)
+        c.rect(mid - 4, top - ry + 4, mid + 5, top - ry + 12, bronze)  # a small bell
+        state["dry"].append((mid, top, rx, ry))
+        state["mid_arena"] = (left, top, left + wide, top + high)
+        state["caches"].append((left + 12, top + high - 2))
+        break
+    hall = state.get("mid_arena")
+    ceilings = c.ceilings(0, line + 30, c.w, c.h - 20, step=5)
+    rng.shuffle(ceilings)
+    pockets: list[tuple[int, int]] = []
+    tried: set[tuple[int, int]] = set()
+    # air bells under domed ceilings: breath every few seconds. First the roomy ones (every
+    # third a chapel with an offering), then small ones wherever the rock is thinner.
+    for x, y in ceilings + ceilings:
+        if len(pockets) >= AIR_POCKETS:
+            break
+        small = len(pockets) < AIR_POCKETS and (x, y) in tried
+        tried.add((x, y))
+        chapel = not small and len(pockets) % 3 == 0
+        if small:
+            rx, ry = rng.randint(10, 13), rng.randint(9, 11)
+        elif chapel:
+            rx, ry = rng.randint(24, 28), rng.randint(17, 20)
+        else:
+            rx, ry = rng.randint(14, 19), rng.randint(11, 14)
+        if _in_rect(hall, x, y, 40) or any(math.dist((x, y), q) < 110 for q in pockets):
+            continue
+        if not solid(x - rx - 3, y - ry - 3, x + rx + 4, y - 1, 2):
+            continue
+        if not all(c.get(xx, y - 1) == rock for xx in range(x - rx - 2, x + rx + 3)):
+            continue
+        for yy in range(y - ry, y):
+            half = int(rx * math.sqrt(max(0.0, 1 - ((yy - y) / ry) ** 2)))
+            c.rect(x - half, yy, x + half + 1, yy + 1, mat.AIR)
+        c.rect(x - rx + 3, y - 5, x - rx + 5, y - 1, wax)  # a candle marks the air
+        state["dry"].append((x, y, rx, ry))
+        pockets.append((x, y))
+        if chapel:
+            c.rect(x + rx - 5, y - 5, x + rx - 3, y - 1, wax)
+            state["caches"].append((x, y - 3))  # an offering: it sinks to the floor below
     for x, y in c.floors(0, c.h * 2 // 3, c.w, c.h, step=5):
         if rng.random() < 0.35:
             c.rect(x, y - rng.randint(2, 5), x + 2, y + 1, algae, only={mat.AIR})
-    return {"chapels": chapels}
+    return state
+
+
+NAVE_SIZE = (200, 70)  # Abtei: the flooded Kirchenschiff (mid-boss arena)
+AIR_POCKETS = 12  # Abtei: air bells under the ceilings of the flooded caves
 
 
 _SHAPERS = {
@@ -818,6 +971,9 @@ def flood(world: Any, key: str, rng: random.Random, keep: Keep, state: dict[str,
     """Pour the signature liquids of ``key`` (after the paths were guaranteed)."""
     c = _Cells(world, keep)
     if key == "fleischwelt":
+        if state.get("lake"):
+            cx, cy, rx, ry = state["lake"]
+            c.rect(cx - rx, cy + 10, cx + rx + 1, cy + ry + 1, _id("acid"), only={mat.AIR})
         _pools(c, rng, c.h // 3, c.h * 2 // 3, _id("acid"), 9, (5, 9))
         _pools(c, rng, c.h // 3, c.h * 2 // 3, _id("tallow"), 3, (3, 5))
     elif key == "aktenhalde":
@@ -835,14 +991,37 @@ def flood(world: Any, key: str, rng: random.Random, keep: Keep, state: dict[str,
             c.rect(x - 3, y - 4, x + 4, y + 1, juice, only={mat.AIR})
         _pools(c, rng, c.h * 2 // 3, c.h, juice, 4, (3, 5))
     elif key == "abtei":
-        chapels = state.get("chapels", [])
+        # a passage dug afterwards may have opened a dome: then it is no air bell any more
+        domes = [dome for dome in state.get("dry", []) if _dome_closed(c, *dome, _id("mauerwerk"))]
+        line = int(c.h * WATER_LINE)
+        # air survives only above a water surface under a closed dome; dry circles under
+        # water (anchor point, arena) would just run full, so they are flooded honestly
+        c.keep = [k for k in c.keep if k[1] < line]
 
         def dry(x: int, y: int) -> bool:
             return any(
-                ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 for cx, cy, rx, ry in chapels
+                y < by and ((x - cx) / rx) ** 2 + ((y - by) / ry) ** 2 <= 1
+                for cx, by, rx, ry in domes
             )
 
         _flood_below(c, int(c.h * WATER_LINE), mat.WATER, skip=dry)
+
+
+def _dome_closed(c: _Cells, cx: int, base: int, rx: int, ry: int, rock: int) -> bool:
+    """True if the shell right around the dome above ``base`` is solid. A few open cells
+    (the tip of a cave) are walled up; a real passage through it means: no air bell."""
+    holes = []
+    for y in range(base - ry - 2, base):
+        for x in range(cx - rx - 2, cx + rx + 3):
+            inner = ((x - cx) / rx) ** 2 + ((y - base) / ry) ** 2
+            outer = ((x - cx) / (rx + 2)) ** 2 + ((y - base) / (ry + 2)) ** 2
+            if inner > 1 >= outer and not c.solid(x, y):
+                holes.append((x, y))
+    if len(holes) > 12:
+        return False
+    for x, y in holes:
+        c.g[y * c.w + x] = rock
+    return True
 
 
 def _pools(
