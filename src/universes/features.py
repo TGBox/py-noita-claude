@@ -666,7 +666,104 @@ def _shape_sporenklub(c: _Cells, rng: random.Random) -> dict[str, Any]:
             height = rng.randint(16, 30)
             c.rect(sx - 2, floor - height, sx + 2, floor, stem, only=air)
             c.ellipse(sx, floor - height, 10, 3, cap, only=air)
-    return {"cups": cups}
+    for side in (-1, 1):  # cellar stairs: the cap floor is no wall between club and cellar
+        _cellar_stairs(c, cx, floor, side, rx)
+    hall = (cx - rx, cy - ry, cx + rx, cy + ry)
+    _giant_mushrooms(c, rng, cap, stem, hall)
+    caches, guards = _back_rooms(c, rng, cap, stem, cups)
+    return {
+        "cups": cups,
+        "caches": caches,
+        "spawns": guards,
+        # the Hauptbuehne: the mid-boss dances at the DJ booth (bible 03, arena)
+        "mid_arena": (cx - 90, floor - 74, cx + 90, floor - 14),
+    }
+
+
+MUSHROOMS = 14  # Sporenklub: giant mushrooms in the caves around the dance floor
+BACK_ROOM = (58, 24)  # Hinterzimmer interior (cells)
+BACK_ROOMS = 3
+
+
+def _cellar_stairs(c: _Cells, cx: int, floor: int, side: int, rx: int) -> None:
+    """A shaft through the dance floor's cap slab down to the nearest cave below."""
+    best, best_depth = 0, 0
+    for x in range(cx + side * int(rx * 0.3), cx + side * int(rx * 0.7), side * 8):
+        depth = next((d for d in range(8, 150) if c.air(x, floor + d)), 0)
+        if depth and (not best_depth or depth < best_depth):
+            best, best_depth = x, depth
+    if best_depth:
+        c.rect(best - 8, floor - 6, best + 8, floor + best_depth + 2, mat.AIR)
+
+
+def _giant_mushrooms(
+    c: _Cells, rng: random.Random, cap: int, stem: int, hall: tuple[int, int, int, int]
+) -> None:
+    """Riesenpilze on cave floors with headroom: caps to stand (and softly bounce) on."""
+    floors = c.floors(BORDER, BORDER, c.w, c.h, step=13)
+    rng.shuffle(floors)
+    placed: list[tuple[int, int]] = []
+    for x, y in floors:
+        if len(placed) >= MUSHROOMS:
+            break
+        if _in_rect(hall, x, y, 6):
+            continue
+        if any(abs(x - px) < 60 and abs(y - py) < 60 for px, py in placed):
+            continue
+        room = next((r for r in range(1, 72) if not c.air(x, y - r)), 72)
+        if room < 46:
+            continue
+        height, half = rng.randint(20, min(46, room - 24)), rng.randint(9, 14)
+        if not all(c.air(xx, y - height - k) for xx in (x - half, x + half) for k in (0, 10, 20)):
+            continue
+        c.rect(x - 1, y - height, x + 2, y + 1, stem, only={mat.AIR})
+        c.ellipse(x, y - height, half, 3, cap, only={mat.AIR})
+        placed.append((x, y))
+
+
+def _back_rooms(
+    c: _Cells, rng: random.Random, cap: int, stem: int, cups: list[tuple[int, int]]
+) -> tuple[list[tuple[int, int]], list[tuple[str, int, int]]]:
+    """Hinterzimmer in the lower third: small lounges inside the mushroom mass, reached
+    through a short door from a cave. A bouncer stands in the door, the cache lies at the
+    far wall, a cup of neon juice in between. Returns (cache spots, guards to spawn)."""
+    wide, high = BACK_ROOM
+    caches: list[tuple[int, int]] = []
+    guards: list[tuple[str, int, int]] = []
+    for _ in range(30000):
+        if len(caches) >= BACK_ROOMS:
+            break
+        x = rng.randint(BORDER + 24, c.w - BORDER - wide - 24)
+        y = rng.randint(c.h * 11 // 20, c.h - BORDER - high - 14)
+        if any(abs(x - fx) < 160 for fx, _fy in caches):
+            continue
+        box = [
+            (xx, yy)
+            for yy in range(y - 4, y + high + 7, 3)
+            for xx in range(x - 4, x + wide + 5, 3)
+        ]
+        if any(c.get(xx, yy) not in (stem, cap) or c.kept(xx, yy) for xx, yy in box):
+            continue
+        side = rng.choice((-1, 1))
+        edge = x - 1 if side == -1 else x + wide
+        floor = y + high  # first floor row
+        gap = next((d for d in range(5, 40) if c.air(edge + side * d, floor - 4)), 0)
+        if not gap or not all(c.air(edge + side * gap, floor - k) for k in (1, 10, 20)):
+            continue
+        c.rect(x, y, x + wide, floor, mat.AIR)
+        c.rect(x - 2, floor, x + wide + 2, floor + 3, cap)
+        door = range(edge, edge + side * (gap + 1), side)
+        c.rect(min(door), floor - 26, max(door) + 1, floor, mat.AIR)  # the door
+        c.rect(min(door), floor, max(door) + 1, floor + 3, cap, only={mat.AIR, stem})
+        far = x + 7 if side == 1 else x + wide - 8
+        bar = x + wide // 2
+        c.rect(bar - 6, floor - 6, bar - 4, floor, cap)
+        c.rect(bar + 4, floor - 6, bar + 6, floor, cap)
+        cups.append((bar, floor - 1))
+        caches.append((far, floor - 1))
+        gx = (x + wide - 20) if side == 1 else x + 2  # top-left of the bouncer, by the door
+        guards.append(("tuersteherpilz", gx, floor - 24))
+    return caches, guards
 
 
 def _shape_abtei(c: _Cells, rng: random.Random) -> dict[str, Any]:

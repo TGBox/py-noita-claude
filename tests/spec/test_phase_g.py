@@ -790,3 +790,32 @@ def test_g29_glibbria_islands_bowl_and_bounce() -> None:
     for _ in range(120):
         player.update(w, 0.016, 0, False, False)
     assert player.on_ground and player.y == ground
+
+
+def test_g30_sporenklub_stage_cellar_mushrooms_and_back_rooms() -> None:
+    """Sporenklub rework: the mid-boss on the main stage, stairs through the dance floor,
+    giant mushrooms in the caves, guarded back rooms with loot, softly bouncing caps."""
+    from src import materials as mat
+    from src.player import BOUNCE_MATERIALS
+    from src.run import Run
+    from src.universes.catalog import ALL_UNIVERSES
+
+    assert 0 < BOUNCE_MATERIALS["pilzhut"] < BOUNCE_MATERIALS["glibber"]
+    for seed in (3, 20, 26):
+        run = Run(seed=seed)
+        run.start_multiverse_run()
+        run.enter_universe(ALL_UNIVERSES["sporenklub"])
+        w = run.world
+        cap = mat.MAT_ID["pilzhut"]
+        cx, floor = w.width // 2, w.height // 2 + int(w.height * 0.13) // 2
+        x0, y0, x1, y1 = run.level.mid_boss_arena
+        assert x0 < cx < x1 and y1 <= floor, "the main stage is the arena"
+        assert w.get(cx, floor - 2) == cap, "DJ booth"
+        for half in (range(8, cx - 40), range(cx + 40, w.width - 8)):
+            assert any(w.get(x, floor + 3) == mat.AIR for x in half), "cellar stairs"
+        assert sum(p.kind == "gold" for p in run.pickups) >= 2, "back rooms hold loot"
+        guards = [c for c in run.enemies.creatures if c.species == "tuersteherpilz"]
+        assert len(guards) >= 2
+        for g in guards:
+            assert not w.rect_blocked(int(g.x), int(g.y), g.spec.width, g.spec.height)
+        run.enter_workshop()

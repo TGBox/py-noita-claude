@@ -629,6 +629,10 @@ class Run:
             flasks=more(FLASKS_PER_DEPTH), hearts=1, cocoons=more(COCOONS_PER_DEPTH),
         )  # fmt: skip
         self._fill_caches(shaped.get("caches", ()))
+        for species, x, y in shaped.get("spawns", ()):  # guards the terrain asked for
+            if self.mirror:
+                x = self.world.width - 1 - x - SPECIES[species].width
+            self.enemies.spawn(species, x, y)
         self.thrown = []
         self.droplets = []
         if self.level.secret is not None:

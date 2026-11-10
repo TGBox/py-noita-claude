@@ -30,12 +30,12 @@ LIQUID_RUN_FACTOR = 0.6
 ENERGY_RECHARGE = 6.0  # per second on the ground
 ENERGY_RECHARGE_AIR = 0.4  # per second in the air while not levitating
 STEP_UP = 6  # max ledge height the player walks up automatically
-# Glibbria: jelly is a trampoline. Landing on it faster than BOUNCE_MIN_SPEED (a fall of
-# about 30 cells; an ordinary hop lands softer) throws the body back up.
-BOUNCE_MATERIALS = ("glibber", "glibber_rot")
+# Jelly is a trampoline (Glibbria), mushroom caps bounce a little (Sporenklub). Landing
+# faster than BOUNCE_MIN_SPEED (a fall of about 30 cells; an ordinary hop lands softer)
+# throws the body back up with this share of the landing speed.
+BOUNCE_MATERIALS = {"glibber": 0.8, "glibber_rot": 0.8, "pilzhut": 0.5}
 BOUNCE_MIN_SPEED = 180.0
-BOUNCE_KEEP = 0.8  # share of the landing speed that comes back
-BOUNCE_BOOST = 1.15  # with jump pressed shortly before landing: higher than before
+BOUNCE_BOOST = 0.35  # extra share with jump pressed shortly before landing
 BOUNCE_BUFFER = 0.25  # seconds a jump press counts for the boost
 BOUNCE_MAX_SPEED = 1.1 * MAX_FALL_SPEED
 
@@ -69,11 +69,11 @@ class Player(Body):
     def y(self, val: float) -> None:
         self._y = int(val)
 
-    def _on_bouncy(self, world: World) -> bool:
-        """Standing on jelly (any cell right under the feet)?"""
-        bouncy = {mat.MAT_ID.get(key, -1) for key in BOUNCE_MATERIALS}
+    def _bounce_share(self, world: World) -> float:
+        """How bouncy the ground right under the feet is (0 = not at all)."""
         row = self.y + self.height
-        return any(world.get(x, row) in bouncy for x in range(self.x, self.x + self.width))
+        keys = {mat.KEYS[world.get(x, row)] for x in range(self.x, self.x + self.width)}
+        return max((BOUNCE_MATERIALS.get(key, 0.0) for key in keys), default=0.0)
 
     def place(self, x: int, y: int) -> None:
         super().place(x, y)
@@ -152,8 +152,9 @@ class Player(Body):
         impact = self.vy
         self.move(world, dt)
         if self.on_ground and impact > BOUNCE_MIN_SPEED and not in_liquid and not self.dead:
-            if self._on_bouncy(world):
-                keep = BOUNCE_BOOST if self._bounce_buffer > 0 else BOUNCE_KEEP
+            keep = self._bounce_share(world)
+            if keep:
+                keep += BOUNCE_BOOST if self._bounce_buffer > 0 else 0.0
                 self.vy = -min(impact * keep, BOUNCE_MAX_SPEED)
                 self.on_ground = False
         if self.on_ground and not self.levitating:
