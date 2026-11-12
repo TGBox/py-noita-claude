@@ -17,7 +17,7 @@ from src import materials as mat
 from src import native
 from src.authority import Wanted
 from src.body import ENEMY_TEAM, PLAYER_TEAM, Body
-from src.bosses import BossScript
+from src.bosses import BossScript, make_boss_script
 from src.challenges import QUESTS, Challenge, Quest, quest_for
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
@@ -596,6 +596,7 @@ class Run:
             self.on_generate(depth.name_de)
         self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
+        self.boss_script = None
         shaped: dict[str, Any] = {}
         if self.plan is not None:
             # multiverse run: the proven organism generator, dressed in the universe's
@@ -654,7 +655,8 @@ class Run:
                     bc = ((b_arena[0] + b_arena[2]) // 2, (b_arena[1] + b_arena[3]) // 2)
                 else:
                     bc = (self.world.width // 2, self.world.height // 2)
-                self.enemies.spawn(self.universe.boss, bc[0], bc[1])
+                boss = self.enemies.spawn(self.universe.boss, bc[0], bc[1])
+                self.boss_script = make_boss_script(boss)  # F06: fought in three phases
         elif depth.boss and self.level.arena is not None:
             self.enemies.creatures.append(spawn_boss(depth.boss, self.level.arena, self.rng))
         if self.ng or self.parallel:
@@ -1118,6 +1120,11 @@ class Run:
             for key in list(creature.ability_cooldowns):
                 creature.ability_cooldowns[key] = max(0.0, creature.ability_cooldowns[key] - dt)
         out_events: list[tuple[str, dict[str, Any]]] = []
+        if self.boss_script is not None and not self.boss_script.boss.dead:
+            self.boss_script.update(dt, self)
+        if self.boss_banner is not None:
+            text, left = self.boss_banner
+            self.boss_banner = (text, left - dt) if left > dt else None
         died = self.enemies.update(
             self.world,
             dt,
@@ -2581,7 +2588,8 @@ class Run:
 
     def boss_line(self, text_de: str) -> None:
         """Show a boss line at the top of the screen (Contract V22, Card F14)."""
-        raise NotImplementedError("Card F14")
+        self.boss_banner = (text_de, BOSS_LINE_TIME)
+        self.messages.append(text_de)  # until the banner is drawn (G02) it is a HUD message
 
     def handle_menu_input(self, key: int) -> bool:
         """Handle keyboard navigation for modal overlays (Card G09, G14, G22)."""
@@ -2726,6 +2734,9 @@ class Run:
 
     def _on_death(self, creature) -> None:
         cx, cy = creature.center
+        if self.boss_script is not None and creature is self.boss_script.boss:
+            self.boss_script.on_death(self)
+            self.boss_script = None
         if creature.spec.prop:  # a burst sac: no kill, but maybe a chain reaction
             if creature.spec.blast:
                 destroyed = self.world.explode(int(cx), int(cy), creature.spec.blast)
@@ -2896,6 +2907,7 @@ def _unpack(text: str) -> bytes:
 FIREBREAK_CELL = universe_features.FIREBREAK_CELL  # Aktenhalde: paper sections (cells)
 FIREBREAK_THICKNESS = universe_features.FIREBREAK_THICKNESS
 NATIVES_PER_SPECIES = 6  # natives of each species per universe level (before area scaling)
+BOSS_LINE_TIME = 4.0  # seconds a boss line stays on screen
 QUEST_GIVER_RANGE = 32.0  # px: talk to the quest giver from this close
 FORMS_TO_STAMP = 6  # Aktenhalde quest: forms scattered when it is accepted
 BELL_COOLDOWN = 0.4  # seconds between two rings of the abbey bell

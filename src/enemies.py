@@ -717,6 +717,7 @@ class Creature(Body):
         self.summons: list[str] = []  # creature keys the manager should spawn
         self.breath = 0.0  # position in the breathing cycle (inhaling bosses)
         self.power = 1.0  # damage factor (New Game+)
+        self.speed_scale = 1.0  # boss phases speed a creature up (Contract V16)
         self.flash_cooldown = 0.0
         self.stagger = 0.0  # seconds it tumbles helplessly after a kick or blast
         self.inhaling = False
@@ -835,10 +836,10 @@ class Creature(Body):
         px, _ = self.last_seen
         if hunting:
             direction = 0 if abs(px - cx) < 2 else (1 if px > cx else -1)
-            speed = self.spec.speed
+            speed = self.spec.speed * self.speed_scale
         else:
             direction = self._wander(dt)
-            speed = self.spec.speed * 0.5
+            speed = self.spec.speed * self.speed_scale * 0.5
         if direction:
             self.facing = direction
         self.vx += (direction * speed - self.vx) * min(1.0, 8.0 * dt)
@@ -859,14 +860,14 @@ class Creature(Body):
             distance = math.hypot(dx, dy) or 1.0
             if distance < 12:
                 dx = dy = 0.0
-            wanted_vx = dx / distance * self.spec.speed
-            wanted_vy = dy / distance * self.spec.speed
+            wanted_vx = dx / distance * self.spec.speed * self.speed_scale
+            wanted_vy = dy / distance * self.spec.speed * self.speed_scale
             self.facing = 1 if px > cx else -1
         else:
             direction = self._wander(dt)
             if direction:
                 self.facing = direction
-            wanted_vx = direction * self.spec.speed * 0.5
+            wanted_vx = direction * self.spec.speed * self.speed_scale * 0.5
             wanted_vy = 0.0
         wanted_vy += math.sin(self.age * 5) * 18  # buzzing bob
         follow = min(1.0, 3.0 * dt)
