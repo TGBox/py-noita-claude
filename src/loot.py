@@ -432,7 +432,7 @@ def pickup_sprite_key(pickup: Pickup) -> str:
         return "fundkiste"
     elif pickup.kind == "badge":
         return "dienstausweis"
-    elif pickup.kind == "formular_stempel":
+    elif pickup.kind in ("formular_stempel", "form_stamp"):
         # Return the formular stamp sprite key
         return "formular_stempel"
     else:
@@ -470,6 +470,7 @@ KIND_LABELS_DE: dict[str, str] = {
     "crate": "Kiste",
     "badge": "Abzeichen",
     "formular_stempel": "Formularstempel",
+    "form_stamp": "Formular B-38 (E: stempeln)",
 }
 
 

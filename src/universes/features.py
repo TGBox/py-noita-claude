@@ -486,6 +486,7 @@ def _shape_glibbria(c: _Cells, rng: random.Random) -> dict[str, Any]:
             break
     if "exit" in state and len(keep) > 1:
         keep[1] = (*state["exit"], keep[1][2])
+        state["quest_target"] = state["exit"]  # the cow escort ends on the anchor island
     tiers = (0.2, 0.37, 0.54, 0.7)
     columns = list(enumerate(range(90, c.w - 90, 135)))
     rng.shuffle(columns)

@@ -18,7 +18,7 @@ from src import native
 from src.authority import Wanted
 from src.body import ENEMY_TEAM, PLAYER_TEAM, Body
 from src.bosses import BossScript
-from src.challenges import Challenge
+from src.challenges import QUESTS, Challenge, Quest, quest_for
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
 from src.economy import boss_gold, creature_gold, mid_boss_gold
@@ -242,6 +242,9 @@ class Run:
         self.menu_mode: str = ""
         self.listeners: list[Callable[[str, dict[str, Any]], None]] = []
         self.emitted_events: list[tuple[str, dict[str, Any]]] = []
+        self.quest: Quest | None = None  # the universe's challenge (Contract V13b)
+        self._bell_cooldown = 0.0
+        self.listeners.append(self._on_bus_event)
         self.grudges: set[tuple[str, str]] = set()
         self.wanted: Wanted = Wanted()
         self.klonita: Klonita = Klonita()
@@ -309,7 +312,12 @@ class Run:
     def new_run(self) -> None:
         self.plan = None  # the old organism descent (sandbox): no multiverse plan
         self._reset()
-        self.enter_depth(0)
+        if self.universe_key != "fleischwelt":
+            # a single universe outside a run plan (tests, bot): with its own material set,
+            # rule and natives, like a universe entered through the portal
+            self.enter_universe(self.universe, boss_slot=self.boss_slot)
+        else:
+            self.enter_depth(0)
 
     def _reset(self) -> None:
         """Fresh run state (starter wands, no perks) without generating a level."""
@@ -665,6 +673,7 @@ class Run:
             if self.mirror:
                 x = self.world.width - 1 - x - SPECIES[species].width
             self.enemies.spawn(species, x, y)
+        self._start_quest()
         self.thrown = []
         self.droplets = []
         if self.level.secret is not None:
@@ -769,6 +778,7 @@ class Run:
             "version": SAVE_VERSION,
             "depth_index": self.depth_index,
             "pearls": self.pearls,
+            "quest": self.quest.to_data() if self.quest is not None else None,
             "perks": sorted(self.perks),
             "revive_used": self.revive_used,
             "eyes": self.eyes,
@@ -874,6 +884,7 @@ class Run:
         self._reset()
         self.depth_index = depth_index
         self.pearls = int(data["pearls"])
+        self.quest = Quest.from_data(data.get("quest"))
         self.perks = perks
         self.revive_used = bool(data["revive_used"])
         self.eyes = max(0, min(len(DEPTHS), int(data.get("eyes", 0))))
@@ -1051,7 +1062,12 @@ class Run:
         if self._speck_timer <= 0:
             self._speck_timer = SPECK_INTERVAL
             self._sweep_specks()
+        if controls.jump and self.player.on_ground and not self.player.dead:
+            px, py = self.player.center  # D28: the dance quest counts jumps on the beat
+            self.emit("jump", x=px, y=py, on_beat=bool(self.rule.on_beat))
         self.player.update(self.world, dt, controls.move, controls.jump, controls.levitate)
+        if self.quest is not None:
+            self.quest.tick(dt, self)
         apply_player_rules(
             self.player, self.world, self.rule, dt, region=self._region_at(*self.player.center)
         )
@@ -1070,6 +1086,8 @@ class Run:
         if controls.pickup:
             if self.in_workshop and self.menu_mode == "":
                 self.interact_station()
+            elif alive and self.try_interact_creature():
+                pass  # talked to the quest giver or bribed a bouncer
             elif alive and self.exit_open and self.near_exit() and self.nearest_pickup() is None:
                 leave = True  # the way on opens on a key press, never by walking into it
             else:
@@ -1129,6 +1147,7 @@ class Run:
             drop.update(self.world, dt, self.player)
         self.droplets = [d for d in self.droplets if d.alive]
         blasts = self.projectiles.update(self.world, dt, controls.aim, bodies) + self._prop_blasts
+        self._ring_bells(blasts, dt)
         if self.projectiles.teleports:
             tx, ty = self.projectiles.teleports[-1]
             self.projectiles.teleports.clear()
@@ -1812,6 +1831,12 @@ class Run:
             self.badges += amount
             self.records.badges += amount
             self.events.append("pickup")
+        elif kind == "form_stamp":  # D25: a form lying around, stamped with [E]
+            self.events.append("pickup")
+            if item in self.pickups:
+                self.pickups.remove(item)
+            self.emit("form_stamped", x=float(item.x), y=float(item.y))
+            return True
         else:  # "crate", "formular_stempel": opened or applied by later cards
             self.events.append("pickup")
         if item in self.pickups:
@@ -1852,8 +1877,25 @@ class Run:
             )
 
     def try_interact_creature(self) -> bool:
-        """Attempt special E-key interaction with nearby creature (Card A16)."""
+        """Attempt special E-key interaction with nearby creature (Card A16, D23)."""
         px, py = self.player.center
+        quest = self.quest
+        if quest is not None and not quest.closed:
+            for creature in self.enemies.creatures:
+                if creature.dead or not creature.giver or creature.species != quest.spec.giver:
+                    continue
+                cx, cy = creature.center
+                if math.hypot(cx - px, cy - py) > QUEST_GIVER_RANGE:
+                    continue
+                if not quest.accepted:
+                    quest.accept(self)
+                    self.say(creature.spec.name_de, quest.spec.text_de, cx, cy - creature.height)
+                elif quest.turn_in(self):
+                    self.say(creature.spec.name_de, "Danke! Das hier ist für dich.", cx, cy)
+                else:
+                    left = f"{quest.progress}/{quest.spec.goal}"
+                    self.say(creature.spec.name_de, f"{quest.spec.text_de} ({left})", cx, cy)
+                return True
         for creature in self.enemies.creatures:
             if creature.dead or creature.species != "tuersteherpilz" or creature.bribed:
                 continue
@@ -2287,6 +2329,8 @@ class Run:
             level = replace(level, exit=shaped["exit"])
         if shaped and shaped.get("arena") and level.arena is not None:
             level = replace(level, arena=shaped["arena"])
+        if shaped and shaped.get("quest_target"):
+            level = replace(level, quest_target=shaped["quest_target"])
         rng = random.Random(self.seed * 7919 + (self.plan.slot if self.plan else 0))
         topology = UNIVERSE_TOPOLOGY.get(self.universe.key, "vertical")
         bands = region_bands(w.width, w.height, topology)
@@ -2437,6 +2481,79 @@ class Run:
             rule=universe.rule if universe.rule in RULE_KEYS else "",
             size=None,  # the run's default size for now; SHAPES sizes come after the playtest
         )
+
+    # ------------------------------------------------------------ quests (V13b)
+
+    def _start_quest(self) -> None:
+        """D23: every universe level has its challenge and the native who gives it."""
+        self.quest = None
+        key = f"challenge_{self.universe.key}"
+        if key not in QUESTS or self.in_sanctum or self.in_workshop:
+            return
+        self.quest = quest_for(self.universe.key)
+        spot = self.level.quest_giver
+        if spot is None:  # own dice: the quest must not shift the run's other random rolls
+            rng = random.Random(self.seed * 53 + self.depth_index)
+            spot = self._open_spot(rng, self.level.spawn, min_dist=40, max_dist=260)
+        if spot is None:
+            sx, sy = self.level.spawn
+            spot = (sx + 30, sy + self.player.height - 1)
+        spec = SPECIES[self.quest.spec.giver]
+        giver = self.enemies.spawn(spec.key, spot[0] - spec.width // 2, spot[1] - spec.height)
+        giver.giver = True
+        giver.stance = "passive"
+        giver.aggro = False
+        if self.ng or self.parallel:
+            giver.empower(self.power)
+
+    def _on_bus_event(self, name: str, payload: dict[str, Any]) -> None:
+        """Every emitted event reaches the quest; a few make the world react."""
+        if name == "quest_accepted" and payload.get("key") == "challenge_aktenhalde":
+            self._scatter_forms()
+        elif name == "noise":
+            self._make_noise(
+                float(payload.get("x", 0.0)), float(payload.get("y", 0.0)),
+                float(payload.get("radius", 80.0)),
+            )  # fmt: skip
+        if self.quest is not None:
+            self.quest.on_event(name, payload, self)
+
+    def _make_noise(self, x: float, y: float, radius: float) -> None:
+        """Noise wakes sleepers (C09); who wakes up is announced on the bus (D29)."""
+        wake_events: list[tuple[str, dict[str, Any]]] = []
+        self.enemies.on_noise(x, y, radius, wake_events)
+        if wake_events:
+            self.events.append("wake")
+        for name, data in wake_events:
+            self.emit(name, **data)
+
+    def _scatter_forms(self) -> None:
+        """D25: six forms to stamp, on free floor spots around the level."""
+        for _ in range(FORMS_TO_STAMP):
+            spot = self._open_spot(self.rng, self.level.spawn, min_dist=30)
+            if spot is None:
+                px, py = self.player.center
+                spot = (int(px), int(py))
+            self.pickups.append(Pickup(spot[0], spot[1] - 2, kind="form_stamp", seen=True))
+
+    def _ring_bells(self, blasts: list[Blast], dt: float) -> None:
+        """D29: an explosion that touches bell bronze rings the bell, and that is loud."""
+        self._bell_cooldown = max(0.0, self._bell_cooldown - dt)
+        bronze = mat.MAT_ID.get("glockenbronze")
+        if bronze is None or self._bell_cooldown > 0:
+            return
+        for blast in blasts:
+            reach = blast.radius + 3
+            cells = (
+                (blast.x + dx, blast.y + dy)
+                for dy in range(-reach, reach + 1, 2)
+                for dx in range(-reach, reach + 1, 2)
+            )
+            if any(self.world.get(x, y) == bronze for x, y in cells):
+                self._bell_cooldown = BELL_COOLDOWN
+                self.emit("bell_rung", x=float(blast.x), y=float(blast.y))
+                self.emit("noise", x=float(blast.x), y=float(blast.y), radius=200.0)
+                return
 
     def enter_headquarters(self) -> None:
         """Enter the authority headquarters for the true ending (Contract V17, Card F10)."""
@@ -2710,10 +2827,7 @@ class Run:
                 x = float(payload.get("x", 0.0))
                 y = float(payload.get("y", 0.0))
                 radius = float(payload.get("radius", 80.0))
-                wake_events: list[tuple[str, dict[str, Any]]] = []
-                self.enemies.on_noise(x, y, radius, wake_events)
-                if wake_events:
-                    self.events.append("wake")
+                self._make_noise(x, y, radius)
 
     def _apply_blast(self, blast: Blast, bodies: list[Body]) -> None:
         reach = blast.radius + BLAST_REACH
@@ -2782,6 +2896,9 @@ def _unpack(text: str) -> bytes:
 FIREBREAK_CELL = universe_features.FIREBREAK_CELL  # Aktenhalde: paper sections (cells)
 FIREBREAK_THICKNESS = universe_features.FIREBREAK_THICKNESS
 NATIVES_PER_SPECIES = 6  # natives of each species per universe level (before area scaling)
+QUEST_GIVER_RANGE = 32.0  # px: talk to the quest giver from this close
+FORMS_TO_STAMP = 6  # Aktenhalde quest: forms scattered when it is accepted
+BELL_COOLDOWN = 0.4  # seconds between two rings of the abbey bell
 ABSORB_RADIUS = 260.0  # "Zauber zu Kraft" reaches this far around the player (cells)
 UNIVERSE_BLOCKS = 5  # loose modules per universe level (playtest: the backpack overflowed)
 # region layout per universe (bible 03), used for region effects on organism-built levels
@@ -2801,6 +2918,7 @@ NEW_PICKUP_KINDS = frozenset(
         "crate",
         "badge",
         "formular_stempel",
+        "form_stamp",
     }
 )
 # Playtest 2026-11-08: Physik-o-Mat and Schießstand were not fun; switched off until they are

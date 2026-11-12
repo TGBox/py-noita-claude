@@ -258,6 +258,12 @@ HUEPFLING = CreatureSpec(
     windup_time=0.25, recover_time=0.2, drops_sample="probe_brauseperle", sample_chance=0.35, pearls=3,
 )  # fmt: skip
 
+GLIBBERKUH = CreatureSpec(
+    "glibberkuh", "Glibberkuh", width=16, height=12, hp=30, flying=False, speed=38, sight=200,
+    stance="passive", faction="gelee", abilities=(Ability("graze", "zuckerguss"),),
+    drops_sample="probe_glibberkern", sample_chance=0.0, pearls=0,
+)  # fmt: skip
+
 GLIBBERTEILER = CreatureSpec(
     "glibberteiler", "Glibberteiler", width=18, height=14, hp=40, flying=False, speed=40, sight=380,
     melee_damage=9, melee_cooldown=0.8, jump_speed=150, stance="hostile", faction="gelee",
@@ -642,7 +648,7 @@ SPECIES: dict[str, CreatureSpec] = {
         TALLOW_SAC, ACID_SAC, SPORE_SAC, BONE_EATER, BREATH, SHAPESHIFTER,
         FLEISCHMADE, BLUTEGEL, SAEURESPUCKER, ZOTTENWURM,
         AKTENFRESSER, STEMPLER, PARAGRAPHENREITER, KAFFEEGOLEM,
-        HUEPFLING, GLIBBERTEILER, ZUCKERWATTE_WOLKE, KONFETTI_KANONE,
+        HUEPFLING, GLIBBERKUH, GLIBBERTEILER, ZUCKERWATTE_WOLKE, KONFETTI_KANONE,
         AMEISENKRIEGER, BLATTLAUS, ARBEITERAMEISE, HARZSPUCKER,
         TUERSTEHERPILZ, SPORENSCHNORRER, SPORENWERFER, LEUCHTMOTTE,
         MOENCHSFISCH, ORGELAAL, GLOCKENQUALLE, KORALLENWAECHTER,

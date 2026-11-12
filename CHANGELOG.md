@@ -2,7 +2,8 @@
 
 ## SemVer v1.8.0
 
-- 2026-11-12 (e0898b1): fix(core): fix many things
+- 2026-11-12 (b71f15b): fix: fable fixes for unsolved cards
+- 2026-11-12 (5ed9de8): fix(core): fix many things
 - 2026-11-10 (9a2929f): feat: all universes updated
 
 ## SemVer v1.7.13
