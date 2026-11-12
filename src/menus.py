@@ -461,6 +461,28 @@ def draw_archive_menu(
     raise NotImplementedError("Card G05")
 
 
+def draw_empress_bargain_menu(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    selected_index: int,
+) -> None:
+    """The Empress's offer (Contract V17/V22, Card F08): two answers, no way round them."""
+    sw, sh = surface.get_size()
+    s = ui.scale_of(surface)
+    ui.shade(surface, 170)
+    ui.text(surface, "Die Böse Kaiserin bietet dir an:", (sw / 2, sh * 0.32), round(20 * s),
+            ui.DIM, anchor="center")  # fmt: skip
+    ui.text(surface, "„Herrsche mit mir.“", (sw / 2, sh * 0.39), round(30 * s), ui.GOLD,
+            heading=True, anchor="center")  # fmt: skip
+    for index, label in enumerate(("Die Hälfte des Multiversums", "Nein danke")):
+        chosen = index == selected_index
+        ui.text(surface, ("> " if chosen else "") + label, (sw / 2, sh * (0.52 + 0.08 * index)),
+                round(22 * s), ui.GOLD if chosen else ui.TEXT, bold=chosen, anchor="center")  # fmt: skip
+    ui.text(surface, "W/S: wählen   Enter: antworten", (sw / 2, sh * 0.74), round(14 * s), ui.DIM,
+            anchor="center")  # fmt: skip
+
+
 def draw_portal_select_menu(
     surface: pygame.Surface,
     font: pygame.font.Font,

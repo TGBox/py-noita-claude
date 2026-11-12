@@ -962,7 +962,13 @@ class Game:
                     )
                 self.hud.draw(self.screen, self.viewport, self._hud_state())
                 if self.run.menu_mode:
-                    if self.run.menu_mode == "portal_select":
+                    if self.run.menu_mode == "empress_bargain":
+                        from src.menus import draw_empress_bargain_menu
+
+                        draw_empress_bargain_menu(
+                            self.screen, ui.font(20), ui.font(14), self.run.menu_index
+                        )
+                    elif self.run.menu_mode == "portal_select":
                         from src.menus import draw_portal_select_menu
 
                         offers = self.run.plan.offers() if self.run.plan else []
@@ -1172,7 +1178,7 @@ class Game:
         depth_name, caption = run.depth.name_de, ""
         if run.in_workshop:
             depth_name, caption = "Werkstatt", "Zwischen den Welten"
-        elif run.plan is not None:
+        elif run.multiverse:
             caption = f"Universum {run.plan.slot}/6 · Rang {run.rank}"
         banner = depth_name if run.time_in_depth < BANNER_TIME and not run.in_workshop else ""
         if banner and run.ng:
@@ -1194,7 +1200,7 @@ class Game:
                 prompt = f"{key}: Aufheben – {item.label_de}"
         elif run.near_exit() and not run.exit_open and run.depth.boss:
             prompt = "Der Durchgang ist verschlossen. Besiege den Wächter."
-        elif run.plan is not None and not run.in_workshop and run.near_exit():
+        elif run.multiverse and not run.in_workshop and run.near_exit():
             prompt = (
                 f"{key}: Durch den Ankerpunkt zurück in die Werkstatt"
                 if run.exit_open
@@ -1240,7 +1246,7 @@ class Game:
             cursor=self._cursor_on_screen(target),
             outcome_keys=outcome_keys,
             log_path=str(self.log.path) if self.log.path else "",
-            eyes=0 if run.plan is not None else run.eyes,  # Uraugen: classic descent only
+            eyes=0 if run.multiverse else run.eyes,  # Uraugen: classic descent only
             rule_line=describe_rule(run.rule) if run.rule.key else "",
             breath=(
                 run.rule.breath / run.rule.max_breath

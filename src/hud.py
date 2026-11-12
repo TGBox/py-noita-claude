@@ -317,6 +317,7 @@ class Hud:
     def _outcome(self, screen: pygame.Surface, state: HudState, s: float) -> None:
         title, sub = {
             "dead": ("Du bist gestorben", "Das Fleisch hat dich verschlungen."),
+            "bad_ending": ("Die Hälfte des Multiversums", "Du herrschst. Neben ihr. Für immer."),
             "victory": ("Das Herz ist zerstört", "Du hast Cloita besiegt!"),
             "true_victory": ("Alle Uraugen sehen durch dich", "Cloita gehört dir."),
         }[state.outcome]

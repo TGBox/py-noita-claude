@@ -18,6 +18,17 @@ from src import native
 from src.authority import Wanted
 from src.body import ENEMY_TEAM, PLAYER_TEAM, Body
 from src.bosses import BossScript, make_boss_script
+from src.bosses.evil_selves import (
+    ECHO_HP_FACTOR,
+    EVIL_HP,
+    apply_empress_bargain,
+    echo_for_depth,
+)
+from src.bosses.headquarters import (
+    HeadquartersController,
+    can_enter_headquarters,
+    generate_headquarters_arena,
+)
 from src.challenges import QUESTS, Challenge, Quest, quest_for
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
@@ -243,6 +254,9 @@ class Run:
         self.listeners: list[Callable[[str, dict[str, Any]], None]] = []
         self.emitted_events: list[tuple[str, dict[str, Any]]] = []
         self.quest: Quest | None = None  # the universe's challenge (Contract V13b)
+        self.ending: str = ""  # "normal", "wahr" or "boese" once the run is over (V17)
+        self.extra_scripts: list[BossScript] = []  # echoes and headquarters bosses
+        self.hq_controller: HeadquartersController | None = None
         self._bell_cooldown = 0.0
         self.listeners.append(self._on_bus_event)
         self.grudges: set[tuple[str, str]] = set()
@@ -254,7 +268,8 @@ class Run:
         self.event: Event | None = None
         self.event_timer: float = 0.0
         self.challenge: Challenge | None = None
-        self.plan: Any = None
+        self.plan: Any = None  # the route through the multiverse (always there, V17)
+        self.multiverse = False  # True: a multiverse run; False: the old organism descent
         self.fabricator: Any = None
         self.couch_used: bool = False
         self.minigames_played: set[str] = set()
@@ -304,13 +319,17 @@ class Run:
 
         self._reset()
         self.plan = RunPlan(self.seed)
+        self.multiverse = True
         self.portal_index = 0
         for k in blocks_of_tier(1):
             self.records.discover("blueprint", k)
         self.enter_workshop()
 
     def new_run(self) -> None:
-        self.plan = None  # the old organism descent (sandbox): no multiverse plan
+        from src.universes.plan import RunPlan
+
+        self.plan = RunPlan(self.seed)  # only tells which evil self belongs to this seed
+        self.multiverse = False  # the old organism descent (sandbox)
         self._reset()
         if self.universe_key != "fleischwelt":
             # a single universe outside a run plan (tests, bot): with its own material set,
@@ -597,12 +616,14 @@ class Run:
         self._prepare_world(depth)
         self.world.reseed(self.rng.randrange(2**31))
         self.boss_script = None
+        self.extra_scripts = []
+        self.in_headquarters = False
         shaped: dict[str, Any] = {}
-        if self.plan is not None:
+        if self.multiverse:
             # multiverse run: the proven organism generator, dressed in the universe's
             # materials (aliases of its set) and given the V9 fields (Card G19)
             organism = generate_level(self.world, depth, self.seed + index)
-            rng = random.Random(self.seed * 31 + index + (self.plan.slot if self.plan else 0))
+            rng = random.Random(self.seed * 31 + index + (self.plan.slot if self.multiverse else 0))
             sx, sy = organism.spawn  # top-left of the player's body
             body = (sx + self.player.width // 2, sy + self.player.height // 2, 14)
             keep = [body, (*organism.exit, 20)]
@@ -639,9 +660,9 @@ class Run:
             more(depth.spitters),
             more(depth.bloats),
             extra=tuple((key, more(count)) for key, count in depth.extra),
-            spread=self.plan is not None,  # universes: natives in every part of the map
+            spread=self.multiverse,  # universes: natives in every part of the map
         )
-        if self.universe_key != "fleischwelt" or self.plan is not None:
+        if self.universe_key != "fleischwelt" or self.multiverse:
             if getattr(self.universe, "mid_boss", None):
                 mid_arena = getattr(self.level, "mid_boss_arena", None)
                 if mid_arena and mid_arena != (0, 0, 0, 0):
@@ -676,6 +697,7 @@ class Run:
                 x = self.world.width - 1 - x - SPECIES[species].width
             self.enemies.spawn(species, x, y)
         self._start_quest()
+        self._spawn_echo()
         self.thrown = []
         self.droplets = []
         if self.level.secret is not None:
@@ -734,7 +756,7 @@ class Run:
     @property
     def rank(self) -> int:
         """Rank 1-3 of the current depth (the seven organism depths spread over three)."""
-        if self.plan is not None and self.plan.current is not None:
+        if self.multiverse and self.plan.current is not None:
             return self.plan.current.rank  # multiverse run: rank of the chosen universe
         return 1 + self.depth_index * 3 // max(1, len(self.route))
 
@@ -1054,7 +1076,7 @@ class Run:
                         self.event_timer = 0.0
                         self.event = Event(spec=spec, remaining=spec.duration)
                         self.event.on_start(self)
-        alive = not self.player.dead and self.outcome != "victory"
+        alive = not self.player.dead and self.outcome not in ("victory", "bad_ending")
         if not alive:
             controls = Controls(aim=controls.aim)
         self._clear_overlap()
@@ -1122,6 +1144,11 @@ class Run:
         out_events: list[tuple[str, dict[str, Any]]] = []
         if self.boss_script is not None and not self.boss_script.boss.dead:
             self.boss_script.update(dt, self)
+        for script in self.extra_scripts:
+            if not script.boss.dead:
+                script.update(dt, self)
+        if self.in_headquarters and self.hq_controller is not None:
+            self.hq_controller.update(dt, self)
         if self.boss_banner is not None:
             text, left = self.boss_banner
             self.boss_banner = (text, left - dt) if left > dt else None
@@ -1736,7 +1763,10 @@ class Run:
             return
         if item.portal:
             self.pickups.remove(item)
-            self.enter_mirror()
+            if item.item_key == "headquarters":  # F10: the way to the true ending
+                self.enter_headquarters()
+            else:
+                self.enter_mirror()
             return
         if item.reroll:
             if not any(i.perk for i in self.pickups) or not self.can_afford(item):
@@ -1959,8 +1989,9 @@ class Run:
         from src.universes.plan import RunPlan
         from src.workshop import WORKSHOP_SIZE, generate_workshop
 
-        if self.plan is None:
+        if not self.multiverse:
             self.plan = RunPlan(self.seed)
+            self.multiverse = True
 
         self.in_workshop = True
         self.menu_mode = ""
@@ -2034,7 +2065,7 @@ class Run:
         # Reset / populate active traders for workshop
         self.active_traders = traders_for_workshop(self.plan.visited)
         self.trader_offers = {}
-        stage = (self.plan.slot + 1) if self.plan is not None else 1
+        stage = (self.plan.slot + 1) if self.multiverse else 1
         for trader in self.active_traders:
             self.trader_offers[trader.key] = generate_offers(
                 trader, stage, self.rng, price_factor=self.price_factor
@@ -2338,7 +2369,7 @@ class Run:
             level = replace(level, arena=shaped["arena"])
         if shaped and shaped.get("quest_target"):
             level = replace(level, quest_target=shaped["quest_target"])
-        rng = random.Random(self.seed * 7919 + (self.plan.slot if self.plan else 0))
+        rng = random.Random(self.seed * 7919 + (self.plan.slot if self.multiverse else 0))
         topology = UNIVERSE_TOPOLOGY.get(self.universe.key, "vertical")
         bands = region_bands(w.width, w.height, topology)
         regions = [(r.key, band) for r, band in zip(self.universe.regions, bands, strict=False)]
@@ -2393,7 +2424,7 @@ class Run:
     def _fill_caches(self, lockers: Any) -> None:
         """What waits in a universe's hiding places (Aktenschraenke behind paper doors,
         Kaugummi-Hoehlen ...): gold in each, a sample in the first, a module in every third."""
-        rank = self.plan.rank if self.plan is not None else self.rank
+        rank = self.plan.rank if self.multiverse else self.rank
         for i, (x, y) in enumerate(lockers):
             if self.mirror:
                 x = self.world.width - 1 - x
@@ -2468,7 +2499,7 @@ class Run:
         natives = tuple((key, NATIVES_PER_SPECIES) for key in universe.natives if key in SPECIES)
         if universe.big and universe.big in SPECIES:
             natives += ((universe.big, 1),)
-        slot = self.plan.slot if self.plan is not None else 1
+        slot = self.plan.slot if self.multiverse else 1
         template = DEPTHS[min(len(DEPTHS) - 2, max(0, slot - 1))]  # never the final depth
         return replace(
             template,
@@ -2563,8 +2594,73 @@ class Run:
                 return
 
     def enter_headquarters(self) -> None:
-        """Enter the authority headquarters for the true ending (Contract V17, Card F10)."""
-        raise NotImplementedError("Card F10")
+        """Enter the authority headquarters for the true ending (Contract V17, Card F10).
+
+        No workshop visit, full health, the endless file hall and stage "anhoerung"."""
+        self.in_workshop = self.in_sanctum = False
+        self.menu_mode = ""
+        hall = replace(
+            self.route[self.depth_index], key="hauptquartier", name_de="Hauptquartier",
+            material_set="aktenhalde", rule="", boss=None, final=False, size=None, ambient=0.6,
+        )  # fmt: skip
+        route = list(self.route)
+        route[self.depth_index] = hall
+        self.route = tuple(route)
+        self._prepare_world(hall)
+        spawn = generate_headquarters_arena(self.world)
+        self.level = Level((spawn[0], spawn[1] - self.player.height), (-999, -999))
+        self.enemies.creatures = []
+        self.pickups = []
+        self.projectiles.clear()
+        self.boss_script = None
+        self.extra_scripts = []
+        self.quest = None
+        self.exit_open = False
+        self.outcome = ""
+        self.player.place(*self.level.spawn)
+        self.player.hp = self.player.max_hp
+        self.in_headquarters = True
+        self.hq_controller = HeadquartersController()
+        self.hq_controller.spawn_stage(self)
+        self.boss_line("Die Splitter erinnern sich an dich.")
+
+    def offer_headquarters(self, x: float, y: float) -> bool:
+        """After the final fight: the headquarters portal appears if the run earned it."""
+        if not can_enter_headquarters(self):
+            return False
+        portal = Pickup(x, y, portal=True, floating=True, kind="portal", item_key="headquarters")
+        self.pickups.append(portal)
+        return True
+
+    def resolve_empress_bargain(self, accepted: bool) -> None:
+        """Answer the Empress's offer (Card F08): yes ends the run with the evil ending."""
+        apply_empress_bargain(self, accepted)
+        self.menu_mode = ""
+        self.menu_index = 0
+
+    def _spawn_echo(self) -> None:
+        """F08: on the first universe of rank 2 and 3 an echo of an evil self waits in the
+        secret room: 30 % of her health, two phases."""
+        if not self.multiverse or self.in_workshop:
+            return
+        species = echo_for_depth(self, len(self.plan.chosen))
+        spot = self.level.secret
+        if species is None:
+            return
+        if spot is None:  # no secret room in this terrain: somewhere far from the start
+            spot = self._open_spot(
+                random.Random(self.seed * 59 + self.depth_index), self.level.spawn,
+                min_dist=self.world.width * 0.3,
+            )  # fmt: skip
+        if spot is None:
+            return
+        spec = SPECIES[species]
+        echo = self.enemies.spawn(species, spot[0] - spec.width // 2, spot[1] - spec.height // 2)
+        echo.echo = True
+        echo.max_hp = echo.hp = EVIL_HP[species] * ECHO_HP_FACTOR
+        script = make_boss_script(echo)
+        if script is not None:
+            self.extra_scripts.append(script)
 
     def say(
         self,
@@ -2595,8 +2691,17 @@ class Run:
         """Handle keyboard navigation for modal overlays (Card G09, G14, G22)."""
         import pygame
 
+        if self.menu_mode == "empress_bargain":
+            if key in (pygame.K_UP, pygame.K_DOWN, pygame.K_w, pygame.K_s):
+                self.menu_index = 1 - min(1, self.menu_index)
+                return True
+            if key in (pygame.K_RETURN, pygame.K_e):
+                self.resolve_empress_bargain(self.menu_index == 0)
+                return True
+            return key == pygame.K_ESCAPE  # there is no way round an answer
+
         if self.menu_mode == "portal_select":
-            offers = self.plan.offers() if self.plan else []
+            offers = self.plan.offers() if self.multiverse else []
             if not offers:
                 if key == pygame.K_ESCAPE:
                     self.menu_mode = ""
@@ -2737,6 +2842,9 @@ class Run:
         if self.boss_script is not None and creature is self.boss_script.boss:
             self.boss_script.on_death(self)
             self.boss_script = None
+        for script in [s for s in self.extra_scripts if s.boss is creature]:
+            script.on_death(self)
+            self.extra_scripts.remove(script)
         if creature.spec.prop:  # a burst sac: no kill, but maybe a chain reaction
             if creature.spec.blast:
                 destroyed = self.world.explode(int(cx), int(cy), creature.spec.blast)
@@ -2760,9 +2868,9 @@ class Run:
             )  # fmt: skip
         if "blutdurst" in self.perks and not self.player.dead:
             self.player.hp = min(self.player.max_hp, self.player.hp + BLOODLUST_HEAL)
-        if self.plan is None:  # only the organism descent still pays its old loot table
+        if not self.multiverse:  # only the organism descent still pays its old loot table
             self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
-        rank = self.plan.rank if self.plan is not None else self.rank
+        rank = self.plan.rank if self.multiverse else self.rank
         mid_boss_keys = {boss for pairs in MID_BOSSES.values() for boss, _ in pairs}
         if (
             getattr(creature.spec, "is_boss", False) or getattr(creature.spec, "boss", False)
@@ -2886,7 +2994,7 @@ class Run:
 
     def _descend(self) -> None:
         self.events.append("descend")
-        if self.plan is not None:  # multiverse run: the anchor point leads back to the workshop
+        if self.multiverse:  # multiverse run: the anchor point leads back to the workshop
             if not self.in_workshop:
                 self.enter_workshop()
             return

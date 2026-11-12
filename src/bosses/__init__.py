@@ -288,6 +288,126 @@ class MutterGlibber(BossScript):
             self._guard_hp = self.boss.hp
 
 
+EVIL_THRESHOLDS = (1.0, 0.75, 0.50, 0.25)  # final fight in her home world
+ECHO_THRESHOLDS = (1.0, 0.50)  # echoes and the evil selves in the headquarters
+EVIL_PHASES: dict[str, tuple[tuple[str, str, dict[str, object]], ...]] = {
+    "boese_kaiserin": (
+        ("Audienz", "Knie nieder. Du bist ich, nur ärmer.", {}),
+        ("Das Angebot", "Die Hälfte des Multiversums. Sag einfach ja.",
+         {"summon_species": "agent_streife", "summon_count": 2}),
+        ("Hofstaat", "Wachen! Entfernt diese Kopie.",
+         {"summon_species": "agent_streife", "summon_count": 3, "attack_interval_scale": 0.75}),
+        ("Thronkanone", "Dann eben mit dem Thron.", {"attack_interval_scale": 0.5}),
+    ),
+    "boese_gute": (
+        ("Segen", "Ich will dir nur helfen. Halt still.", {}),
+        ("Lichtstrahlen", "Sieh ins Licht.", {"attack_interval_scale": 0.8}),
+        ("Bekehrung", "Klonita, komm zu mir. Hier ist es friedlich.", {"speed_scale": 1.3}),
+        ("Gnadenlos gut", "Es ist zu deinem Besten.", {"attack_interval_scale": 0.5}),
+    ),
+    "boese_omega": (
+        ("Kalibrierung", "Ziel erfasst. Ich bin die fertige Version.", {}),
+        ("Pressen", "Fertigungsstraße aktiv.", {"attack_interval_scale": 0.8}),
+        ("Riesenmaschine", "Bauteile: zu mir.",
+         {"summon_species": "agent_drohne", "summon_count": 3, "speed_scale": 1.3}),
+        ("Überlast", "Sicherungen: entfernt.", {"attack_interval_scale": 0.5, "speed_scale": 1.5}),
+    ),
+}  # fmt: skip
+
+
+class EvilSelfBossScript(BossScript):
+    """An evil self: four phases in the final fight, two as an echo or in the headquarters."""
+
+    def __init__(self, boss: Creature, echo: bool = False) -> None:
+        super().__init__(boss)
+        from src.bosses.evil_selves import EVIL_SELVES
+
+        self.boss_key = boss.species if boss.species in EVIL_SELVES else boss.spec.key
+        self.title_de = boss.spec.name_de
+        self.echo = echo
+        rows = EVIL_PHASES[self.boss_key]
+        if echo:
+            rows = (rows[0], rows[1])  # the opening and the second act only
+        thresholds = ECHO_THRESHOLDS if echo else EVIL_THRESHOLDS
+        self.phases = tuple(
+            BossPhase(i, thresholds[i], name, line, **fields)  # type: ignore[arg-type]
+            for i, (name, line, fields) in enumerate(rows)
+        )
+
+    def phase_change(self, new_phase: int, run: Run) -> None:
+        super().phase_change(new_phase, run)
+        at_home = not getattr(self.boss, "in_headquarters", False)
+        if self.boss_key == "boese_kaiserin" and new_phase == 1 and at_home:
+            run.menu_mode = "empress_bargain"  # "die Hälfte des Multiversums" (V17)
+            run.menu_index = 0
+
+    def on_death(self, run: Run) -> None:
+        from src.bosses.evil_selves import ECHO_GOLD, signature_wand_spec
+        from src.loot import Pickup
+
+        cx, cy = self.boss.center
+        run.records.discover("evil_self", self.boss_key)
+        run.boss_line(f"{self.title_de} ist besiegt.")
+        run.emit("boss_defeated", species=self.boss_key, phases=self.phase + 1, echo=self.echo)
+        if getattr(self.boss, "in_headquarters", False):
+            return  # the headquarters controller decides what comes next
+        if self.echo:
+            run.pickups.append(Pickup(cx - 6, cy, kind="gold", amount=ECHO_GOLD))
+            run.pickups.append(Pickup(cx + 6, cy, kind="badge", amount=1))
+        else:  # the final fight: her own weapon
+            run.pickups.append(Pickup(cx, cy, wand=signature_wand_spec(self.boss_key)))
+            run.exit_open = True
+
+
+class OberCloitaBossScript(BossScript):
+    """The Ober-Cloita: one phase per evil self, the last one all of them mixed."""
+
+    boss_key, title_de = "ober_cloita", "Die Ober-Cloita"
+    phases = _phases(
+        ("Kaiserliche Strenge", "Ich bin jede von euch. Zuerst die Strenge.",
+         {"summon_species": "agent_streife", "summon_count": 2}),
+        ("Gütige Härte", "Dann die Güte. Sie tut mehr weh.", {"attack_interval_scale": 0.75}),
+        ("Alle zugleich", "Genug. Alle meine Ichs: jetzt.",
+         {"attack_interval_scale": 0.5, "speed_scale": 1.4}),
+    )  # fmt: skip
+    SHARD_STEP = 0.10  # a head splinter falls for every tenth of her health
+    SHARD_FLUX = 50.0
+    HUG_TIME = 3.0  # Klonita's hug at the start of the last phase
+
+    def __init__(self, boss: Creature) -> None:
+        super().__init__(boss)
+        self.shards = 0
+        self.hug_timer = 0.0
+
+    def update(self, dt: float, run: Run) -> None:
+        super().update(dt, run)
+        boss = self.boss
+        lost = 1.0 - boss.hp / max(1.0, boss.max_hp)
+        while self.shards < int(lost / self.SHARD_STEP + 1e-6) and self.shards < 9:
+            self.shards += 1  # Klonita catches the splinter and hands Cloita its flux
+            for wand in run.inventory.wands:
+                wand.mana = min(wand.spec.mana_max, wand.mana + self.SHARD_FLUX)
+            run.emit("head_shard", count=self.shards, flux=self.SHARD_FLUX)
+            run.messages.append("Klonita fängt einen Kopf-Splitter: +50 Flux.")
+        if self.hug_timer > 0:  # held tight: she can neither move nor attack
+            self.hug_timer = max(0.0, self.hug_timer - dt)
+            boss.vx = boss.vy = 0.0
+            boss.ranged_cooldown = max(boss.ranged_cooldown, 0.5)
+            boss.attack_cooldown = max(boss.attack_cooldown, 0.5)
+
+    def phase_change(self, new_phase: int, run: Run) -> None:
+        super().phase_change(new_phase, run)
+        if new_phase == 2:
+            self.hug_timer = self.HUG_TIME
+            cx, cy = self.boss.center
+            run.say("Klonita", "Ich halte sie! Jetzt!", cx, cy - self.boss.height)
+
+    def on_death(self, run: Run) -> None:
+        run.boss_line("Die Ober-Cloita fällt. Die Splitter erinnern sich.")
+        run.emit("boss_defeated", species=self.boss_key, phases=self.phase + 1)
+        run.true_ending = True
+
+
 SCRIPTS: dict[str, type[BossScript]] = {
     cls.boss_key: cls
     for cls in (Weltenherz, DjMyzel, Oberstempler, AbtKieme, Ameisenkoenigin, MutterGlibber)
@@ -296,5 +416,12 @@ SCRIPTS: dict[str, type[BossScript]] = {
 
 def make_boss_script(boss: Creature) -> BossScript | None:
     """Return the matching BossScript instance for boss.species, or None."""
-    cls = SCRIPTS.get(getattr(boss, "species", "") or boss.spec.key)
+    from src.bosses.evil_selves import EVIL_SELVES
+
+    key = getattr(boss, "species", "") or boss.spec.key
+    if key in EVIL_SELVES:
+        return EvilSelfBossScript(boss, echo=bool(getattr(boss, "echo", False)))
+    if key == "ober_cloita":
+        return OberCloitaBossScript(boss)
+    cls = SCRIPTS.get(key)
     return cls(boss) if cls is not None else None

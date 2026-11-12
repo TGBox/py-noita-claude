@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.9.0
+
+- 2026-11-12 (8a06d38): feat(bosses): add boss framework and phase scripts for F03-F06, implement evil self bosses with signature wands and echoes at depths 3 and 5, add empress bargain offer in the evil self's second phase, add headquarters arena with council, evil self and Ober-Cloita stages (F07-F10), add multiverse flag to Run replacing the plan-presence check, add enter_headquarters and headquarters portal item, add long-range attacks for beam, holy burst, void blast and multiverse beam arms, add empress bargain menu and bad ending text, add stub scripts boss, boss2 and hq for simulation runs, refresh test baseline
+
 ## SemVer v1.8.0
 
-- 2026-11-12 (8603c88): fix: fable next cards
+- 2026-11-12 (c43deee): fix: fable next cards
 - 2026-11-12 (5a9c77b): fix: fable fixes for unsolved cards
 - 2026-11-12 (5ed9de8): fix(core): fix many things
 - 2026-11-10 (9a2929f): feat: all universes updated

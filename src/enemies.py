@@ -586,6 +586,13 @@ RANGED_ARMS: dict[str, tuple[tuple[tuple[str, ...], ...], float, float, int]] = 
     "acid_cone": ((("faecher", "klumpen", "klumpen", "klumpen", "klumpen", "klumpen"),
                    ("beschleunigung", "nadel")), 1.6, 460, 0),
     "soundwave": ((("blutwelle",), ("dreifach", "funke", "funke", "funke")), 1.5, 500, 0),
+    # the evil selves and the Ober-Cloita
+    "beam": ((("beschleunigung", "sprengkraft", "nadelregen"), ("dreifach", "nadel", "nadel", "nadel")),
+             1.2, 560, 0),
+    "holy_burst": ((("zielsuche", "leuchtkugel"), ("kettenfunke",)), 1.3, 560, 0),
+    "void_blast": ((("dreifach", "funke", "funke", "funke"), ("zielsuche", "feuerball")), 1.4, 600, 0),
+    "multiverse_beam": ((("flux_rakete",), ("faecher", "nadel", "nadel", "nadel", "nadel", "nadel"),
+                         ("zielsuche", "feuerball")), 1.1, 640, 0),
 }  # fmt: skip
 # Extra teeth per species: fields that replace the declared ones.
 SPECIES_ARMS: dict[str, dict[str, Any]] = {
@@ -620,6 +627,14 @@ SPECIES_ARMS: dict[str, dict[str, Any]] = {
     "mutter_glibber": {"melee_damage": 16},
     "ameisenkoenigin": {"melee_damage": 18},
     "abt_kieme": {"melee_damage": 14},
+    "ratsmitglied": {
+        "patterns": (("nadel",), ("doppel", "nadel", "nadel")), "ranged_cooldown": 2.0,
+        "ranged_range": 440,
+    },
+    "boese_kaiserin": {"melee_damage": 18},
+    "boese_gute": {"melee_damage": 16},
+    "boese_omega": {"melee_damage": 20},
+    "ober_cloita": {"melee_damage": 22},
     "trampolinwal": {"melee_damage": 10, "melee_cooldown": 1.2},
     "kirchenkrake": {"melee_damage": 12, "melee_cooldown": 1.0},
 }  # fmt: skip
