@@ -2,7 +2,8 @@
 
 ## SemVer v1.8.0
 
-- 2026-11-10 (3fcf34b): feat: all universes updated
+- 2026-11-12 (e0898b1): fix(core): fix many things
+- 2026-11-10 (9a2929f): feat: all universes updated
 
 ## SemVer v1.7.13
 

@@ -90,6 +90,11 @@ class Block:
     from_flask: bool = False
     local_material: bool = False
     retired: bool = False
+    # Noita-style specials
+    endless: bool = False  # Mutation: the next limited Drüse costs no charge
+    divide: bool = False  # multicast that fires the next group ``multicast`` times
+    absorb: bool = False  # Mutation: swallows your flying shots and adds their damage
+    convert: str = ""  # Drüse: turns all your flying shots into this form (fires nothing)
 
 
 BLOCKS: tuple[Block, ...] = (
@@ -640,8 +645,168 @@ def _families() -> list[Block]:
 
 BLOCKS = BLOCKS + tuple(_families())
 
+# Cloita Classic leftovers: secretions of the old organism that the universes do not even
+# have as materials. They stay castable (old saves, presets) but no longer turn up as loot,
+# in shops or as blueprints. Blood, embers, fire and bone remain.
+RETIRED_ELEMENTS = frozenset(
+    {"acid", "tallow", "spores", "mucus", "pus", "bone_dust", "fume", "smoke", "growth", "sinew"}
+)
+RETIRED_KEYS = frozenset(
+    {
+        "eiterblase", "saeurepfeil", "talgbombe", "gallenregen", "sporenball", "schleimkugel",
+        "giftblase", "schleimspur", "sporenspur", "eiterspur", "saeurespur", "talgspur",
+    }
+)  # fmt: skip
+
+
+def _retire(block: Block) -> Block:
+    family = block.rarity == FAMILY_RARITY and (
+        {block.default_material, block.material, block.trail} & RETIRED_ELEMENTS
+    )
+    return replace(block, retired=True) if family or block.key in RETIRED_KEYS else block
+
+
+BLOCKS = tuple(_retire(b) for b in BLOCKS)
+
+_SAW = next(b for b in BLOCKS if b.key == "knochensaege")
+NOITA_BLOCKS: tuple[Block, ...] = (
+    # Drüsen after Noita's projectile spells
+    Block(
+        "flux_rakete", "Flux-Rakete", Category.FORM, mana=45, cast_delay=0.4,
+        description_de="Träge Rakete mit kräftiger Explosion.",
+        damage=30, speed=380, lifetime=2.0, blast=14, splash=4,
+    ),
+    Block(
+        "grosse_flux_rakete", "Große Flux-Rakete (L10)", Category.FORM, mana=90, cast_delay=0.6,
+        uses=10, description_de="Die große Schwester: reißt ganze Kammern auf.",
+        damage=60, speed=300, lifetime=2.5, blast=22, splash=6,
+    ),
+    Block(
+        "energiekugel", "Energiekugel", Category.FORM, mana=30, cast_delay=0.1,
+        description_de="Langsame, schwere Kugel aus reinem Flux.",
+        damage=22, speed=300, lifetime=2.5, blast=6, splash=3,
+    ),
+    Block(
+        "leuchtbohrer", "Leuchtbohrer", Category.FORM, mana=10, cast_delay=-0.3,
+        description_de="Kurzer Lichtstrahl, der sich durch fast alles frisst. Zaubert rasend "
+        "schnell.",
+        damage=12, speed=900, lifetime=0.09, digs=4, light=60.0,
+    ),
+    Block(
+        "schwarzes_loch", "Schwarzes Loch (L3)", Category.FORM, mana=180, cast_delay=0.8, uses=3,
+        description_de="Kriecht geradeaus und verschlingt alles Feste auf seinem Weg.",
+        speed=110, lifetime=2.4, digs=11,
+    ),
+    Block(
+        "todeskreuz", "Todeskreuz", Category.FORM, mana=80, cast_delay=0.5,
+        description_de="Schwebt fast auf der Stelle und explodiert nach einem Atemzug.",
+        speed=50, lifetime=1.1, blast=19, splash=3,
+    ),
+    Block(
+        "blitzschlag", "Blitzschlag", Category.FORM, mana=70, cast_delay=0.6,
+        description_de="Schlägt sofort ein und springt auf drei weitere Kreaturen über.",
+        damage=40, speed=1400, lifetime=0.25, blast=8, chain=3, shock=20, light=90.0,
+    ),
+    Block(
+        "dynamit", "Dynamitstange (L16)", Category.FORM, mana=50, cast_delay=0.5, uses=16,
+        description_de="Fliegt im Bogen, rollt aus und sprengt ein großes Loch.",
+        speed=320, gravity=600, lifetime=1.5, blast=20, bounces=2, splash=4,
+    ),
+    Block(
+        "meteorit", "Meteorit (L6)", Category.FORM, mana=150, cast_delay=1.0, uses=6,
+        description_de="Ein glühender Brocken, der mit Wucht einschlägt.",
+        damage=40, speed=520, gravity=320, lifetime=3.0, blast=28, splash=8,
+        default_material="magma",
+    ),
+    Block(
+        "atombombe", "Atombombe (L1)", Category.FORM, mana=200, cast_delay=1.2, uses=1,
+        description_de="Genau eine. Lauf.",
+        damage=80, speed=260, gravity=140, lifetime=4.0, blast=56, splash=10,
+    ),
+    Block(
+        "feuerbolzen", "Feuerbolzen (L25)", Category.FORM, mana=50, cast_delay=0.4, uses=25,
+        description_de="Hüpft einmal auf und geht dann in Flammen auf.",
+        damage=12, speed=360, gravity=500, lifetime=2.0, blast=12, bounces=1, splash=6,
+        default_material="fire",
+    ),
+    Block(
+        "prallkugel", "Prallkugel", Category.FORM, mana=5, cast_delay=-0.03,
+        description_de="Billig, flink und springt an jeder Wand weiter.",
+        damage=5, speed=480, gravity=300, lifetime=4.0, ricochet=6, splash=1,
+    ),
+    replace(
+        _SAW, key="riesensaege", name_de="Riesensägeblatt", mana=70, cast_delay=0.3,
+        description_de="Ein gewaltiges Sägeblatt. Kommt gern zu dir zurück.",
+        damage=26, speed=300, lifetime=4.0, ricochet=12,
+    ),
+    # Mutationen after Noita's modifiers
+    Block(
+        "schwerer_schuss", "Schwerer Schuss", Category.MODIFIER, mana=7,
+        description_de="Nächste Drüse: +18 Schaden, aber nur noch ein Drittel so schnell.",
+        damage_bonus=18.0, speed_factor=0.33,
+    ),
+    Block(
+        "teiler_2", "Teiler ×2", Category.MODIFIER, mana=35, cast_delay=0.1,
+        description_de="Feuert die nächste Gruppe gleich zweimal ab, auch teure Einzelstücke.",
+        multicast=2, divide=True,
+    ),
+    Block(
+        "teiler_3", "Teiler ×3", Category.MODIFIER, mana=50, cast_delay=0.2,
+        description_de="Feuert die nächste Gruppe dreimal ab.", multicast=3, divide=True,
+    ),
+    Block(
+        "teiler_4", "Teiler ×4", Category.MODIFIER, mana=70, cast_delay=0.3,
+        description_de="Feuert die nächste Gruppe viermal ab.", multicast=4, divide=True,
+    ),
+    Block(
+        "unerschoepflich", "Unerschöpflicher Kern", Category.MODIFIER, mana=40,
+        description_de="Die nächste Drüse mit Ladungen verbraucht keine Ladung.",
+        endless=True, rarity=0.5,
+    ),
+    Block(
+        "zauber_zu_kraft", "Zauber zu Kraft", Category.MODIFIER, mana=110, cast_delay=0.6,
+        description_de="Verschlingt deine fliegenden Geschosse in der Nähe und packt ihren "
+        "Schaden auf die nächste Drüse.",
+        absorb=True, rarity=0.5,
+    ),
+    # Drüsen that transform everything of yours that is in the air
+    Block(
+        "zauber_zu_raketen", "Zauber zu Raketen (L20)", Category.FORM, mana=100, cast_delay=1.0,
+        uses=20, description_de="Alle deine fliegenden Geschosse werden zu Flux-Raketen.",
+        convert="flux_rakete", rarity=0.5,
+    ),
+    Block(
+        "zauber_zu_saegen", "Zauber zu Sägeblättern (L20)", Category.FORM, mana=100,
+        cast_delay=1.0, uses=20,
+        description_de="Alle deine fliegenden Geschosse werden zu Riesensägeblättern.",
+        convert="riesensaege", rarity=0.5,
+    ),
+    Block(
+        "zauber_zu_kreuzen", "Zauber zu Todeskreuzen (L15)", Category.FORM, mana=80,
+        cast_delay=1.0, uses=15,
+        description_de="Alle deine fliegenden Geschosse bleiben stehen und werden zu Todeskreuzen.",
+        convert="todeskreuz", rarity=0.5,
+    ),
+    Block(
+        "zauber_zu_loechern", "Zauber zu Schwarzen Löchern (L3)", Category.FORM, mana=200,
+        cast_delay=1.5, uses=3,
+        description_de="Alle deine fliegenden Geschosse werden zu Schwarzen Löchern.",
+        convert="schwarzes_loch", rarity=0.3,
+    ),
+    Block(
+        "zauber_zu_bomben", "Zauber zu Atombomben (L1)", Category.FORM, mana=250, cast_delay=2.0,
+        uses=1,
+        description_de="Alle deine fliegenden Geschosse werden zu Atombomben. Wirklich alle.",
+        convert="atombombe", rarity=0.15,
+    ),
+)  # fmt: skip
+BLOCKS = BLOCKS + NOITA_BLOCKS
+
 TIER3_BLOCKS: frozenset[str] = frozenset(
     {
+        "grosse_flux_rakete", "schwarzes_loch", "blitzschlag", "meteorit", "atombombe",
+        "teiler_3", "teiler_4", "unerschoepflich", "zauber_zu_kraft", "zauber_zu_raketen",
+        "zauber_zu_saegen", "zauber_zu_kreuzen", "zauber_zu_loechern", "zauber_zu_bomben",
         "sprengkern",
         "knochenbombe",
         "achterkreis",
@@ -657,6 +822,8 @@ TIER3_BLOCKS: frozenset[str] = frozenset(
 def _tier(block: Block) -> int:
     if block.key in TIER3_BLOCKS:
         return 3
+    if block in NOITA_BLOCKS:
+        return 2 if block.mana >= 30 else 1
     return 2 if block.rarity == FAMILY_RARITY else 1
 
 

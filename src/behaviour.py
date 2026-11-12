@@ -27,6 +27,7 @@ GRAZE_MATERIAL: dict[str, str] = {
 }
 
 REFLECT_RADIUS = 24.0
+REFLECT_COOLDOWN = 0.9  # seconds a reflector needs before it can turn the next shot
 AURA_HOLD = 1.0
 TELEPORT_MIN = 40.0
 TELEPORT_MAX = 110.0
@@ -107,11 +108,22 @@ def handle_reflect_projectiles(
     creature: Creature,
     projectiles: list[Projectile],
     out_events: list[tuple[str, dict[str, object]]],
+    dt: float = 0.0,
 ) -> int:
-    """Reflect nearby non-piercing projectiles and return count reflected."""
+    """Reflect nearby non-piercing projectiles and return count reflected.
+
+    A reflector needs REFLECT_COOLDOWN to recover after each shot it turned around, and
+    a "shell" (Korallenwaechter) only covers the side the creature faces: quick volleys
+    and shots from behind or above get through."""
     cx, cy = creature.center
     reflected = 0
+    creature._reflect_cd = max(0.0, getattr(creature, "_reflect_cd", 0.0) - dt)
+    frontal = any(a.kind == "reflect" and a.param == "shell" for a in creature.spec.abilities)
     for proj in projectiles:
+        if creature._reflect_cd > 0:
+            break
+        if frontal and (proj.x - cx) * creature.facing <= 0:
+            continue
         form = proj.form if isinstance(proj.form, str) else getattr(proj.form, "key", "")
         if form in PIERCING_FORMS or id(creature) in proj.hit_ids:
             continue
@@ -124,6 +136,7 @@ def handle_reflect_projectiles(
         proj.from_player = True
         proj.hit_ids.add(id(creature))
         reflected += 1
+        creature._reflect_cd = REFLECT_COOLDOWN
         out_events.append(
             ("reflect", {"species": creature.spec.key, "x": float(proj.x), "y": float(proj.y)})
         )
@@ -354,7 +367,7 @@ def tick_abilities(creature: Creature, ctx: BehaviourContext) -> None:
         elif kind == "steal":
             handle_steal_pickup(creature, ctx.pickups, ctx.out_events)
         elif kind == "reflect":
-            handle_reflect_projectiles(creature, ctx.projectiles, ctx.out_events)
+            handle_reflect_projectiles(creature, ctx.projectiles, ctx.out_events, ctx.dt)
         elif kind == "aura":
             handle_aura(creature, ability, ctx.player, ctx.creatures, ctx.dt)
         elif kind == "summon" and ready(ability, SUMMON_INTERVAL):

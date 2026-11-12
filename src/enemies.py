@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from src import materials as mat
@@ -559,8 +559,83 @@ OBER_CLOITA = CreatureSpec(
 )  # fmt: skip
 
 PROPS = ("talgsack", "saeuresack", "sporensack")
+
+# Playtest: the natives of the six universes felt harmless. Their "ranged" abilities were
+# only labels: no species had attack patterns, so nothing ever fired, and mid-bosses and
+# bosses without melee could not hurt anyone. RANGED_ARMS turns the label into the wand
+# patterns the attack code really uses: (patterns, cooldown s, range px, radial).
+RANGED_ARMS: dict[str, tuple[tuple[tuple[str, ...], ...], float, float, int]] = {
+    "acid": ((("klumpen",), ("doppel", "klumpen", "klumpen")), 2.0, 340, 0),
+    "paragraph": ((("beschleunigung", "nadel"), ("doppel", "nadel", "nadel")), 1.6, 380, 0),
+    "steam": ((("funke",), ("doppel", "funke", "funke")), 2.2, 280, 0),
+    "confetti": ((("knochensplitter",), ("nadelregen",)), 1.9, 300, 0),
+    "resin": ((("klumpen",), ("faecher", "klumpen", "klumpen", "klumpen", "klumpen", "klumpen")),
+              2.2, 330, 0),
+    "spore": ((("blutkugel",), ("doppel", "blutkugel", "blutkugel")), 2.2, 320, 0),
+    "bubble": ((("tempo_1", "funke"),), 2.4, 300, 0),
+    "shock": ((("nervenstrom",),), 2.2, 320, 0),
+    "bomb": ((("gallenblase",), ("dreifach", "funke", "funke", "funke")), 1.7, 420, 0),
+    "stamp_death": ((("flux_rakete",), ("dreifach", "nadel", "nadel", "nadel")), 1.5, 520, 0),
+    "candy_burst": ((("nadelregen",), ("gallenblase",), ("funke",)), 1.5, 480, 0),
+    "acid_cone": ((("faecher", "klumpen", "klumpen", "klumpen", "klumpen", "klumpen"),
+                   ("beschleunigung", "nadel")), 1.6, 460, 0),
+    "soundwave": ((("blutwelle",), ("dreifach", "funke", "funke", "funke")), 1.5, 500, 0),
+}  # fmt: skip
+# Extra teeth per species: fields that replace the declared ones.
+SPECIES_ARMS: dict[str, dict[str, Any]] = {
+    # natives that only fought back are hunters now
+    "aktenfresser": {"stance": "hostile", "jump_speed": 150},
+    "kaffeegolem": {"stance": "hostile", "jump_speed": 130},
+    "korallenwaechter": {"stance": "hostile", "jump_speed": 130},
+    "moenchsfisch": {"stance": "hostile"},
+    "fleischmade": {"jump_speed": 170, "windup_time": 0.25},
+    "blutegel": {"speed": 70, "jump_speed": 160},
+    # mid-bosses and bosses without any attack of their own
+    "aktenwolf": {"melee_damage": 14, "melee_cooldown": 0.7, "jump_speed": 210},
+    "glockenwaechter": {
+        "melee_damage": 12, "patterns": (("blutwelle",), ("funke",)), "ranged_cooldown": 2.0,
+        "ranged_range": 420, "radial": 6,
+    },
+    "sporenherz": {
+        "patterns": (("blutkugel",),), "ranged_cooldown": 2.6, "ranged_range": 400, "radial": 6,
+    },
+    "weltenherz": {
+        "melee_damage": 16, "patterns": (("blutkugel",), ("blutwelle",)), "ranged_cooldown": 2.2,
+        "ranged_range": 520, "radial": 8,
+    },
+    "dj_myzel": {
+        "melee_damage": 12, "patterns": (("funke",), ("nadel",)), "ranged_cooldown": 1.2,
+        "ranged_range": 480, "radial": 8,
+    },
+    "pfuetzenwurm": {"melee_damage": 12, "melee_cooldown": 0.9},
+    "manege_clown": {"melee_damage": 10, "jump_speed": 180},
+    "harzgeneral": {"melee_damage": 14},
+    "oberstempler": {"melee_damage": 16},
+    "mutter_glibber": {"melee_damage": 16},
+    "ameisenkoenigin": {"melee_damage": 18},
+    "abt_kieme": {"melee_damage": 14},
+    "trampolinwal": {"melee_damage": 10, "melee_cooldown": 1.2},
+    "kirchenkrake": {"melee_damage": 12, "melee_cooldown": 1.0},
+}  # fmt: skip
+
+
+def _armed(spec: CreatureSpec) -> CreatureSpec:
+    """The spec with working attacks (see RANGED_ARMS / SPECIES_ARMS)."""
+    fields: dict[str, Any] = {}
+    if not spec.patterns:
+        for ability in spec.abilities:
+            arm = RANGED_ARMS.get(ability.param) if ability.kind == "ranged" else None
+            if arm:
+                patterns, cooldown, reach, radial = arm
+                fields.update(
+                    patterns=patterns, ranged_cooldown=cooldown, ranged_range=reach, radial=radial
+                )
+    fields.update(SPECIES_ARMS.get(spec.key, {}))
+    return replace(spec, **fields) if fields else spec
+
+
 SPECIES: dict[str, CreatureSpec] = {
-    spec.key: spec
+    spec.key: _armed(spec)
     for spec in (
         MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, BROOD_MOTHER, HEART,
         EMBER_MAGGOT, ACID_SPITTER, LEECH, EYE_BLOAT, MUCUS_CRAWLER, NERVE_KNOT,
@@ -1027,10 +1102,13 @@ def populate(
     bloats: int = 0,
     safe_radius: float = 170,
     extra: tuple[tuple[str, int], ...] = (),
+    spread: bool = False,
 ) -> list[Creature]:
     """Place creatures in open cave space, away from ``avoid`` (the spawn).
 
-    ``extra`` adds further species as (creature key, count).
+    ``extra`` adds further species as (creature key, count). With ``spread`` every
+    species is dealt round the six sectors of the map (3 x 2) instead of landing where
+    the caves happen to be widest.
     """
     creatures: list[Creature] = []
     wanted = (
@@ -1044,6 +1122,11 @@ def populate(
                 break
             x = rng.randint(20, world.width - 20)
             y = rng.randint(20, world.height - 20)
+            if spread and _attempt < count * 60:  # later attempts may land anywhere
+                sector = placed + _attempt // 12
+                col, row = sector % 3, (sector // 3) % 2
+                x = rng.randint(max(20, col * world.width // 3), (col + 1) * world.width // 3 - 20)
+                y = rng.randint(max(20, row * world.height // 2), (row + 1) * world.height // 2 - 20)
             cell = world.get(x, y)
             swims = spec.flying and KIND[cell] == LIQUID  # fish & co. in flooded universes
             if (cell != AIR and not swims) or math.hypot(x - avoid[0], y - avoid[1]) < safe_radius:

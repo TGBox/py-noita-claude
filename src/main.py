@@ -1187,19 +1187,21 @@ class Game:
             if item.perk is not None:
                 prompt = f"{key}: Wählen – {item.label_de}"
             elif item.price and not run.can_afford(item):
-                prompt = f"{item.label_de} – {run.price_of(item)} Blutperlen (zu wenig)"
+                prompt = f"{item.label_de} – {run.price_of(item)} Gold (zu wenig)"
             elif item.price:
-                prompt = f"{key}: Kaufen – {item.label_de} – {run.price_of(item)} Blutperlen"
+                prompt = f"{key}: Kaufen – {item.label_de} – {run.price_of(item)} Gold"
             else:
                 prompt = f"{key}: Aufheben – {item.label_de}"
         elif run.near_exit() and not run.exit_open and run.depth.boss:
             prompt = "Der Durchgang ist verschlossen. Besiege den Wächter."
         elif run.plan is not None and not run.in_workshop and run.near_exit():
             prompt = (
-                "Der Ankerpunkt: Hier geht es zurück in die Werkstatt."
+                f"{key}: Durch den Ankerpunkt zurück in die Werkstatt"
                 if run.exit_open
                 else "Der Ankerpunkt ist versiegelt. Besiege den Zwischengegner."
             )
+        elif not run.in_workshop and run.exit_open and run.near_exit():
+            prompt = f"{key}: Weiter hinab"
         elif run.near_secret():
             prompt = "Hinter der Wand pulsiert etwas."
         outcome = "true_victory" if run.true_ending else run.outcome
@@ -1264,7 +1266,7 @@ class Game:
             f"Tiefe {run.next_depth_number}/{len(DEPTHS)}: {run.depth.name_de}",
             self._stats_text(),
             f"Perks: {perks}",
-            f"Uraugen: {run.eyes}/{len(DEPTHS)}   Blutperlen: {run.pearls}",
+            f"Uraugen: {run.eyes}/{len(DEPTHS)}   Gold: {run.pearls}",
         ]
         if self.cheated:
             lines.append("Sandbox: zählt nicht für Statistik, Kodex und Spielstand.")
@@ -1277,7 +1279,7 @@ class Game:
         minutes, seconds = divmod(int(stats["time"]), 60)
         return (
             f"Tiefe {self.run.next_depth_number} | Getötet: {stats['kills']} | "
-            f"Blutperlen gesammelt: {stats['pearls']} | Zeit: {minutes}:{seconds:02d}"
+            f"Gold gesammelt: {stats['pearls']} | Zeit: {minutes}:{seconds:02d}"
         )
 
     def _draw_entities(self, cam_x: int, cam_y: int) -> None:

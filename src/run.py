@@ -54,6 +54,7 @@ from src.materials import (
 from src.perks import PERK_BY_KEY, PERKS
 from src.player import ENERGY_RECHARGE_AIR, MAX_ENERGY, MAX_HP, Player
 from src.projectiles import Blast, ProjectileSystem
+from src.projectiles import build as build_projectile
 from src.records import Records
 from src.rules import RULE_KEYS, Rule, apply_player_rules
 from src.settings import MAX_SIM_STEPS_PER_FRAME, SIM_HZ, WORLD_HEIGHT, WORLD_WIDTH
@@ -227,7 +228,6 @@ class Run:
         # called with the depth's name before a (possibly slow) world generation
         self.on_generate: Callable[[str], None] | None = None
         self.rule = Rule()  # the universe rule of the current depth (src/rules)
-        self.gold: int = 0
         self.memory_shards: int = 0
         self.blueprint_shards: int = 0
         self.badges: int = 0
@@ -467,17 +467,38 @@ class Run:
         self._drop(Pickup(0, 0, flask=flask))
         return True
 
+    def delete_item(self, source: tuple[str, Any]) -> str:
+        """Destroy a thing from the inventory screen for good (the "Löschen" field and
+        right click). Returns a German note ("" if fine)."""
+        kind, value = source
+        if kind == "slot":
+            if value.kind == "wand" and not self.can_edit_wands:
+                return "Augmentationen umbauen geht nur im Sanktum."
+            while self.inventory.take(value) is not None:  # a stack goes as a whole
+                pass
+        elif kind == "wand":
+            if self.inventory.remove_wand(value) is None:
+                return "Eine Augmentation musst du behalten."
+        elif kind == "flask" and 0 <= value < len(self.flasks):
+            self.flasks.pop(value)
+            if self.flask_index >= value and self.flask_index > 0:
+                self.flask_index -= 1
+        return ""
+
     def inventory_drop(self, source: tuple[str, Any], target: tuple[str, Any] | None) -> str:
         """Finish a drag in the inventory screen. Returns a German note ("" if fine).
 
         ``source`` / ``target`` are ("slot", SlotRef), ("wand", index), ("flask", index),
-        ("drop", None) or ("outside", None); dropping on "drop"/"outside" throws the
-        thing into the world. Wand slots only change where wands may be rebuilt.
+        ("drop", None) or ("outside", None); dropping on "drop" deletes the thing,
+        dragging it out of the panel ("outside") throws it into the world. Wand slots only
+        change where wands may be rebuilt.
         """
         kind, value = source
         where = target[0] if target is not None else None
         locked = "Augmentationen umbauen geht nur im Sanktum."
-        if where in ("drop", "outside"):
+        if where == "drop":
+            return self.delete_item(source)
+        if where == "outside":
             if kind == "slot":
                 return "" if self.drop_block(value) else locked
             if kind == "wand":
@@ -501,6 +522,16 @@ class Run:
             if self.flask_index in (a, b):
                 self.flask_index = b if self.flask_index == a else a
         return ""
+
+    @property
+    def gold(self) -> int:
+        """There is one currency. Workshop, traders and the old sanctum all take it; the
+        code of the organism descent still calls it pearls."""
+        return self.pearls
+
+    @gold.setter
+    def gold(self, value: int) -> None:
+        self.pearls = int(value)
 
     @property
     def can_edit_wands(self) -> bool:
@@ -599,6 +630,7 @@ class Run:
             more(depth.spitters),
             more(depth.bloats),
             extra=tuple((key, more(count)) for key, count in depth.extra),
+            spread=self.plan is not None,  # universes: natives in every part of the map
         )
         if self.universe_key != "fleischwelt" or self.plan is not None:
             if getattr(self.universe, "mid_boss", None):
@@ -1034,9 +1066,12 @@ class Run:
             item.update(self.world, dt)
         if alive:
             self._collect_pearls(dt)
+        leave = False
         if controls.pickup:
             if self.in_workshop and self.menu_mode == "":
                 self.interact_station()
+            elif alive and self.exit_open and self.near_exit() and self.nearest_pickup() is None:
+                leave = True  # the way on opens on a key press, never by walking into it
             else:
                 self._pick_up_here()
         if alive and self.player.polymorphed <= 0:
@@ -1153,7 +1188,7 @@ class Run:
                 self.events.append("death")
                 cx, cy = self.player.center
                 self.world.splash(int(cx), int(cy), DEATH_SPLASH, mat.BLOOD)
-        elif alive and self.exit_open and self.near_exit():
+        elif alive and leave:
             self._descend()
         return blasts
 
@@ -1226,9 +1261,11 @@ class Run:
 
     def _cast(self, aim: tuple[float, float]) -> None:
         wand = self.inventory.wand
+        wand.unlimited = "unerschoepflich" in self.perks
         shots = wand.cast()
         if not shots:
             return
+        shots = self._cast_specials(shots)
         sx, sy = self.shoulder(aim)
         angle = math.atan2(aim[1] - sy, aim[0] - sx) + self.rng.uniform(-1, 1) * wand.spec.spread
         reach = arm_reach(len(wand.blocks))
@@ -1241,6 +1278,40 @@ class Run:
         if "schnelle_druesen" in self.perks:
             wand.cooldown *= FAST_GLANDS
             wand.recharge_left *= FAST_GLANDS
+
+    def _cast_specials(self, shots: list[Shot]) -> list[Shot]:
+        """Noita-style specials that act on the shots already in the air.
+
+        "Zauber zu ..." forms turn every flying shot of the player into another form and
+        fire nothing themselves; "Zauber zu Kraft" swallows the flying shots near the
+        player and adds their damage to the shot it modifies."""
+        mine = [p for p in self.projectiles.items if p.alive and p.team == PLAYER_TEAM]
+        out: list[Shot] = []
+        for shot in shots:
+            if shot.form.convert:
+                target = CATALOG[shot.form.convert]
+                for old in mine:
+                    if old.alive and getattr(old.form, "key", "") != target.key:
+                        still = target.key == "todeskreuz"
+                        angle = math.atan2(old.vy, old.vx)
+                        new = build_projectile(Shot(target), old.x, old.y, angle, PLAYER_TEAM)
+                        if still:
+                            new.vx = new.vy = 0.0
+                        old.alive = False
+                        self.projectiles.items.append(new)
+                continue
+            if any(m.absorb for m in shot.modifiers):
+                px, py = self.player.center
+                pool = 0.0
+                for old in mine:
+                    if old.alive and math.dist((old.x, old.y), (px, py)) <= ABSORB_RADIUS:
+                        pool += old.damage + old.blast
+                        old.alive = False
+                if pool:
+                    power = replace(CATALOG["zauber_zu_kraft"], absorb=False, damage_bonus=pool)
+                    shot = replace(shot, modifiers=(*shot.modifiers, power))
+            out.append(shot)
+        return out
 
     def _fill_vault(self, index: int) -> None:
         """Treasure and a strengthened guardian inside the depth's bone vault."""
@@ -2358,6 +2429,7 @@ class Run:
             bloats=0,
             extra=natives,
             wall="fleisch",  # flesh walls: the universe's main material forms the mass
+            blocks=UNIVERSE_BLOCKS,
             boss=universe.boss if boss_slot else None,
             final=False,
             ambient=universe.ambient,
@@ -2560,7 +2632,8 @@ class Run:
             )  # fmt: skip
         if "blutdurst" in self.perks and not self.player.dead:
             self.player.hp = min(self.player.max_hp, self.player.hp + BLOODLUST_HEAL)
-        self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
+        if self.plan is None:  # only the organism descent still pays its old loot table
+            self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
         rank = self.plan.rank if self.plan is not None else self.rank
         mid_boss_keys = {boss for pairs in MID_BOSSES.values() for boss, _ in pairs}
         if (
@@ -2708,7 +2781,9 @@ def _unpack(text: str) -> bytes:
 
 FIREBREAK_CELL = universe_features.FIREBREAK_CELL  # Aktenhalde: paper sections (cells)
 FIREBREAK_THICKNESS = universe_features.FIREBREAK_THICKNESS
-NATIVES_PER_SPECIES = 4  # natives of each species per universe level (before area scaling)
+NATIVES_PER_SPECIES = 6  # natives of each species per universe level (before area scaling)
+ABSORB_RADIUS = 260.0  # "Zauber zu Kraft" reaches this far around the player (cells)
+UNIVERSE_BLOCKS = 5  # loose modules per universe level (playtest: the backpack overflowed)
 # region layout per universe (bible 03), used for region effects on organism-built levels
 UNIVERSE_TOPOLOGY = {
     "fleischwelt": "vertical", "aktenhalde": "horizontal", "glibbria": "islands",

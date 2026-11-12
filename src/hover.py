@@ -133,7 +133,7 @@ def describe_creature(creature: Creature) -> HoverInfo:
     if traits:
         lines.append(", ".join(traits).capitalize())
     if not spec.prop:
-        lines.append(f"Beute: {spec.pearls} Blutperlen")
+        lines.append(f"Beute: {spec.pearls} Gold")
     color = (236, 90, 90) if not spec.prop else (214, 190, 140)
     return HoverInfo(
         spec.name_de, lines, color, "creature", hp=(max(0.0, creature.hp), creature.max_hp)
@@ -270,7 +270,7 @@ def describe_pickup(
     elif item.portal:
         lines = ["Führt in die nächste Parallelwelt.", "Härtere Gegner, reichere Beute."]
     if price:
-        lines.append(f"Preis: {price} Blutperlen (E: Kaufen)")
+        lines.append(f"Preis: {price} Gold (E: Kaufen)")
     elif item.perk is None and not item.pearls:
         lines.append("E: Aufheben")
     return HoverInfo(

@@ -71,6 +71,8 @@ def generate_wand(rng: random.Random, level: int = 1) -> WandSpec:
     keys = [random_block(rng, Category.FORM)]
     keys += [random_block(rng) for _ in range(filled - 1)]
     rng.shuffle(keys)
+    # a wand can always afford its own most expensive block (big spells cost up to 250)
+    mana_max = max(mana_max, round(1.3 * max(CATALOG[key].mana for key in keys)))
     name = f"{rng.choice(ADJECTIVES)} {rng.choice(NOUNS)}"
     return WandSpec(
         name,
@@ -205,7 +207,7 @@ class Pickup:
             perk = PERK_BY_KEY[self.perk]
             return f"Perk: {perk.name_de} - {perk.description_de}"
         if self.pearls:
-            return f"{self.pearls} Blutperlen"
+            return f"{self.pearls} Gold"
         if self.wand is not None:
             return f"Augmentation: {self.wand.name_de}"
         if self.flask is not None:

@@ -1174,7 +1174,7 @@ def _init_set_reactions() -> None:
         ),  # fmt: skip
         reactions=(
             Reaction("fire", "kerzenwachs", "fire", "smoke", 0.05),
-            Reaction("algen", "water", "algen", "algen", 0.01),
+            # no "algae grow into water": that overgrew every flooded passage within minutes
         ),
     )
     SETS["glibbria"] = GLIBBRIA

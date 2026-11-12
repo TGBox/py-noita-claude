@@ -96,7 +96,7 @@ def unlock_line(records: Records) -> str:
     """What the Kodex currently grants, in German."""
     _favoured, pearls = records.unlocks()
     return (
-        f"Bekannte Bausteine erscheinen häufiger im Laden | Startkapital: {pearls} Blutperlen "
+        f"Bekannte Bausteine erscheinen häufiger im Laden | Startkapital: {pearls} Gold "
         f"(je bezwungenem Wächter {BOSS_PEARLS})"
     )
 

@@ -19,7 +19,7 @@ class TestCatalog(unittest.TestCase):
 
     def test_forms_fly(self) -> None:
         for block in BLOCKS:
-            if block.category is Category.FORM:
+            if block.category is Category.FORM and not block.convert:
                 self.assertGreater(block.speed, 0, block.key)
                 self.assertGreater(block.lifetime, 0, block.key)
 
@@ -127,9 +127,32 @@ class TestDeck(unittest.TestCase):
         self.assertEqual(w.cast(), [])
         self.assertTrue(w.recharging)
 
-    def test_each_block_is_drawn_once_per_cast(self) -> None:
-        w = wand("doppel", "doppel", "funke")
-        self.assertEqual(len(w.cast()), 1)
+    def test_a_multicast_repeats_a_lone_group(self) -> None:
+        # playtest: one strong spell with many mutations got nothing out of a multicast
+        w = wand("doppel", "doppel", "funke", mana_regen=0)
+        before = w.mana
+        self.assertEqual(len(w.cast()), 4)
+        funke, doppel = CATALOG["funke"].mana, CATALOG["doppel"].mana
+        self.assertEqual(before - w.mana, 4 * funke + 2 * doppel)  # every copy costs mana
+        two = wand("doppel", "funke", "nadel")
+        self.assertEqual(names(two.cast()), ["funke", "nadel"])  # other forms come first
+
+    def test_divider_endless_core_and_retired_families(self) -> None:
+        w = wand("teiler_3", "atombombe", mana_max=2000, mana_regen=0, cast_delay=0, recharge=0)
+        self.assertEqual(len(w.cast()), 3)  # one charge, three bombs
+        w.cooldown = w.recharge_left = 0.0
+        self.assertEqual(w.cast(), [])
+        w = wand("unerschoepflich", "atombombe", mana_max=2000, mana_regen=0, cast_delay=0, recharge=0)
+        for _ in range(3):
+            self.assertEqual(len(w.cast()), 1)
+            w.cooldown = w.recharge_left = 0.0
+        w = wand("atombombe", mana_max=2000, mana_regen=0, cast_delay=0, recharge=0)
+        w.unlimited = True  # the perk
+        for _ in range(3):
+            self.assertEqual(len(w.cast()), 1)
+            w.cooldown = w.recharge_left = 0.0
+        self.assertTrue(CATALOG["eitergeschoss"].retired and CATALOG["kern_saeure"].retired)
+        self.assertFalse(CATALOG["knochengeschoss"].retired or CATALOG["glutbombe"].retired)
 
     def test_unaffordable_blocks_are_skipped(self) -> None:
         cost = CATALOG["gallenblase"].mana

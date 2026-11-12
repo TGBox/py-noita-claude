@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import random
+from collections import deque
 from typing import Any
 
 from src import materials as mat
@@ -909,6 +910,8 @@ def _shape_abtei(c: _Cells, rng: random.Random) -> dict[str, Any]:
     hall = state.get("mid_arena")
     ceilings = c.ceilings(0, line + 30, c.w, c.h - 20, step=5)
     rng.shuffle(ceilings)
+    # the deep half first: that is where the breath runs out (playtest)
+    ceilings.sort(key=lambda spot: spot[1] < (line + c.h) // 2)
     pockets: list[tuple[int, int]] = []
     tried: set[tuple[int, int]] = set()
     # air bells under domed ceilings: breath every few seconds. First the roomy ones (every
@@ -925,7 +928,7 @@ def _shape_abtei(c: _Cells, rng: random.Random) -> dict[str, Any]:
             rx, ry = rng.randint(24, 28), rng.randint(17, 20)
         else:
             rx, ry = rng.randint(14, 19), rng.randint(11, 14)
-        if _in_rect(hall, x, y, 40) or any(math.dist((x, y), q) < 110 for q in pockets):
+        if _in_rect(hall, x, y, 40) or any(math.dist((x, y), q) < 95 for q in pockets):
             continue
         if not solid(x - rx - 3, y - ry - 3, x + rx + 4, y - 1, 2):
             continue
@@ -940,14 +943,108 @@ def _shape_abtei(c: _Cells, rng: random.Random) -> dict[str, Any]:
         if chapel:
             c.rect(x + rx - 5, y - 5, x + rx - 3, y - 1, wax)
             state["caches"].append((x, y - 3))  # an offering: it sinks to the floor below
+    _close_air_gaps(c, rng, line, state, ceilings, rock, bronze, wax)
     for x, y in c.floors(0, c.h * 2 // 3, c.w, c.h, step=5):
         if rng.random() < 0.35:
             c.rect(x, y - rng.randint(2, 5), x + 2, y + 1, algae, only={mat.AIR})
     return state
 
 
+def _air_distance(c: _Cells, line: int, domes: list[tuple[int, int, int, int]]) -> list[int]:
+    """Swimming distance (in cells of AIR_GRID) from every open cell to the nearest air:
+    the dry part above ``line`` or the inside of an air bell. -1: solid or cut off."""
+    grid = AIR_GRID
+    gw, gh = c.w // grid, c.h // grid
+    open_cells = [not c.solid(gx * grid, gy * grid) for gy in range(gh) for gx in range(gw)]
+    dist = [-1] * (gw * gh)
+    queue: deque[int] = deque()
+    for i, is_open in enumerate(open_cells):
+        if is_open and (i // gw) * grid < line:
+            dist[i] = 0
+            queue.append(i)
+    for cx, base, _rx, _ry in domes:
+        i = ((base - 4) // grid) * gw + cx // grid
+        if 0 <= i < len(dist) and dist[i] != 0:
+            dist[i] = 0
+            queue.append(i)
+    while queue:
+        i = queue.popleft()
+        x = i % gw
+        for j in (i - gw, i + gw, i - 1 if x else -1, i + 1 if x < gw - 1 else -1):
+            if 0 <= j < len(dist) and dist[j] < 0 and open_cells[j]:
+                dist[j] = dist[i] + 1
+                queue.append(j)
+    return dist
+
+
+def _close_air_gaps(
+    c: _Cells, rng: random.Random, line: int, state: dict[str, Any],
+    ceilings: list[tuple[int, int]], rock: int, bronze: int, wax: int,
+) -> None:  # fmt: skip
+    """No flooded spot may be further than AIR_REACH from air. Where it is, add a small
+    air bell under a nearby ceiling, or hang a bronze diving bell into a wide cave."""
+    grid, gw = AIR_GRID, c.w // AIR_GRID
+    given_up: list[tuple[int, int]] = []
+    for _ in range(24):
+        dist = _air_distance(c, line, state["dry"])
+        far, spot = 0, None
+        for i, d in enumerate(dist):
+            x, y = (i % gw) * grid, (i // gw) * grid
+            if d > far and not any(abs(x - gx) < 60 and abs(y - gy) < 60 for gx, gy in given_up):
+                far, spot = d, (x, y)
+        if spot is None or far * grid <= AIR_REACH:
+            return
+        near = sorted(
+            (q for q in ceilings if math.dist(q, spot) < 80), key=lambda q: math.dist(q, spot)
+        )
+        placed = False
+        for x, y in near[:60]:  # a small natural dome ...
+            rx, ry = rng.randint(10, 12), rng.randint(9, 10)
+            box = [
+                (xx, yy) for yy in range(y - ry - 3, y, 2) for xx in range(x - rx - 3, x + rx + 4, 2)
+            ]
+            row = [(xx, y - 1) for xx in range(x - rx - 2, x + rx + 3)]
+            if any(c.get(xx, yy) != rock for xx, yy in box + row):
+                continue
+            for yy in range(y - ry, y):
+                half = int(rx * math.sqrt(max(0.0, 1 - ((yy - y) / ry) ** 2)))
+                c.rect(x - half, yy, x + half + 1, yy + 1, mat.AIR)
+            c.rect(x - rx + 3, y - 4, x - rx + 5, y - 1, wax)
+            state["dry"].append((x, y, rx, ry))
+            placed = True
+            break
+        for _ in range(0 if placed else 80):  # ... or a diving bell in open water
+            x, y = spot[0] + rng.randint(-56, 56), spot[1] + rng.randint(-40, 40)
+            rx, ry = BELL_SIZE
+            if y - ry - 8 <= line or c.kept(x, y):
+                continue
+            room = [
+                (x + dx, y + dy)
+                for dx in range(-rx - 12, rx + 13, 4)
+                for dy in range(-ry - 6, 18, 4)
+            ]
+            if not all(c.air(xx, yy) for xx, yy in room):
+                continue
+            for yy in range(y - ry - 2, y):
+                outer = int((rx + 2) * math.sqrt(max(0.0, 1 - ((yy - y) / (ry + 2)) ** 2)))
+                inner = -1
+                if yy >= y - ry:
+                    inner = int(rx * math.sqrt(max(0.0, 1 - ((yy - y) / ry) ** 2)))
+                for xx in range(x - outer, x + outer + 1):
+                    if abs(xx - x) > inner:
+                        c.put(xx, yy, bronze)
+            state["dry"].append((x, y, rx, ry))
+            placed = True
+            break
+        if not placed:
+            given_up.append(spot)
+
+
+AIR_GRID = 4  # Abtei: cell size of the swimming-distance map
+AIR_REACH = 140  # Abtei: no flooded spot further than this from air (cells of swimming)
+BELL_SIZE = (11, 14)  # Abtei: inside of a bronze diving bell (half width, height)
 NAVE_SIZE = (200, 70)  # Abtei: the flooded Kirchenschiff (mid-boss arena)
-AIR_POCKETS = 12  # Abtei: air bells under the ceilings of the flooded caves
+AIR_POCKETS = 20  # Abtei: air bells under the ceilings of the flooded caves
 
 
 _SHAPERS = {

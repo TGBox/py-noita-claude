@@ -141,7 +141,7 @@ class Records:
             return []
         lines = [
             f"Läufe: {self.runs}   Siege: {self.wins}   Tiefste Tiefe: {self.best_depth}",
-            f"Getötet: {self.kills}   Blutperlen: {self.pearls}",
+            f"Getötet: {self.kills}   Gold: {self.pearls}",
         ]
         extras = []
         if self.best_time:

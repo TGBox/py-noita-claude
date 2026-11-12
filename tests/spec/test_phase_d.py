@@ -407,7 +407,7 @@ def test_d21_material_set_abtei() -> None:
     _check_material_set(
         "abtei",
         ("mauerwerk", "buntglas", "kerzenwachs", "glockenbronze", "algen", "weihrauch"),
-        (("fire", "kerzenwachs"), ("algen", "water")),
+        (("fire", "kerzenwachs"),),  # algae no longer grow into water (playtest)
     )
 
 

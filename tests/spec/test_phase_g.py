@@ -300,6 +300,9 @@ def test_g14_multiverse_run_starts_in_workshop_and_portal_keys() -> None:
     run.player.x = ex - run.player.width // 2
     run.player.y = ey - run.player.height // 2
     run.update(0.016, Controls())
+    assert run.in_workshop is False, "the anchor point waits for a key press"
+    run.pickups.clear()
+    run.update(0.016, Controls(pickup=True))
     assert run.in_workshop is True and run.in_sanctum is False
     assert run.plan.slot == 1 and len(run.plan.offers()) >= 1
 
@@ -907,3 +910,48 @@ def test_g32_sticky_and_fizzy_change_the_jump_once() -> None:
     sticky, _ = hop(sticky=5.0)
     assert normal * 1.8 < fizzy < normal * 2.6 and fastest <= MAX_FALL_SPEED
     assert normal * 0.3 < sticky < normal * 0.6
+
+
+def test_g33_playtest_round_two() -> None:
+    """Natives and bosses can actually attack, the Abtei has air within reach everywhere and
+    no algae growth, the coral guard reflects only from the front and with a pause."""
+    from src import materials as mat
+    from src.behaviour import REFLECT_COOLDOWN, handle_reflect_projectiles
+    from src.enemies import SPECIES, Creature
+    from src.projectiles import Projectile
+    from src.run import Run
+    from src.universes import features
+    from src.universes.catalog import ALL_UNIVERSES, UNIVERSES
+
+    harmless = {"huepfling", "zuckerwatte_wolke", "blattlaus", "sporenschnorrer", "leuchtmotte",
+                "glockenqualle"}  # fmt: skip
+    for universe in UNIVERSES:
+        for key in (*universe.natives, universe.mid_boss, universe.boss):
+            spec = SPECIES[key]
+            assert key in harmless or spec.melee_damage or spec.patterns, f"{key} cannot attack"
+
+    guard = Creature(SPECIES["korallenwaechter"], 100, 100, __import__("random").Random(1))
+    guard.facing = 1
+    cx, cy = guard.center
+    front = [Projectile(x=cx + 10, y=cy, vx=-300.0), Projectile(x=cx + 12, y=cy, vx=-300.0)]
+    back = [Projectile(x=cx - 10, y=cy, vx=300.0)]
+    assert handle_reflect_projectiles(guard, back, [], 0.016) == 0, "open from behind"
+    assert handle_reflect_projectiles(guard, front, [], 0.016) == 1, "one per pause"
+    assert handle_reflect_projectiles(guard, front, [], REFLECT_COOLDOWN + 0.1) == 1
+
+    assert not any(r.actor == "algen" for r in mat.SETS["abtei"].reactions), "no algae growth"
+    run = Run(seed=26)
+    run.start_multiverse_run()
+    run.enter_universe(ALL_UNIVERSES["abtei"])
+    w = run.world
+    line = int(w.height * features.WATER_LINE)
+    cells = features._Cells(w, [])
+    domes = [
+        (x, y + 1, 1, 1)
+        for y in range(line, w.height - 8, 4)
+        for x in range(8, w.width - 8, 4)
+        if w.get(x, y) == mat.AIR
+    ]
+    far = max(features._air_distance(cells, line, domes)) * features.AIR_GRID
+    # AIR_REACH is the target; a few spots where neither a dome nor a bell fits may exceed it
+    assert far <= features.AIR_REACH * 1.8, "air within reach of every flooded spot"

@@ -27,7 +27,7 @@ HEALTH_COLOR = (196, 30, 42)
 ENERGY_COLOR = (186, 168, 128)
 MANA_COLOR = (84, 118, 210)
 RECHARGE_COLOR = (214, 172, 70)
-PEARL_COLOR = (226, 60, 74)
+PEARL_COLOR = (236, 196, 72)  # the one currency is gold now (was: blood pearls)
 GLASS = (200, 214, 220)
 STATUS_COLORS = {
     "Brennt!": (255, 150, 50),

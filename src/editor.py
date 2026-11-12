@@ -1,9 +1,9 @@
 """The inventory screen: look into the bag anywhere, rebuild augmentations in a sanctum.
 
 Everything is drag and drop: blocks between slots, a wand by its grip (to reorder or
-throw it away), flasks between their places. Dropping something on the "Ablegen"
-field or outside the panel throws it into the world. A click on a grip or a flask
-takes it into your hand.
+throw it away), flasks between their places. Dropping something on the "Löschen"
+field (or a right click) destroys it, outside the panel throws it into the world. A click
+on a grip or a flask takes it into your hand.
 """
 
 from __future__ import annotations
@@ -97,8 +97,10 @@ class WandEditor:
         current = self._layout(run)
         if event.button == 3 and event.type == pygame.MOUSEBUTTONDOWN:
             target = self._target(current, event.pos)
-            if target is not None and target[0] == "slot":
-                self._quick_move(run, target[1])
+            if target is not None and target[0] == "slot" and run.inventory.get(target[1]):
+                note = run.delete_item(target)  # right click: straight into the bin
+                if note:
+                    self.notice, self.notice_time = note, NOTICE_TIME
             return
         if event.button != 1:
             return
@@ -257,7 +259,7 @@ class WandEditor:
         dragging = self.dragging is not None
         pygame.draw.rect(screen, (60, 14, 18) if dragging else SLOT_BACK, drop)
         pygame.draw.rect(screen, ui.ACCENT if dragging else SLOT_EDGE, drop, 2 if dragging else 1)
-        ui.text(screen, "Hierher ziehen: ablegen", drop.center, round(15 * s), ui.TEXT if dragging else ui.DIM,
+        ui.text(screen, "Hierhin ziehen zum Löschen", drop.center, round(15 * s), ui.TEXT if dragging else ui.DIM,
                 anchor="center")  # fmt: skip
         hint = (
             "Ziehen: verschieben | Rechtsklick / Doppelklick: zwischen Hand-Augmentation und Beutel | "
@@ -346,13 +348,20 @@ class WandEditor:
         if kind == "wand":
             wand = run.inventory.wands[value]
             names = [CATALOG[k].name_de for k in wand.slots if k]
-            lines = ["Ziehen: Reihenfolge ändern oder ablegen", "Klick: in die Hand nehmen"]
+            lines = ["Ziehen: Reihenfolge ändern oder löschen", "Klick: in die Hand nehmen"]
             if names:
                 lines.insert(0, " > ".join(names))
             return HoverInfo(wand.spec.name_de, lines, (232, 214, 180), "pickup")
         if kind == "flask" and value < len(run.flasks):
             flask = run.flasks[value]
-            return HoverInfo(flask.label_de, ["Klick: in die Hand nehmen", "Ziehen: ablegen"], (200, 214, 220))
+            return HoverInfo(flask.label_de, ["Klick: in die Hand nehmen", "Ziehen: löschen"], (200, 214, 220))
         if kind == "drop":
-            return HoverInfo("Ablegen", ["Was du hierher ziehst, fällt vor dir auf den Boden."])
+            return HoverInfo(
+                "Löschen",
+                [
+                    "Was du hierher ziehst, ist für immer weg.",
+                    "Rechtsklick auf einen Baustein löscht ihn sofort.",
+                    "Aus dem Fenster hinaus ziehen: vor dir ablegen.",
+                ],
+            )
         return None
