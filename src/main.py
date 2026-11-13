@@ -653,7 +653,7 @@ class Game:
     def _on_action(self, action: str) -> None:
         """A press of an action's key, mouse button or gamepad button."""
         run = self.run
-        if action in ("jump", "pickup", "drink", "throw", "kick"):
+        if action in ("jump", "pickup", "drink", "throw", "kick", "klonita"):
             self.queued.add(action)
         elif action == "next_wand":
             run.inventory.cycle(1)
@@ -820,6 +820,7 @@ class Game:
             drink="drink" in queued,
             throw="throw" in queued,
             kick="kick" in queued,
+            klonita="klonita" in queued,
         )
         if self.sandbox and mouse[2]:
             self.run.world.paint(*target, self.brush, mat.id_of(PAINT_MATERIALS[self.paint_index]))
@@ -961,6 +962,15 @@ class Game:
                         self.screen, self.viewport, self.floaters.items, self.last_cam
                     )
                 self.hud.draw(self.screen, self.viewport, self._hud_state())
+                from src.hud import draw_boss_banner, draw_speech_bubbles
+
+                s = ui.scale_of(self.screen)
+                draw_speech_bubbles(
+                    self.screen, ui.font(round(14 * s)), self.run.bubbles, *self.last_cam,
+                    scale=self.viewport.scale,
+                    offset=(self.viewport.offset_x, self.viewport.offset_y),
+                )  # fmt: skip
+                draw_boss_banner(self.screen, ui.font(round(22 * s), bold=True), self.run.boss_banner)
                 if self.run.menu_mode:
                     if self.run.menu_mode == "empress_bargain":
                         from src.menus import draw_empress_bargain_menu
@@ -975,13 +985,28 @@ class Game:
                         draw_portal_select_menu(
                             self.screen, ui.font(20), ui.font(14), offers, self.run.portal_index
                         )
-                        if not offers:  # after the sixth universe (evil self: Card F18)
+                        if not offers and self.run.plan and self.run.plan.finished:
+                            # after the sixth universe only the evil self's home is left (F19)
+                            from src.enemies import SPECIES
+
                             w, h = self.screen.get_size()
+                            evil = SPECIES[self.run.plan.evil_self].name_de
                             ui.text(
                                 self.screen,
-                                "Alle sechs Universen bereist. Das Böse Ich und das "
-                                "Hauptquartier folgen in einer späteren Version. [Esc]",
-                                (w / 2, h / 2), 20, ui.GOLD, anchor="center",
+                                "Alle sechs Universen bereist. Der Portalrahmen zeigt nur noch:",
+                                (w / 2, h / 2 - 40), 18, ui.DIM, anchor="center",
+                            )  # fmt: skip
+                            ui.text(
+                                self.screen, self.run.final_home_name_de(), (w / 2, h / 2),
+                                28, ui.GOLD, heading=True, anchor="center",
+                            )  # fmt: skip
+                            ui.text(
+                                self.screen, f"Dort wartet: {evil}", (w / 2, h / 2 + 36), 18,
+                                (235, 110, 100), bold=True, anchor="center",
+                            )  # fmt: skip
+                            ui.text(
+                                self.screen, "[Enter] Durchschreiten   [Esc] Zurück",
+                                (w / 2, h / 2 + 70), 16, ui.DIM, anchor="center",
                             )  # fmt: skip
                     elif self.run.menu_mode == "trader":
                         from src.menus import draw_trader_menu
@@ -1015,6 +1040,13 @@ class Game:
                             self.run,
                             self.run.menu_index,
                         )
+                    elif self.run.menu_mode == "archive":
+                        from src.menus import draw_archive_menu
+
+                        draw_archive_menu(
+                            self.screen, ui.font(20), ui.font(14), self.run.records,
+                            self.run.menu_index,
+                        )  # fmt: skip
                     elif self.run.menu_mode == "minigame":
                         from src.menus import draw_minigame_overlay
 
@@ -1315,6 +1347,13 @@ class Game:
             self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y,
             sheet_cache=self.sheet_cache,
         )  # fmt: skip
+        if run.multiverse:  # the companion lives in multiverse runs only (Card F14)
+            from src.rendering import draw_klonita
+
+            self.klonita_animator = draw_klonita(
+                self.canvas, self.sheet_cache, run.klonita,
+                getattr(self, "klonita_animator", None), cam_x, cam_y, self.clock_time,
+            )  # fmt: skip
         draw_droplets(self.canvas, run.droplets, cam_x, cam_y)
         for body in (player, *run.enemies.creatures):
             if not body.dead:

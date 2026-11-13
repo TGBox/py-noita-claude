@@ -955,3 +955,59 @@ def test_g33_playtest_round_two() -> None:
     far = max(features._air_distance(cells, line, domes)) * features.AIR_GRID
     # AIR_REACH is the target; a few spots where neither a dome nor a bell fits may exceed it
     assert far <= features.AIR_REACH * 1.8, "air within reach of every flooded spot"
+
+
+def test_g34_playtest_summons_and_quiet_start() -> None:
+    """Playtest 2026-11-13: helpers appear beside their summoner on its side, givers stay
+    harmless, and no hostile creature waits in the start zone."""
+    import math
+
+    from src.run import START_SAFE_RADIUS, Controls, Run
+    from src.universes.catalog import ALL_UNIVERSES
+
+    run = Run(seed=3)
+    run.start_multiverse_run()
+    run.enter_universe(ALL_UNIVERSES["aktenhalde"])
+    run.god_mode = True
+    sx, sy = run.player.center
+    for c in run.enemies.creatures:
+        if not c.dead and not c.spec.prop and not c.giver:
+            assert math.dist(c.center, (sx, sy)) >= START_SAFE_RADIUS - 20, c.spec.key
+    run.enemies.creatures = [c for c in run.enemies.creatures if c.giver]
+    rider = run.enemies.spawn("paragraphenreiter", run.player.x + 80, run.player.y - 40)
+    rider.aggro = True
+    for _ in range(60 * 20):
+        run.player.place(int(rider.x) - 60, int(rider.y) + 10)
+        run.update(1 / 60, Controls())
+    helpers = [c for c in run.enemies.creatures if c.summoned]
+    assert 1 <= len(helpers) <= 2
+    for c in helpers:
+        assert c.faction == rider.faction and c.hp == c.max_hp
+        assert not run.world.rect_blocked(c.x, c.y, c.width, c.height)
+    assert not any(c.species.startswith("agent_") for c in run.enemies.creatures)  # no chains
+
+
+def test_g35_no_hard_walls_from_corpses_or_bridges() -> None:
+    """Playtest 2026-11-13: remains never turn into hard walls, Aktenhalde bridges are paper,
+    and no algae strand floats across the Abtei's water."""
+    from src import materials as mat
+    from src.run import Run, corpse_material
+    from src.universes.catalog import ALL_UNIVERSES
+
+    for key in mat.SETS:
+        mat.activate(mat.SETS[key])
+        assert mat.HARDNESS[corpse_material()] <= 1, key
+    mat.activate(mat.SETS["aktenhalde"])
+    assert mat.KEYS[mat.SINEW] == "papier"
+    run = Run(seed=26)
+    run.start_multiverse_run()
+    run.enter_universe(ALL_UNIVERSES["abtei"])
+    w = run.world
+    algae, water = mat.MAT_ID["algen"], mat.WATER
+    floating = sum(
+        1
+        for x in range(4, w.width - 4, 3)
+        for y in range(4, w.height - 4)
+        if w.get(x, y) == algae and w.get(x, y - 1) == water and w.get(x, y + 1) == water
+    )
+    assert floating == 0

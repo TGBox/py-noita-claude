@@ -977,6 +977,61 @@ def draw_flask(canvas: pygame.Surface, flask: Flask, x: int, y: int) -> None:
         canvas.fill(MATERIALS[flask.material].color, (x - 2, y - level, 5, level))
 
 
+KLONITA_FALLBACK = (176, 120, 230)  # a lilac blob if her sheet is missing
+
+
+def klonita_anim(klonita: object) -> str:
+    """Which row of her sheet fits her state right now."""
+    state = getattr(klonita, "state", "follow")
+    if state in ("knocked", "assist", "quirk"):
+        return state
+    moving = abs(getattr(klonita, "vx", 0.0)) > 6.0 or abs(getattr(klonita, "vy", 0.0)) > 6.0
+    return "fly" if moving else "idle"
+
+
+def draw_klonita(
+    canvas: pygame.Surface,
+    sheet_cache: object,
+    klonita: object,
+    animator: object | None,
+    cam_x: float,
+    cam_y: float,
+    time: float = 0.0,
+) -> object | None:
+    """Draw Klonita (and where she points) onto ``canvas``; returns the animator to keep.
+
+    ``klonita.x/y`` is her centre; her sheet is anchored at the feet."""
+    from src.sprite_render import blit_frame
+    from src.sprites import Animator
+
+    if klonita is None or getattr(klonita, "state", "") == "dismissed":
+        return animator
+    x, y = float(klonita.x), float(klonita.y)
+    pointing = getattr(klonita, "pointing", None)
+    if pointing is not None and getattr(klonita, "point_timer", 0.0) > 0:
+        px, py = int(pointing[0] - cam_x), int(pointing[1] - cam_y)
+        radius = 5 + int(2 * math.sin(time * 8))
+        pygame.draw.circle(canvas, (230, 200, 255), (px, py), radius, 1)
+        pygame.draw.line(canvas, (200, 160, 240), (int(x - cam_x), int(y - cam_y)), (px, py), 1)
+    try:
+        sheet, meta = sheet_cache.get("charaktere", "klonita")  # type: ignore[attr-defined]
+        anim = klonita_anim(klonita)
+        anim = anim if anim in meta.anims else "idle"
+        if animator is None or getattr(animator, "meta", None) is not meta:
+            animator = Animator(meta, anim)
+        animator.play(anim)
+        animator.update(1 / 60)
+        blit_frame(
+            canvas, sheet, meta, animator, x, y + meta.frame_size[1] / 2 - 2, cam_x, cam_y,
+            flip_x=getattr(klonita, "facing", 1) < 0,
+        )  # fmt: skip
+    except (KeyError, ValueError, AttributeError, TypeError, OSError, pygame.error):
+        sx, sy = int(x - cam_x), int(y - cam_y)
+        pygame.draw.circle(canvas, KLONITA_FALLBACK, (sx, sy), 5)
+        pygame.draw.circle(canvas, (30, 16, 40), (sx - 2 * getattr(klonita, "facing", 1), sy - 1), 1)
+    return animator
+
+
 def draw_chunks(canvas: pygame.Surface, chunks: list[Chunk], cam_x: int, cam_y: int) -> None:
     """Falling tissue: drawn cell by cell in its material's colour (slightly lit)."""
     width, height = VIEW_WIDTH, VIEW_HEIGHT
@@ -1226,39 +1281,10 @@ class Renderer:
                 pass
 
         # 5. Klonita
-        klonita = getattr(run, "klonita", None)
-        if klonita is not None and getattr(klonita, "state", "") != "dismissed":
-            try:
-                sheet_k, meta_k = self.sheet_cache.get("charaktere", "klonita")
-                if klonita.state == "knocked":
-                    k_state = "knocked"
-                elif klonita.state == "assist":
-                    k_state = "assist"
-                elif klonita.state == "quirk":
-                    k_state = "quirk"
-                elif (
-                    abs(getattr(klonita, "vx", 0.0)) > 0.5 or abs(getattr(klonita, "vy", 0.0)) > 0.5
-                ):
-                    k_state = "fly"
-                else:
-                    k_state = "idle"
-
-                k_state = k_state if k_state in meta_k.anims else "idle"
-                k_animator = Animator(meta_k, k_state)
-                facing_k = getattr(klonita, "facing", 1) >= 0
-                blit_frame(
-                    screen,
-                    sheet_k,
-                    meta_k,
-                    k_animator,
-                    klonita.x,
-                    klonita.y,
-                    cam_x,
-                    cam_y,
-                    flip_x=not facing_k,
-                )
-            except (KeyError, ValueError, AttributeError, pygame.error):
-                pass
+        self.klonita_animator = draw_klonita(
+            screen, self.sheet_cache, getattr(run, "klonita", None),
+            getattr(self, "klonita_animator", None), cam_x, cam_y,
+        )  # fmt: skip
 
         # 6. HUD
         try:
@@ -1280,3 +1306,10 @@ class Renderer:
             self.hud.draw(screen, vp, state)
         except (KeyError, ValueError, AttributeError, pygame.error):
             pass
+
+        # 7. Speech bubbles and the boss banner (Card G02)
+        from src.hud import draw_boss_banner, draw_speech_bubbles
+        from src import ui
+
+        draw_speech_bubbles(screen, ui.font(12), getattr(run, "bubbles", []), cam_x, cam_y)
+        draw_boss_banner(screen, ui.font(18, bold=True), getattr(run, "boss_banner", None))

@@ -198,8 +198,7 @@ class Pickup:
             self.amount = self.reroll if isinstance(self.reroll, int) else 1
         elif self.portal:
             self.kind = "portal"
-            self.item_key = ""
-            self.amount = 1
+            self.amount = 1  # item_key stays: "headquarters" marks the way to the true ending
 
     @property
     def label_de(self) -> str:

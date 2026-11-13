@@ -112,10 +112,34 @@ def describe_material(material: int) -> HoverInfo | None:
 
 # ----------------------------------------------------------------- creatures
 
+STANCE_DE = {  # Contract V22 §4
+    "peaceful": "Friedlich",
+    "passive": "Friedlich",
+    "shy": "Scheu",
+    "fearful": "Scheu",
+    "territorial": "Territorial",
+    "neutral": "Territorial",
+    "curious": "Territorial",
+    "hostile": "Feindselig",
+}
+
+
+def stance_de(creature: Creature) -> str:
+    """The creature's stance in German; bribed beats everything, calmed is noted."""
+    if getattr(creature, "bribed", False):
+        return "Bestochen"
+    stance = getattr(creature, "stance", "") or creature.spec.stance
+    label = STANCE_DE.get(stance, "Feindselig")
+    if getattr(creature, "calmed", 0.0) > 0 and label != "Feindselig":
+        label += " (beruhigt)"
+    return label
+
 
 def describe_creature(creature: Creature) -> HoverInfo:
     spec = creature.spec
     lines = []
+    if not spec.prop:
+        lines.append(stance_de(creature))
     info = CREATURE_INFO_DE.get(spec.key)
     if info:
         lines.append(info)
@@ -217,6 +241,47 @@ def compare(value: float, other: float, higher: bool) -> int:
 # -------------------------------------------------------------------- pickups
 
 
+# ------------------------------------------------------------ pickup kinds
+
+AUTO_KINDS = frozenset({"gold", "sample", "blueprint_shard", "memory_shard", "badge"})
+KIND_INFO_DE: dict[str, tuple[str, tuple[int, int, int], tuple[str, ...]]] = {  # V22 §4
+    "gold": ("Gold", (236, 196, 72), ("Die Währung des Multiversums.",
+             "Händler, Fabrikator und Schredder nehmen nichts anderes.")),
+    "blueprint_shard": ("Bauplan-Splitter", (150, 200, 240), (
+        "Ein Stück eines Bauplans.", "Drei Splitter ergeben einen Bauplan für den Fabrikator.")),
+    "memory_shard": ("Erinnerungssplitter", (200, 160, 240), (
+        "Ein Splitter von Cloitas Erinnerungen.", "Sechs davon öffnen den Weg ins Hauptquartier.")),
+    "badge": ("Dienstausweis", (230, 120, 100), (
+        "Ausweis eines Behörden-Agenten.", "Drei davon öffnen den Weg ins Hauptquartier.")),
+    "crate": ("Kiste", (190, 150, 100), ("Eine verschlossene Kiste. E: Öffnen.",)),
+    "formular_stempel": ("Formularstempel", (214, 80, 80), (
+        "Ein Stempel der Behörde.", "Gute Stempel: mehr Schaden und Rabatt.")),
+    "form_stamp": ("Formular", (230, 220, 190), ("Ein ungestempeltes Formular.", "E: Abstempeln.")),
+    "life_capsule": ("Lebenskapsel", (220, 70, 90), ("Erhöht dein maximales Leben.",)),
+}  # fmt: skip
+
+
+def _kind_info(item: Pickup) -> tuple[str, tuple[int, int, int], list[str]]:
+    """Title, colour and lines for the V11 pickup kinds (gold, samples & co.)."""
+    amount = max(1, int(getattr(item, "amount", 1) or 1))
+    if item.kind == "sample":
+        from src.samples import SAMPLE_ALIASES, SAMPLES
+
+        sample = SAMPLES.get(SAMPLE_ALIASES.get(item.item_key, item.item_key))
+        if sample is None:
+            return ("Probe", (200, 200, 160), ["Eine unbekannte Probe."])
+        title = sample.name + (f" ×{amount}" if amount > 1 else "")
+        return (title, _readable(sample.color), [f"Probe (Stufe {sample.tier})", sample.description])
+    name, color, lines = KIND_INFO_DE[item.kind]
+    if item.kind == "gold":
+        name = f"{amount} Gold"
+    elif item.kind == "life_capsule":
+        return (name, color, [f"+{item.amount or 25} maximales Leben."])
+    elif amount > 1:
+        name = f"{name} ×{amount}"
+    return (name, color, list(lines))
+
+
 def describe_pickup(
     item: Pickup,
     current: WandSpec | None = None,
@@ -268,9 +333,17 @@ def describe_pickup(
     elif item.reroll:
         lines = ["Würfelt die Perks auf dem Altar neu.", "Der Preis verdoppelt sich jedes Mal."]
     elif item.portal:
-        lines = ["Führt in die nächste Parallelwelt.", "Härtere Gegner, reichere Beute."]
+        if item.item_key == "headquarters":
+            title, color = "Portal zum Hauptquartier", (240, 110, 100)
+            lines = ["Die Behörde für Realitätsordnung wartet.", "Dahinter liegt das wahre Ende."]
+        else:
+            lines = ["Führt in die nächste Parallelwelt.", "Härtere Gegner, reichere Beute."]
+    elif item.kind in KIND_INFO_DE or item.kind == "sample":
+        title, color, lines = _kind_info(item)
     if price:
         lines.append(f"Preis: {price} Gold (E: Kaufen)")
+    elif item.kind in AUTO_KINDS:
+        lines.append("Wird beim Darüberlaufen eingesammelt.")
     elif item.perk is None and not item.pearls:
         lines.append("E: Aufheben")
     return HoverInfo(
@@ -292,34 +365,16 @@ def describe(
     ``visible`` holds the ids of creatures in sight (None = all); hidden items
     (``seen`` False) are not described, so the cursor cannot give secrets away.
     """
-    for creature in run.enemies.creatures:
-        if creature.dead or (visible is not None and id(creature) not in visible):
-            continue
-        if (
-            creature.x - CREATURE_HOVER <= x < creature.x + creature.width + CREATURE_HOVER
-            and creature.y - CREATURE_HOVER <= y < creature.y + creature.height + CREATURE_HOVER
-        ):
-            return describe_creature(creature)
-    best, best_distance = None, PICKUP_HOVER
-    for item in run.pickups:
-        if not item.seen or item.pearls:
-            continue
-        distance = math.hypot(item.x - x, item.y - 3 - y)
-        if distance <= best_distance:
-            best, best_distance = item, distance
-    if best is not None:
-        current = run.inventory.wand.spec if run.inventory.wands else None
-        if current is not None:
-            from src.inventory import spec_of
-
-            current = spec_of(run.inventory.wand)
-        return describe_pickup(
-            best, current, run.price_of(best), getattr(run, "known_blocks", None)
-        )
-    world = run.world
-    if not (0 <= x < world.width and 0 <= y < world.height):
-        return None
-    return describe_material(world.get(int(x), int(y)))
+    creatures = [c for c in run.enemies.creatures if visible is None or id(c) in visible]
+    in_workshop = getattr(run, "in_workshop", False)
+    info = _inspect(
+        run.world, x, y, creatures, run.pickups,
+        workshop_layout=getattr(run, "workshop_layout", None) if in_workshop else None,
+        klonita=getattr(run, "klonita", None) if getattr(run, "multiverse", False) else None,
+        traders=(getattr(run, "active_traders", None) or ()) if in_workshop else (),
+        run=run,
+    )  # fmt: skip
+    return None if info.kind == "none" else info
 
 
 def _readable(color: Color) -> Color:
@@ -339,5 +394,76 @@ def inspect_world(
     *,
     workshop_layout: object | None = None,
 ) -> HoverInfo:
-    """Inspect world coordinates (wx, wy) including workshop stations and samples (Card G03)."""
-    raise NotImplementedError("Card G03")
+    """What is at world position (wx, wy): Klonita, trader, station, creature, item,
+    material - in that order (Contract V22 §4, Card G03)."""
+    return _inspect(world, wx, wy, creatures, pickups, workshop_layout=workshop_layout)
+
+
+STATION_HOVER = 4  # cells around a station that still count as on it
+KLONITA_HOVER = 9
+TRADER_HOVER = 12
+KLONITA_STATE_DE = {
+    "follow": "Folgt dir", "assist": "Hilft", "quirk": "Macht Unsinn",
+    "knocked": "Benommen", "dismissed": "In der Tasche",
+}  # fmt: skip
+
+
+def _inspect(
+    world: object,
+    wx: float,
+    wy: float,
+    creatures: Sequence[Creature] = (),
+    pickups: Sequence[Pickup] = (),
+    *,
+    workshop_layout: object | None = None,
+    klonita: object | None = None,
+    traders: Sequence[object] = (),
+    run: object | None = None,
+) -> HoverInfo:
+    x, y = int(wx), int(wy)
+    if klonita is not None and getattr(klonita, "state", "dismissed") != "dismissed":
+        if math.hypot(klonita.x - wx, klonita.y - wy) <= KLONITA_HOVER:
+            state = KLONITA_STATE_DE.get(klonita.state, "")
+            return HoverInfo("Klonita", [state, "Deine Begleiterin. [K]: rufen / wegschicken"],
+                             (200, 160, 240), "creature")  # fmt: skip
+    if workshop_layout is not None:
+        slots = getattr(workshop_layout, "trader_slots", ())
+        for trader, slot in zip(traders, slots):
+            if math.hypot(slot[0] - wx, slot[1] - wy) <= TRADER_HOVER:
+                lines = ["Händler", trader.quirk_de] if trader.quirk_de else ["Händler"]
+                return HoverInfo(trader.name, lines, (236, 196, 72), "creature")
+        from src.workshop import station_at
+
+        station = station_at(workshop_layout, x, y, radius=STATION_HOVER)
+        if station is not None:
+            return HoverInfo(
+                station.name, ["Werkstatt-Station", station.prompt_de], (214, 190, 140), "station"
+            )
+    for creature in creatures:
+        if creature.dead:
+            continue
+        if (
+            creature.x - CREATURE_HOVER <= wx < creature.x + creature.width + CREATURE_HOVER
+            and creature.y - CREATURE_HOVER <= wy < creature.y + creature.height + CREATURE_HOVER
+        ):
+            return describe_creature(creature)
+    best, best_distance = None, PICKUP_HOVER
+    for item in pickups:
+        if not getattr(item, "seen", True) or item.pearls:
+            continue
+        distance = math.hypot(item.x - wx, item.y - 3 - wy)
+        if distance <= best_distance:
+            best, best_distance = item, distance
+    if best is not None:
+        if run is None:
+            return describe_pickup(best)
+        current = None
+        if run.inventory.wands:
+            from src.inventory import spec_of
+
+            current = spec_of(run.inventory.wand)
+        return describe_pickup(best, current, run.price_of(best), getattr(run, "known_blocks", None))
+    width, height = getattr(world, "width", 0), getattr(world, "height", 0)
+    if not (0 <= x < width and 0 <= y < height):
+        return HoverInfo("", [], kind="none")
+    return describe_material(world.get(x, y)) or HoverInfo("", [], kind="none")

@@ -951,6 +951,9 @@ def _shape_abtei(c: _Cells, rng: random.Random) -> dict[str, Any]:
     return state
 
 
+SWIM_BAND = (-2, 0, 2)  # cells across the way a swimming body needs free
+
+
 def _air_distance(c: _Cells, line: int, domes: list[tuple[int, int, int, int]]) -> list[int]:
     """Swimming distance (in cells of AIR_GRID) from every open cell to the nearest air:
     the dry part above ``line`` or the inside of an air bell. -1: solid or cut off."""
@@ -968,14 +971,76 @@ def _air_distance(c: _Cells, line: int, domes: list[tuple[int, int, int, int]]) 
         if 0 <= i < len(dist) and dist[i] != 0:
             dist[i] = 0
             queue.append(i)
+    def passable(i: int, j: int) -> bool:
+        """Can a swimming body get from sample i to sample j? Every cell between the two
+        points must be free in a band as wide as a body, so a thin wall between two
+        sample points counts (playtest 2026-11-13: a small wall cut the way to the air)."""
+        ax, ay = (i % gw) * grid, (i // gw) * grid
+        bx, by = (j % gw) * grid, (j // gw) * grid
+        for step in range(1, grid + 1):
+            x = ax + (bx - ax) * step // grid
+            y = ay + (by - ay) * step // grid
+            for off in SWIM_BAND:
+                px, py = (x, y + off) if ax != bx else (x + off, y)
+                if c.solid(px, py):
+                    return False
+        return True
+
     while queue:
         i = queue.popleft()
         x = i % gw
         for j in (i - gw, i + gw, i - 1 if x else -1, i + 1 if x < gw - 1 else -1):
-            if 0 <= j < len(dist) and dist[j] < 0 and open_cells[j]:
+            if 0 <= j < len(dist) and dist[j] < 0 and open_cells[j] and passable(i, j):
                 dist[j] = dist[i] + 1
                 queue.append(j)
     return dist
+
+
+THIN_WALL = 10  # cells: walls up to this thick between two flooded caves are opened
+
+
+def _open_thin_walls(c: _Cells, line: int, domes: list[tuple[int, int, int, int]]) -> None:
+    """Flooded caves split only by a thin wall get a passage through it, so a swimmer is
+    never cut off from the air by a few cells of stone (playtest 2026-11-13). Walls of
+    the air domes and the world edge stay closed."""
+    grid = AIR_GRID
+    edge = BORDER + 2
+
+    def near_dome(x: int, y: int) -> bool:
+        return any(abs(x - dx) <= rx + 5 and dy - ry - 5 <= y <= dy + 3 for dx, dy, rx, ry in domes)
+
+    for y in range(line + grid, c.h - edge, grid):
+        for x in range(edge, c.w - edge, grid):
+            if c.solid(x, y) or c.kept(x, y):
+                continue
+            for dx, dy in ((1, 0), (0, 1)):
+                # the first solid cell along the axis, then its thickness
+                run, start = 0, None
+                for k in range(1, THIN_WALL + 3):
+                    px, py = x + dx * k, y + dy * k
+                    if not (edge <= px < c.w - edge and line < py < c.h - edge):
+                        start = None
+                        break
+                    if c.solid(px, py):
+                        start = k if start is None else start
+                        run += 1
+                    elif start is not None:
+                        break
+                else:
+                    start = None
+                if start is None or not 0 < run <= THIN_WALL:
+                    continue
+                if any(c.get(x + dx * k, y + dy * k) == mat.BEDROCK for k in range(start, start + run)):
+                    continue
+                mx, my = x + dx * (start + run // 2), y + dy * (start + run // 2)
+                if near_dome(mx, my):
+                    continue
+                for k in range(start, start + run):
+                    px, py = x + dx * k, y + dy * k
+                    for off in SWIM_BAND + (-6, 6):
+                        qx, qy = (px, py + off) if dx else (px + off, py)
+                        if c.solid(qx, qy) and c.get(qx, qy) != mat.BEDROCK and not near_dome(qx, qy):
+                            c.world.set_cell(qx, qy, mat.AIR, force=True)  # the flood fills it
 
 
 def _close_air_gaps(
@@ -985,8 +1050,9 @@ def _close_air_gaps(
     """No flooded spot may be further than AIR_REACH from air. Where it is, add a small
     air bell under a nearby ceiling, or hang a bronze diving bell into a wide cave."""
     grid, gw = AIR_GRID, c.w // AIR_GRID
+    _open_thin_walls(c, line, state["dry"])
     given_up: list[tuple[int, int]] = []
-    for _ in range(24):
+    for _ in range(48):
         dist = _air_distance(c, line, state["dry"])
         far, spot = 0, None
         for i, d in enumerate(dist):
@@ -999,8 +1065,19 @@ def _close_air_gaps(
             (q for q in ceilings if math.dist(q, spot) < 80), key=lambda q: math.dist(q, spot)
         )
         placed = False
+        hall = state.get("mid_arena")
+
+        def clashes(x: int, y: int, rx: int, ry: int) -> bool:
+            """Too close to the nave or another air dome: it would break that dome's shell."""
+            if hall and hall[0] - rx - 8 <= x <= hall[2] + rx + 8 and hall[1] - 90 <= y <= hall[3] + 8:
+                return True
+            return any(abs(x - dx) <= drx + rx + 8 and dy - dry_ - ry - 8 <= y <= dy + ry + 8
+                       for dx, dy, drx, dry_ in state["dry"])  # fmt: skip
+
         for x, y in near[:60]:  # a small natural dome ...
             rx, ry = rng.randint(10, 12), rng.randint(9, 10)
+            if clashes(x, y, rx, ry):
+                continue
             box = [
                 (xx, yy) for yy in range(y - ry - 3, y, 2) for xx in range(x - rx - 3, x + rx + 4, 2)
             ]
@@ -1014,15 +1091,20 @@ def _close_air_gaps(
             state["dry"].append((x, y, rx, ry))
             placed = True
             break
-        for _ in range(0 if placed else 80):  # ... or a diving bell in open water
-            x, y = spot[0] + rng.randint(-56, 56), spot[1] + rng.randint(-40, 40)
+        # ... or a diving bell in open water: the nearest place it fits (a systematic
+        # search, random tries missed pockets next to walls - playtest 2026-11-13)
+        tries = sorted(
+            ((spot[0] + dx, spot[1] + dy) for dx in range(-88, 89, 4) for dy in range(-64, 65, 4)),
+            key=lambda p: math.dist(p, spot),
+        )
+        for x, y in ([] if placed else tries):
             rx, ry = BELL_SIZE
-            if y - ry - 8 <= line or c.kept(x, y):
+            if y - ry - 8 <= line or c.kept(x, y) or clashes(x, y, rx, ry):
                 continue
             room = [
                 (x + dx, y + dy)
-                for dx in range(-rx - 12, rx + 13, 4)
-                for dy in range(-ry - 6, 18, 4)
+                for dx in range(-rx - 6, rx + 7, 3)
+                for dy in range(-ry - 4, 10, 3)
             ]
             if not all(c.air(xx, yy) for xx, yy in room):
                 continue
@@ -1103,6 +1185,28 @@ def flood(world: Any, key: str, rng: random.Random, keep: Keep, state: dict[str,
             )
 
         _flood_below(c, int(c.h * WATER_LINE), mat.WATER, skip=dry)
+        _cut_floating_algae(c, _id("algen"), mat.WATER)
+
+
+ALGAE_STRAND = 6  # algae thinner than this with water above and below is a strand
+
+
+def _cut_floating_algae(c: _Cells, algae: int, water: int) -> None:
+    """Strands of algae (the organism's sinew bridges) float across flooded caves and
+    block a swimmer like a wall (playtest 2026-11-13). Every algae run with water both
+    above and below is washed away; tufts growing on a floor stay."""
+    for x in range(BORDER, c.w - BORDER):
+        y = BORDER
+        while y < c.h - BORDER:
+            if c.get(x, y) != algae:
+                y += 1
+                continue
+            top = y
+            while y < c.h - BORDER and c.get(x, y) == algae:
+                y += 1
+            if y - top <= ALGAE_STRAND and c.get(x, top - 1) == water and c.get(x, y) == water:
+                for yy in range(top, y):
+                    c.world.set_cell(x, yy, water, force=True)
 
 
 def _dome_closed(c: _Cells, cx: int, base: int, rx: int, ry: int, rock: int) -> bool:

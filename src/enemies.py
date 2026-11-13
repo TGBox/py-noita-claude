@@ -747,6 +747,11 @@ class Creature(Body):
         self.carrying: str = ""
         self.morphed: bool = False
         self.bribed: bool = False
+        self.faction: str = spec.faction  # a summoned helper takes its summoner's side
+        self.helpers: list[Creature] = []  # helpers it called (capped, see behaviour)
+        self.summoned: bool = False  # it was called by another creature
+        self.calmed: float = 0.0  # F15: Klonita's hug, seconds left of not minding the player
+        self.dodge_charges: int = 0  # F17: her warning, shots that will miss
         self.giver: bool = False
         self.noise_level: float = 0.0
         self.ability_cooldowns: dict[str, float] = {}
@@ -785,6 +790,7 @@ class Creature(Body):
         self.flash_cooldown = max(0.0, self.flash_cooldown - dt)
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.ranged_cooldown = max(0.0, self.ranged_cooldown - dt)
+        self.calmed = max(0.0, self.calmed - dt)
         self.unstick(world)
         if self.state == "windup":
             shot = poll_attack_ready(self, dt)
@@ -1052,7 +1058,7 @@ class EnemyManager:
             if other is creature or other.dead or other.spec.prop:
                 continue
             if other.spec.stance == "trader" or not are_hostile(
-                creature.spec.faction, other.spec.faction, grudges
+                creature.faction, other.faction, grudges
             ):
                 continue
             ox, oy = other.center
@@ -1168,6 +1174,8 @@ def populate(
             else:
                 top = y
             left = x - spec.width // 2
+            if math.hypot(x - avoid[0], top + spec.height / 2 - avoid[1]) < safe_radius:
+                continue  # it fell (or climbed) into the start zone
             clearance = 6 if spec.flying and not spec.hangs else 0
             if world.rect_blocked(
                 left - clearance, top - clearance,
@@ -1213,6 +1221,8 @@ def evaluate_stance(
     if stance == "territorial":
         if creature.aggro:
             return True
+        if creature.calmed > 0:  # F15: calmed by Klonita, closeness alone does not provoke
+            return False
         if distance <= AGGRO_RADIUS * 0.6:
             creature.aggro = True
             return True

@@ -2,7 +2,7 @@
 
 Everything is drag and drop: blocks between slots, a wand by its grip (to reorder or
 throw it away), flasks between their places. Dropping something on the "Löschen"
-field (or a right click) destroys it, outside the panel throws it into the world. A click
+field destroys it (a right click only while the delete switch is on), outside the panel throws it into the world. A click
 on a grip or a flask takes it into your hand.
 """
 
@@ -38,6 +38,9 @@ class WandEditor:
         self.page = 0
         self._last_click: tuple[str, object] | None = None
         self.sort_mode = 0  # index into SORT_MODES
+        # playtest 2026-11-13: a right click deletes only while this switch is on; off, it
+        # moves the block like a double click (spells were lost by accident)
+        self.right_click_deletes = False
         self._last_click_time = 0.0
 
     def toggle(self) -> None:
@@ -98,14 +101,23 @@ class WandEditor:
         if event.button == 3 and event.type == pygame.MOUSEBUTTONDOWN:
             target = self._target(current, event.pos)
             if target is not None and target[0] == "slot" and run.inventory.get(target[1]):
-                note = run.delete_item(target)  # right click: straight into the bin
-                if note:
-                    self.notice, self.notice_time = note, NOTICE_TIME
+                if self.right_click_deletes:
+                    note = run.delete_item(target)  # delete mode: straight into the bin
+                    if note:
+                        self.notice, self.notice_time = note, NOTICE_TIME
+                else:
+                    self._quick_move(run, target[1])  # move, like a double click
             return
         if event.button != 1:
             return
         if event.type == pygame.MOUSEBUTTONDOWN:
             button = hit_any(current, *event.pos)
+            if button == ("delete_toggle", None):
+                self.right_click_deletes = not self.right_click_deletes
+                state = "an: Rechtsklick löscht" if self.right_click_deletes else "aus: Rechtsklick verschiebt"
+                self.notice, self.notice_time = f"Löschmodus {state}", NOTICE_TIME
+                self.dragging = None
+                return
             if not self.palette_mode and button in (("sort", None), ("sort_mode", None)):
                 if button[0] == "sort_mode":
                     self.sort_mode = (self.sort_mode + 1) % len(SORT_MODES)
@@ -261,9 +273,21 @@ class WandEditor:
         pygame.draw.rect(screen, ui.ACCENT if dragging else SLOT_EDGE, drop, 2 if dragging else 1)
         ui.text(screen, "Hierhin ziehen zum Löschen", drop.center, round(15 * s), ui.TEXT if dragging else ui.DIM,
                 anchor="center")  # fmt: skip
+        switch = pygame.Rect(current.delete_toggle)
+        on = self.right_click_deletes
+        pygame.draw.rect(screen, (96, 18, 24) if on else SLOT_BACK, switch)
+        pygame.draw.rect(screen, ui.ACCENT if on else SLOT_EDGE, switch, 2 if on else 1)
+        ui.text(screen, "Rechtsklick", (switch.centerx, switch.centery - round(9 * s)), round(13 * s),
+                ui.DIM, anchor="center")  # fmt: skip
+        ui.text(screen, "löscht" if on else "verschiebt", (switch.centerx, switch.centery + round(9 * s)),
+                round(15 * s), ui.TEXT if on else ui.GOOD, bold=True, anchor="center")  # fmt: skip
+        right = "Rechtsklick: löschen (Schalter an)" if on else "Rechtsklick / Doppelklick"
         hint = (
-            "Ziehen: verschieben | Rechtsklick / Doppelklick: zwischen Hand-Augmentation und Beutel | "
+            f"Ziehen: verschieben | {right}: zwischen Hand-Augmentation und Beutel | "
             "Klick auf Griff oder Phiole: in die Hand | Tab / ESC: schließen"
+        ) if not on else (
+            "Ziehen: verschieben | Rechtsklick: LÖSCHEN | Doppelklick: zwischen Hand-Augmentation "
+            "und Beutel | Tab / ESC: schließen"
         )
         ui.text(screen, hint, (panel.centerx, panel.bottom - round(24 * s)), round(14 * s), ui.DIM,
                 anchor="midtop")  # fmt: skip
@@ -355,12 +379,17 @@ class WandEditor:
         if kind == "flask" and value < len(run.flasks):
             flask = run.flasks[value]
             return HoverInfo(flask.label_de, ["Klick: in die Hand nehmen", "Ziehen: löschen"], (200, 214, 220))
+        if kind == "delete_toggle":
+            state = "AN: Rechtsklick löscht Bausteine sofort." if self.right_click_deletes else (
+                "AUS: Rechtsklick verschiebt zwischen Hand und Beutel."
+            )
+            return HoverInfo("Löschmodus", [state, "Klick: umschalten"], (230, 120, 100))
         if kind == "drop":
             return HoverInfo(
                 "Löschen",
                 [
                     "Was du hierher ziehst, ist für immer weg.",
-                    "Rechtsklick auf einen Baustein löscht ihn sofort.",
+                    "Mit dem Schalter daneben löscht auch ein Rechtsklick.",
                     "Aus dem Fenster hinaus ziehen: vor dir ablegen.",
                 ],
             )

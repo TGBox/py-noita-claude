@@ -18,6 +18,7 @@ MAX_PROJECTILES = 256
 HOMING_TURN_RATE = 7.0  # radians per second
 FLIPPED_GRAVITY = 300.0  # px/s^2 for forms that normally fly straight
 BOUNCE_DAMPING = 0.55
+RUBBER_MAX_BLAST = 6  # Gummiwelt: sparks with a tiny blast bounce too, bombs do not
 WALL_BOUNCE_DAMPING = 0.85  # bounces from the "Abprall" modifier keep more speed
 PELLET_SPREAD = 0.22  # radians
 CHAIN_RANGE = 90.0  # px a chain spark can leap
@@ -190,7 +191,7 @@ class ProjectileSystem:
                 resolver = self.payload_resolver if team == PLAYER_TEAM else None
                 projectile = build(shot, x, y, angle + spread, team, resolve=resolver)
                 projectile.gravity *= self.gravity_scale
-                if projectile.blast <= 0:  # explosive shots still blow up on walls
+                if projectile.blast <= RUBBER_MAX_BLAST:  # real bombs still blow up on walls
                     projectile.bounces += self.bounce_bonus.get(team, 0)
                 projectile.damage *= damage_factor
                 if pellets > 1:
@@ -252,6 +253,10 @@ class ProjectileSystem:
             nx, ny = p.x + dx / steps, p.y + dy / steps
             if not p.fused:
                 victim = _body_at(bodies, p.team, nx, ny, p.hit_ids)
+                if victim is not None and p.team == PLAYER_TEAM and getattr(victim, "dodge_charges", 0) > 0:
+                    victim.dodge_charges -= 1  # F17: Klonita warned it, the shot flies past
+                    p.hit_ids.add(id(victim))
+                    victim = None
                 if victim is not None:
                     self._hit_body(p, victim, world, bodies)
                     if not p.pierce:

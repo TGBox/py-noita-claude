@@ -248,6 +248,23 @@ def handle_teleport(
     return False
 
 
+SUMMON_CAP = 2  # living helpers one creature may have at a time
+SUMMON_ON_HIT = frozenset({"stempler"})  # bible 05: calls an agent only when attacked
+
+
+def may_summon(creature: Creature) -> bool:
+    """Only in a fight, only below the cap; some creatures only after being hit."""
+    if not creature.aggro or creature.calmed > 0:
+        return False
+    if getattr(creature, "summoned", False):
+        return False  # helpers never call helpers of their own (no chains)
+    if creature.spec.key in SUMMON_ON_HIT and creature.hp >= creature.max_hp:
+        return False
+    alive = [c for c in creature.helpers if not c.dead]
+    creature.helpers = alive
+    return len(alive) < SUMMON_CAP
+
+
 def handle_summon(
     creature: Creature,
     ability: Ability,
@@ -259,6 +276,7 @@ def handle_summon(
         (
             "summon",
             {
+                "summoner": creature,  # helpers fight on its side and keep clear of it
                 "species": creature.spec.key,
                 "target_species": ability.param,
                 "x": float(cx),
@@ -362,6 +380,8 @@ def tick_abilities(creature: Creature, ctx: BehaviourContext) -> None:
 
     for ability in getattr(creature.spec, "abilities", ()):
         kind = ability.kind
+        if getattr(creature, "giver", False) and kind not in ("eat_material", "graze"):
+            continue  # a quest giver only talks (and grazes): no auras, summons or shots
         if kind == "eat_material" or kind == "graze":
             handle_eat_material(creature, ability.param, ctx.world, ctx.pickups)
         elif kind == "steal":
@@ -370,7 +390,7 @@ def tick_abilities(creature: Creature, ctx: BehaviourContext) -> None:
             handle_reflect_projectiles(creature, ctx.projectiles, ctx.out_events, ctx.dt)
         elif kind == "aura":
             handle_aura(creature, ability, ctx.player, ctx.creatures, ctx.dt)
-        elif kind == "summon" and ready(ability, SUMMON_INTERVAL):
+        elif kind == "summon" and may_summon(creature) and ready(ability, SUMMON_INTERVAL):
             handle_summon(creature, ability, ctx.out_events)
         elif kind == "teleport" and ready(ability, TELEPORT_INTERVAL):
             handle_teleport(creature, ctx.world, ctx.rng)

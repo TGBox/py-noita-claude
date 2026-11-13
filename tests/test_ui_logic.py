@@ -143,3 +143,42 @@ class TestRunLog(unittest.TestCase):
             self.assertIn("Testfehler", error["traceback"])
             damage = [entry for entry in lines if entry["ereignis"] == "schaden"]
             self.assertTrue(damage and "Magensäure" in damage[0]["ursachen"])
+
+
+class TestDeleteSwitch(unittest.TestCase):
+    """Playtest 2026-11-13: a right click deletes only while the switch is on."""
+
+    @staticmethod
+    def _count(run, key: str) -> int:
+        inv = run.inventory
+        return sum(1 for k in inv.bag if k == key) + sum(
+            1 for wand in inv.wands for k in wand.slots if k == key
+        )
+
+    def _right_click(self, editor, run) -> None:
+        import pygame
+
+        from src.editor_layout import layout
+
+        current = layout(1280, 720, run.inventory)
+        editor._layout = lambda _run: current  # type: ignore[method-assign]
+        ref, rect = next(
+            (slot, r) for slot, r in current.slots if slot.kind == "bag" and run.inventory.get(slot)
+        )
+        event = type("E", (), {"type": pygame.MOUSEBUTTONDOWN, "button": 3,
+                                "pos": (rect[0] + 2, rect[1] + 2)})()
+        editor.handle_event(event, run)
+
+    def test_right_click_moves_until_the_switch_is_on(self) -> None:
+        from src.editor import WandEditor
+
+        run = Run(seed=4)
+        run.inventory.add_block("funke")
+        editor = WandEditor()
+        self.assertFalse(editor.right_click_deletes)
+        before = self._count(run, "funke")
+        self._right_click(editor, run)
+        self.assertEqual(self._count(run, "funke"), before, "switch off: nothing is lost")
+        editor.right_click_deletes = True
+        self._right_click(editor, run)
+        self.assertEqual(self._count(run, "funke"), before - 1, "switch on: deleted")

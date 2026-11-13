@@ -23,12 +23,14 @@ from src.bosses.evil_selves import (
     EVIL_HP,
     apply_empress_bargain,
     echo_for_depth,
+    final_evil_self,
 )
 from src.bosses.headquarters import (
     HeadquartersController,
     can_enter_headquarters,
     generate_headquarters_arena,
 )
+from src.authority import AGENT_GOLD, BADGE_CHANCE, FORBIDDEN_BLOCKS, spawn_agents
 from src.challenges import QUESTS, Challenge, Quest, quest_for
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key
@@ -39,6 +41,7 @@ from src.flask import ABSORB_RATE, CAPACITY, POUR_RATE, REACH, Droplet, Flask, T
 from src.hud import SpeechBubble
 from src.inventory import Inventory
 from src.klonita import Klonita
+from src.klonita_lines import line_for
 from src.loot import (
     PICKUP_RANGE,
     Pickup,
@@ -73,6 +76,7 @@ from src.spells import CATALOG, Block, resolve_payload_material
 from src.universes import features as universe_features
 from src.universes.catalog import BY_KEY as UNIVERSE_BY_KEY
 from src.universes.catalog import MID_BOSSES, UNIVERSES
+from src.universes.gen import evil_homes
 from src.universes.gen.common import region_bands
 from src.universes.model import SHAPES, Universe
 from src.wand import PRESETS, Shot, Wand, WandSpec
@@ -159,6 +163,7 @@ class Controls:
     drink: bool = False  # flask: take a sip (pressed)
     throw: bool = False  # flask: throw it (pressed)
     kick: bool = False  # kick whatever is in front of you (pressed)
+    klonita: bool = False  # [K]: call Klonita or send her away (pressed)
 
 
 def arm_reach(block_count: int) -> float:
@@ -180,6 +185,7 @@ class Run:
         self.universe_key = universe_key
         self.boss_slot = boss_slot  # Contract V9 "Bossplatz"; the spawn logic comes with Card D10
         self.rng = random.Random(seed)
+        self.klonita_rng = random.Random(seed * 71 + 13)  # her lines never touch the world
         self.default_size = (width, height)
         self.universe: Universe = UNIVERSE_BY_KEY.get(universe_key, UNIVERSES[0])
         if self.universe_key != "fleischwelt" and getattr(self.universe, "material_set", None):
@@ -203,7 +209,7 @@ class Run:
         self.pearls = 0
         self.perks: set[str] = set()
         self.revive_used = False
-        self.stats = {"kills": 0, "pearls": 0, "time": 0.0}
+        self.stats = {"kills": 0, "pearls": 0, "time": 0.0, "samples": 0, "quests": 0, "bosses": 0}
         self._last_hp = 0.0
         self._acid_blood_cooldown = 0.0
         self.events: list[str] = []  # sound cues of the last update
@@ -248,6 +254,9 @@ class Run:
         self.next_boost: str = ""
         self.in_workshop: bool = False
         self.in_headquarters: bool = False
+        self.in_final: bool = False  # the final fight in the evil self's home world (F19)
+        self._final_timers: dict[str, float] = {}
+        self._press_cells: list[tuple[int, int, int, int]] = []  # strips a press fills now
         self.victory: bool = False
         self._true_ending_flag: bool = False
         self.menu_mode: str = ""
@@ -263,6 +272,9 @@ class Run:
         self.wanted: Wanted = Wanted()
         self.klonita: Klonita = Klonita()
         self.bubbles: list[SpeechBubble] = []
+        self._say_clock: dict[str, float] = {}  # speaker -> run time of the last bubble
+        self._low_hp_warned = False
+        self._wanted_warned = False
         self.boss_banner: tuple[str, float] | None = None
         self.workshop_layout: WorkshopLayout | None = None
         self.event: Event | None = None
@@ -357,7 +369,7 @@ class Run:
         self.droplets = []
         self.perks = set()
         self.revive_used = False
-        self.stats = {"kills": 0, "pearls": 0, "time": 0.0}
+        self.stats = {"kills": 0, "pearls": 0, "time": 0.0, "samples": 0, "quests": 0, "bosses": 0}
         self.checkpoint = None
         for spec in STARTER_WANDS:
             self._discover_blocks(spec.blocks)
@@ -618,6 +630,7 @@ class Run:
         self.boss_script = None
         self.extra_scripts = []
         self.in_headquarters = False
+        self.in_final = False
         shaped: dict[str, Any] = {}
         if self.multiverse:
             # multiverse run: the proven organism generator, dressed in the universe's
@@ -695,9 +708,13 @@ class Run:
         for species, x, y in shaped.get("spawns", ()):  # guards the terrain asked for
             if self.mirror:
                 x = self.world.width - 1 - x - SPECIES[species].width
+            if math.dist((x, y), self.level.spawn) < START_SAFE_RADIUS:
+                continue  # the start stays quiet (playtest 2026-11-13)
             self.enemies.spawn(species, x, y)
         self._start_quest()
         self._spawn_echo()
+        if self.universe_key != "fleischwelt" or self.multiverse:  # F02: the authority follows
+            spawn_agents(self)
         self.thrown = []
         self.droplets = []
         if self.level.secret is not None:
@@ -831,6 +848,21 @@ class Run:
             "flasks": [[flask.key, flask.amount] for flask in self.flasks],
             "flask_active": self.flask_index,
             "rng": [version, list(internal), gauss],
+            # G07/G08: the multiverse state of the run
+            "universe_key": self.universe_key,
+            "multiverse": self.multiverse,
+            "plan": self.plan.to_data() if self.plan is not None else None,
+            "gold": self.pearls,
+            "badges": self.badges,
+            "memory_shards": self.memory_shards,
+            "blueprint_shards": self.blueprint_shards,
+            "samples": [list(slot) if slot else None for slot in self.inventory.samples],
+            "wanted": self.wanted.to_data(),
+            "klonita": self.klonita.to_data(),
+            "status": {
+                "stamped_good": self.player.body.stamped_good,
+                "stamped_bad": self.player.body.stamped_bad,
+            },
         }
 
     def save_state(self) -> dict[str, Any]:
@@ -854,6 +886,7 @@ class Run:
             "time_in_depth": self.time_in_depth,
             "exit_open": self.exit_open,
             "level": [level.spawn, level.exit, level.arena, level.secret, level.vault],
+            "level_universe": level.universe_key,
             "material_set": self.world.material_set,
             "size": [self.world.width, self.world.height],
             "world": _pack(self.world.grid),
@@ -908,6 +941,7 @@ class Run:
         self._reset()
         self.depth_index = depth_index
         self.pearls = int(data["pearls"])
+        self._restore_multiverse(data)
         self.quest = Quest.from_data(data.get("quest"))
         self.perks = perks
         self.revive_used = bool(data["revive_used"])
@@ -952,6 +986,7 @@ class Run:
         if isinstance(live, dict):
             try:
                 self._restore_live(live)
+                self._restore_status(data)  # after place(): timers survive the move
                 return
             except (KeyError, TypeError, ValueError, IndexError, zlib.error):
                 checkpoint = live.get("checkpoint")  # damaged: back to the sanctum before
@@ -959,6 +994,42 @@ class Run:
                     self.restore(checkpoint)
                     return
         self.enter_sanctum()
+
+    def _restore_multiverse(self, data: dict[str, Any]) -> None:
+        """G07/G08: universe, run plan, currencies, samples, wanted level and Klonita."""
+        from src.authority import Wanted
+        from src.universes.plan import RunPlan
+
+        key = str(data.get("universe_key", self.universe_key))
+        if key in UNIVERSE_BY_KEY:
+            self.universe_key = key
+            self.universe = UNIVERSE_BY_KEY[key]
+        plan = data.get("plan")
+        if isinstance(plan, dict):
+            try:
+                self.plan = RunPlan.from_data(plan)
+            except (KeyError, TypeError, ValueError):
+                pass
+        self.multiverse = bool(data.get("multiverse", self.multiverse))
+        self.badges = int(data.get("badges", 0))
+        self.memory_shards = int(data.get("memory_shards", 0))
+        self.blueprint_shards = int(data.get("blueprint_shards", 0))
+        samples = data.get("samples")
+        if isinstance(samples, list):
+            slots = [None] * len(self.inventory.samples)
+            for i, slot in enumerate(samples[: len(slots)]):
+                if isinstance(slot, (list, tuple)) and len(slot) == 2:
+                    slots[i] = (str(slot[0]), int(slot[1]))
+            self.inventory.samples = slots
+        self.wanted = Wanted.from_data(data.get("wanted") if isinstance(data.get("wanted"), dict) else None)
+        self.klonita = Klonita.from_data(data.get("klonita") if isinstance(data.get("klonita"), dict) else None)
+        self._restore_status(data)
+
+    def _restore_status(self, data: dict[str, Any]) -> None:
+        status = data.get("status")
+        if isinstance(status, dict):
+            self.player.body.stamped_good = float(status.get("stamped_good", 0.0))
+            self.player.body.stamped_bad = float(status.get("stamped_bad", 0.0))
 
     def _restore_live(self, live: dict[str, Any]) -> None:
         self._apply_rule(
@@ -991,7 +1062,10 @@ class Run:
             return None if value is None else (int(value[0]), int(value[1]))
 
         spawn, exit_point, arena, secret, vault = (point(v) for v in live["level"])
-        self.level = Level(spawn, exit_point, arena, secret, vault)
+        self.level = Level(
+            spawn, exit_point, arena, secret, vault,
+            universe_key=str(live.get("level_universe", self.universe_key)),
+        )  # fmt: skip
         self.exit_open = bool(live["exit_open"])
         self.time_in_depth = float(live.get("time_in_depth", 0.0))
         self.enemies.clear()
@@ -1076,6 +1150,7 @@ class Run:
                         self.event_timer = 0.0
                         self.event = Event(spec=spec, remaining=spec.duration)
                         self.event.on_start(self)
+                        self.klonita_trigger("event_start")
         alive = not self.player.dead and self.outcome not in ("victory", "bad_ending")
         if not alive:
             controls = Controls(aim=controls.aim)
@@ -1127,6 +1202,8 @@ class Run:
         gold_cells = self.world.take_destroyed_gold_vein_cells()
         if cells_destroyed > 0 or gold_cells > 0:
             self.emit("cells_destroyed", count=cells_destroyed, gold_vein_cells=gold_cells)
+            if self.wanted.on_cells_destroyed(cells_destroyed + gold_cells):  # F02
+                self._wanted_changed("Sachbeschädigung")
         if gold_cells > 0:
             total_gold_cells = self._gold_vein_remainder + gold_cells
             n_drops = total_gold_cells // 6
@@ -1149,6 +1226,8 @@ class Run:
                 script.update(dt, self)
         if self.in_headquarters and self.hq_controller is not None:
             self.hq_controller.update(dt, self)
+        self._tick_final_arena(dt)
+        self._tick_klonita(dt, controls)
         if self.boss_banner is not None:
             text, left = self.boss_banner
             self.boss_banner = (text, left - dt) if left > dt else None
@@ -1319,6 +1398,11 @@ class Run:
         if not shots:
             return
         shots = self._cast_specials(shots)
+        if any(
+            getattr(block, "key", "") in FORBIDDEN_BLOCKS
+            for shot in shots for block in (shot.form, *shot.modifiers)
+        ):  # F02: the authority frowns on the big spells
+            self.add_wanted(0.5, "Verbotene Magie")
         sx, sy = self.shoulder(aim)
         angle = math.atan2(aim[1] - sy, aim[0] - sx) + self.rng.uniform(-1, 1) * wand.spec.spread
         reach = arm_reach(len(wand.blocks))
@@ -1858,11 +1942,12 @@ class Run:
             self.blueprint_shards += amount
             while self.blueprint_shards >= BLUEPRINT_SHARDS_NEEDED:
                 self.blueprint_shards -= BLUEPRINT_SHARDS_NEEDED
-                key = f"bauplan_{len(self.records.blueprints) + 1}"
+                key = self._next_blueprint()
+                if key is None:
+                    self.messages.append("Alle Baupläne sind schon bekannt.")
+                    continue
                 self.records.discover("blueprint", key)
-                if key not in self.records.blueprints:
-                    self.records.blueprints.append(key)
-                self.messages.append("Ein Bauplan wurde freigeschaltet.")
+                self.messages.append(f"Neuer Bauplan: {CATALOG[key].name_de}.")
             self.events.append("pickup")
         elif kind == "badge":
             self.badges += amount
@@ -1880,6 +1965,7 @@ class Run:
             self.pickups.remove(item)
         self.emit("pickup", kind=kind, key=item.item_key, amount=amount)
         if kind == "sample":
+            self.stats["samples"] = self.stats.get("samples", 0) + amount
             self.emit("sample", key=item.item_key, count=amount)
         elif kind == "gold":
             self.emit("gold", amount=amount, source="pickup")
@@ -1928,6 +2014,7 @@ class Run:
                     quest.accept(self)
                     self.say(creature.spec.name_de, quest.spec.text_de, cx, cy - creature.height)
                 elif quest.turn_in(self):
+                    self.stats["quests"] = self.stats.get("quests", 0) + 1
                     self.say(creature.spec.name_de, "Danke! Das hier ist für dich.", cx, cy)
                 else:
                     left = f"{quest.progress}/{quest.spec.goal}"
@@ -2050,7 +2137,8 @@ class Run:
         c.hurt = _dummy_hurt
 
         # Contract V18 reset visit rules
-        self.wanted.on_workshop()
+        if self.wanted.on_workshop():
+            self._wanted_changed("Aktenablage")
         if self.fabricator is None:
             self.fabricator = Fabricator()
         else:
@@ -2194,7 +2282,7 @@ class Run:
             cost = self.wanted.bribe_cost()
             if self.gold >= cost and self.wanted.level > 0.0:
                 self.gold -= cost
-                self.wanted.level = max(0.0, self.wanted.level - 1.0)
+                self.add_wanted(-1.0, "Akten geschreddert")
                 self.messages.append(f"Akten geschreddert (-{cost} Gold, -1.0 Fahndungsstufe).")
             elif self.wanted.level <= 0.0:
                 self.messages.append("Keine Akten vorhanden.")
@@ -2327,6 +2415,9 @@ class Run:
         """Take portal offer ``index`` from ``self.plan.offers()`` and enter it (Card E11)."""
         from src.universes.catalog import ALL_UNIVERSES
 
+        if self.plan.finished:  # after six universes only the evil self's home is left
+            self.enter_final()
+            return
         offer = self.plan.choose(index)
         self.enter_universe(ALL_UNIVERSES[offer.universe], boss_slot=offer.boss is not None)
 
@@ -2359,6 +2450,7 @@ class Run:
         self.enter_depth(self.depth_index)
         # bible 02: the anchor point is open unless a Zwischengegner guards it (boss slot)
         self.exit_open = not self.boss_slot
+        self._klonita_arrives()
 
     def _dress_universe_level(self, level: Level, shaped: dict[str, Any] | None = None) -> Level:
         """Universe fields (V9) for an organism level: regions, arenas, quest giver."""
@@ -2553,6 +2645,15 @@ class Run:
                 float(payload.get("x", 0.0)), float(payload.get("y", 0.0)),
                 float(payload.get("radius", 80.0)),
             )  # fmt: skip
+        if name == "boss_phase" and payload.get("phase") == 0:
+            self.klonita_trigger("boss_spawn")
+        elif name == "wanted_change":
+            stars = int(payload.get("stars", 0))
+            if stars >= 3 and not self._wanted_warned:
+                self._wanted_warned = True
+                self.klonita_trigger("wanted_high")
+            elif stars < 3:
+                self._wanted_warned = False
         if self.quest is not None:
             self.quest.on_event(name, payload, self)
 
@@ -2620,9 +2721,151 @@ class Run:
         self.player.place(*self.level.spawn)
         self.player.hp = self.player.max_hp
         self.in_headquarters = True
+        self.in_final = False
         self.hq_controller = HeadquartersController()
         self.hq_controller.spawn_stage(self)
         self.boss_line("Die Splitter erinnern sich an dich.")
+
+    def final_home_name_de(self) -> str:
+        """The name of the home world the portal frame offers after six universes."""
+        species = final_evil_self(self)
+        return evil_homes.HOME_NAMES_DE.get(species, SPECIES[species].name_de)
+
+    def enter_final(self) -> None:
+        """The final fight: the home world of ``plan.evil_self`` (Contract V17 §2, Card F19).
+
+        The world becomes her 1280x720 hall in her own material set; she waits in the
+        middle with ``EVIL_HP`` and her four-phase script. Her death sets ``victory``."""
+        species = final_evil_self(self)
+        self.in_workshop = self.in_sanctum = False
+        self.in_headquarters = False
+        self.menu_mode = ""
+        self.universe_key = species
+        home = replace(
+            self.route[self.depth_index], key=species, name_de=self.final_home_name_de(),
+            material_set=species, rule="", boss=species, final=False, size=evil_homes.HOME_SIZE,
+            ambient=0.7, extra=(), walkers=0, flyers=0, spitters=0, bloats=0,
+        )  # fmt: skip
+        route = list(self.route)
+        route[self.depth_index] = home
+        self.route = tuple(route)
+        if self.on_generate is not None:
+            self.on_generate(home.name_de)
+        self._prepare_world(home)
+        self.world.reseed(self.rng.randrange(2**31))
+        self.level = evil_homes.generate_evil_home(self.world, species, self.seed)
+        if mat.ACTIVE is not self._world_set:
+            mat.activate(self._world_set)
+        self.enemies.creatures = []
+        self.pickups = []
+        self.projectiles.clear()
+        self.extra_scripts = []
+        self.quest = None
+        self.exit_open = False
+        self.outcome = ""
+        self.time_in_depth = 0.0
+        self.player.place(*self.level.spawn)
+        self.player.hp = self.player.max_hp
+        spec = SPECIES[species]
+        ax, ay = self.level.arena or (self.world.width // 2, self.world.height // 2)
+        boss = self.enemies.spawn(species, ax - spec.width // 2, ay - spec.height // 2)
+        boss.max_hp = boss.hp = float(EVIL_HP[species])
+        self.boss_script = make_boss_script(boss)
+        self.in_final = True
+        self._final_timers = {"press": evil_homes.PRESS_INTERVAL, "cannon": 0.0, "stamp": 0.0}
+        self._press_cells = []
+        self.records.discover("universe", species)
+        self._log("heimatwelt_betreten", boese_ich=species)
+        self._klonita_arrives()
+        self.boss_line(f"{spec.name_de}: Du bist spät dran, Cloita.")
+
+    def _tick_final_arena(self, dt: float) -> None:
+        """Arena mechanics of the home worlds (V17 §2): slippery gold and the throne cannon,
+        light trails of the Good One, conveyor belts and presses of Omega."""
+        if not self.in_final or self.boss_script is None:
+            return
+        species = self.universe_key
+        boss = self.boss_script.boss
+        phase = self.boss_script.phase
+        timers = self._final_timers
+        if species == "boese_kaiserin":
+            if phase >= 3 and not boss.dead:  # the throne becomes a cannon
+                timers["cannon"] = timers.get("cannon", 0.0) - dt
+                if timers["cannon"] <= 0.0:
+                    timers["cannon"] = evil_homes.CANNON_INTERVAL
+                    for key, tx, ty in self.level.destructible_props:
+                        if key != "thron":
+                            continue
+                        px, py = self.player.center
+                        angle = math.atan2(py - ty, px - tx)
+                        self.projectiles.spawn(
+                            [Shot(CATALOG["feuerball"])], float(tx), float(ty), angle, ENEMY_TEAM
+                        )
+                        self.events.append("shoot")
+        elif species == "boese_gute":
+            light = mat.opt_id("heiliges_licht")
+            if light is not None:  # her light rays leave holy light behind
+                for p in self.projectiles.items:
+                    if p.alive and p.team == ENEMY_TEAM and p.trail is None:
+                        p.trail = light
+            if phase >= 2 and not getattr(self.klonita, "converted", 0.0):
+                # conversion: Klonita on her side for ten seconds (harmless, bible 05)
+                self.klonita.converted = evil_homes.CONVERSION_TIME
+            if getattr(self.klonita, "converted", 0.0):
+                self.klonita.converted = max(0.0, self.klonita.converted - dt)
+        elif species == "boese_omega":
+            self._run_conveyors(dt)
+            self._run_presses(dt)
+
+    def _run_conveyors(self, dt: float) -> None:
+        belt = mat.opt_id("foerderband")
+        if belt is None:
+            return
+        bodies = [self.player.body] + [
+            c.body for c in self.enemies.creatures if not c.spec.flying and not c.dead
+        ]
+        for body in bodies:
+            if not body.on_ground:
+                continue
+            row = body.y + body.height
+            under = {self.world.get(x, row) for x in range(body.x, body.x + body.width)}
+            if belt not in under:
+                continue
+            direction = evil_homes.belt_direction(body.x + body.width // 2)
+            body._move_x(self.world, direction * evil_homes.BELT_SPEED * dt)
+
+    def _run_presses(self, dt: float) -> None:
+        """Every three seconds all four presses stamp down: 30 damage in their strip."""
+        timers = self._final_timers
+        steel = mat.opt_id("stahl")
+        if self._press_cells:  # a stamp is down: lift it again after a moment
+            timers["stamp"] -= dt
+            if timers["stamp"] <= 0.0:
+                for x0, y0, x1, y1 in self._press_cells:
+                    self.world.fill_rect(x0, y0, x1, y1, mat.AIR)
+                self._press_cells = []
+            return
+        timers["press"] -= dt
+        if timers["press"] > 0.0:
+            return
+        timers["press"] = evil_homes.PRESS_INTERVAL
+        timers["stamp"] = evil_homes.PRESS_HOLD
+        floor = evil_homes.FLOOR_Y
+        boss = self.boss_script.boss if self.boss_script is not None else None
+        for key, px, py in self.level.destructible_props:
+            if key != "presse":
+                continue
+            strip = (px, py, px + evil_homes.PRESS_WIDTH, floor)
+            for body in [self.player.body] + [c.body for c in self.enemies.creatures]:
+                if boss is not None and body is boss.body:
+                    continue
+                if body.x < strip[2] and body.x + body.width > strip[0] and body.y + body.height > strip[1]:
+                    body.hurt(evil_homes.PRESS_DAMAGE, "presse")
+            if steel is not None:  # the strip is kept free of ledges by the generator
+                self.world.fill_rect(*strip, steel)
+                self._press_cells.append(strip)
+        self.events.append("blast_big")
+        self.emit("noise", x=float(self.world.width // 2), y=float(floor), radius=600.0)
 
     def offer_headquarters(self, x: float, y: float) -> bool:
         """After the final fight: the headquarters portal appears if the run earned it."""
@@ -2671,7 +2914,18 @@ class Run:
         ttl: float = 3.0,
         color: tuple[int, int, int] = (235, 225, 255),
     ) -> None:
-        """Show a speech bubble above (x, y) (Contract V22, Card F14)."""
+        """Show a speech bubble above (x, y) (Contract V22, Card F14).
+
+        At most 60 characters, at most three bubbles, and one per speaker every 8 s."""
+        now = float(self.stats.get("time", 0.0))
+        last = self._say_clock.get(speaker)
+        if last is not None and now - last < SAY_INTERVAL and now >= last:
+            return
+        self._say_clock[speaker] = now
+        if len(text) > SAY_MAX_CHARS:
+            text = text[: SAY_MAX_CHARS - 1] + "…"
+        while len(self.bubbles) >= SAY_MAX_BUBBLES:
+            self.bubbles.pop(0)
         self.bubbles.append(
             SpeechBubble(
                 speaker=speaker,
@@ -2679,13 +2933,97 @@ class Run:
                 world_x=x,
                 world_y=y,
                 remaining=ttl,
+                color=color,
             )
         )
+
+    def _klonita_arrives(self) -> None:
+        """A new universe: Klonita appears next to the player with a fresh quirk."""
+        self.klonita.new_universe()
+        self.klonita.x, self.klonita.y = self.player.center
+        self._low_hp_warned = False
+        self.klonita_trigger("enter_universe")
+
+    def _tick_klonita(self, dt: float, controls: Controls) -> None:
+        """Card F14: bubbles age, [K] toggles Klonita, she acts, and the HP trigger fires."""
+        for bubble in self.bubbles:
+            bubble.remaining -= dt
+            if bubble.speaker == "Klonita":  # her bubble floats along with her
+                bubble.world_x, bubble.world_y = self.klonita.x, self.klonita.y - 10
+        self.bubbles = [b for b in self.bubbles if b.remaining > 0]
+        klonita = self.klonita
+        if controls.klonita and not self.player.dead:
+            state = klonita.toggle()
+            if state in ("follow", "dismissed"):
+                topic = "called" if state == "follow" else "dismissed"
+                if state == "follow":
+                    klonita.x, klonita.y = self.player.center
+                self.say("Klonita", line_for(topic, self.klonita_rng), klonita.x, klonita.y - 10)
+        if not self.multiverse:
+            return  # the classic descent has no companion (she lives in the workshop)
+        if self.in_workshop:  # she rests on the couch (V18); only her tip quirk may fire
+            klonita.update(dt, self)
+            return
+        body = self.player.body
+        share = body.hp / body.max_hp if body.max_hp > 0 else 1.0
+        if share < LOW_HP_SHARE and not self._low_hp_warned and not self.player.dead:
+            self._low_hp_warned = True
+            self.klonita_trigger("player_low_hp")
+        elif share > 0.5:
+            self._low_hp_warned = False
+        klonita.update(dt, self)
+
+    def klonita_trigger(self, trigger: str) -> None:
+        """One of Klonita's five auto triggers: she comes back and says a line."""
+        line = self.klonita.on_trigger(trigger, self)
+        if line:
+            self.say("Klonita", line, self.klonita.x, self.klonita.y - 10)
+
+    def add_wanted(self, delta: float, reason: str) -> None:
+        """Raise or lower the wanted level and tell the bus (Contract V15, Card F02)."""
+        if self.wanted.add(delta, reason):
+            self._wanted_changed(reason)
+
+    def _wanted_changed(self, reason: str) -> None:
+        self.emit("wanted_change", level=self.wanted.level, stars=self.wanted.stars, reason=reason)
+
+    def _next_blueprint(self) -> str | None:
+        """A block the fabricator cannot build yet; found modules come first, then the
+        lowest tier (the fabricator builds block keys, Contract V20)."""
+        from src.spells import BLOCKS
+
+        known = set(self.records.blueprints)
+        pool = [b for b in BLOCKS if not b.retired and b.key not in known and b.key in CATALOG]
+        if not pool:
+            return None
+        seen = set(getattr(self, "known_blocks", ()) or ()) | set(self.records.blocks)
+        rng = random.Random(self.seed * 37 + len(known))
+        found = [b for b in pool if b.key in seen]
+        choice = found or [b for b in pool if b.rarity_tier == min(x.rarity_tier for x in pool)]
+        return rng.choice(choice).key
+
+    def final_score(self) -> int:
+        """The run's score (Contract V23, Card G04/G06)."""
+        from src.records import compute_score
+
+        depth = len(self.plan.chosen) + 1 if self.multiverse and self.plan else self.depth_index + 1
+        return compute_score(
+            depth=depth, kills=int(self.stats.get("kills", 0)), gold=int(self.pearls),
+            samples_collected=int(self.stats.get("samples", 0)),
+            challenges_won=int(self.stats.get("quests", 0)),
+            bosses_killed=int(self.stats.get("bosses", 0)),
+            victory=bool(self.victory or self.outcome == "victory"),
+            true_ending=bool(self.true_ending),
+        )  # fmt: skip
+
+    def final_rank(self) -> str:
+        from src.records import rank_for_score
+
+        return rank_for_score(self.final_score())
 
     def boss_line(self, text_de: str) -> None:
         """Show a boss line at the top of the screen (Contract V22, Card F14)."""
         self.boss_banner = (text_de, BOSS_LINE_TIME)
-        self.messages.append(text_de)  # until the banner is drawn (G02) it is a HUD message
 
     def handle_menu_input(self, key: int) -> bool:
         """Handle keyboard navigation for modal overlays (Card G09, G14, G22)."""
@@ -2698,11 +3036,34 @@ class Run:
             if key in (pygame.K_RETURN, pygame.K_e):
                 self.resolve_empress_bargain(self.menu_index == 0)
                 return True
-            return key == pygame.K_ESCAPE  # there is no way round an answer
+            if key == pygame.K_ESCAPE:  # walking away is a "no": the fight goes on
+                self.resolve_empress_bargain(False)
+                return True
+            return False
+
+        if self.menu_mode == "archive":  # G05: five tabs
+            from src.menus import ARCHIVE_TABS
+
+            if key == pygame.K_ESCAPE:
+                self.menu_mode = ""
+                self.menu_index = 0
+                return True
+            if key in (pygame.K_TAB, pygame.K_RIGHT, pygame.K_d):
+                self.menu_index = (self.menu_index + 1) % len(ARCHIVE_TABS)
+                return True
+            if key in (pygame.K_LEFT, pygame.K_a):
+                self.menu_index = (self.menu_index - 1) % len(ARCHIVE_TABS)
+                return True
+            return False
 
         if self.menu_mode == "portal_select":
             offers = self.plan.offers() if self.multiverse else []
             if not offers:
+                if self.multiverse and self.plan.finished and key in (pygame.K_RETURN, pygame.K_e, pygame.K_1):
+                    self.menu_mode = ""
+                    self.portal_index = self.menu_index = 0
+                    self.enter_final()
+                    return True
                 if key == pygame.K_ESCAPE:
                     self.menu_mode = ""
                     self.menu_index = 0
@@ -2864,18 +3225,26 @@ class Run:
             width = max(3, creature.width - 2)
             self.chunks.drop_corpse(
                 self.world, int(cx - width / 2), int(creature.y + creature.height - CORPSE_HEIGHT),
-                width, mat.FLESH,
+                width, corpse_material(),
             )  # fmt: skip
         if "blutdurst" in self.perks and not self.player.dead:
             self.player.hp = min(self.player.max_hp, self.player.hp + BLOODLUST_HEAL)
         if not self.multiverse:  # only the organism descent still pays its old loot table
             self.pickups.append(Pickup(cx, cy, pearls=creature.spec.pearls))
+        peaceful = creature.spec.stance in ("peaceful", "passive", "neutral", "territorial", "shy")
+        by_others = creature.last_cause.startswith("Geschoss")  # a creature's shot, not ours
+        if peaceful and not by_others:
+            self.add_wanted(0.25, "Unnötige Gewalt")  # F02 / V15
         rank = self.plan.rank if self.multiverse else self.rank
         mid_boss_keys = {boss for pairs in MID_BOSSES.values() for boss, _ in pairs}
         if (
             getattr(creature.spec, "is_boss", False) or getattr(creature.spec, "boss", False)
         ) and creature.spec.key in mid_boss_keys:
             gold_amount = boss_gold(rank)
+        elif creature.spec.key in AGENT_GOLD:  # F02: agents pay a fixed sum, maybe a badge
+            gold_amount = AGENT_GOLD[creature.spec.key]
+            if self.rng.random() < BADGE_CHANCE.get(creature.spec.key, 0.0):
+                self.pickups.append(Pickup(cx + 6, cy, kind="badge", amount=1))
         elif getattr(creature.spec, "is_mid_boss", False):
             gold_amount = mid_boss_gold(rank)
         else:
@@ -2900,6 +3269,7 @@ class Run:
                 self.pickups.append(Pickup(cx, cy, kind="sample", item_key=sample_key, amount=1))
         self.events.append("blast_big" if creature.spec.boss else "kill")
         if creature.spec.boss:
+            self.stats["bosses"] = self.stats.get("bosses", 0) + 1
             self._log(
                 "waechter_besiegt", kreatur=creature.spec.key, zeit=round(self.stats["time"], 1)
             )
@@ -2940,13 +3310,58 @@ class Run:
                 x = float(payload.get("x", 0.0))
                 y = float(payload.get("y", 0.0))
                 count = int(payload.get("count", 1))
+                summoner = payload.get("summoner")
                 for _ in range(count):
-                    self.enemies.spawn(target_species, x, y)
+                    self._spawn_summon(target_species, x, y, summoner)
             elif event_name == "noise":
                 x = float(payload.get("x", 0.0))
                 y = float(payload.get("y", 0.0))
                 radius = float(payload.get("radius", 80.0))
                 self._make_noise(x, y, radius)
+
+    def _spawn_summon(self, species: str, x: float, y: float, summoner: Any) -> None:
+        """A summoned helper: beside its summoner on free ground, on its side (faction)."""
+        spec = SPECIES.get(species)
+        if spec is None:
+            return
+        spot = self._summon_spot(spec, x, y, summoner)
+        if spot is None:
+            return  # no room: better no helper than one stuck in the wall
+        child = self.enemies.spawn(species, *spot)
+        if summoner is not None:
+            child.faction = summoner.faction
+            child.summoned = True
+            child.aggro = True
+            child.group_id = summoner.group_id
+            summoner.helpers.append(child)
+
+    def _summon_spot(self, spec: Any, x: float, y: float, summoner: Any) -> tuple[int, int] | None:
+        """Top-left of a free box for ``spec`` next to (x, y), not overlapping the summoner;
+        walkers stand on the ground."""
+        w, h = spec.width, spec.height
+        world = self.world
+        gap = (summoner.width if summoner is not None else 0) // 2 + w // 2 + SUMMON_GAP
+        for dist in (gap, gap + 8, gap + 16, gap + 28):
+            for side in (1, -1):
+                for lift in (0, -8, 8, -16, 16):
+                    left = int(x + side * dist - w / 2)
+                    top = int(y + lift - h / 2)
+                    if world.rect_blocked(left, top, w, h):
+                        continue
+                    if summoner is not None and (
+                        left < summoner.x + summoner.width and left + w > summoner.x
+                        and top < summoner.y + summoner.height and top + h > summoner.y
+                    ):
+                        continue
+                    if not spec.flying:  # drop onto the floor below (at most 40 cells)
+                        for _ in range(40):
+                            if world.rect_blocked(left, top + 1, w, h):
+                                break
+                            top += 1
+                        else:
+                            continue
+                    return (left, top)
+        return None
 
     def _apply_blast(self, blast: Blast, bodies: list[Body]) -> None:
         reach = blast.radius + BLAST_REACH
@@ -3016,6 +3431,24 @@ FIREBREAK_CELL = universe_features.FIREBREAK_CELL  # Aktenhalde: paper sections 
 FIREBREAK_THICKNESS = universe_features.FIREBREAK_THICKNESS
 NATIVES_PER_SPECIES = 6  # natives of each species per universe level (before area scaling)
 BOSS_LINE_TIME = 4.0  # seconds a boss line stays on screen
+SAY_INTERVAL = 8.0  # seconds between two bubbles of the same speaker (V22)
+SAY_MAX_CHARS = 60
+SAY_MAX_BUBBLES = 3
+LOW_HP_SHARE = 0.25  # Klonita worries below this (auto trigger)
+SUMMON_GAP = 6  # cells between a summoner and its helper
+CORPSE_MAX_HARDNESS = 1  # remains never wall anything in (playtest 2026-11-13)
+
+
+def corpse_material() -> int:
+    """What a dead creature's remains are made of in the active universe: its stand-in for
+    flesh if that is soft, else sand (in the Abtei flesh stands for masonry, hardness 3)."""
+    flesh = mat.FLESH
+    if mat.HARDNESS[flesh] <= CORPSE_MAX_HARDNESS and mat.KIND[flesh] in (mat.SOLID, mat.POWDER):
+        return flesh
+    return mat.SAND
+
+
+START_SAFE_RADIUS = 170.0  # no hostile spawns this close to the player's start (as populate)
 QUEST_GIVER_RANGE = 32.0  # px: talk to the quest giver from this close
 FORMS_TO_STAMP = 6  # Aktenhalde quest: forms scattered when it is accepted
 BELL_COOLDOWN = 0.4  # seconds between two rings of the abbey bell

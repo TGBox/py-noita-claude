@@ -741,8 +741,64 @@ _ABTEI: tuple[Material, ...] = (
     ),
 )
 
-LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH, *_SPORENKLUB, *_ABTEI)}
-assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH) + len(_SPORENKLUB) + len(_ABTEI), "duplicate material key"
+_EVIL_HOMES = (  # home worlds of the three evil selves (Contract V17 §2, Card F18)
+    _m(
+        "goldboden",
+        "Goldboden",
+        SOLID,
+        255,
+        (222, 184, 70),
+        grain=6,
+        glow=40,
+        hardness=3,
+        description_de="Poliertes Gold des Thronsaals. Fest, aber spiegelglatt: dreifacher Bremsweg.",
+    ),
+    _m(
+        "lichtstein",
+        "Lichtstein",
+        SOLID,
+        255,
+        (238, 232, 205),
+        grain=5,
+        glow=110,
+        hardness=2,
+        description_de="Leuchtender Stein der Lichtkathedrale.",
+    ),
+    _m(
+        "heiliges_licht",
+        "Heiliges Licht",
+        GAS,
+        -1,
+        (255, 248, 190),
+        life=(150, 220),  # life is stored in a byte
+        hazard_dps=4.0,
+        glow=160,
+        description_de="Gleißendes Licht der Bösen Guten. Brennt auf der Haut: 4 Schaden pro Sekunde.",
+    ),
+    _m(
+        "foerderband",
+        "Förderband",
+        SOLID,
+        255,
+        (62, 64, 74),
+        grain=4,
+        hardness=3,
+        description_de="Laufendes Band der Fabrikhalle. Schiebt alles, was darauf steht.",
+    ),
+    _m(
+        "stahl",
+        "Stahl",
+        SOLID,
+        255,
+        (150, 156, 168),
+        grain=5,
+        hardness=3,
+        description_de="Sehr harter Werkstahl der Bösen Omega.",
+    ),
+)
+
+LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH, *_SPORENKLUB, *_ABTEI, *_EVIL_HOMES)}
+assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH) + len(_SPORENKLUB) + len(_ABTEI) + len(_EVIL_HOMES), "duplicate material key"
 
 BASE_KEYS: tuple[str, ...] = tuple(m.key for m in _BASE)
 
@@ -997,7 +1053,7 @@ AKTENHALDE = MaterialSet(
         ("growth", "papier"),
         ("bone", "aktendeckel"),
         ("enamel", "aktendeckel"),
-        ("sinew", "aktendeckel"),
+        ("sinew", "papier"),  # bridges as soft as the paper around them (playtest)
         ("spent", "aktendeckel"),
         ("crust", "lack"),
         ("bone_dust", "asche"),
@@ -1082,7 +1138,38 @@ ABTEI = MaterialSet(
     ),
 )
 
-SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH, SPORENKLUB, ABTEI)}
+# Home worlds of the evil selves (Contract V17 §2): base materials plus their own few.
+_HOME_ALIASES = (
+    ("flesh", "__wall__"),
+    ("growth", "__wall__"),
+    ("bone", "__wall__"),
+    ("enamel", "__wall__"),
+    ("sinew", "__wall__"),
+    ("spent", "__wall__"),
+    ("crust", "__wall__"),
+    ("bone_dust", "sand"),
+    ("blood", "water"),
+    ("pus", "water"),
+    ("acid", "water"),
+    ("mucus", "water"),
+    ("tallow", "oil"),
+    ("magma", "fire"),
+    ("spark", "fire"),
+    ("fume", "steam"),
+    ("spores", "smoke"),
+)
+
+
+def _home_set(key: str, own: tuple[str, ...], wall: str) -> MaterialSet:
+    aliases = tuple((a, wall if b == "__wall__" else b) for a, b in _HOME_ALIASES)
+    return MaterialSet(key, (*BASE_KEYS, *own), aliases=aliases)
+
+
+BOESE_KAISERIN = _home_set("boese_kaiserin", ("goldboden",), "goldboden")
+BOESE_GUTE = _home_set("boese_gute", ("lichtstein", "heiliges_licht"), "lichtstein")
+BOESE_OMEGA = _home_set("boese_omega", ("foerderband", "stahl"), "stahl")
+
+SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH, SPORENKLUB, ABTEI, BOESE_KAISERIN, BOESE_GUTE, BOESE_OMEGA)}
 
 
 def _init_set_reactions() -> None:

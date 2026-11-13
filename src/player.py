@@ -35,6 +35,7 @@ FIZZY_JUMP = 1.5  # jump speed while "sprudelnd" (Brausesirup)
 # Jelly is a trampoline (Glibbria), mushroom caps bounce a little (Sporenklub). Landing
 # faster than BOUNCE_MIN_SPEED (a fall of about 30 cells; an ordinary hop lands softer)
 # throws the body back up with this share of the landing speed.
+SLIPPERY_MATERIALS = {"goldboden": 3.0}  # braking distance factor on the ground
 BOUNCE_MATERIALS = {"glibber": 0.8, "glibber_rot": 0.8, "pilzhut": 0.5}
 BOUNCE_MIN_SPEED = 180.0
 BOUNCE_BOOST = 0.35  # extra share with jump pressed shortly before landing
@@ -76,6 +77,12 @@ class Player(Body):
         row = self.y + self.height
         keys = {mat.KEYS[world.get(x, row)] for x in range(self.x, self.x + self.width)}
         return max((BOUNCE_MATERIALS.get(key, 0.0) for key in keys), default=0.0)
+
+    def _slip_share(self, world: World) -> float:
+        """How slippery the ground under the feet is (1 = normal grip)."""
+        row = self.y + self.height
+        keys = {mat.KEYS[world.get(x, row)] for x in range(self.x, self.x + self.width)}
+        return max((SLIPPERY_MATERIALS.get(key, 1.0) for key in keys), default=1.0)
 
     def place(self, x: int, y: int) -> None:
         super().place(x, y)
@@ -146,7 +153,10 @@ class Player(Body):
 
             target += random.uniform(-0.5, 0.5) * speed
 
-        self.vx += (target - self.vx) * min(1.0, RUN_RESPONSE * dt)
+        response = RUN_RESPONSE
+        if self.on_ground:  # polished gold: the feet find three times less grip (V17 §2)
+            response /= self._slip_share(world)
+        self.vx += (target - self.vx) * min(1.0, response * dt)
 
         impact = self.vy
         self.move(world, dt)

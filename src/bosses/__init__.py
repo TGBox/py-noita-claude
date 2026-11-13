@@ -354,9 +354,16 @@ class EvilSelfBossScript(BossScript):
         if self.echo:
             run.pickups.append(Pickup(cx - 6, cy, kind="gold", amount=ECHO_GOLD))
             run.pickups.append(Pickup(cx + 6, cy, kind="badge", amount=1))
-        else:  # the final fight: her own weapon
+        else:  # the final fight: her own weapon, and the run is won (V17 §2)
             run.pickups.append(Pickup(cx, cy, wand=signature_wand_spec(self.boss_key)))
-            run.exit_open = True
+            run.victory = True
+            run.in_final = False
+            run.records.discover("ending", "sieg")
+            if run.offer_headquarters(cx, cy - 24):
+                run.boss_line("Ein Portal flackert: das Hauptquartier wartet.")
+            else:  # nothing earned the way to the true ending: the run ends here
+                run.outcome = "victory"
+                run.events.append("victory")
 
 
 class OberCloitaBossScript(BossScript):

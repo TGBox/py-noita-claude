@@ -128,4 +128,12 @@ def run_full(
         except Exception as error:  # noqa: BLE001
             report.errors.append(f"{type(error).__name__}: {error}")
             break
+    if run.plan is not None and run.plan.finished and not (reports and reports[-1].died):
+        report = BotReport(f"heimatwelt:{run.plan.evil_self}", seed)  # the final fight (F19)
+        reports.append(report)
+        try:
+            run.choose_next_universe(0)
+            _play(run, report, max_seconds_per_stage)
+        except Exception as error:  # noqa: BLE001
+            report.errors.append(f"{type(error).__name__}: {error}")
     return reports

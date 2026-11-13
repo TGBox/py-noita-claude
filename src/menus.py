@@ -457,8 +457,96 @@ def draw_archive_menu(
     records: Records,
     tab_index: int,
 ) -> None:
-    """Draw the discovery archive with its 5 tabs (Contracts V22, V23)."""
-    raise NotImplementedError("Card G05")
+    """The discovery archive: five tabs, found entries by name, the rest as "???"
+    (Contracts V22, V23; Card G05). [Tab]/[Links]/[Rechts] switch tabs."""
+    tab_index %= len(ARCHIVE_TABS)
+    ui.shade(screen, 205)
+    sw, sh = screen.get_size()
+    s = ui.scale_of(screen)
+    box = pygame.Rect(0, 0, min(sw - round(32 * s), round(900 * s)), min(sh - round(32 * s), round(560 * s)))
+    box.center = (sw // 2, sh // 2)
+    ui.panel(screen, box)
+    ui.text(screen, "Entdeckungs-Archiv", (box.centerx, box.y + round(12 * s)), round(26 * s),
+            ui.GOLD, heading=True, anchor="midtop")  # fmt: skip
+    info = f"Bester Rang: {records.best_rank}   |   Dienstausweise: {records.badges}"
+    ui.text(screen, info, (box.centerx, box.y + round(46 * s)), round(14 * s), ui.DIM,
+            anchor="midtop")  # fmt: skip
+
+    # the tab row
+    tab_top = box.y + round(72 * s)
+    tab_w = (box.width - round(24 * s)) // len(ARCHIVE_TABS)
+    entries = _archive_entries(records)
+    for i, name in enumerate(ARCHIVE_TABS):
+        found = sum(1 for _, seen in entries[i] if seen)
+        rect = pygame.Rect(box.x + round(12 * s) + i * tab_w, tab_top, tab_w - round(6 * s), round(42 * s))
+        chosen = i == tab_index
+        pygame.draw.rect(screen, ui.SELECT if chosen else ui.PANEL_DARK, rect)
+        pygame.draw.rect(screen, ui.SELECT_EDGE if chosen else ui.PANEL_EDGE, rect, 2 if chosen else 1)
+        ui.text(screen, name, (rect.centerx, rect.y + round(4 * s)), round(15 * s),
+                ui.GOLD if chosen else ui.TEXT, bold=chosen, anchor="midtop")  # fmt: skip
+        ui.text(screen, f"{found} / {len(entries[i])}", (rect.centerx, rect.y + round(22 * s)),
+                round(13 * s), ui.DIM, anchor="midtop")  # fmt: skip
+
+    # the entries of the chosen tab
+    rows = entries[tab_index]
+    top = tab_top + round(56 * s)
+    footer = round(34 * s)
+    line = round(19 * s)
+    columns = ARCHIVE_COLUMNS
+    col_w = (box.width - round(36 * s)) / columns
+    per_col = max(1, (box.bottom - footer - top) // line)
+    shown = rows[: per_col * columns]
+    for index, (label, seen) in enumerate(shown):
+        col, row = divmod(index, per_col)
+        x = box.x + round(18 * s) + col * col_w
+        y = top + row * line
+        text = label if seen else "???"
+        ui.text(screen, _fit(text, round(14 * s), int(col_w) - 6), (x, y), round(14 * s),
+                ui.TEXT if seen else ui.DIM)  # fmt: skip
+    if len(rows) > len(shown):
+        ui.text(screen, f"... und {len(rows) - len(shown)} weitere", (box.right - round(18 * s), box.bottom - footer - line),
+                round(13 * s), ui.DIM, anchor="topright")  # fmt: skip
+    if tab_index == 4 and records.endings:
+        names = {"normal": "Sieg", "wahr": "Wahres Ende", "boese": "Böses Ende", "sieg": "Sieg"}
+        ends = ", ".join(names.get(e, e) for e in records.endings)
+        ui.text(screen, f"Erreichte Enden: {ends}", (box.x + round(18 * s), box.bottom - footer - line),
+                round(14 * s), ui.GOLD)  # fmt: skip
+    hint = "[Tab] / [Links] / [Rechts]: Reiter wechseln   |   [Esc]: Zurück"
+    ui.text(screen, hint, (box.centerx, box.bottom - round(26 * s)), round(13 * s), ui.DIM,
+            anchor="midtop")  # fmt: skip
+
+
+ARCHIVE_TABS: tuple[str, ...] = ("Zaubermodule", "Baupläne", "Kreaturen", "Universen", "Böse Ichs")
+ARCHIVE_COLUMNS = 3
+
+
+def _fit(content: str, size: int, width: int) -> str:
+    """Shorten ``content`` with an ellipsis until it fits ``width`` pixels."""
+    font = ui.font(size)
+    if font.size(content)[0] <= width:
+        return content
+    while content and font.size(content + "…")[0] > width:
+        content = content[:-1]
+    return content + "…"
+
+
+def _archive_entries(records: Records) -> list[list[tuple[str, bool]]]:
+    """Per tab: (German name, discovered) for every entry of the full catalogue."""
+    from src.bosses.evil_selves import EVIL_SELVES
+    from src.universes.catalog import UNIVERSES
+
+    blocks = [b for b in BLOCKS if not getattr(b, "retired", False)]
+    found_blocks, found_plans = set(records.blocks), set(records.blueprints)
+    spells = [(b.name_de, b.key in found_blocks) for b in blocks]
+    plans = [(b.name_de, b.key in found_plans) for b in blocks]
+    creatures = [
+        (spec.name_de, key in records.creatures)
+        for key, spec in SPECIES.items()
+        if not spec.prop and key not in EVIL_SELVES and key != "ober_cloita"
+    ]
+    universes = [(u.name_de, u.key in records.universes) for u in UNIVERSES]
+    evil = [(SPECIES[k].name_de, k in records.evil_selves) for k in EVIL_SELVES]
+    return [spells, plans, creatures, universes, evil]
 
 
 def draw_empress_bargain_menu(

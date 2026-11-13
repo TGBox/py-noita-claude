@@ -148,100 +148,32 @@ def agent_species_for_stars(stars: int) -> list[str]:
     ]
 
 
+AGENT_MIN_DISTANCE = 200.0  # agents arrive outside the start zone (playtest 2026-11-13)
+AGENT_MAX_DISTANCE = 420.0
+
+
 def spawn_agents(run: Run, count: int | None = None) -> list[Creature]:
-    """Spawn authority agents near run.level.spawn and return spawned Creature instances."""
-    from src import materials as mat
+    """Spawn authority agents for the wanted level, out of sight of the start but on
+    their way to it (AGENT_MIN_DISTANCE..AGENT_MAX_DISTANCE from run.level.spawn)."""
+    import random
+
+    from src.enemies import SPECIES
 
     species_list = agent_species_for_stars(run.wanted.stars)
     if count is not None:
         species_list = species_list[:count]
-
     if not species_list:
         return []
-
-    spawn_x, spawn_y = run.level.spawn
-    world = run.world
-    id_air = mat.AIR
-
+    spawn = run.level.spawn
+    rng = random.Random(run.seed * 61 + run.depth_index * 7 + len(species_list))
     spawned: list[Creature] = []
-    # Search around spawn with min distance 48 px, max distance 140 px
-    for i, spec in enumerate(species_list):
-        # Deterministic radial offset
-        angle = (i * 2.0 * math.pi) / len(species_list)
-        dist = 60.0 + (i % 3) * 25.0
-        target_x = spawn_x + dist * math.cos(angle)
-        target_y = spawn_y + dist * math.sin(angle)
-
-        # Find nearest air cell around target
-        best_pos: tuple[float, float] | None = None
-        for r in range(0, 30, 2):
-            for d_ang in (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0):
-                cand_x = int(target_x + r * math.cos(d_ang))
-                cand_y = int(target_y + r * math.sin(d_ang))
-                if (
-                    0 <= cand_x < world.width
-                    and 0 <= cand_y < world.height
-                    and world.get(cand_x, cand_y) == id_air
-                ):
-                    # Check min distance 48, max 140
-                    actual_dist = math.hypot(cand_x - spawn_x, cand_y - spawn_y)
-                    if 48.0 <= actual_dist <= 140.0:
-                        best_pos = (float(cand_x), float(cand_y))
-                        break
-            if best_pos is not None:
-                break
-
-        if best_pos is None:
-            best_pos = (spawn_x + 50.0 + i * 10.0, spawn_y)
-
-        c = run.enemies.spawn(spec, best_pos[0], best_pos[1])
+    for species in species_list:
+        spec = SPECIES[species]
+        spot = run._open_spot(rng, spawn, min_dist=AGENT_MIN_DISTANCE, max_dist=AGENT_MAX_DISTANCE)
+        if spot is None:
+            spot = run._open_spot(rng, spawn, min_dist=AGENT_MIN_DISTANCE)
+        if spot is None:
+            continue  # no room anywhere: the authority sends nobody this time
+        c = run.enemies.spawn(species, spot[0] - spec.width // 2, spot[1] - spec.height)
         spawned.append(c)
-
-    return spawned
-
-    species_list = agent_species_for_stars(run.wanted.stars)
-    if count is not None:
-        species_list = species_list[:count]
-
-    if not species_list:
-        return []
-
-    spawn_x, spawn_y = run.level.spawn
-    world = run.world
-    id_air = mat.AIR
-
-    spawned: list[Creature] = []
-    # Search around spawn with min distance 48 px, max distance 140 px
-    for i, spec in enumerate(species_list):
-        # Deterministic radial offset
-        angle = (i * 2.0 * math.pi) / len(species_list)
-        dist = 60.0 + (i % 3) * 25.0
-        target_x = spawn_x + dist * math.cos(angle)
-        target_y = spawn_y + dist * math.sin(angle)
-
-        # Find nearest air cell around target
-        best_pos: tuple[float, float] | None = None
-        for r in range(0, 30, 2):
-            for d_ang in (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0):
-                cand_x = int(target_x + r * math.cos(d_ang))
-                cand_y = int(target_y + r * math.sin(d_ang))
-                if (
-                    0 <= cand_x < world.width
-                    and 0 <= cand_y < world.height
-                    and world.get(cand_x, cand_y) == id_air
-                ):
-                        # Check min distance 48, max 140
-                        actual_dist = math.hypot(cand_x - spawn_x, cand_y - spawn_y)
-                        if 48.0 <= actual_dist <= 140.0:
-                            best_pos = (float(cand_x), float(cand_y))
-                            break
-            if best_pos is not None:
-                break
-
-        if best_pos is None:
-            best_pos = (spawn_x + 50.0 + i * 10.0, spawn_y)
-
-        c = run.enemies.spawn(spec, best_pos[0], best_pos[1])
-        spawned.append(c)
-
     return spawned
