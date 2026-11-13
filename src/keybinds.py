@@ -69,6 +69,7 @@ ACTIONS: tuple[Action, ...] = (
     Action("light", "Licht an/aus", (_key("l"),), None, "Anzeige"),
     Action("mute", "Ton an/aus", (_key("m"),), None, "Anzeige"),
     Action("fullscreen", "Vollbild", (K_F11,), None, "Anzeige"),
+    Action("klonita", "Klonita rufen / wegschicken", (_key("k"),), "ls", "Sonstiges"),
     Action("new_game_plus", "Neues Spiel+ (nach dem Sieg)", (_key("n"),), "runter", "Sonstiges"),
 )  # fmt: skip
 ACTION_BY_KEY = {action.key: action for action in ACTIONS}

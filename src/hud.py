@@ -27,7 +27,7 @@ HEALTH_COLOR = (196, 30, 42)
 ENERGY_COLOR = (186, 168, 128)
 MANA_COLOR = (84, 118, 210)
 RECHARGE_COLOR = (214, 172, 70)
-PEARL_COLOR = (226, 60, 74)
+PEARL_COLOR = (236, 196, 72)  # the one currency is gold now (was: blood pearls)
 GLASS = (200, 214, 220)
 STATUS_COLORS = {
     "Brennt!": (255, 150, 50),
@@ -51,6 +51,7 @@ class HudState:
     depth_total: int
     fps: float
     sandbox: bool = False
+    depth_caption: str = ""  # replaces "Tiefe n/m" (multiverse runs: universe slot, workshop)
     banner: str = ""
     prompt: str = ""
     boss: Creature | None = None
@@ -195,7 +196,7 @@ class Hud:
         height = round((52 + 17 * perk_rows) * s) + (round(6 * s) if perk_rows else 0)
         x = right - width
         ui.panel(screen, (x, y, width, height), alpha=200)
-        number = f"Tiefe {state.depth_number}/{state.depth_total}"
+        number = state.depth_caption or f"Tiefe {state.depth_number}/{state.depth_total}"
         ui.text(screen, number, (x + round(10 * s), y + round(7 * s)), round(13 * s), ui.DIM)
         ui.text(screen, state.depth_name, (x + round(10 * s), y + round(22 * s)), round(19 * s),
                 heading=True)  # fmt: skip
@@ -316,6 +317,7 @@ class Hud:
     def _outcome(self, screen: pygame.Surface, state: HudState, s: float) -> None:
         title, sub = {
             "dead": ("Du bist gestorben", "Das Fleisch hat dich verschlungen."),
+            "bad_ending": ("Die Hälfte des Multiversums", "Du herrschst. Neben ihr. Für immer."),
             "victory": ("Das Herz ist zerstört", "Du hast Cloita besiegt!"),
             "true_victory": ("Alle Uraugen sehen durch dich", "Cloita gehört dir."),
         }[state.outcome]
@@ -401,6 +403,20 @@ class SpeechBubble:
     world_x: float
     world_y: float
     remaining: float = 2.8
+    color: tuple[int, int, int] = (235, 225, 255)
+
+
+BUBBLE_FADE = 0.4  # seconds a bubble needs to fade out
+BUBBLE_FILL = (24, 14, 30)
+BUBBLE_EDGE = (150, 110, 190)
+BUBBLE_SPEAKER = (200, 160, 240)
+BANNER_FADE = 0.5
+BANNER_FILL = (30, 8, 12)
+BANNER_EDGE = (214, 40, 48)
+
+
+def _fade(left: float, span: float) -> int:
+    return max(0, min(255, int(255 * left / span))) if span > 0 else 255
 
 
 def draw_speech_bubbles(
@@ -409,9 +425,46 @@ def draw_speech_bubbles(
     bubbles: list[SpeechBubble],
     cam_x: float,
     cam_y: float,
+    *,
+    scale: float = 1.0,
+    offset: tuple[float, float] = (0.0, 0.0),
 ) -> None:
-    """Render active speech bubbles onto ``surface`` (Card G02)."""
-    raise NotImplementedError("Card G02")
+    """Rounded bubbles above their speakers, clamped to the visible area (Card G02).
+
+    World coordinates map to the surface as ``offset + (world - cam) * scale``; the
+    defaults draw onto a canvas that shows the world 1:1."""
+    sw, sh = surface.get_size()
+    margin = 4
+    for bubble in bubbles:
+        name = font.render(bubble.speaker, True, BUBBLE_SPEAKER)
+        body = font.render(bubble.text, True, bubble.color)
+        pad = max(3, font.get_height() // 4)
+        width = max(name.get_width(), body.get_width()) + 2 * pad
+        height = name.get_height() + body.get_height() + 2 * pad
+        sx = offset[0] + (bubble.world_x - cam_x) * scale
+        sy = offset[1] + (bubble.world_y - cam_y) * scale
+        tail_x = max(margin + 6, min(sw - margin - 6, sx))
+        x = max(margin, min(sw - width - margin, sx - width / 2))
+        y = sy - height - 10
+        below = y < margin  # speaker near the top edge: the bubble hangs below her
+        if below:
+            y = sy + 14
+        y = max(margin, min(sh - height - margin, y))
+        alpha = _fade(bubble.remaining, BUBBLE_FADE)
+        box = pygame.Surface((width, height + 6), pygame.SRCALPHA)
+        rect = pygame.Rect(0, 3 if below else 0, width, height)
+        pygame.draw.rect(box, (*BUBBLE_FILL, min(alpha, 230)), rect, border_radius=pad * 2)
+        pygame.draw.rect(box, (*BUBBLE_EDGE, alpha), rect, 1, border_radius=pad * 2)
+        tx = max(4, min(width - 4, tail_x - x))
+        tip = (tx, 0) if below else (tx, height + 6)
+        base = rect.top if below else rect.bottom - 1
+        pygame.draw.polygon(box, (*BUBBLE_FILL, min(alpha, 230)),
+                            [(tx - 4, base), (tx + 4, base), tip])  # fmt: skip
+        name.set_alpha(alpha)
+        body.set_alpha(alpha)
+        box.blit(name, (pad, rect.top + pad))
+        box.blit(body, (pad, rect.top + pad + name.get_height()))
+        surface.blit(box, (int(x), int(y) - (3 if below else 0)))
 
 
 def draw_boss_banner(
@@ -419,5 +472,25 @@ def draw_boss_banner(
     font: pygame.font.Font,
     banner: tuple[str, float] | None,
 ) -> None:
-    """Render boss phase banner onto ``surface`` (Card G02)."""
-    raise NotImplementedError("Card G02")
+    """The boss line at the top of the screen; fades out at the end (Card G02)."""
+    if not banner:
+        return
+    text, left = banner
+    if not text or left <= 0:
+        return
+    sw, _sh = surface.get_size()
+    alpha = _fade(left, BANNER_FADE)
+    label = font.render(text, True, (245, 225, 200))
+    if label.get_width() > sw - 40:  # long lines shrink instead of leaving the screen
+        factor = (sw - 40) / label.get_width()
+        label = pygame.transform.smoothscale(
+            label, (max(1, int(label.get_width() * factor)), max(1, int(label.get_height() * factor)))
+        )
+    pad_x, pad_y = 18, 6
+    width, height = label.get_width() + 2 * pad_x, label.get_height() + 2 * pad_y
+    box = pygame.Surface((width, height), pygame.SRCALPHA)
+    pygame.draw.rect(box, (*BANNER_FILL, min(alpha, 220)), box.get_rect(), border_radius=6)
+    pygame.draw.rect(box, (*BANNER_EDGE, alpha), box.get_rect(), 2, border_radius=6)
+    label.set_alpha(alpha)
+    box.blit(label, (pad_x, pad_y))
+    surface.blit(box, ((sw - width) // 2, max(8, surface.get_height() // 14)))

@@ -20,6 +20,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+import typing
+
+if typing.TYPE_CHECKING:
+    from src.reactions import Reaction
 
 AIR = 0
 BEDROCK = 1
@@ -483,8 +487,318 @@ _FILES = (  # Aktenhalde
     ),
 )
 
-LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES)}
-assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES), "duplicate material key"
+_GLIBBRIA = (
+    _m(
+        "glibber",
+        "Glibber",
+        SOLID,
+        255,
+        (100, 220, 160),
+        grain=6,
+        hardness=1,
+        description_de="Grüner, federnder Wackelpudding.",
+    ),
+    _m(
+        "glibber_rot",
+        "Roter Glibber",
+        SOLID,
+        255,
+        (230, 80, 110),
+        grain=6,
+        hardness=1,
+        flammability=0.3,
+        description_de="Brennbarer süßer Gelee.",
+    ),
+    _m(
+        "brausesirup",
+        "Brausesirup",
+        LIQUID,
+        32,
+        (246, 160, 224),  # bible 03: #F6A0E0
+        fluidity=3,
+        description_de="Prickelnder, klebriger Sirup.",
+    ),
+    _m(
+        "schaum",
+        "Zuckerschaum",
+        GAS,
+        -1,
+        (240, 240, 255),
+        description_de="Leichter Schaum auf Brauselachen.",
+    ),
+    _m(
+        "kaugummi",
+        "Kaugummi",
+        SOLID,
+        255,
+        (230, 130, 180),
+        grain=4,
+        hardness=2,
+        description_de="Zäh und extrem klebrig.",
+    ),
+    _m(
+        "zuckerguss",
+        "Zuckerguss",
+        SOLID,
+        255,
+        (250, 245, 235),
+        grain=4,
+        hardness=1,
+        description_de="Knusprige Schicht, karamellisiert bei Hitze.",
+    ),
+)
+
+_KRUEMELREICH: tuple[Material, ...] = (
+    _m(
+        "kruemel",
+        "Krümel",
+        SOLID,
+        255,
+        (205, 160, 110),
+        debris="brosel",
+        debris_chance=0.4,
+        grain=10,
+        hardness=2,
+        description_de="Trockener Teigboden. Zerbröselt leicht.",
+    ),
+    _m(
+        "brosel",
+        "Brösel",
+        POWDER,
+        60,
+        (215, 175, 120),
+        grain=12,
+        hardness=1,
+        description_de="Feine Kuchenbrösel, rieseln durch Ritzen.",
+    ),
+    _m(
+        "zucker",
+        "Zucker",
+        POWDER,
+        65,
+        (245, 245, 250),
+        grain=8,
+        hardness=1,
+        flammability=0.1,
+        description_de="Weißer Kristallzucker. Schmilzt bei Feuer.",
+    ),
+    _m(
+        "karamell",
+        "Karamell",
+        LIQUID,
+        25,
+        (160, 90, 30),
+        mobility=0.3,
+        fluidity=2,
+        description_de="Klebrige, heiße Karamellmasse.",
+    ),
+    _m(
+        "honig",
+        "Honig",
+        LIQUID,
+        20,
+        (220, 150, 20),
+        mobility=0.2,
+        fluidity=2,
+        description_de="Dickflüssig und süß.",
+    ),
+    _m(
+        "fliese",
+        "Kachelfliese",
+        SOLID,
+        255,
+        (180, 185, 190),
+        grain=2,
+        hardness=3,
+        description_de="Backstubenfliesen. Hart und hitzebeständig.",
+    ),
+    _m(
+        "staubfluse",
+        "Staubfluse",
+        POWDER,
+        30,
+        (130, 125, 120),
+        grain=14,
+        hardness=1,
+        flammability=0.3,
+        description_de="Trockener Backstubenstaub. Leicht entflammbar.",
+    ),
+)
+
+_SPORENKLUB: tuple[Material, ...] = (
+    _m(
+        "pilzfleisch",
+        "Pilzfleisch",
+        SOLID,
+        255,
+        (120, 90, 80),
+        grain=6,
+        hardness=2,
+        description_de="Zähes, faseriges Geflecht alter Riesenpilze.",
+    ),
+    _m(
+        "pilzhut",
+        "Pilzhut",
+        SOLID,
+        255,
+        (170, 70, 60),
+        grain=8,
+        hardness=2,
+        description_de="Glatte, samtige Kappe eines Riesenpilzes.",
+    ),
+    _m(
+        "leuchtsporen",
+        "Leuchtsporen",
+        POWDER,
+        40,
+        (140, 255, 100),
+        grain=10,
+        hardness=1,
+        glow=160,
+        description_de="Fluoreszierender Sporenstaub.",
+    ),
+    _m(
+        "neonsaft",
+        "Neonsaft",
+        LIQUID,
+        25,
+        (50, 240, 180),
+        fluidity=4,
+        glow=160,
+        description_de="Hell leuchtender Nährsaft des Sporenklubs.",
+    ),
+    _m(
+        "nebel",
+        "Sporennebel",
+        GAS,
+        -1,
+        (160, 220, 190),
+        life=(150, 255),  # life is stored in a byte
+        description_de="Dichter Dunst, der den Tanzboden verhüllt.",
+    ),
+)
+
+_ABTEI: tuple[Material, ...] = (
+    _m(
+        "mauerwerk",
+        "Mauerwerk",
+        SOLID,
+        255,
+        (110, 115, 120),
+        grain=10,
+        hardness=3,
+        description_de="Uralter nasser Stein der versunkenen Klosterruine.",
+    ),
+    _m(
+        "buntglas",
+        "Buntglas",
+        SOLID,
+        255,
+        (180, 70, 140),
+        grain=4,
+        hardness=2,
+        description_de="Zerbrechliches sakrales Kirchenfensterglas.",
+    ),
+    _m(
+        "kerzenwachs",
+        "Kerzenwachs",
+        SOLID,
+        255,
+        (235, 230, 200),
+        grain=4,
+        hardness=1,
+        flammability=0.2,
+        description_de="Geweihtes Bienenwachs, schmilzt bei Feuer.",
+    ),
+    _m(
+        "glockenbronze",
+        "Glockenbronze",
+        SOLID,
+        255,
+        (175, 130, 60),
+        grain=6,
+        hardness=3,
+        description_de="Schwere Bronze uralter Kirchenglocken.",
+    ),
+    _m(
+        "algen",
+        "Algen",
+        SOLID,
+        255,
+        (40, 120, 50),
+        grain=8,
+        hardness=1,
+        description_de="Glibbrige Grünalgen auf überflutetem Gestein.",
+    ),
+    _m(
+        "weihrauch",
+        "Weihrauch",
+        GAS,
+        -1,
+        (210, 200, 220),
+        life=(200, 255),  # life is stored in a byte
+        description_de="Duftender Nebel uralter Weihrauchkessel.",
+    ),
+)
+
+_EVIL_HOMES = (  # home worlds of the three evil selves (Contract V17 §2, Card F18)
+    _m(
+        "goldboden",
+        "Goldboden",
+        SOLID,
+        255,
+        (222, 184, 70),
+        grain=6,
+        glow=40,
+        hardness=3,
+        description_de="Poliertes Gold des Thronsaals. Fest, aber spiegelglatt: dreifacher Bremsweg.",
+    ),
+    _m(
+        "lichtstein",
+        "Lichtstein",
+        SOLID,
+        255,
+        (238, 232, 205),
+        grain=5,
+        glow=110,
+        hardness=2,
+        description_de="Leuchtender Stein der Lichtkathedrale.",
+    ),
+    _m(
+        "heiliges_licht",
+        "Heiliges Licht",
+        GAS,
+        -1,
+        (255, 248, 190),
+        life=(150, 220),  # life is stored in a byte
+        hazard_dps=4.0,
+        glow=160,
+        description_de="Gleißendes Licht der Bösen Guten. Brennt auf der Haut: 4 Schaden pro Sekunde.",
+    ),
+    _m(
+        "foerderband",
+        "Förderband",
+        SOLID,
+        255,
+        (62, 64, 74),
+        grain=4,
+        hardness=3,
+        description_de="Laufendes Band der Fabrikhalle. Schiebt alles, was darauf steht.",
+    ),
+    _m(
+        "stahl",
+        "Stahl",
+        SOLID,
+        255,
+        (150, 156, 168),
+        grain=5,
+        hardness=3,
+        description_de="Sehr harter Werkstahl der Bösen Omega.",
+    ),
+)
+
+LIBRARY: dict[str, Material] = {m.key: m for m in (*_BASE, *_BODY, *_FILES, *_GLIBBRIA, *_KRUEMELREICH, *_SPORENKLUB, *_ABTEI, *_EVIL_HOMES)}
+assert len(LIBRARY) == len(_BASE) + len(_BODY) + len(_FILES) + len(_GLIBBRIA) + len(_KRUEMELREICH) + len(_SPORENKLUB) + len(_ABTEI) + len(_EVIL_HOMES), "duplicate material key"
 
 BASE_KEYS: tuple[str, ...] = tuple(m.key for m in _BASE)
 
@@ -739,7 +1053,7 @@ AKTENHALDE = MaterialSet(
         ("growth", "papier"),
         ("bone", "aktendeckel"),
         ("enamel", "aktendeckel"),
-        ("sinew", "aktendeckel"),
+        ("sinew", "papier"),  # bridges as soft as the paper around them (playtest)
         ("spent", "aktendeckel"),
         ("crust", "lack"),
         ("bone_dust", "asche"),
@@ -755,7 +1069,208 @@ AKTENHALDE = MaterialSet(
     ),
 )
 
-SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, AKTENHALDE)}
+FLEISCHWELT = MaterialSet(
+    "fleischwelt",
+    (
+        *BASE_KEYS,
+        "flesh",
+        "bone",
+        "enamel",
+        "blood",
+        "acid",
+        "growth",
+        "spores",
+        "tallow",
+        "crust",
+        "magma",
+    ),
+)
+
+GLIBBRIA = MaterialSet(
+    "glibbria",
+    (
+        *BASE_KEYS,
+        "glibber",
+        "glibber_rot",
+        "brausesirup",
+        "schaum",
+        "kaugummi",
+        "zuckerguss",
+    ),
+)
+
+KRUEMELREICH = MaterialSet(
+    "kruemelreich",
+    (
+        *BASE_KEYS,
+        "kruemel",
+        "brosel",
+        "zucker",
+        "karamell",
+        "honig",
+        "fliese",
+        "staubfluse",
+    ),
+)
+
+SPORENKLUB = MaterialSet(
+    "sporenklub",
+    (
+        *BASE_KEYS,
+        "pilzfleisch",
+        "pilzhut",
+        "leuchtsporen",
+        "neonsaft",
+        "nebel",
+    ),
+)
+
+ABTEI = MaterialSet(
+    "abtei",
+    (
+        *BASE_KEYS,
+        "mauerwerk",
+        "buntglas",
+        "kerzenwachs",
+        "glockenbronze",
+        "algen",
+        "weihrauch",
+    ),
+)
+
+# Home worlds of the evil selves (Contract V17 §2): base materials plus their own few.
+_HOME_ALIASES = (
+    ("flesh", "__wall__"),
+    ("growth", "__wall__"),
+    ("bone", "__wall__"),
+    ("enamel", "__wall__"),
+    ("sinew", "__wall__"),
+    ("spent", "__wall__"),
+    ("crust", "__wall__"),
+    ("bone_dust", "sand"),
+    ("blood", "water"),
+    ("pus", "water"),
+    ("acid", "water"),
+    ("mucus", "water"),
+    ("tallow", "oil"),
+    ("magma", "fire"),
+    ("spark", "fire"),
+    ("fume", "steam"),
+    ("spores", "smoke"),
+)
+
+
+def _home_set(key: str, own: tuple[str, ...], wall: str) -> MaterialSet:
+    aliases = tuple((a, wall if b == "__wall__" else b) for a, b in _HOME_ALIASES)
+    return MaterialSet(key, (*BASE_KEYS, *own), aliases=aliases)
+
+
+BOESE_KAISERIN = _home_set("boese_kaiserin", ("goldboden",), "goldboden")
+BOESE_GUTE = _home_set("boese_gute", ("lichtstein", "heiliges_licht"), "lichtstein")
+BOESE_OMEGA = _home_set("boese_omega", ("foerderband", "stahl"), "stahl")
+
+SETS: dict[str, MaterialSet] = {s.key: s for s in (KOERPER, FLEISCHWELT, AKTENHALDE, GLIBBRIA, KRUEMELREICH, SPORENKLUB, ABTEI, BOESE_KAISERIN, BOESE_GUTE, BOESE_OMEGA)}
+
+
+def _init_set_reactions() -> None:
+    from src.reactions import Reaction
+
+    global GLIBBRIA, KRUEMELREICH, SPORENKLUB, ABTEI
+    GLIBBRIA = MaterialSet(
+        "glibbria",
+        (
+            *BASE_KEYS,
+            "glibber",
+            "glibber_rot",
+            "brausesirup",
+            "schaum",
+            "kaugummi",
+            "zuckerguss",
+        ),
+        # the organism generator's materials, re-dressed as jelly (cave walls, ribs, pools)
+        aliases=(
+            ("flesh", "glibber"), ("growth", "glibber"), ("sinew", "glibber_rot"),
+            ("bone", "zuckerguss"), ("enamel", "zuckerguss"), ("spent", "zuckerguss"),
+            ("crust", "kaugummi"), ("blood", "brausesirup"), ("pus", "brausesirup"),
+            ("acid", "brausesirup"), ("mucus", "brausesirup"), ("spores", "schaum"),
+            ("fume", "schaum"),
+        ),  # fmt: skip
+        reactions=(
+            Reaction("fire", "glibber_rot", "fire", "smoke", 0.05),
+            Reaction("fire", "brausesirup", "fire", "smoke", 0.05),
+            Reaction("fire", "zuckerguss", "fire", "smoke", 0.05),
+        ),
+    )
+    KRUEMELREICH = MaterialSet(
+        "kruemelreich",
+        (
+            *BASE_KEYS,
+            "kruemel",
+            "brosel",
+            "zucker",
+            "karamell",
+            "honig",
+            "fliese",
+            "staubfluse",
+        ),
+        aliases=(
+            ("flesh", "kruemel"), ("growth", "kruemel"), ("sinew", "kruemel"),
+            ("bone", "fliese"), ("enamel", "fliese"), ("spent", "fliese"), ("crust", "fliese"),
+            ("bone_dust", "brosel"), ("blood", "honig"), ("pus", "karamell"),
+            ("acid", "karamell"), ("mucus", "honig"),
+        ),  # fmt: skip
+        reactions=(
+            Reaction("fire", "zucker", "fire", "karamell", 0.05),
+        ),
+    )
+    SPORENKLUB = MaterialSet(
+        "sporenklub",
+        (
+            *BASE_KEYS,
+            "pilzfleisch",
+            "pilzhut",
+            "leuchtsporen",
+            "neonsaft",
+            "nebel",
+        ),
+        aliases=(
+            ("flesh", "pilzfleisch"), ("growth", "pilzfleisch"), ("sinew", "pilzhut"),
+            ("bone", "pilzhut"), ("enamel", "pilzhut"), ("spent", "pilzhut"),
+            ("crust", "pilzhut"), ("bone_dust", "leuchtsporen"), ("blood", "neonsaft"),
+            ("pus", "neonsaft"), ("acid", "neonsaft"), ("mucus", "neonsaft"),
+            ("spores", "nebel"), ("fume", "nebel"),
+        ),  # fmt: skip
+    )
+    ABTEI = MaterialSet(
+        "abtei",
+        (
+            *BASE_KEYS,
+            "mauerwerk",
+            "buntglas",
+            "kerzenwachs",
+            "glockenbronze",
+            "algen",
+            "weihrauch",
+        ),
+        aliases=(
+            ("flesh", "mauerwerk"), ("bone", "mauerwerk"), ("spent", "mauerwerk"),
+            ("crust", "mauerwerk"), ("enamel", "glockenbronze"), ("growth", "algen"),
+            ("sinew", "algen"), ("blood", "water"), ("pus", "water"), ("acid", "water"),
+            ("mucus", "water"), ("tallow", "kerzenwachs"), ("spores", "weihrauch"),
+            ("fume", "weihrauch"),
+        ),  # fmt: skip
+        reactions=(
+            Reaction("fire", "kerzenwachs", "fire", "smoke", 0.05),
+            # no "algae grow into water": that overgrew every flooded passage within minutes
+        ),
+    )
+    SETS["glibbria"] = GLIBBRIA
+    SETS["kruemelreich"] = KRUEMELREICH
+    SETS["sporenklub"] = SPORENKLUB
+    SETS["abtei"] = ABTEI
+
+
+_init_set_reactions()
 # Sets changed by a universe rule (e.g. flammability), keyed "<set>+<rule><rank>".
 DERIVED: dict[str, MaterialSet] = {}
 

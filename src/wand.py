@@ -12,7 +12,7 @@ forever.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from src.spells import CATALOG, Block, Category
 
@@ -97,6 +97,8 @@ class _Draw:
         self.delay = 0.0
         self.recharge = 0.0  # recharge time added by blocks (negative = faster)
         self.wrapped = False
+        self.unlimited = False  # perk: limited blocks never run out
+        self.free_charge = False  # an "endless" block waits for the next limited form
 
     def next(self) -> Block | None:
         """Draw the next affordable block; unaffordable ones are skipped."""
@@ -110,11 +112,16 @@ class _Draw:
             self.drawn += 1
             if self.mana + block.mana > self.available:
                 continue
-            if block.uses:
-                if self.charges[position] <= 0:
+            if block.uses and not self.unlimited:
+                if self.free_charge and block.category is Category.FORM:
+                    self.free_charge = False  # paid for by the endless core
+                elif self.charges[position] <= 0:
                     continue  # used up until the next sanctum
-                self.charges[position] -= 1
-                self.used.append(position)
+                else:
+                    self.charges[position] -= 1
+                    self.used.append(position)
+            if block.endless:
+                self.free_charge = True
             self.mana += block.mana
             self.delay += block.cast_delay
             self.recharge += block.recharge_bonus
@@ -135,15 +142,31 @@ class _Draw:
                 # wide formations (circle, front and back) start straight ahead; narrow ones
                 # are centred on the aim
                 centred = spread * block.multicast < 3.0
+                pattern: list[Shot] = []  # the first group, to repeat when the deck runs dry
                 for index in range(block.multicast):
                     shift = (block.multicast - 1) / 2 if centred else 0.0
                     offset = (index - shift) * spread
-                    for shot in self.group(tuple(modifiers)):
+                    drawn = [] if block.divide and pattern else self.group(tuple(modifiers))
+                    if not drawn and pattern:
+                        # nothing else to draw (one strong spell with many mutations): a
+                        # multicast then fires that group again, for its mana once more
+                        drawn = self._repeat(pattern)
+                    if not pattern:
+                        pattern = [replace(shot) for shot in drawn]
+                    for shot in drawn:
                         shot.angle_offset += offset
                         shots.append(shot)
                 return shots
             modifiers.append(block)
         return []
+
+    def _repeat(self, pattern: list[Shot]) -> list[Shot]:
+        """Copies of an already drawn group, if the mana for its forms is there."""
+        cost = sum(shot.form.mana for shot in pattern)
+        if self.mana + cost > self.available:
+            return []
+        self.mana += cost
+        return [replace(shot) for shot in pattern]
 
 
 class Wand:
@@ -169,6 +192,7 @@ class Wand:
         self.cooldown = 0.0
         self.recharge_left = 0.0
         self._recharge_bonus = 0.0
+        self.unlimited = False  # set by the run while the perk "Unerschöpflich" is active
         self.set_slots(self.slots)
 
     def refill_charges(self) -> None:
@@ -223,6 +247,7 @@ class Wand:
         if not self.ready or not self.blocks:
             return []
         draw = _Draw(self.blocks, self.order, self.index, self.mana, list(self.charges))
+        draw.unlimited = self.unlimited
         shots: list[Shot] = []
         for _ in range(max(1, self.spec.casts)):
             shots += draw.group()

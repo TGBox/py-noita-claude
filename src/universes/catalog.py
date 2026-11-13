@@ -38,10 +38,10 @@ UNIVERSES: tuple[Universe, ...] = (
         "fleischwelt", "Fleischwelt",
         "Ein Universum, das nur aus einem einzigen, sehr großen und sehr hungrigen Lebewesen "
         "besteht.",
-        rule="rule_living_walls", shape="quadrat", ambient=0.28, material_set="koerper",
+        rule="rule_living_walls", shape="quadrat", ambient=0.28, material_set="fleischwelt",
         regions=(
-            Region("schlund", "Schlund"), Region("zotten", "Zotten"),
-            Region("pfuetze", "Pfütze"),
+            Region("schlund", "Schlund"), Region("magen", "Magen"),
+            Region("knochenmark", "Knochenmark"),
         ),
         natives=("fleischmade", "blutegel", "saeurespucker", "zottenwurm"),
         event="verdauung",
@@ -59,8 +59,8 @@ UNIVERSES: tuple[Universe, ...] = (
         "Hier wurde vor Äonen ein Antrag gestellt. Er wird noch bearbeitet.",
         rule="rule_paperwork", shape="breit", ambient=0.55, material_set="aktenhalde",
         regions=(
-            Region("wartezone", "Wartezone"), Region("registratur", "Registratur"),
-            Region("chefbueros", "Chefbüros"),
+            Region("registratur", "Registratur"), Region("grossraumbuero", "Großraumbüro"),
+            Region("archivkeller", "Archivkeller"),
         ),
         natives=("aktenfresser", "stempler", "paragraphenreiter", "kaffeegolem"),
         event="pruefung",
@@ -76,10 +76,10 @@ UNIVERSES: tuple[Universe, ...] = (
         "glibbria", "Glibbria",
         "Ein Planet aus Wackelpudding. Alles federt. Niemand stirbt am Fall – nur an allem "
         "anderen.",
-        rule="rule_bounce", shape="inseln", ambient=0.6, material_set="koerper",
+        rule="rule_bounce", shape="inseln", ambient=0.6, material_set="glibbria",
         regions=(
-            Region("zelt", "Zelt"), Region("backstage", "Backstage"),
-            Region("manege", "Manege"),
+            Region("gelee_huegel", "Geleehügel"), Region("kaugummi_hoehlen", "Kaugummihöhlen"),
+            Region("sirupkueste", "Sirupküste"),
         ),
         natives=("huepfling", "glibberteiler", "zuckerwatte_wolke", "konfetti_kanone"),
         big="trampolinwal", event="brauseregen",
@@ -93,11 +93,11 @@ UNIVERSES: tuple[Universe, ...] = (
     Universe(
         "kruemelreich", "Krümelreich",
         "Du bist etwa so groß wie ein Brotkrümel. Das Brot ist größer. Die Ameisen auch.",
-        rule="rule_tiny", shape="breit", ambient=0.7, material_set="koerper",
+        rule="rule_tiny", shape="breit", ambient=0.7, material_set="kruemelreich",
         regions=(
-            Region("oberbau", "Oberbau"),
-            Region("gaenge", "Gänge", (("ambient", 0.2),)),
-            Region("thronsaal", "Thronsaal", (("ambient", 0.2),)),
+            Region("fliesenwueste", "Fliesenwüste"),
+            Region("unter_kuehlschrank", "Unter Kühlschrank", (("ambient", 0.2),)),
+            Region("ameisenbau", "Ameisenbau", (("ambient", 0.2),)),
         ),
         natives=("ameisenkrieger", "blattlaus", "arbeiterameise", "harzspucker"),
         event="riesenschritt",
@@ -111,10 +111,10 @@ UNIVERSES: tuple[Universe, ...] = (
     Universe(
         "sporenklub", "Sporenklub",
         "Die Party läuft seit 400 Jahren. Die Pilze wollen nicht, dass sie aufhört.",
-        rule="rule_beat", shape="quadrat", ambient=0.15, material_set="koerper",
+        rule="rule_beat", shape="quadrat", ambient=0.15, material_set="sporenklub",
         regions=(
-            Region("kappenwald", "Kappenwald"), Region("sporennebel", "Sporennebel"),
-            Region("wurzelherz", "Wurzelherz"),
+            Region("lautsprechertuerme", "Lautsprechertürme"), Region("tanzflaeche", "Tanzfläche"),
+            Region("hinterzimmer", "Hinterzimmer"),
         ),
         natives=("tuersteherpilz", "sporenschnorrer", "sporenwerfer", "leuchtmotte"),
         event="bass_drop",
@@ -128,10 +128,10 @@ UNIVERSES: tuple[Universe, ...] = (
     Universe(
         "abtei", "Versunkene Abtei",
         "Die Mönche haben ein Schweigegelübde abgelegt. Dann haben sie Kiemen bekommen.",
-        rule="rule_flooded", shape="hoch", ambient=0.35, material_set="koerper",
+        rule="rule_flooded", shape="hoch", ambient=0.35, material_set="abtei",
         regions=(
-            Region("schiff", "Schiff"), Region("kreuzgang", "Kreuzgang"),
-            Region("krypta", "Krypta", (("current_vx", 28.0),)),
+            Region("glockenturm", "Glockenturm"), Region("kirchenschiff", "Kirchenschiff"),
+            Region("krypta", "Krypta", (("ambient", 0.15), ("current_vx", 28.0))),
         ),
         natives=("moenchsfisch", "orgelaal", "glockenqualle", "korallenwaechter"),
         big="kirchenkrake", event="glockenschlag",

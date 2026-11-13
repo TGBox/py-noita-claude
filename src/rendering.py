@@ -37,6 +37,7 @@ PERK_KEYS = tuple(PERK_BY_KEY)
 from src.projectiles import Projectile
 from src.settings import VIEW_HEIGHT, VIEW_WIDTH
 from src.spells import CATALOG, Block, Category
+from src.sprite_render import SheetCache
 from src.texture import make_grain
 from src.wand import Wand
 from src.world import World
@@ -667,17 +668,80 @@ def build_creature_sprites() -> dict[tuple, pygame.Surface]:
 
 def draw_creatures(
     canvas: pygame.Surface,
-    sprites: dict[tuple[str, int, bool, bool], pygame.Surface],
+    sprites: dict[tuple[str, int, bool, bool], pygame.Surface] | None,
     creatures: list[Creature],
     cam_x: int,
     cam_y: int,
     visible: set[int] | None = None,
+    sheet_cache: SheetCache | None = None,
 ) -> None:
+    from src.procbody import RIG_LAYOUTS, ProcRig
+    from src.sprite_render import blit_frame
+    from src.sprites import Animator
+
     for creature in creatures:
         if visible is not None and id(creature) not in visible:
             continue  # hidden behind tissue
         key = creature.spec.key
         x, y = creature.x - cam_x, creature.y - cam_y
+
+        # Sprite sheets and rigs where the sheet files exist; otherwise the legacy drawing
+        if sheet_cache is not None and _has_sheets(sheet_cache, creature):
+            facing_right = creature.facing >= 0
+            is_windup = getattr(creature, "state", "") == "windup"
+            flash = 1.0 if is_windup else (1.0 if getattr(creature, "flash", 0.0) > 0.0 else 0.0)
+
+            anim_state = (
+                getattr(creature, "anim_state", None) or getattr(creature, "state", None) or "idle"
+            )
+
+            # Boss with multi-part rig
+            if key in RIG_LAYOUTS:
+                rig = getattr(creature, "rig", None)
+                if rig is None:
+                    rig = ProcRig(RIG_LAYOUTS[key])
+                for _part_key, wx, wy, sheet_name in rig.world_parts(
+                    creature.x, creature.y, flip_x=not facing_right
+                ):
+                    category = _rig_category(sheet_cache, sheet_name)
+                    sheet, meta = sheet_cache.get(category, sheet_name)
+                    st = anim_state if anim_state in meta.anims else "idle"
+                    anim = Animator(meta, st)
+                    blit_frame(
+                        canvas,
+                        sheet,
+                        meta,
+                        anim,
+                        wx,
+                        wy,
+                        cam_x,
+                        cam_y,
+                        flip_x=not facing_right,
+                        flash=flash,
+                    )
+            else:
+                sheet, meta = sheet_cache.get(_sheet_category(creature, sheet_cache), key)
+                st = anim_state if anim_state in meta.anims else "idle"
+                anim = Animator(meta, st)
+                blit_frame(
+                    canvas,
+                    sheet,
+                    meta,
+                    anim,
+                    creature.center[0],
+                    creature.center[1],
+                    cam_x,
+                    cam_y,
+                    flip_x=not facing_right,
+                    flash=flash,
+                )
+
+            if creature.hp < creature.max_hp:
+                width = max(1, round(creature.width * creature.hp / creature.max_hp))
+                canvas.fill(HEALTH_BAR, (x, y - 3, width, 1))
+            continue
+
+        # Legacy software fallback
         if key == "magenwurm":
             _draw_worm(canvas, creature, x, y)
             continue
@@ -693,16 +757,67 @@ def draw_creatures(
         if key == "atem":
             _draw_breath(canvas, creature, x, y)
             continue
-        frame = int(creature.age * FRAME_RATES[key]) % len(CREATURE_SPRITES[key])
-        facing = creature.facing > 0
-        rim = sprites.get((key, frame, facing, "rim"))
-        if rim is not None:
-            canvas.blit(rim, (x - 1, y - 1))
-        sprite = sprites[(key, frame, facing, creature.flash > 0)]
-        canvas.blit(sprite, (x, y))
+        if sprites is not None and key in CREATURE_SPRITES and key in FRAME_RATES:
+            frame = int(creature.age * FRAME_RATES[key]) % len(CREATURE_SPRITES[key])
+            facing = creature.facing > 0
+            rim = sprites.get((key, frame, facing, "rim"))
+            if rim is not None:
+                canvas.blit(rim, (x - 1, y - 1))
+            sprite = sprites.get((key, frame, facing, creature.flash > 0))
+            if sprite is not None:
+                canvas.blit(sprite, (x, y))
+        else:  # no sheet and no legacy sprite: never leave a creature invisible
+            _draw_placeholder(canvas, creature, x, y)
         if creature.hp < creature.max_hp:
             width = max(1, round(creature.width * creature.hp / creature.max_hp))
             canvas.fill(HEALTH_BAR, (x, y - 3, width, 1))
+
+
+PLACEHOLDER_FILL = (190, 70, 170)
+PLACEHOLDER_EDGE = (40, 10, 40)
+
+
+SHEET_CATEGORIES = ("kreaturen", "bosse", "charaktere", "umgebung")  # umgebung: the dummy
+
+
+def _sheet_category(creature: Creature, cache: SheetCache | None = None) -> str:
+    """Folder of the creature's sheet: the first one that holds it (mid-bosses are not
+    flagged as bosses but live in bosse/), else a guess from the key."""
+    key = creature.spec.key
+    if cache is not None:
+        for category in SHEET_CATEGORIES:
+            if _has_file(cache, category, key):
+                return category
+    if key.startswith(("agent_", "boese_")) or key == "ober_cloita":
+        return "charaktere"
+    return "bosse" if getattr(creature.spec, "boss", False) else "kreaturen"
+
+
+def _has_file(cache: SheetCache, category: str, name: str) -> bool:
+    return (cache.root / category / f"{name}.png").is_file()
+
+
+def _rig_category(cache: SheetCache, name: str) -> str:
+    return "bosse" if _has_file(cache, "bosse", name) else "kreaturen"
+
+
+def _has_sheets(cache: SheetCache, creature: Creature) -> bool:
+    """True if every sheet this creature is drawn from exists on disk."""
+    from src.procbody import RIG_LAYOUTS
+
+    key = creature.spec.key
+    if key in RIG_LAYOUTS:
+        return all(
+            _has_file(cache, _rig_category(cache, part.sheet_name), part.sheet_name)
+            for part in RIG_LAYOUTS[key].parts
+        )
+    return _has_file(cache, _sheet_category(creature, cache), key)
+
+
+def _draw_placeholder(canvas: pygame.Surface, creature: Creature, x: int, y: int) -> None:
+    rect = pygame.Rect(x, y, max(2, creature.width), max(2, creature.height))
+    canvas.fill(PLACEHOLDER_FILL, rect)
+    pygame.draw.rect(canvas, PLACEHOLDER_EDGE, rect, 1)
 
 
 WORM_SKIN = (150, 168, 92)
@@ -862,6 +977,61 @@ def draw_flask(canvas: pygame.Surface, flask: Flask, x: int, y: int) -> None:
         canvas.fill(MATERIALS[flask.material].color, (x - 2, y - level, 5, level))
 
 
+KLONITA_FALLBACK = (176, 120, 230)  # a lilac blob if her sheet is missing
+
+
+def klonita_anim(klonita: object) -> str:
+    """Which row of her sheet fits her state right now."""
+    state = getattr(klonita, "state", "follow")
+    if state in ("knocked", "assist", "quirk"):
+        return state
+    moving = abs(getattr(klonita, "vx", 0.0)) > 6.0 or abs(getattr(klonita, "vy", 0.0)) > 6.0
+    return "fly" if moving else "idle"
+
+
+def draw_klonita(
+    canvas: pygame.Surface,
+    sheet_cache: object,
+    klonita: object,
+    animator: object | None,
+    cam_x: float,
+    cam_y: float,
+    time: float = 0.0,
+) -> object | None:
+    """Draw Klonita (and where she points) onto ``canvas``; returns the animator to keep.
+
+    ``klonita.x/y`` is her centre; her sheet is anchored at the feet."""
+    from src.sprite_render import blit_frame
+    from src.sprites import Animator
+
+    if klonita is None or getattr(klonita, "state", "") == "dismissed":
+        return animator
+    x, y = float(klonita.x), float(klonita.y)
+    pointing = getattr(klonita, "pointing", None)
+    if pointing is not None and getattr(klonita, "point_timer", 0.0) > 0:
+        px, py = int(pointing[0] - cam_x), int(pointing[1] - cam_y)
+        radius = 5 + int(2 * math.sin(time * 8))
+        pygame.draw.circle(canvas, (230, 200, 255), (px, py), radius, 1)
+        pygame.draw.line(canvas, (200, 160, 240), (int(x - cam_x), int(y - cam_y)), (px, py), 1)
+    try:
+        sheet, meta = sheet_cache.get("charaktere", "klonita")  # type: ignore[attr-defined]
+        anim = klonita_anim(klonita)
+        anim = anim if anim in meta.anims else "idle"
+        if animator is None or getattr(animator, "meta", None) is not meta:
+            animator = Animator(meta, anim)
+        animator.play(anim)
+        animator.update(1 / 60)
+        blit_frame(
+            canvas, sheet, meta, animator, x, y + meta.frame_size[1] / 2 - 2, cam_x, cam_y,
+            flip_x=getattr(klonita, "facing", 1) < 0,
+        )  # fmt: skip
+    except (KeyError, ValueError, AttributeError, TypeError, OSError, pygame.error):
+        sx, sy = int(x - cam_x), int(y - cam_y)
+        pygame.draw.circle(canvas, KLONITA_FALLBACK, (sx, sy), 5)
+        pygame.draw.circle(canvas, (30, 16, 40), (sx - 2 * getattr(klonita, "facing", 1), sy - 1), 1)
+    return animator
+
+
 def draw_chunks(canvas: pygame.Surface, chunks: list[Chunk], cam_x: int, cam_y: int) -> None:
     """Falling tissue: drawn cell by cell in its material's colour (slightly lit)."""
     width, height = VIEW_WIDTH, VIEW_HEIGHT
@@ -971,7 +1141,7 @@ def draw_pickups(
             for k, key in enumerate(item.wand.blocks[:5]):
                 color = _mix(block_color(CATALOG[key]), ARM_FLESH, NODE_FLESH_MIX)
                 canvas.fill(color, (x - 4 + k * 2, y - 3 + bob - k // 3, 2, 2))
-        elif item.block is not None:
+        elif item.block in CATALOG:  # gold, samples & co. carry no block
             color = block_color(CATALOG[item.block])
             unknown = known is not None and item.block not in known
             if unknown:  # a pulsing golden frame and a spark: something new
@@ -1029,7 +1199,117 @@ class Renderer:
     """High-level run renderer facade for world and HUD (Card B32; HUD parts G01/G02)."""
 
     def __init__(self, screen: pygame.Surface) -> None:
+        from src.sprite_render import SheetCache
+
         self.screen = screen
+        self.sheet_cache = SheetCache()
+        self.hud = None
 
     def draw(self, run: object) -> None:
-        raise NotImplementedError("Card B32")
+        """Render the run state: world, creatures, pickups, player, klonita, and HUD."""
+        from src.hud import Hud, HudState
+        from src.sprite_render import blit_frame
+        from src.sprites import Animator
+        from src.viewport import Viewport
+
+        screen = self.screen
+        sw, sh = screen.get_size()
+
+        # Determine camera position
+        player = getattr(run, "player", None)
+        if player is not None:
+            cam_x = int(player.x - sw // 2)
+            cam_y = int(player.y - sh // 2)
+        else:
+            cam_x, cam_y = 0, 0
+
+        # 1. World chunks
+        chunks = getattr(run, "chunks", None)
+        if chunks is not None and hasattr(chunks, "items"):
+            draw_chunks(screen, chunks.items, cam_x, cam_y)
+
+        # 2. Pickups
+        pickups = getattr(run, "pickups", None)
+        if pickups is not None:
+            known = getattr(run, "known_blocks", None)
+            draw_pickups(screen, pickups, cam_x, cam_y, known)
+
+        # 3. Creatures (safe fallback)
+        enemies = getattr(run, "enemies", None)
+        if enemies is not None and hasattr(enemies, "creatures"):
+            try:
+                draw_creatures(
+                    screen, None, enemies.creatures, cam_x, cam_y, sheet_cache=self.sheet_cache
+                )
+            except (KeyError, ValueError, AttributeError, pygame.error):
+                pass
+
+        # 4. Player sprite
+        if player is not None:
+            try:
+                sheet, meta = self.sheet_cache.get("charaktere", "spielerin")
+                if player.dead:
+                    anim_state = "dead"
+                elif getattr(player, "damage_taken", 0) > 0:
+                    anim_state = "hurt"
+                elif getattr(player, "vy", 0.0) < -1.0:
+                    anim_state = "jump"
+                elif getattr(player, "vy", 0.0) > 1.0:
+                    anim_state = "fall"
+                elif abs(getattr(player, "vx", 0.0)) > 0.5:
+                    anim_state = "walk"
+                else:
+                    anim_state = "idle"
+
+                anim_state = anim_state if anim_state in meta.anims else "idle"
+                facing_right = (
+                    getattr(player, "facing", 1) >= 0 if hasattr(player, "facing") else True
+                )
+                animator = Animator(meta, anim_state)
+                blit_frame(
+                    screen,
+                    sheet,
+                    meta,
+                    animator,
+                    player.x,
+                    player.y,
+                    cam_x,
+                    cam_y,
+                    flip_x=not facing_right,
+                )
+            except (KeyError, ValueError, AttributeError, pygame.error):
+                pass
+
+        # 5. Klonita
+        self.klonita_animator = draw_klonita(
+            screen, self.sheet_cache, getattr(run, "klonita", None),
+            getattr(self, "klonita_animator", None), cam_x, cam_y,
+        )  # fmt: skip
+
+        # 6. HUD
+        try:
+            if not pygame.font.get_init():
+                pygame.font.init()
+            if self.hud is None:
+                self.hud = Hud()
+            vp = Viewport(sw, sh)
+            vp.resize(sw, sh)
+            depth_name = getattr(getattr(run, "depth", None), "name_de", "")
+            state = HudState(
+                player=player,
+                inventory=getattr(run, "inventory", None),
+                depth_name=depth_name,
+                depth_number=getattr(run, "next_depth_number", 1),
+                depth_total=getattr(run, "depth_total", 6),
+                fps=60.0,
+            )
+            self.hud.draw(screen, vp, state)
+        except (KeyError, ValueError, AttributeError, pygame.error):
+            pass
+
+        # 7. Speech bubbles and the boss banner (Card G02)
+        from src.hud import draw_boss_banner, draw_speech_bubbles
+        from src import ui
+
+        draw_speech_bubbles(screen, ui.font(12), getattr(run, "bubbles", []), cam_x, cam_y)
+        draw_boss_banner(screen, ui.font(18, bold=True), getattr(run, "boss_banner", None))

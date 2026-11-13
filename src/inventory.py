@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 
+from src.samples import SAMPLE_ALIASES, SAMPLE_STACK, SAMPLES
 from src.wand import Wand, WandSpec
 
 MAX_WANDS = 4
@@ -37,23 +38,103 @@ class Inventory:
         self.bag: list[str | None] = [None] * BAG_SIZE
         self.counts: list[int] = [0] * BAG_SIZE  # stack size per bag slot (0 = empty)
         self.samples: list[tuple[str, int] | None] = [None] * 12  # sample slots (Contract V11)
+        self.rerolls: int = 0
         self.active = 0
 
     def add_sample(self, key: str, count: int = 1) -> int:
         """Stack sample key (up to 99 per slot across 12 slots) and return added count (Card A04)."""
-        raise NotImplementedError("Card A04")
+        if count <= 0:
+            return 0
+
+        key = SAMPLE_ALIASES.get(key, key)
+        if key not in SAMPLES:
+            return 0
+
+        # First, stack onto existing slots with the same sample
+        remaining = count
+        for i in range(len(self.samples)):
+            slot = self.samples[i]
+            if slot is not None and slot[0] == key:
+                current_count = slot[1]
+                space_in_slot = SAMPLE_STACK - current_count
+                if space_in_slot > 0:
+                    add_amount = min(space_in_slot, remaining)
+                    self.samples[i] = (key, current_count + add_amount)
+                    remaining -= add_amount
+                    if remaining == 0:
+                        return count
+                else:
+                    # Slot is full, continue to next slot
+                    pass
+
+        # Then fill empty slots
+        for i in range(len(self.samples)):
+            if self.samples[i] is None and remaining > 0:
+                fill_amount = min(SAMPLE_STACK, remaining)
+                self.samples[i] = (key, fill_amount)
+                remaining -= fill_amount
+                if remaining == 0:
+                    return count
+
+        # If we get here, we've filled all slots but still have some remaining
+        return count - remaining
 
     def sample_count(self, key: str) -> int:
         """Return total count of sample key across all sample slots (Card A04)."""
-        raise NotImplementedError("Card A04")
+        key = SAMPLE_ALIASES.get(key, key)
+        total = 0
+        for slot in self.samples:
+            if slot is not None and slot[0] == key:
+                total += slot[1]
+        return total
 
     def total_samples(self) -> dict[str, int]:
         """Return {sample_key: total_count} for all carried samples (Card A04)."""
-        raise NotImplementedError("Card A04")
+        result = {}
+        for slot in self.samples:
+            if slot is not None:
+                key, count = slot
+                if key in result:
+                    result[key] += count
+                else:
+                    result[key] = count
+        return result
 
     def take_samples(self, cost: dict[str, int]) -> bool:
         """Atomically deduct sample counts if all requirements in cost are met (Card A04)."""
-        raise NotImplementedError("Card A04")
+        # First check if we have enough samples
+        for key, need in cost.items():
+            key = SAMPLE_ALIASES.get(key, key)
+            if self.sample_count(key) < need:
+                return False
+
+        # Now deduct the samples from the end to the beginning (as per V11 specification)
+        # Create a copy of samples to work with
+        samples_copy = [slot[:] if slot is not None else None for slot in self.samples]
+
+        # Process each sample type in cost
+        for key, need in cost.items():
+            key = SAMPLE_ALIASES.get(key, key)
+            remaining = need
+
+            # Go from the end to the beginning
+            for i in range(len(samples_copy) - 1, -1, -1):
+                slot = samples_copy[i]
+                if slot is not None and slot[0] == key:
+                    current_count = slot[1]
+                    take_amount = min(current_count, remaining)
+                    new_count = current_count - take_amount
+                    if new_count == 0:
+                        samples_copy[i] = None
+                    else:
+                        samples_copy[i] = (key, new_count)
+                    remaining -= take_amount
+                    if remaining == 0:
+                        break
+
+        # If we've successfully deducted all samples, update the inventory
+        self.samples = samples_copy
+        return True
 
     @property
     def wand(self) -> Wand:

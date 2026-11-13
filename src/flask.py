@@ -42,8 +42,13 @@ DRINK_EFFECTS: dict[str, tuple[float, float, str]] = {
     "oil": (0.0, 0.0, "Öl. Du fühlst dich geschmiert."),
     "tinte": (0.0, 0.0, "Tinte. Deine Zunge ist jetzt blau."),
     "stempelfarbe": (0.0, 0.0, "Stempelfarbe. Du fühlst dich genehmigt."),
-    "siegellack": (0.0, 5.0, "Siegellack. Dein Mund ist jetzt versiegelt."),
+    "siegellack": (0.0, 15.0, "Siegellack. Dein Mund ist jetzt versiegelt."),
     "fluxschnaps": (0.0, 0.0, "Flux-Schnaps. Die Welt dreht sich ein bisschen."),
+    "brausesirup": (0.0, 0.0, "Brausesirup. Sprudelnd!"),
+    "kaugummi": (0.0, 0.0, "Kaugummi. Klebrig!"),
+    "honig": (0.0, 0.0, "Honig. Süß und warm."),
+    "karamell": (0.0, 10.0, "Karamell. Heiß und klebrig!"),
+    "neonsaft": (0.0, 0.0, "Neonsaft. Aufgedreht!"),
 }
 
 
@@ -177,9 +182,52 @@ class Flask:
         if key == "blood" and blood_heals:
             heal, message = BLOOD_HEAL, "Das Blut stillt deine Wunden."
         share = min(1.0, self.amount / SIP)
-        body.hp = min(body.max_hp, body.hp + heal * share)
+
+        # Apply healing or damage
+        if key == "blood" and blood_heals:
+            # Only blood heals when blood_heals=True
+            body.hp = min(body.max_hp, body.hp + heal * share)
+        elif key != "blood" and heal > 0:
+            # Regular liquids that can heal (like mucus)
+            body.hp = min(body.max_hp, body.hp + heal * share)
         if damage:
             body.hurt(damage * share, f"Getrunken: {self.name_de}")
+
+        # Apply status effects based on the liquid
+        if key == "water":
+            body.burning = 0.0
+            body.refresh_time = 15.0
+        elif key == "oil" or key == "tallow":
+            body.oily = 8.0
+            body.lubed_time = 15.0
+        elif key == "fluxschnaps":
+            body.drunk = 20.0
+        elif key == "acid":
+            # Damage already applied above, just return message
+            pass
+        elif key == "blood":
+            # Only heal if blood_heals=True - this is handled above
+            pass
+        elif key == "tinte":
+            body.ink_sight = 20.0
+        elif key == "stempelfarbe":
+            body.stamped_good = 15.0
+            body.stamped_bad = 0.0
+        elif key == "siegellack":
+            # Damage already applied above, just return message
+            pass
+        elif key == "brausesirup":
+            body.fizzy_time = 20.0
+        elif key == "kaugummi":
+            body.sticky = 5.0
+        elif key == "honig":
+            body.mana = min(body.max_mana, body.mana + 100.0)
+        elif key == "karamell":
+            body.sticky = 5.0
+            # Damage already applied above, just return message
+        elif key == "neonsaft":
+            body.haste_time = 20.0
+
         if key == "magma":
             body.burning = 3.0
         else:

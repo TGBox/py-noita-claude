@@ -37,18 +37,61 @@ class Records:
     best_ng: int = 0  # highest New Game+ loop won
     blocks: list[str] = field(default_factory=list)  # Kodex: blocks ever found
     creatures: dict[str, int] = field(default_factory=dict)  # Kodex: kills per species
-    blueprints: list[str] = field(default_factory=list)  # unlocked fabricator blueprints (Contract V23)
+    blueprints: list[str] = field(
+        default_factory=list
+    )  # unlocked fabricator blueprints (Contract V23)
     universes: list[str] = field(default_factory=list)  # visited universes (Contract V23)
     evil_selves: list[str] = field(default_factory=list)  # defeated evil selves (Contract V23)
     badges: int = 0  # collected authority badges (Contract V23)
     best_rank: str = "Praktikantin"  # highest rank achieved (Contract V23)
+    endings: list[str] = field(default_factory=list)  # unlocked endings (Contract V23)
 
-    def discover(self, kind: str, key: str) -> bool:
-        """Note a find for the Kodex. Returns True the first time."""
+    def discover(self, kind: str, key: str = "") -> bool:
+        """Note a find for the Kodex (Contract V23). Returns True if new/incremented."""
         if kind == "block":
             if key in self.blocks:
                 return False
             self.blocks.append(key)
+            return True
+        if kind == "blueprint":
+            if key in self.blueprints:
+                return False
+            self.blueprints.append(key)
+            return True
+        if kind == "universe":
+            if key in self.universes:
+                return False
+            self.universes.append(key)
+            return True
+        if kind == "evil_self":
+            if key in self.evil_selves:
+                return False
+            self.evil_selves.append(key)
+            return True
+        if kind == "badge":
+            self.badges += 1
+            return True
+        if kind == "ending":
+            if key in self.endings:
+                return False
+            self.endings.append(key)
+            return True
+        if kind == "creature":
+            if key == "":
+                if kind in self.blocks:
+                    return False
+                self.blocks.append(kind)
+                return True
+            first = key not in self.creatures
+            self.creatures[key] = self.creatures.get(key, 0) + 1
+            self.kills += 1
+            return first
+
+        # Fallback for legacy 1-arg calls or unknown kind:
+        if key == "":
+            if kind in self.blocks:
+                return False
+            self.blocks.append(kind)
             return True
         first = key not in self.creatures
         self.creatures[key] = self.creatures.get(key, 0) + 1
@@ -98,7 +141,7 @@ class Records:
             return []
         lines = [
             f"Läufe: {self.runs}   Siege: {self.wins}   Tiefste Tiefe: {self.best_depth}",
-            f"Getötet: {self.kills}   Blutperlen: {self.pearls}",
+            f"Getötet: {self.kills}   Gold: {self.pearls}",
         ]
         extras = []
         if self.best_time:
@@ -215,10 +258,22 @@ def compute_score(
     true_ending: bool = False,
 ) -> int:
     """Compute final run score according to Contract V23 (Card G04)."""
-    raise NotImplementedError("Card G04")
+    return (
+        max(0, depth - 1) * 80
+        + kills * 5
+        + (gold // 5)
+        + samples_collected * 10
+        + challenges_won * 75
+        + bosses_killed * 120
+        + (300 if victory else 0)
+        + (500 if true_ending else 0)
+    )
 
 
 def rank_for_score(score: int) -> str:
     """Return highest German rank title whose threshold <= score (Card G04)."""
-    raise NotImplementedError("Card G04")
-
+    best = RANKS[0][1]
+    for threshold, title in RANKS:
+        if score >= threshold:
+            best = title
+    return best

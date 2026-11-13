@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import math
 import random
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 
 from src import materials as mat
-from src.body import BURN_TIME, PLAYER_TEAM, Body
+from src.body import BURN_TIME, ENEMY_TEAM, PLAYER_TEAM, Body
 from src.materials import AIR, KIND, LIQUID, STOPS_PROJECTILE
 from src.spells import TIMER_DELAY, Block, Category, Trigger
 from src.wand import Shot
@@ -18,6 +18,7 @@ MAX_PROJECTILES = 256
 HOMING_TURN_RATE = 7.0  # radians per second
 FLIPPED_GRAVITY = 300.0  # px/s^2 for forms that normally fly straight
 BOUNCE_DAMPING = 0.55
+RUBBER_MAX_BLAST = 6  # Gummiwelt: sparks with a tiny blast bounce too, bombs do not
 WALL_BOUNCE_DAMPING = 0.85  # bounces from the "Abprall" modifier keep more speed
 PELLET_SPREAD = 0.22  # radians
 CHAIN_RANGE = 90.0  # px a chain spark can leap
@@ -69,6 +70,9 @@ class Projectile:
     hit_ids: set[int] = field(default_factory=set)
     wet: bool = False  # flew through liquid (Nässe-Nerv)
     owner_species: str = ""  # creature species that fired this projectile (Contract V4, Card A11)
+    source_pos: tuple[float, float] | None = (
+        None  # position where the projectile was fired from (Card A11)
+    )
     from_player: bool = True  # compatibility flag for player vs enemy projectile origin
 
     @property
@@ -77,7 +81,14 @@ class Projectile:
         return isinstance(self.form, Block) and self.form.bounces > 0
 
 
-def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM) -> Projectile:
+def build(
+    shot: Shot,
+    x: float,
+    y: float,
+    angle: float,
+    team: str = PLAYER_TEAM,
+    resolve: Callable[[Block], str | None] | None = None,
+) -> Projectile:
     """Apply a shot's modifiers to its form and launch it."""
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
@@ -103,8 +114,9 @@ def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM)
         if block.category is Category.TRIGGER:
             trigger = block.trigger
             timer = block.timer
-        if block.material is not None:
-            material = mat.id_of(block.material)
+        key = resolve(block) if resolve is not None else block.material
+        if key is not None:
+            material = mat.id_of(key)
     angle += shot.angle_offset
     return Projectile(
         form=form,
@@ -144,6 +156,7 @@ class ProjectileSystem:
         self._pending: list[Projectile] = []
         self._blasts: list[Blast] = []
         self._rng = random.Random()
+        self.payload_resolver: Callable[[Block], str | None] | None = None
         self.healing = 0.0  # life stolen for the player since the last ``take_healing``
         self.teleports: list[tuple[float, float]] = []  # where player teleport bolts ended
         self.player_damage = 1.0  # factor on the player's projectile damage (perks)
@@ -175,9 +188,11 @@ class ProjectileSystem:
                 extra = sum(m.spread_bonus for m in shot.modifiers)
                 if extra:
                     spread += self._rng.uniform(-extra, extra)
-                projectile = build(shot, x, y, angle + spread, team)
+                resolver = self.payload_resolver if team == PLAYER_TEAM else None
+                projectile = build(shot, x, y, angle + spread, team, resolve=resolver)
                 projectile.gravity *= self.gravity_scale
-                projectile.bounces += self.bounce_bonus.get(team, 0)
+                if projectile.blast <= RUBBER_MAX_BLAST:  # real bombs still blow up on walls
+                    projectile.bounces += self.bounce_bonus.get(team, 0)
                 projectile.damage *= damage_factor
                 if pellets > 1:
                     factor = self._rng.uniform(0.8, 1.1)
@@ -238,6 +253,10 @@ class ProjectileSystem:
             nx, ny = p.x + dx / steps, p.y + dy / steps
             if not p.fused:
                 victim = _body_at(bodies, p.team, nx, ny, p.hit_ids)
+                if victim is not None and p.team == PLAYER_TEAM and getattr(victim, "dodge_charges", 0) > 0:
+                    victim.dodge_charges -= 1  # F17: Klonita warned it, the shot flies past
+                    p.hit_ids.add(id(victim))
+                    victim = None
                 if victim is not None:
                     self._hit_body(p, victim, world, bodies)
                     if not p.pierce:
@@ -316,6 +335,16 @@ class ProjectileSystem:
             victim.burning = BURN_TIME
         if p.lifesteal and p.team == PLAYER_TEAM:
             self.healing += damage * p.lifesteal
+        # Card C15: Creature projectile status effects
+        if not p.from_player or p.team != PLAYER_TEAM or p.owner_species:
+            species = p.owner_species
+            target_body = getattr(victim, "body", victim)
+            if species in ("stempler", "agent_streife", "agent_sachbearbeiter", "oberstempler", "aktenwolf"):
+                target_body.stamped_bad = max(target_body.stamped_bad, 10.0)
+            elif species in ("harzspucker", "harzgeneral"):
+                target_body.sticky = max(target_body.sticky, 5.0)
+            elif species in ("orgelaal", "glockenqualle", "glockenwaechter"):
+                target_body.charged = max(target_body.charged, 4.0)
 
     def _bounce(self, p: Projectile, world: World, nx: float, ny: float) -> None:
         if p.trigger is Trigger.IMPACT and not p.released:
@@ -403,4 +432,32 @@ def update_projectiles(
     out_events: list[tuple[str, dict[str, object]]] | None = None,
 ) -> None:
     """Update projectiles and apply creature projectile status effects (Card C15)."""
-    raise NotImplementedError("Card C15")
+    system = ProjectileSystem()
+    system.items = list(projectiles)
+
+    bodies: list[Body] = []
+    player_body = getattr(player, "body", player)
+    if isinstance(player_body, Body):
+        bodies.append(player_body)
+    creatures = getattr(enemies, "creatures", [])
+    for c in creatures:
+        c_body = getattr(c, "body", c)
+        if isinstance(c_body, Body):
+            bodies.append(c_body)
+
+    for p in projectiles:
+        # If projectile has no team set explicitly or matches PLAYER_TEAM but from_player is False
+        if not p.from_player and p.team == PLAYER_TEAM:
+            p.team = ENEMY_TEAM
+
+    aim = (0.0, 0.0)
+    if hasattr(player, "aim"):
+        aim = getattr(player, "aim")
+    elif hasattr(player, "center"):
+        aim = getattr(player, "center")
+
+    system.update(world, dt, aim, bodies)
+
+    # Keep projectiles list synchronized
+    projectiles.clear()
+    projectiles.extend(system.items)

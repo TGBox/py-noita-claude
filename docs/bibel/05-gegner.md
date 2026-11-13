@@ -323,7 +323,7 @@ Jedes böse Ich kämpft in einer eigenen kleinen Heimatwelt (ca. 1280×720). Es 
 - Leben 3500.
 - Kräfte: Leibwächter-Klone (schwächere Cloitas, `agent`-Verhalten), Goldregen (Münzen als Geschosse – man kann sie auch aufsammeln), Umhang-Sprint durch die Arena.
 - Phase 4: setzt sich auf den Thron, der zur Kanone wird.
-- Eigenheit: verhandelt – bietet Cloita in Phase 2 „die Hälfte des Multiversums“ an (Annehmen = Spiel endet mit bösem Ende, Archiv-Eintrag).
+- Eigenheit: verhandelt – bietet Cloita in Phase 2 „die Hälfte des Multiversums“ an (Annehmen = Spiel endet mit bösem Ende, Archiv-Eintrag). Gilt auch für ihr Echo.
 
 **Die Gütige Cloita (`boese_gute`)** – Heimat: weiße Kathedrale aus Licht (Regel `rule_darkness` umgekehrt: alles hell, Licht schadet).
 
@@ -342,7 +342,7 @@ Alle bösen Ichs tragen irgendwo das Siegel der Behörde (Hinweis aufs wahre End
 
 ## Wahres Ende: Der Rat der bösen Ichs (`rat`)
 
-Nur mit allen 6 Erinnerungssplittern eines Laufs. Nach dem Sieg über das böse Ich öffnet sich das Portal zum **Hauptquartier der Behörde**: ein endloser Aktensaal, an dessen Ende der Rat tagt. Kein Werkstatt-Besuch dazwischen; Cloita wird aber voll geheilt („Die Splitter erinnern sich an dich“).
+Zugang wie in Kapitel 02 („Wahres Ende“): alle 6 Erinnerungssplitter, mindestens 3 Dienstausweise oder Fahndungsstufe 4+. Nach dem Sieg über das böse Ich öffnet sich das Portal zum **Hauptquartier der Behörde**: ein endloser Aktensaal, an dessen Ende der Rat tagt. Kein Werkstatt-Besuch dazwischen; Cloita wird aber voll geheilt („Die Splitter erinnern sich an dich“).
 
 **Stufe 1 – Die Anhörung:** Ein Gremium aus 5 maskierten Behörden-Räten (Agenten-Optik mit Roben) sitzt hinter einem langen Pult. Sie schicken Wellen von Agenten und lassen Formulare regnen. Jeder Rat, der fällt, verliert die Maske: darunter eine weitere Cloita (je eine kurze Zeile: „Ich war die Cloita, die *nie* das Labor aufgeräumt hat.“).
 

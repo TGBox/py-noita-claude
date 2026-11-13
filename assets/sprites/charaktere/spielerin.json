@@ -1,0 +1,75 @@
+{
+  "frame_size": [
+    20,
+    24
+  ],
+  "anchor": [
+    10,
+    22
+  ],
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 4,
+      "fps": 6.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "walk": {
+      "row": 1,
+      "frames": 4,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "jump": {
+      "row": 2,
+      "frames": 2,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "fall": {
+      "row": 3,
+      "frames": 2,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "cast": {
+      "row": 4,
+      "frames": 3,
+      "fps": 10.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "hurt": {
+      "row": 5,
+      "frames": 2,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "dead": {
+      "row": 6,
+      "frames": 1,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    }
+  },
+  "glow": [
+    {
+      "offset": [
+        14,
+        12
+      ],
+      "color": [
+        220,
+        220,
+        255
+      ],
+      "radius": 12
+    }
+  ]
+}

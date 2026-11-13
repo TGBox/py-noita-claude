@@ -1,0 +1,1287 @@
+"""Signature terrain of the six MVP universes on top of the organism caves (bible 03).
+
+The organism generator builds the caves (proven in play); this module gives every
+universe the few things that make it recognisable. It works in two phases:
+
+- ``shape`` runs right after the caves exist: it carves and builds solid features
+  (islands, the kitchen floor, the dance floor, the bell tower ...). Arenas and the
+  quest giver are chosen afterwards on the final terrain.
+- ``flood`` runs after the paths are guaranteed: it pours the liquids (syrup sea,
+  flooded nave, ink lakes, acid pools) that the player swims or wades through.
+
+``keep`` lists (x, y, radius) circles that stay untouched: spawn, anchor point,
+arenas, quest giver. All writes go straight into ``world.grid`` (the native core
+views that buffer); the caller wakes the world afterwards.
+"""
+
+from __future__ import annotations
+
+import math
+import random
+from collections import deque
+from typing import Any
+
+from src import materials as mat
+from src.world import BORDER
+
+Keep = list[tuple[int, int, int]]
+SKIN = 6  # Aktenhalde: burnable paper only this deep behind any open cell
+
+
+class _Cells:
+    """Small helper around the world buffer (bounds, solid test, keep-out circles)."""
+
+    def __init__(self, world: Any, keep: Keep) -> None:
+        self.w, self.h, self.g = world.width, world.height, world.grid
+        self.keep = keep
+        self.world = world
+        self.level: Any = None
+
+    def inside(self, x: int, y: int) -> bool:
+        return BORDER <= x < self.w - BORDER and BORDER <= y < self.h - BORDER
+
+    def get(self, x: int, y: int) -> int:
+        return self.g[y * self.w + x] if self.inside(x, y) else mat.BEDROCK
+
+    def put(self, x: int, y: int, value: int) -> None:
+        """Write a cell; keep circles only refuse matter (carving air buries nobody)."""
+        if self.inside(x, y) and (value == mat.AIR or not self.kept(x, y)):
+            self.g[y * self.w + x] = value
+
+    def kept(self, x: int, y: int) -> bool:
+        return any((x - kx) ** 2 + (y - ky) ** 2 < r * r for kx, ky, r in self.keep)
+
+    def solid(self, x: int, y: int) -> bool:
+        return mat.KIND[self.get(x, y)] in (mat.SOLID, mat.POWDER)
+
+    def air(self, x: int, y: int) -> bool:
+        return self.inside(x, y) and self.get(x, y) == mat.AIR
+
+    def ellipse(
+        self, cx: int, cy: int, rx: int, ry: int, value: int, only: set[int] | None = None
+    ) -> None:
+        for y in range(cy - ry, cy + ry + 1):
+            dy = (y - cy) / max(1, ry)
+            half = int(rx * math.sqrt(max(0.0, 1 - dy * dy)))
+            for x in range(cx - half, cx + half + 1):
+                if only is None or self.get(x, y) in only:
+                    self.put(x, y, value)
+
+    def rect(
+        self, x0: int, y0: int, x1: int, y1: int, value: int, only: set[int] | None = None
+    ) -> None:
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                if only is None or self.get(x, y) in only:
+                    self.put(x, y, value)
+
+    def floors(self, x0: int, y0: int, x1: int, y1: int, step: int = 3) -> list[tuple[int, int]]:
+        """Air cells with solid ground right below (every ``step``-th column)."""
+        found = []
+        for x in range(max(BORDER, x0), min(self.w - BORDER, x1), step):
+            for y in range(max(BORDER, y0), min(self.h - BORDER - 1, y1)):
+                if self.air(x, y) and self.solid(x, y + 1):
+                    found.append((x, y))
+        return found
+
+    def ceilings(self, x0: int, y0: int, x1: int, y1: int, step: int = 3) -> list[tuple[int, int]]:
+        """Air cells with solid rock right above."""
+        found = []
+        for x in range(max(BORDER, x0), min(self.w - BORDER, x1), step):
+            for y in range(max(BORDER + 1, y0), min(self.h - BORDER, y1)):
+                if self.air(x, y) and self.solid(x, y - 1):
+                    found.append((x, y))
+        return found
+
+    def pool(self, x: int, y: int, depth: int, liquid: int) -> None:
+        """Fill the hollow around floor cell (x, y) up to ``depth`` cells with ``liquid``."""
+        level = y - depth + 1
+        for dx in (1, -1):
+            cx = x if dx == 1 else x - 1
+            while self.inside(cx, y) and self.air(cx, y) and abs(cx - x) < depth * 6:
+                fy = y
+                while fy + 1 < self.h - BORDER and self.air(cx, fy + 1) and fy - y < depth:
+                    fy += 1
+                if not self.solid(cx, fy + 1):
+                    break  # the hollow is open below here: stop instead of leaking
+                for yy in range(max(level, BORDER), fy + 1):
+                    if self.air(cx, yy):
+                        self.put(cx, yy, liquid)
+                cx += dx
+
+
+def _id(key: str) -> int:
+    return mat.MAT_ID[key]
+
+
+# --------------------------------------------------------------------------- shape
+
+
+def shape(
+    world: Any, key: str, rng: random.Random, keep: Keep, level: Any = None
+) -> dict[str, Any]:
+    """Build the solid signature features of ``key``; returns state for ``flood``.
+
+    The first two ``keep`` circles are spawn and exit: after the big carving they get a
+    ledge to stand on, so nobody starts or ends on a floating leftover of the caves."""
+    builder = _SHAPERS.get(key)
+    if builder is None:
+        return {}
+    cells = _Cells(world, keep)
+    cells.level = level  # the organism level under the features (spawn, exit, arena, vault)
+    state = builder(cells, rng)
+    ledge = _id(PERCH.get(key, "rock"))
+    for x, y, r in keep[:2]:
+        _perch(cells, x, y, r, ledge)
+    return state
+
+
+PERCH = {
+    "fleischwelt": "bone",
+    "aktenhalde": "aktendeckel",
+    "glibbria": "zuckerguss",
+    "kruemelreich": "kruemel",
+    "sporenklub": "pilzhut",
+    "abtei": "mauerwerk",
+}
+
+
+def _perch(c: _Cells, x: int, y: int, r: int, ledge: int) -> None:
+    """Give the body at (x, y) ground: a ledge right under it if the carving left air."""
+    for fy in range(y, y + r + 4):
+        if c.solid(x, fy):
+            return  # standing on something already
+    feet = y + r // 2 + 3  # just below the feet of a body centred at (x, y)
+    for yy in range(feet, feet + 4):
+        for xx in range(x - 16, x + 17):
+            if c.inside(xx, yy) and c.get(xx, yy) == mat.AIR:
+                c.g[yy * c.w + xx] = ledge
+
+
+def _shape_fleischwelt(c: _Cells, rng: random.Random) -> dict[str, Any]:
+    """Schlund: rows of enamel teeth on the cave ceilings and floors of the upper third."""
+    enamel = _id("enamel")
+    band = c.h // 3
+    for x, y in c.ceilings(0, 0, c.w, band, step=7):
+        if rng.random() < 0.55:
+            _tooth(c, x, y, 1, rng.randint(4, 9), enamel)
+    for x, y in c.floors(0, 0, c.w, band, step=9):
+        if rng.random() < 0.3:
+            _tooth(c, x, y, -1, rng.randint(3, 6), enamel)
+    level = c.level
+    avoid = [(kx, ky, r + 60) for kx, ky, r in c.keep]
+    spots = ((getattr(level, "arena", None), 160), (getattr(level, "vault", None), 100))
+    for spot, radius in spots:
+        if spot:
+            avoid.append((spot[0], spot[1], radius))
+
+    def clear(x: int, y: int, reach: int) -> bool:
+        return all(math.dist((x, y), (ax, ay)) > reach + r for ax, ay, r in avoid)
+
+    state: dict[str, Any] = {"caches": []}
+    bone, flesh = _id("bone"), _id("flesh")
+    for _ in range(120):  # Magen: the stomach lake (flood pours the acid)
+        rx, ry = rng.randint(90, 120), rng.randint(38, 48)
+        cx = rng.randint(rx + 30, c.w - rx - 30)
+        cy = rng.randint(int(c.h * 0.42), int(c.h * 0.6))
+        if not clear(cx, cy, rx):
+            continue
+        c.ellipse(cx, cy, rx, ry, mat.AIR)
+        for x in range(cx - rx + 24, cx + rx - 30, 36):  # rib stones across the acid
+            if abs(x + 6 - cx) > 22:
+                c.rect(x, cy + 6, x + 12, cy + 9, bone)
+        c.rect(cx - 9, cy + 4, cx + 9, cy + ry, bone, only={mat.AIR})  # islet with the cache
+        state["lake"] = (cx, cy, rx, ry)
+        state["caches"].append((cx, cy + 2))
+        avoid.append((cx, cy, rx + 30))
+        break
+    spawn = c.keep[0][:2] if c.keep else (c.w // 2, 0)
+    for _ in range(200):  # Knochenmark: the round bone hall of the mid-boss
+        r = BONE_HALL_RADIUS
+        cx = rng.randint(r + 30, c.w - r - 30)
+        cy = rng.randint(int(c.h * 0.68), c.h - r - 24)
+        if not clear(cx, cy, r) or math.dist((cx, cy), spawn) < c.w * 0.3:
+            continue
+        c.ellipse(cx, cy, r + 5, r + 5, bone)
+        c.ellipse(cx, cy, r, r, mat.AIR)
+        floor = cy + int(r * 0.55)
+        c.ellipse(cx, cy, r, r, flesh, only={mat.AIR})  # refill ...
+        for y in range(cy - r, floor):  # ... and hollow out above the flesh floor
+            half = int(r * math.sqrt(max(0.0, 1 - ((y - cy) / r) ** 2)))
+            c.rect(cx - half, y, cx + half + 1, y + 1, mat.AIR)
+        for side in (-1, 1):  # two doors at floor level, each a passage to the next cave
+            edge = cx + side * int(r * 0.83)
+            reach = next((d for d in range(16, 220) if c.air(edge + side * d, floor - 10)), 16)
+            far = edge + side * reach
+            c.rect(min(edge, far), floor - 24, max(edge, far) + 1, floor, mat.AIR)
+        state["mid_arena"] = (cx - r + 8, floor - 60, cx + r - 8, floor)
+        break
+    return state
+
+
+BONE_HALL_RADIUS = 52  # Fleischwelt: the mid-boss's round bone hall
+
+
+def _tooth(c: _Cells, x: int, y: int, direction: int, length: int, value: int) -> None:
+    """A pointed tooth growing from (x, y) downwards (1) or upwards (-1)."""
+    for k in range(length):
+        half = max(0, (length - k) // 3)
+        for dx in range(-half, half + 1):
+            if c.air(x + dx, y + k * direction):
+                c.put(x + dx, y + k * direction, value)
+
+
+def _shape_aktenhalde(c: _Cells, rng: random.Random) -> dict[str, Any]:
+    """Registratur, Grossraumbuero and Archivkeller (bible 03) on top of the paper caves.
+
+    - Registratur (left third): shelf boards across the open caves, loaded with stacks of
+      files (burnable cover and fuel).
+    - Grossraumbuero (middle third): the Sitzungssaal, a flat hall with conference tables
+      and galleries (the mid-boss arena), and desks on the cave floors around it.
+    - Two Rohrpost shafts between the thirds: fast ways up and down with rest ledges.
+    - Aktenschraenke everywhere: small lockers in the walls behind a paper door (burn or
+      dig it open); the caller puts loot into ``state["caches"]``.
+    """
+    board, paper = _id("aktendeckel"), _id("papier")
+    third = c.w // 3
+    hall = _conference_hall(c, rng, third + 26, 2 * third - 26, board, paper)
+    for x in (third, 2 * third):
+        _tube(c, x + rng.randint(-8, 8), c.h // 9, c.h - c.h // 9, board, avoid=hall)
+    for y in range(c.h // 8, c.h - 20, 34):
+        x = BORDER
+        while x < third - 12:
+            length, gap = rng.randint(18, 28), rng.randint(12, 18)
+            probes = (x, x + length // 2)
+            if all(c.air(xx, y) and c.air(xx, y - 6) and c.air(xx, y + 6) for xx in probes):
+                c.rect(x, y, x + length, y + 2, board, only={mat.AIR})
+                for _ in range(rng.randint(1, 2)):  # stacks of files on the board
+                    sx, wide = x + rng.randint(1, length - 7), rng.randint(3, 6)
+                    c.rect(sx, y - rng.randint(3, 8), sx + wide, y, paper, only={mat.AIR})
+            x += length + gap
+    _desks(c, rng, third + 12, 2 * third - 12, board, paper, hall)
+    state: dict[str, Any] = {"caches": _lockers(c, rng, board, paper, hall)}
+    if hall is not None:
+        state["mid_arena"] = hall
+    return state
+
+
+HALL_SIZE = (208, 62)  # Sitzungssaal interior (cells): well below one screen (640 x 360)
+GLAZE_STONES = 18  # Glibbria: sugar-glaze stepping stones between the islands
+TUBE_WIDTH = 14  # Rohrpost shaft interior
+LOCKER_SIZE = (14, 10)  # Aktenschrank interior
+LOCKERS = 7
+# Aktenhalde "Brandabschnitte": ink-paper lines cut the paper into sections (cells)
+FIREBREAK_CELL = (160, 120)
+FIREBREAK_THICKNESS = 3
+
+
+def _conference_hall(
+    c: _Cells, rng: random.Random, x0: int, x1: int, board: int, paper: int
+) -> tuple[int, int, int, int] | None:
+    """Carve the Sitzungssaal where the caves are most open (so it becomes a junction),
+    away from spawn and exit. Paper floor on cardboard, tables and two galleries."""
+    wide, high = min(HALL_SIZE[0], x1 - x0), HALL_SIZE[1]
+    if wide < 120:
+        return None
+    best, best_open = None, -1.0
+    for _ in range(24):
+        left = rng.randint(x0, x1 - wide)
+        top = rng.randint(c.h // 6, c.h - c.h // 6 - high)
+        cx, cy = left + wide // 2, top + high // 2
+        if any(abs(cx - kx) < wide // 2 + r + 30 and abs(cy - ky) < high // 2 + r + 30
+               for kx, ky, r in c.keep):  # fmt: skip
+            continue
+        if c.keep and math.dist((cx, cy), c.keep[0][:2]) < c.w * 0.28:
+            continue  # the mid-boss lives here: not right next to the start
+        probes = [(x, y) for y in range(top, top + high, 6) for x in range(left, left + wide, 6)]
+        cells = [c.air(x, y) for x, y in probes]
+        share = sum(cells) / len(cells)
+        if share > best_open:
+            best, best_open = (left, top), share
+    if best is None:
+        return None
+    left, top = best
+    right, floor = left + wide, top + high
+    c.rect(left, top, right, floor, mat.AIR)
+    c.rect(left - 2, floor + 2, right + 2, floor + 5, board)  # cardboard under ...
+    c.rect(left - 2, floor, right + 2, floor + 2, paper)  # ... a paper floor that can burn
+    c.rect(left - 2, top - 3, right + 2, top, board, only=_solids())  # ceiling beam
+    tables = max(2, wide // 62)
+    for i in range(tables):  # conference tables: hop on, fight from, hide behind
+        tx = left + (i + 1) * wide // (tables + 1) + rng.randint(-6, 6)
+        half = rng.randint(11, 15)
+        c.rect(tx - half, floor - 10, tx + half, floor - 8, board)
+        for leg in (tx - half + 2, tx + half - 4):
+            c.rect(leg, floor - 8, leg + 2, floor, board)
+        if rng.random() < 0.7:  # a stack of files on the table
+            sx = tx + rng.randint(-half + 2, half - 7)
+            c.rect(sx, floor - 10 - rng.randint(3, 6), sx + rng.randint(3, 5), floor - 10, paper)
+    for side, gy in ((0, floor - 27), (1, floor - 27), (0, floor - 44), (1, floor - 44)):
+        length = rng.randint(34, 50) if gy == floor - 27 else rng.randint(22, 32)
+        gx = left if side == 0 else right - length
+        c.rect(gx, gy, gx + length, gy + 2, board)  # galleries along both walls
+    return (left, top, right, floor)
+
+
+def _solids() -> set[int]:
+    return {i for i, kind in enumerate(mat.KIND) if kind in (mat.SOLID, mat.POWDER)}
+
+
+def _in_rect(rect: tuple[int, int, int, int] | None, x: int, y: int, pad: int = 0) -> bool:
+    return rect is not None and (
+        rect[0] - pad <= x < rect[2] + pad and rect[1] - pad <= y < rect[3] + pad
+    )
+
+
+def _tube(
+    c: _Cells, x: int, y0: int, y1: int, board: int,
+    avoid: tuple[int, int, int, int] | None = None,
+) -> None:  # fmt: skip
+    """A Rohrpost shaft: a straight vertical way through the paper with cardboard walls
+    (only where there was paper: caves it crosses stay open) and rest ledges for
+    levitating up."""
+    half = TUBE_WIDTH // 2
+    solid = _solids() - {mat.BEDROCK}
+    for y in range(y0, y1):
+        if _in_rect(avoid, x, y, half + 4):
+            continue
+        for wx in (*range(x - half - 2, x - half), *range(x + half, x + half + 2)):
+            if c.get(wx, y) in solid:
+                c.put(wx, y, board)
+        c.rect(x - half, y, x + half, y + 1, mat.AIR)
+        if (y - y0) % 30 == 29:
+            left = ((y - y0) // 30) % 2 == 0
+            lx = x - half if left else x + half - 5
+            c.rect(lx, y, lx + 5, y + 2, board)
+
+
+def _desks(
+    c: _Cells, rng: random.Random, x0: int, x1: int, board: int, paper: int,
+    hall: tuple[int, int, int, int] | None,
+) -> None:  # fmt: skip
+    """Grossraumbuero: desks on the cave floors (small platforms, some with files)."""
+    floors = c.floors(x0, BORDER, x1, c.h - BORDER, step=11)
+    rng.shuffle(floors)
+    placed: list[tuple[int, int]] = []
+    for x, y in floors:
+        if len(placed) >= 16:
+            break
+        if _in_rect(hall, x, y, 12):
+            continue
+        if any(abs(x - px) < 40 and abs(y - py) < 24 for px, py in placed):
+            continue
+        room = [(xx, yy) for xx in range(x - 9, x + 10, 3) for yy in range(y - 30, y - 6, 4)]
+        if not all(c.air(xx, yy) for xx, yy in room):
+            continue  # needs room for the desk and a standing body on it
+        feet = [next((d for d in range(1, 8) if c.solid(lx, y + d)), 0) for lx in (x - 8, x + 8)]
+        if not all(feet):
+            continue  # too steep for a desk
+        c.rect(x - 9, y - 9, x + 10, y - 7, board)
+        for leg, drop in zip((x - 8, x + 7), feet, strict=True):
+            c.rect(leg, y - 7, leg + 2, y + drop, board, only={mat.AIR})
+        if rng.random() < 0.5:
+            sx = x + rng.randint(-7, 3)
+            c.rect(sx, y - 9 - rng.randint(2, 5), sx + rng.randint(3, 5), y - 9, paper)
+        placed.append((x, y))
+
+
+def _lockers(
+    c: _Cells, rng: random.Random, board: int, paper: int,
+    hall: tuple[int, int, int, int] | None,
+) -> list[tuple[int, int]]:  # fmt: skip
+    """Aktenschraenke: cardboard boxes inside the paper walls right next to a cave, closed
+    by a paper door towards the cave. Returns the floor centre inside each locker."""
+    wide, high = LOCKER_SIZE
+    found: list[tuple[int, int]] = []
+    for _ in range(4000):
+        if len(found) >= LOCKERS:
+            break
+        x, y = rng.randint(BORDER + 8, c.w - BORDER - wide - 8), rng.randint(40, c.h - 40 - high)
+        box = (x - 2, y - 2, x + wide + 2, y + high + 2)
+        if any(abs(x - fx) < 150 and abs(y - fy) < 110 for fx, fy in found):
+            continue
+        if _in_rect(hall, x + wide // 2, y + high // 2, 30):
+            continue
+        # the door must not sit on a firebreak line (ink paper does not burn)
+        if any((yy % FIREBREAK_CELL[1]) < FIREBREAK_THICKNESS for yy in range(y + 1, y + high)):
+            continue
+        cells = [(xx, yy) for yy in range(box[1], box[3], 2) for xx in range(box[0], box[2], 2)]
+        if any(c.get(xx, yy) != paper or c.kept(xx, yy) for xx, yy in cells):
+            continue
+        side = rng.choice((-1, 1))
+        edge = box[0] if side == -1 else box[2] - 1
+        gap = next((d for d in range(1, 7) if c.air(edge + side * d, y + high - 2)), 0)
+        if not gap or not all(c.air(edge + side * gap, yy) for yy in range(y + 2, y + high)):
+            continue
+        cave = edge + side * gap
+        if any((xx % FIREBREAK_CELL[0]) < FIREBREAK_THICKNESS
+               for xx in range(min(edge, cave) - 2, max(edge, cave) + 3)):  # fmt: skip
+            continue
+        c.rect(*box, board)
+        c.rect(x, y, x + wide, y + high, mat.AIR)
+        door = edge if side == -1 else edge - 1  # the two frame columns facing the cave
+        c.rect(door, y + 1, door + 2, y + high, paper)
+        found.append((x + wide // 2, y + high - 1))
+    return found
+
+
+def _shape_glibbria(c: _Cells, rng: random.Random) -> dict[str, Any]:
+    """Floating jelly islands over the syrup sea (bible 03) instead of jelly caves.
+
+    The organism caves are wiped (only the treasure vault survives as a lump); then:
+    a start island under the spawn, a bowl island as mid-boss arena ("Gelee-Schuessel"),
+    an exit island far from the start (in a boss slot: the boss bowl), islands on several
+    heights to bounce between, a few big ones with a chewing-gum cave and a cache inside,
+    domes rising out of the sea as shores, and sugar-glaze stepping stones.
+    """
+    jelly, red, glaze = _id("glibber"), _id("glibber_rot"), _id("zuckerguss")
+    line = int(c.h * SEA_LEVEL)
+    level = c.level
+    vault = getattr(level, "vault", None)
+    lump = _save_lump(c, vault, 56, 36) if vault else None
+    table = bytes(mat.BEDROCK if i == mat.BEDROCK else mat.AIR for i in range(256))
+    for y in range(BORDER, c.h - BORDER):
+        c.g[y * c.w : (y + 1) * c.w] = c.g[y * c.w : (y + 1) * c.w].translate(table)
+    keep, c.keep = c.keep, []  # islands are built below feet: nobody gets buried
+    boxes: list[tuple[int, int, int, int]] = []
+    if lump:
+        boxes.append((vault[0] - 56, vault[1] - 36, vault[0] + 56, vault[1] + 36))
+
+    def free(cx: int, top: int, rx: int, depth: int) -> bool:
+        box = (cx - rx - 22, top - 44, cx + rx + 22, top + depth + 20)
+        if box[0] < BORDER + 4 or box[2] > c.w - BORDER - 4 or box[1] < BORDER + 4:
+            return False
+        return not any(box[0] < o[2] and o[0] < box[2] and box[1] < o[3] and o[1] < box[3]
+                       for o in boxes)  # fmt: skip
+
+    def add(cx: int, top: int, rx: int, depth: int, flat: bool = False) -> None:
+        boxes.append((cx - rx, top - 24, cx + rx, top + depth))
+        _island(c, rng, cx, top, rx, depth, jelly, flat)
+
+    state: dict[str, Any] = {"caches": []}
+    sx, sy = (keep[0][0], keep[0][1] + 9) if keep else (c.w // 2, c.h // 5)  # spawn feet
+    add(sx + rng.randint(-20, 20), sy, rng.randint(64, 80), rng.randint(30, 36), flat=True)
+    far = 1 if sx < c.w // 2 else -1  # the side with more room: exit there, mid-boss opposite
+    if abs(sx - c.w // 2) < c.w // 8:
+        far = rng.choice((-1, 1))
+    boss_slot = getattr(level, "arena", None) is not None
+    for side, radius, role in ((-far, 95, "mid"), (far, 120 if boss_slot else 60, "exit")):
+        for _ in range(60):
+            cx = c.w // 2 + side * rng.randint(int(c.w * 0.2), int(c.w * 0.38))
+            top = rng.randint(int(c.h * 0.42), line - 110)
+            if not free(cx, top, radius, 48):
+                continue
+            if role == "exit" and not boss_slot:
+                add(cx, top, radius, 34, flat=True)
+                state["exit"] = (cx, top - 12)
+            else:
+                add(cx, top, radius, 48, flat=True)
+                floor = _bowl(c, cx, top, radius)
+                rect = (cx - radius + 16, floor - 60, cx + radius - 16, floor)
+                if role == "mid":
+                    state["mid_arena"] = rect
+                else:  # the boss waits in the bowl, the anchor point is behind it
+                    state["arena"] = (cx, floor - 30)
+                    state["exit"] = (cx, floor - 12)
+            break
+    if "exit" in state and len(keep) > 1:
+        keep[1] = (*state["exit"], keep[1][2])
+        state["quest_target"] = state["exit"]  # the cow escort ends on the anchor island
+    tiers = (0.2, 0.37, 0.54, 0.7)
+    columns = list(enumerate(range(90, c.w - 90, 135)))
+    rng.shuffle(columns)
+    for column, x0 in columns:
+        for tier in tiers:
+            if rng.random() < 0.12:
+                continue
+            caves = len(state["caches"])  # at least two gum caves, at most four
+            big = caves < 2 or (caves < 4 and rng.random() < 0.2)
+            rx = rng.randint(86, 104) if big else rng.randint(44, 78)
+            depth = rng.randint(50, 58) if big else rng.randint(22, 40)
+            cx = x0 + rng.randint(-30, 30)
+            top = int(c.h * tier) + (column % 2) * 58 + rng.randint(-26, 26)
+            if top > line - 75 or not free(cx, top, rx, depth):
+                continue
+            add(cx, top, rx, depth)
+            if big:
+                state["caches"].append(_gum_cave(c, rng, cx, top, rx))
+    for _ in range(40):  # Sirupkueste: domes rising out of the sea, the way back up
+        rx, ry = rng.randint(80, 130), rng.randint(50, 70)
+        cx, peak = rng.randint(BORDER + rx, c.w - BORDER - rx), line - int(ry * 0.55)
+        if free(cx, peak, rx, ry):
+            boxes.append((cx - rx, peak - 24, cx + rx, c.h))
+            c.ellipse(cx, line + int(ry * 0.45), rx, ry, jelly)
+    stones = 0
+    for _ in range(400):  # sugar-glaze stepping stones in the gaps (hard: no bounce)
+        x, y = rng.randint(40, c.w - 40), rng.randint(90, line - 60)
+        length = rng.randint(18, 30)
+        if stones < GLAZE_STONES and free(x, y, length // 2 + 30, 3):
+            stones += 1
+            boxes.append((x - length // 2, y - 24, x + length // 2, y + 3))
+            c.rect(x - length // 2, y, x + length // 2, y + 3, glaze)
+    for _ in range(60):  # raspberry jelly lumps
+        x, y = rng.randint(BORDER, c.w - BORDER), rng.randint(BORDER, line)
+        if c.get(x, y) == jelly:
+            c.ellipse(x, y, rng.randint(6, 14), rng.randint(5, 10), red, only={jelly})
+    if lump:
+        _restore_lump(c, lump)
+    sirup = _id("brausesirup")  # the sea is part of the terrain: arenas never end up in it
+    sea = bytes(sirup if i == mat.AIR else i for i in range(256))
+    for y in range(line, c.h - BORDER):
+        c.g[y * c.w : (y + 1) * c.w] = c.g[y * c.w : (y + 1) * c.w].translate(sea)
+    c.keep = keep
+    for kx, ky, _r in keep[:2]:  # room for the body at spawn and anchor point
+        c.rect(kx - 7, ky - 12, kx + 8, ky + 9, mat.AIR)
+    return state
+
+
+def _island(
+    c: _Cells, rng: random.Random, cx: int, top: int, rx: int, depth: int, value: int,
+    flat: bool = False,
+) -> None:  # fmt: skip
+    """A floating island: gently hilly top (flat on request), rounded belly."""
+    p1, p2 = rng.uniform(0, 6.28), rng.uniform(0, 6.28)
+    for x in range(cx - rx, cx + rx + 1):
+        t = (x - cx) / rx
+        edge = math.sqrt(max(0.0, 1 - t * t))
+        hill = 0.0 if flat else 3.5 * math.sin(x * 0.06 + p1) + 1.5 * math.sin(x * 0.17 + p2)
+        y0 = top + round(hill * edge + (1 - edge) * 8)
+        y1 = top + round(depth * edge**0.7) + 2
+        for y in range(y0, y1):
+            c.put(x, y, value)
+
+
+def _bowl(c: _Cells, cx: int, top: int, radius: int) -> int:
+    """Carve the "Gelee-Schuessel" into a flat island: a wide floor between jelly rims.
+    Returns the floor row."""
+    floor = top + 22
+    half = radius - 16
+    jelly = _id("glibber")
+    for side in (-1, 1):  # raised rims: the bowl's bouncing walls
+        c.ellipse(cx + side * (half + 7), top - 2, 9, 14, jelly)
+    for y in range(top - 12, floor):
+        inset = max(0, 6 - (floor - y)) * 2  # rounded corners at the floor
+        c.rect(cx - half + inset, y, cx + half - inset, y + 1, mat.AIR)
+    return floor
+
+
+def _gum_cave(c: _Cells, rng: random.Random, cx: int, top: int, rx: int) -> tuple[int, int]:
+    """Kaugummi-Hoehle inside a big island: a shaft from the top, chewing gum on the floor
+    and a sugar pedestal in the middle. Returns where the cache lies."""
+    cy, half = top + 27, int(rx * 0.45)
+    c.ellipse(cx, cy, half, 13, mat.AIR)
+    shaft = cx + rng.choice((-1, 1)) * int(half * 0.6)
+    c.rect(shaft - 7, top - 10, shaft + 7, cy, mat.AIR)
+    c.rect(cx - half, cy + 9, cx + half, cy + 14, _id("kaugummi"), only={mat.AIR})
+    c.rect(cx - 6, cy + 8, cx + 7, cy + 14, _id("zuckerguss"))
+    return (cx, cy + 7)
+
+
+def _save_lump(c: _Cells, centre: tuple[int, int], rx: int, ry: int) -> list[tuple[int, int, int]]:
+    """Remember the cells of an ellipse (the treasure vault) across the wipe."""
+    cx, cy = centre
+    cells = []
+    for y in range(cy - ry, cy + ry + 1):
+        half = int(rx * math.sqrt(max(0.0, 1 - ((y - cy) / ry) ** 2)))
+        for x in range(cx - half, cx + half + 1):
+            if c.inside(x, y):
+                cells.append((x, y, c.g[y * c.w + x]))
+    return cells
+
+
+def _restore_lump(c: _Cells, cells: list[tuple[int, int, int]]) -> None:
+    for x, y, value in cells:
+        c.g[y * c.w + x] = value
+
+
+def _shape_kruemelreich(c: _Cells, rng: random.Random) -> dict[str, Any]:
+    """Above: a kitchen floor of tiles with giant crumbs, sugar and a pea, furnished with
+    a cookie table and chairs, a tiled wall cabinet and the fridge's dark underside to
+    climb on. Below the tiles: the ant colony in the caves."""
+    tile, crumb, sugar = _id("fliese"), _id("kruemel"), _id("zucker")
+    fluff, brosel, pea = _id("staubfluse"), _id("brosel"), _id("rock")
+    air = {mat.AIR}
+    floor = int(c.h * 0.42)
+    c.rect(BORDER, BORDER, c.w - BORDER, floor, mat.AIR)  # the open kitchen
+    x = BORDER
+    while x < c.w - BORDER:  # tiles with holes where crumbs fell through
+        span = rng.randint(140, 220)
+        c.rect(x, floor, min(x + span, c.w - BORDER), floor + 6, tile)
+        x += span + rng.randint(22, 30)
+    fridge_x = int(c.w * 0.62)
+    fy = int(c.h * 0.14)
+    c.rect(fridge_x, fy, c.w - BORDER, fy + 12, tile)  # the fridge's underside ...
+    c.rect(fridge_x, fy + 12, fridge_x + 10, floor - 46, tile)  # ... its kick plate
+    for _ in range(9):  # dust bunnies under the fridge
+        fx = rng.randint(fridge_x + 20, c.w - 20)
+        rx, ry = rng.randint(7, 13), rng.randint(4, 7)
+        c.ellipse(fx, floor - ry, rx, ry, fluff, only=air)
+    # wall cabinet on the left: tiled shelves from the floor up to the ceiling
+    shelf_w = rng.randint(110, 140)
+    c.rect(BORDER, BORDER, BORDER + 8, floor, tile, only=air)
+    for y in range(floor - 44, BORDER + 20, -44):
+        c.rect(BORDER, y, BORDER + shelf_w, y + 4, tile, only=air)
+        c.rect(BORDER + 18, y - 10, BORDER + 26, y, sugar, only=air)  # a sugar box
+    # the table: a cookie top on two legs, crumbs and a plate on it, chairs beside
+    tx = rng.randint(int(c.w * 0.22), int(c.w * 0.34))  # leaves room for the teacup
+    top = floor - 112
+    half = rng.randint(100, 130)
+    c.rect(tx - half, top, tx + half, top + 8, crumb, only=air)
+    for leg in (tx - half + 10, tx + half - 18):
+        c.rect(leg, top + 8, leg + 8, floor, crumb, only=air)
+    c.rect(tx - 30, top - 3, tx + 30, top, tile, only=air)  # the plate
+    for side in (-1, 1):
+        sx = tx + side * (half + 34)
+        seat = floor - 54
+        c.rect(sx - 24, seat, sx + 24, seat + 6, crumb, only=air)
+        for leg in (sx - 22, sx + 18):
+            c.rect(leg, seat + 6, leg + 4, floor, crumb, only=air)
+        back = sx + side * 22
+        c.rect(min(back, back + side * 5), seat - 62, max(back, back + side * 5), seat, crumb,
+               only=air)  # fmt: skip
+    for _ in range(12):  # giant crumbs on the open floor, some piled up
+        cx = rng.randint(30, c.w - 30)
+        rx, ry = rng.randint(14, 36), rng.randint(10, 24)
+        c.ellipse(cx, floor - ry + 3, rx, ry, crumb, only=air)
+        if rng.random() < 0.4:
+            c.ellipse(cx + rng.randint(-10, 10), floor - 2 * ry, rx * 2 // 3, ry * 2 // 3, crumb,
+                      only=air)  # fmt: skip
+    for band in (70, 130, 190, 240):  # crumb ledges: a way up in every height band
+        for _ in range(2):
+            lx = rng.randint(c.w // 6, c.w - 140)
+            ly = floor - band + rng.randint(-10, 10)
+            if ly > fy + 24:
+                c.rect(lx, ly, lx + rng.randint(40, 80), ly + 6, crumb, only=air)
+    for _ in range(24):  # sugar grains
+        sx, size = rng.randint(30, c.w - 30), rng.randint(4, 9)
+        c.rect(sx, floor - size, sx + size, floor, sugar, only=air)
+    px = rng.randint(fridge_x + 60, fridge_x + 160)  # the pea rolled under the fridge
+    c.ellipse(px, floor - 24, 24, 24, pea, only=air)
+    cup = _teacup(c, fridge_x - 88, floor, tile, brosel)  # the mid-boss arena (bible 03)
+    caches = []
+    for i in range(6):  # colony chambers, the last one is the queen's
+        r = 46 if i == 5 else rng.randint(20, 32)
+        cx = rng.randint(80, c.w - 80) if i < 5 else c.w // 2 + rng.randint(-200, 200)
+        cy = rng.randint(floor + 60, c.h - 60)
+        c.ellipse(cx, cy, r, int(r * 0.7), mat.AIR)
+        c.rect(cx - r, cy + int(r * 0.7) - 4, cx + r, cy + int(r * 0.7) + 1, brosel, only=air)
+        if i < 3:  # three of them are store rooms
+            caches.append((cx, cy + int(r * 0.7) - 6))
+    return {"floor": floor, "mid_arena": cup, "caches": caches}
+
+
+CUP_HALF, CUP_HIGH = 62, 58  # Kruemelreich: the teacup's interior half width and height
+
+
+def _teacup(c: _Cells, cx: int, floor: int, china: int, leaves: int) -> tuple[int, int, int, int]:
+    """A teacup on the kitchen floor: china walls, tea leaves on the bottom, a handle to
+    climb. Returns the interior as arena rect."""
+    x0, x1 = cx - CUP_HALF, cx + CUP_HALF
+    c.rect(x0 - 5, floor - CUP_HIGH, x1 + 5, floor, mat.AIR)
+    c.rect(x0 - 14, floor, x1 + 14, floor + 6, china)  # the tiles under the cup are whole
+    c.rect(x0 - 5, floor - 4, x1 + 5, floor, china)
+    for wall in (x0 - 5, x1):
+        c.rect(wall, floor - CUP_HIGH, wall + 5, floor, china)
+    c.rect(x0, floor - 8, x1, floor - 4, leaves)
+    for y0, y1 in ((floor - 44, floor - 40), (floor - 22, floor - 18)):  # the handle
+        c.rect(x0 - 17, y0, x0 - 5, y1, china)
+    c.rect(x0 - 17, floor - 44, x0 - 13, floor - 18, china)
+    return (x0, floor - 64, x1, floor - 4)
+
+
+def _shape_sporenklub(c: _Cells, rng: random.Random) -> dict[str, Any]:
+    """The dance floor: a big cavern with a flat cap floor, galleries along its walls,
+    glowing mushrooms hanging from the roof as stepping stones, a DJ booth in the
+    middle, speaker towers at its ends and cups that ``flood`` fills with neon juice."""
+    cap, stem, glow = _id("pilzhut"), _id("pilzfleisch"), _id("leuchtsporen")
+    air = {mat.AIR}
+    cx, cy = c.w // 2, c.h // 2
+    rx, ry = int(c.w * 0.30), int(c.h * 0.13)
+    c.ellipse(cx, cy, rx, ry, mat.AIR)
+    floor = cy + ry // 2
+
+    def half_width(y: int) -> int:
+        dy = (y - cy) / ry
+        return int(rx * math.sqrt(max(0.0, 1 - dy * dy)))
+
+    for y in range(floor, cy + ry + 1):  # flat floor of caps inside the cavern
+        half = half_width(y)
+        for x in range(cx - half, cx + half + 1):
+            c.put(x, y, cap)
+    for side in (-1, 1):  # galleries along the walls, a glowing pile at each lip
+        for lift in (44, 88):
+            y = floor - lift
+            edge = cx + side * (half_width(y) + 6)
+            lip = edge - side * rng.randint(56, 84)
+            c.rect(min(edge, lip), y, max(edge, lip), y + 4, cap)
+            c.rect(lip - 3, y - 3, lip + 4, y, glow, only=air)
+    for i, x in enumerate(range(cx - rx // 2, cx + rx // 2 + 1, rx // 4)):  # hanging caps
+        y = floor - (58 if i % 2 else 100)
+        roof = y
+        while roof > BORDER and not c.solid(x, roof - 1):
+            roof -= 1
+        c.rect(x - 2, roof, x + 3, y, stem)
+        width = rng.randint(18, 26)
+        c.ellipse(x, y, width, 4, cap)
+        c.rect(x - width // 2, y - 6, x - width // 2 + 5, y - 3, glow, only=air)
+    for side in (-1, 1):  # speaker towers
+        tx = cx + side * int(rx * 0.78)
+        c.rect(tx - 8, floor - 70, tx + 8, floor, cap)
+        c.rect(tx - 12, floor - 74, tx + 12, floor - 70, cap)
+    c.rect(cx - 30, floor - 14, cx + 30, floor, cap)  # the DJ booth
+    for gx in (cx - 22, cx + 16):
+        c.rect(gx, floor - 18, gx + 6, floor - 14, glow, only=air)
+    cups = []
+    for x in range(cx - int(rx * 0.6), cx + int(rx * 0.6), 56):
+        if abs(x - cx) < 44:
+            continue  # the booth stands here
+        c.rect(x - 6, floor - 6, x - 4, floor, cap)
+        c.rect(x + 4, floor - 6, x + 6, floor, cap)
+        cups.append((x, floor - 1))
+        sx = x + 28  # a small mushroom stool between two cups
+        if abs(sx - cx) >= 44 and rng.random() < 0.6:
+            height = rng.randint(16, 30)
+            c.rect(sx - 2, floor - height, sx + 2, floor, stem, only=air)
+            c.ellipse(sx, floor - height, 10, 3, cap, only=air)
+    for side in (-1, 1):  # cellar stairs: the cap floor is no wall between club and cellar
+        _cellar_stairs(c, cx, floor, side, rx)
+    hall = (cx - rx, cy - ry, cx + rx, cy + ry)
+    _giant_mushrooms(c, rng, cap, stem, hall)
+    caches, guards = _back_rooms(c, rng, cap, stem, cups)
+    return {
+        "cups": cups,
+        "caches": caches,
+        "spawns": guards,
+        # the Hauptbuehne: the mid-boss dances at the DJ booth (bible 03, arena)
+        "mid_arena": (cx - 90, floor - 74, cx + 90, floor - 14),
+    }
+
+
+MUSHROOMS = 14  # Sporenklub: giant mushrooms in the caves around the dance floor
+BACK_ROOM = (58, 24)  # Hinterzimmer interior (cells)
+BACK_ROOMS = 3
+
+
+def _cellar_stairs(c: _Cells, cx: int, floor: int, side: int, rx: int) -> None:
+    """A shaft through the dance floor's cap slab down to the nearest cave below."""
+    best, best_depth = 0, 0
+    for x in range(cx + side * int(rx * 0.3), cx + side * int(rx * 0.7), side * 8):
+        depth = next((d for d in range(8, 150) if c.air(x, floor + d)), 0)
+        if depth and (not best_depth or depth < best_depth):
+            best, best_depth = x, depth
+    if best_depth:
+        c.rect(best - 8, floor - 6, best + 8, floor + best_depth + 2, mat.AIR)
+
+
+def _giant_mushrooms(
+    c: _Cells, rng: random.Random, cap: int, stem: int, hall: tuple[int, int, int, int]
+) -> None:
+    """Riesenpilze on cave floors with headroom: caps to stand (and softly bounce) on."""
+    floors = c.floors(BORDER, BORDER, c.w, c.h, step=13)
+    rng.shuffle(floors)
+    placed: list[tuple[int, int]] = []
+    for x, y in floors:
+        if len(placed) >= MUSHROOMS:
+            break
+        if _in_rect(hall, x, y, 6):
+            continue
+        if any(abs(x - px) < 60 and abs(y - py) < 60 for px, py in placed):
+            continue
+        room = next((r for r in range(1, 72) if not c.air(x, y - r)), 72)
+        if room < 46:
+            continue
+        height, half = rng.randint(20, min(46, room - 24)), rng.randint(9, 14)
+        if not all(c.air(xx, y - height - k) for xx in (x - half, x + half) for k in (0, 10, 20)):
+            continue
+        c.rect(x - 1, y - height, x + 2, y + 1, stem, only={mat.AIR})
+        c.ellipse(x, y - height, half, 3, cap, only={mat.AIR})
+        placed.append((x, y))
+
+
+def _back_rooms(
+    c: _Cells, rng: random.Random, cap: int, stem: int, cups: list[tuple[int, int]]
+) -> tuple[list[tuple[int, int]], list[tuple[str, int, int]]]:
+    """Hinterzimmer in the lower third: small lounges inside the mushroom mass, reached
+    through a short door from a cave. A bouncer stands in the door, the cache lies at the
+    far wall, a cup of neon juice in between. Returns (cache spots, guards to spawn)."""
+    wide, high = BACK_ROOM
+    caches: list[tuple[int, int]] = []
+    guards: list[tuple[str, int, int]] = []
+    for _ in range(30000):
+        if len(caches) >= BACK_ROOMS:
+            break
+        x = rng.randint(BORDER + 24, c.w - BORDER - wide - 24)
+        y = rng.randint(c.h * 11 // 20, c.h - BORDER - high - 14)
+        if any(abs(x - fx) < 160 for fx, _fy in caches):
+            continue
+        box = [
+            (xx, yy)
+            for yy in range(y - 4, y + high + 7, 3)
+            for xx in range(x - 4, x + wide + 5, 3)
+        ]
+        if any(c.get(xx, yy) not in (stem, cap) or c.kept(xx, yy) for xx, yy in box):
+            continue
+        side = rng.choice((-1, 1))
+        edge = x - 1 if side == -1 else x + wide
+        floor = y + high  # first floor row
+        gap = next((d for d in range(5, 40) if c.air(edge + side * d, floor - 4)), 0)
+        if not gap or not all(c.air(edge + side * gap, floor - k) for k in (1, 10, 20)):
+            continue
+        c.rect(x, y, x + wide, floor, mat.AIR)
+        c.rect(x - 2, floor, x + wide + 2, floor + 3, cap)
+        door = range(edge, edge + side * (gap + 1), side)
+        c.rect(min(door), floor - 26, max(door) + 1, floor, mat.AIR)  # the door
+        c.rect(min(door), floor, max(door) + 1, floor + 3, cap, only={mat.AIR, stem})
+        far = x + 7 if side == 1 else x + wide - 8
+        bar = x + wide // 2
+        c.rect(bar - 6, floor - 6, bar - 4, floor, cap)
+        c.rect(bar + 4, floor - 6, bar + 6, floor, cap)
+        cups.append((bar, floor - 1))
+        caches.append((far, floor - 1))
+        gx = (x + wide - 20) if side == 1 else x + 2  # top-left of the bouncer, by the door
+        guards.append(("tuersteherpilz", gx, floor - 24))
+    return caches, guards
+
+
+def _shape_abtei(c: _Cells, rng: random.Random) -> dict[str, Any]:
+    """Dry bell tower on top with the great bell and candles, stained glass in the nave,
+    air chapels that the flood leaves dry, algae in the crypt."""
+    bronze, wax = _id("glockenbronze"), _id("kerzenwachs")
+    glass, algae = _id("buntglas"), _id("algen")
+    bx, by = c.w // 2, int(c.h * 0.13)
+    c.ellipse(bx, by, 70, 46, mat.AIR)
+    for k in range(28):  # the bell, hanging from the chamber's roof
+        half = 6 + k * 2 // 3
+        c.rect(bx - half, by - 34 + k, bx + half + 1, by - 33 + k, bronze)
+    c.rect(bx - 2, by - 6, bx + 3, by + 2, bronze)  # clapper
+    for x, y in c.floors(0, 0, c.w, c.h // 3, step=37):
+        if rng.random() < 0.5:
+            c.rect(x, y - 6, x + 3, y + 1, wax, only={mat.AIR})
+    walls = 0
+    for x, y in c.ceilings(0, c.h // 3, c.w, c.h * 2 // 3, step=41):
+        if walls < 14 and rng.random() < 0.5:
+            c.rect(x - 4, y - 14, x + 4, y - 1, glass, only={_id("mauerwerk")})
+            walls += 1
+    rock = _id("mauerwerk")
+    line = int(c.h * WATER_LINE)
+
+    def solid(x0: int, y0: int, x1: int, y1: int, step: int = 3) -> bool:
+        return all(
+            c.get(x, y) == rock and not c.kept(x, y)
+            for y in range(y0, y1, step)
+            for x in range(x0, x1, step)
+        )
+
+    state: dict[str, Any] = {"chapels": [], "dry": [], "caches": []}
+    wide, high = NAVE_SIZE
+    for attempt in range(6000):  # the Kirchenschiff: flooded hall, air only under its dome
+        left = rng.randint(50, c.w - 50 - wide)
+        top = rng.randint(int(c.h * 0.45), int(c.h * 0.84) - high)
+        mid = left + wide // 2
+        rx, ry = (64, 38) if attempt < 2000 else (50, 30)  # a smaller dome fits more often
+        if not solid(mid - rx - 6, top - ry - 6, mid + rx + 7, top):
+            continue
+        if any(abs(mid - kx) < wide // 2 + r + 20 and abs(top + high // 2 - ky) < high // 2 + r + 20
+               for kx, ky, r in c.keep):  # fmt: skip
+            continue
+        c.rect(left, top, left + wide, top + high, mat.AIR)
+        c.rect(left - 2, top + high, left + wide + 2, top + high + 4, rock)
+        for side, edge in ((-1, left - 1), (1, left + wide)):  # doors to the nearest caves,
+            reach = next(  # so that no passage has to be dug in through the dome later
+                (d for d in range(1, 260) if c.air(edge + side * d, top + high - 10)), 0
+            )
+            if reach:
+                door = (edge + side * reach, edge)
+                c.rect(min(door), top + high - 26, max(door) + 1, top + high, mat.AIR)
+        if c.level is not None:  # and a guaranteed way in from the start, beside the dome
+            from src.worldgen import ensure_path
+
+            c.rect(left - 34, top + high - 26, left, top + high, mat.AIR)
+            ensure_path(c.world, c.level.spawn, (left - 28, top + high - 12))
+        c.ellipse(mid, top, rx, ry, mat.AIR)
+        for lx in (mid - rx, mid + rx - 26):  # ledges at the water line under the dome
+            c.rect(lx, top, lx + 26, top + 3, rock)
+        for px in (left + wide // 4, left + wide * 3 // 4):  # pillar stumps
+            c.rect(px - 3, top + 30, px + 3, top + high, rock)
+        c.rect(mid - 4, top - ry + 4, mid + 5, top - ry + 12, bronze)  # a small bell
+        state["dry"].append((mid, top, rx, ry))
+        state["mid_arena"] = (left, top, left + wide, top + high)
+        state["caches"].append((left + 12, top + high - 2))
+        break
+    hall = state.get("mid_arena")
+    ceilings = c.ceilings(0, line + 30, c.w, c.h - 20, step=5)
+    rng.shuffle(ceilings)
+    # the deep half first: that is where the breath runs out (playtest)
+    ceilings.sort(key=lambda spot: spot[1] < (line + c.h) // 2)
+    pockets: list[tuple[int, int]] = []
+    tried: set[tuple[int, int]] = set()
+    # air bells under domed ceilings: breath every few seconds. First the roomy ones (every
+    # third a chapel with an offering), then small ones wherever the rock is thinner.
+    for x, y in ceilings + ceilings:
+        if len(pockets) >= AIR_POCKETS:
+            break
+        small = len(pockets) < AIR_POCKETS and (x, y) in tried
+        tried.add((x, y))
+        chapel = not small and len(pockets) % 3 == 0
+        if small:
+            rx, ry = rng.randint(10, 13), rng.randint(9, 11)
+        elif chapel:
+            rx, ry = rng.randint(24, 28), rng.randint(17, 20)
+        else:
+            rx, ry = rng.randint(14, 19), rng.randint(11, 14)
+        if _in_rect(hall, x, y, 40) or any(math.dist((x, y), q) < 95 for q in pockets):
+            continue
+        if not solid(x - rx - 3, y - ry - 3, x + rx + 4, y - 1, 2):
+            continue
+        if not all(c.get(xx, y - 1) == rock for xx in range(x - rx - 2, x + rx + 3)):
+            continue
+        for yy in range(y - ry, y):
+            half = int(rx * math.sqrt(max(0.0, 1 - ((yy - y) / ry) ** 2)))
+            c.rect(x - half, yy, x + half + 1, yy + 1, mat.AIR)
+        c.rect(x - rx + 3, y - 5, x - rx + 5, y - 1, wax)  # a candle marks the air
+        state["dry"].append((x, y, rx, ry))
+        pockets.append((x, y))
+        if chapel:
+            c.rect(x + rx - 5, y - 5, x + rx - 3, y - 1, wax)
+            state["caches"].append((x, y - 3))  # an offering: it sinks to the floor below
+    _close_air_gaps(c, rng, line, state, ceilings, rock, bronze, wax)
+    for x, y in c.floors(0, c.h * 2 // 3, c.w, c.h, step=5):
+        if rng.random() < 0.35:
+            c.rect(x, y - rng.randint(2, 5), x + 2, y + 1, algae, only={mat.AIR})
+    return state
+
+
+SWIM_BAND = (-2, 0, 2)  # cells across the way a swimming body needs free
+
+
+def _air_distance(c: _Cells, line: int, domes: list[tuple[int, int, int, int]]) -> list[int]:
+    """Swimming distance (in cells of AIR_GRID) from every open cell to the nearest air:
+    the dry part above ``line`` or the inside of an air bell. -1: solid or cut off."""
+    grid = AIR_GRID
+    gw, gh = c.w // grid, c.h // grid
+    open_cells = [not c.solid(gx * grid, gy * grid) for gy in range(gh) for gx in range(gw)]
+    dist = [-1] * (gw * gh)
+    queue: deque[int] = deque()
+    for i, is_open in enumerate(open_cells):
+        if is_open and (i // gw) * grid < line:
+            dist[i] = 0
+            queue.append(i)
+    for cx, base, _rx, _ry in domes:
+        i = ((base - 4) // grid) * gw + cx // grid
+        if 0 <= i < len(dist) and dist[i] != 0:
+            dist[i] = 0
+            queue.append(i)
+    def passable(i: int, j: int) -> bool:
+        """Can a swimming body get from sample i to sample j? Every cell between the two
+        points must be free in a band as wide as a body, so a thin wall between two
+        sample points counts (playtest 2026-11-13: a small wall cut the way to the air)."""
+        ax, ay = (i % gw) * grid, (i // gw) * grid
+        bx, by = (j % gw) * grid, (j // gw) * grid
+        for step in range(1, grid + 1):
+            x = ax + (bx - ax) * step // grid
+            y = ay + (by - ay) * step // grid
+            for off in SWIM_BAND:
+                px, py = (x, y + off) if ax != bx else (x + off, y)
+                if c.solid(px, py):
+                    return False
+        return True
+
+    while queue:
+        i = queue.popleft()
+        x = i % gw
+        for j in (i - gw, i + gw, i - 1 if x else -1, i + 1 if x < gw - 1 else -1):
+            if 0 <= j < len(dist) and dist[j] < 0 and open_cells[j] and passable(i, j):
+                dist[j] = dist[i] + 1
+                queue.append(j)
+    return dist
+
+
+THIN_WALL = 10  # cells: walls up to this thick between two flooded caves are opened
+
+
+def _open_thin_walls(c: _Cells, line: int, domes: list[tuple[int, int, int, int]]) -> None:
+    """Flooded caves split only by a thin wall get a passage through it, so a swimmer is
+    never cut off from the air by a few cells of stone (playtest 2026-11-13). Walls of
+    the air domes and the world edge stay closed."""
+    grid = AIR_GRID
+    edge = BORDER + 2
+
+    def near_dome(x: int, y: int) -> bool:
+        return any(abs(x - dx) <= rx + 5 and dy - ry - 5 <= y <= dy + 3 for dx, dy, rx, ry in domes)
+
+    for y in range(line + grid, c.h - edge, grid):
+        for x in range(edge, c.w - edge, grid):
+            if c.solid(x, y) or c.kept(x, y):
+                continue
+            for dx, dy in ((1, 0), (0, 1)):
+                # the first solid cell along the axis, then its thickness
+                run, start = 0, None
+                for k in range(1, THIN_WALL + 3):
+                    px, py = x + dx * k, y + dy * k
+                    if not (edge <= px < c.w - edge and line < py < c.h - edge):
+                        start = None
+                        break
+                    if c.solid(px, py):
+                        start = k if start is None else start
+                        run += 1
+                    elif start is not None:
+                        break
+                else:
+                    start = None
+                if start is None or not 0 < run <= THIN_WALL:
+                    continue
+                if any(c.get(x + dx * k, y + dy * k) == mat.BEDROCK for k in range(start, start + run)):
+                    continue
+                mx, my = x + dx * (start + run // 2), y + dy * (start + run // 2)
+                if near_dome(mx, my):
+                    continue
+                for k in range(start, start + run):
+                    px, py = x + dx * k, y + dy * k
+                    for off in SWIM_BAND + (-6, 6):
+                        qx, qy = (px, py + off) if dx else (px + off, py)
+                        if c.solid(qx, qy) and c.get(qx, qy) != mat.BEDROCK and not near_dome(qx, qy):
+                            c.world.set_cell(qx, qy, mat.AIR, force=True)  # the flood fills it
+
+
+def _close_air_gaps(
+    c: _Cells, rng: random.Random, line: int, state: dict[str, Any],
+    ceilings: list[tuple[int, int]], rock: int, bronze: int, wax: int,
+) -> None:  # fmt: skip
+    """No flooded spot may be further than AIR_REACH from air. Where it is, add a small
+    air bell under a nearby ceiling, or hang a bronze diving bell into a wide cave."""
+    grid, gw = AIR_GRID, c.w // AIR_GRID
+    _open_thin_walls(c, line, state["dry"])
+    given_up: list[tuple[int, int]] = []
+    for _ in range(48):
+        dist = _air_distance(c, line, state["dry"])
+        far, spot = 0, None
+        for i, d in enumerate(dist):
+            x, y = (i % gw) * grid, (i // gw) * grid
+            if d > far and not any(abs(x - gx) < 60 and abs(y - gy) < 60 for gx, gy in given_up):
+                far, spot = d, (x, y)
+        if spot is None or far * grid <= AIR_REACH:
+            return
+        near = sorted(
+            (q for q in ceilings if math.dist(q, spot) < 80), key=lambda q: math.dist(q, spot)
+        )
+        placed = False
+        hall = state.get("mid_arena")
+
+        def clashes(x: int, y: int, rx: int, ry: int) -> bool:
+            """Too close to the nave or another air dome: it would break that dome's shell."""
+            if hall and hall[0] - rx - 8 <= x <= hall[2] + rx + 8 and hall[1] - 90 <= y <= hall[3] + 8:
+                return True
+            return any(abs(x - dx) <= drx + rx + 8 and dy - dry_ - ry - 8 <= y <= dy + ry + 8
+                       for dx, dy, drx, dry_ in state["dry"])  # fmt: skip
+
+        for x, y in near[:60]:  # a small natural dome ...
+            rx, ry = rng.randint(10, 12), rng.randint(9, 10)
+            if clashes(x, y, rx, ry):
+                continue
+            box = [
+                (xx, yy) for yy in range(y - ry - 3, y, 2) for xx in range(x - rx - 3, x + rx + 4, 2)
+            ]
+            row = [(xx, y - 1) for xx in range(x - rx - 2, x + rx + 3)]
+            if any(c.get(xx, yy) != rock for xx, yy in box + row):
+                continue
+            for yy in range(y - ry, y):
+                half = int(rx * math.sqrt(max(0.0, 1 - ((yy - y) / ry) ** 2)))
+                c.rect(x - half, yy, x + half + 1, yy + 1, mat.AIR)
+            c.rect(x - rx + 3, y - 4, x - rx + 5, y - 1, wax)
+            state["dry"].append((x, y, rx, ry))
+            placed = True
+            break
+        # ... or a diving bell in open water: the nearest place it fits (a systematic
+        # search, random tries missed pockets next to walls - playtest 2026-11-13)
+        tries = sorted(
+            ((spot[0] + dx, spot[1] + dy) for dx in range(-88, 89, 4) for dy in range(-64, 65, 4)),
+            key=lambda p: math.dist(p, spot),
+        )
+        for x, y in ([] if placed else tries):
+            rx, ry = BELL_SIZE
+            if y - ry - 8 <= line or c.kept(x, y) or clashes(x, y, rx, ry):
+                continue
+            room = [
+                (x + dx, y + dy)
+                for dx in range(-rx - 6, rx + 7, 3)
+                for dy in range(-ry - 4, 10, 3)
+            ]
+            if not all(c.air(xx, yy) for xx, yy in room):
+                continue
+            for yy in range(y - ry - 2, y):
+                outer = int((rx + 2) * math.sqrt(max(0.0, 1 - ((yy - y) / (ry + 2)) ** 2)))
+                inner = -1
+                if yy >= y - ry:
+                    inner = int(rx * math.sqrt(max(0.0, 1 - ((yy - y) / ry) ** 2)))
+                for xx in range(x - outer, x + outer + 1):
+                    if abs(xx - x) > inner:
+                        c.put(xx, yy, bronze)
+            state["dry"].append((x, y, rx, ry))
+            placed = True
+            break
+        if not placed:
+            given_up.append(spot)
+
+
+AIR_GRID = 4  # Abtei: cell size of the swimming-distance map
+AIR_REACH = 140  # Abtei: no flooded spot further than this from air (cells of swimming)
+BELL_SIZE = (11, 14)  # Abtei: inside of a bronze diving bell (half width, height)
+NAVE_SIZE = (200, 70)  # Abtei: the flooded Kirchenschiff (mid-boss arena)
+AIR_POCKETS = 20  # Abtei: air bells under the ceilings of the flooded caves
+
+
+_SHAPERS = {
+    "fleischwelt": _shape_fleischwelt,
+    "aktenhalde": _shape_aktenhalde,
+    "glibbria": _shape_glibbria,
+    "kruemelreich": _shape_kruemelreich,
+    "sporenklub": _shape_sporenklub,
+    "abtei": _shape_abtei,
+}
+
+
+# --------------------------------------------------------------------------- flood
+
+
+SEA_LEVEL = 0.86  # Glibbria: syrup sea below this share of the height
+WATER_LINE = 0.36  # Abtei: water below this share of the height
+
+
+def flood(world: Any, key: str, rng: random.Random, keep: Keep, state: dict[str, Any]) -> None:
+    """Pour the signature liquids of ``key`` (after the paths were guaranteed)."""
+    c = _Cells(world, keep)
+    if key == "fleischwelt":
+        if state.get("lake"):
+            cx, cy, rx, ry = state["lake"]
+            c.rect(cx - rx, cy + 10, cx + rx + 1, cy + ry + 1, _id("acid"), only={mat.AIR})
+        _pools(c, rng, c.h // 3, c.h * 2 // 3, _id("acid"), 9, (5, 9))
+        _pools(c, rng, c.h // 3, c.h * 2 // 3, _id("tallow"), 3, (3, 5))
+    elif key == "aktenhalde":
+        third = c.w // 3  # Archivkeller: ink lakes; Grossraumbuero: stamp pads to drink from
+        _pools(c, rng, c.h // 3, c.h, _id("tinte"), 8, (6, 10), x0=2 * third)
+        _pools(c, rng, BORDER, c.h, _id("stempelfarbe"), 3, (3, 4), x0=third, x1=2 * third)
+    elif key == "glibbria":
+        # the syrup sea is built in shape(); here only gum puddles on the islands
+        _pools(c, rng, c.h // 6, int(c.h * SEA_LEVEL) - 20, _id("kaugummi"), 4, (2, 3))
+    elif key == "kruemelreich":
+        _pools(c, rng, state.get("floor", c.h // 2), c.h, _id("honig"), 4, (4, 7))
+    elif key == "sporenklub":
+        juice = _id("neonsaft")
+        for x, y in state.get("cups", []):
+            c.rect(x - 3, y - 4, x + 4, y + 1, juice, only={mat.AIR})
+        _pools(c, rng, c.h * 2 // 3, c.h, juice, 4, (3, 5))
+    elif key == "abtei":
+        # a passage dug afterwards may have opened a dome: then it is no air bell any more
+        domes = [dome for dome in state.get("dry", []) if _dome_closed(c, *dome, _id("mauerwerk"))]
+        line = int(c.h * WATER_LINE)
+        # air survives only above a water surface under a closed dome; dry circles under
+        # water (anchor point, arena) would just run full, so they are flooded honestly
+        c.keep = [k for k in c.keep if k[1] < line]
+
+        def dry(x: int, y: int) -> bool:
+            return any(
+                y < by and ((x - cx) / rx) ** 2 + ((y - by) / ry) ** 2 <= 1
+                for cx, by, rx, ry in domes
+            )
+
+        _flood_below(c, int(c.h * WATER_LINE), mat.WATER, skip=dry)
+        _cut_floating_algae(c, _id("algen"), mat.WATER)
+
+
+ALGAE_STRAND = 6  # algae thinner than this with water above and below is a strand
+
+
+def _cut_floating_algae(c: _Cells, algae: int, water: int) -> None:
+    """Strands of algae (the organism's sinew bridges) float across flooded caves and
+    block a swimmer like a wall (playtest 2026-11-13). Every algae run with water both
+    above and below is washed away; tufts growing on a floor stay."""
+    for x in range(BORDER, c.w - BORDER):
+        y = BORDER
+        while y < c.h - BORDER:
+            if c.get(x, y) != algae:
+                y += 1
+                continue
+            top = y
+            while y < c.h - BORDER and c.get(x, y) == algae:
+                y += 1
+            if y - top <= ALGAE_STRAND and c.get(x, top - 1) == water and c.get(x, y) == water:
+                for yy in range(top, y):
+                    c.world.set_cell(x, yy, water, force=True)
+
+
+def _dome_closed(c: _Cells, cx: int, base: int, rx: int, ry: int, rock: int) -> bool:
+    """True if the shell right around the dome above ``base`` is solid. A few open cells
+    (the tip of a cave) are walled up; a real passage through it means: no air bell."""
+    holes = []
+    for y in range(base - ry - 2, base):
+        for x in range(cx - rx - 2, cx + rx + 3):
+            inner = ((x - cx) / rx) ** 2 + ((y - base) / ry) ** 2
+            outer = ((x - cx) / (rx + 2)) ** 2 + ((y - base) / (ry + 2)) ** 2
+            if inner > 1 >= outer and not c.solid(x, y):
+                holes.append((x, y))
+    if len(holes) > 12:
+        return False
+    for x, y in holes:
+        c.g[y * c.w + x] = rock
+    return True
+
+
+def _pools(
+    c: _Cells,
+    rng: random.Random,
+    y0: int,
+    y1: int,
+    liquid: int,
+    count: int,
+    depth: tuple[int, int],
+    x0: int = 0,
+    x1: int | None = None,
+) -> None:
+    floors = c.floors(x0, y0, c.w if x1 is None else x1, y1, step=5)
+    rng.shuffle(floors)
+    for x, y in floors[:count]:
+        c.pool(x, y, rng.randint(*depth), liquid)
+
+
+def _flood_below(c: _Cells, line: int, liquid: int, skip: Any = None) -> None:
+    for y in range(max(line, BORDER), c.h - BORDER):
+        row = y * c.w
+        for x in range(BORDER, c.w - BORDER):
+            if c.g[row + x] == mat.AIR and not c.kept(x, y) and not (skip and skip(x, y)):
+                c.g[row + x] = liquid
+
+
+# ------------------------------------------------------------------ paper skin
+
+
+def paper_skin(world: Any, paper: int, core: int, depth: int = SKIN) -> int:
+    """Aktenhalde: paper deeper than ``depth`` cells behind any open cell becomes the
+    non-burning ``core`` (ink-soaked stacks). A fire then eats the paper lining of the
+    caves instead of the whole universe. Returns how many cells changed.
+
+    Works row-wise on big integers with one byte per cell (fast without numpy)."""
+    w, h, g = world.width, world.height, world.grid
+    solid = (mat.SOLID, mat.POWDER)
+    kinds = list(mat.KIND)
+    open_table = bytes(1 if i < len(kinds) and kinds[i] not in solid else 0 for i in range(256))
+    paper_table = bytes(1 if i == paper else 0 for i in range(256))
+    full = int.from_bytes(b"\x01" * w, "little")
+    near = []
+    for y in range(h):
+        m = int.from_bytes(g[y * w : (y + 1) * w].translate(open_table), "little")
+        for _ in range(depth):
+            m |= (m << 8) | (m >> 8)
+        near.append(m & full)
+    for _ in range(depth):
+        near = [near[y] | (near[y - 1] if y else 0) | (near[y + 1] if y + 1 < h else 0)
+                for y in range(h)]  # fmt: skip
+    changed = 0
+    for y in range(h):
+        row = g[y * w : (y + 1) * w]
+        deep = int.from_bytes(row.translate(paper_table), "little") & (full ^ near[y])
+        if deep:
+            value = int.from_bytes(row, "little") - deep * paper + deep * core
+            g[y * w : (y + 1) * w] = value.to_bytes(w, "little")
+            changed += bin(deep).count("1")
+    return changed
+

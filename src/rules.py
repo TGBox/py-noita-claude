@@ -230,4 +230,17 @@ def apply_player_rules(
     region: Any = None,
 ) -> None:
     """Apply universe/region rules such as current_vx to the player (Card A26)."""
-    raise NotImplementedError("Card A26")
+    if region is not None:
+        current_vx = region.param("current_vx", 0.0) if hasattr(region, "param") else 0.0
+        if current_vx != 0.0:
+            in_liq = player.in_liquid(world)
+            if not in_liq:
+                # Also check any cell within player bounding box
+                px, py = int(player.x), int(player.y)
+                in_liq = any(
+                    KIND[world.get(x, y)] == LIQUID
+                    for y in range(py, py + int(player.height))
+                    for x in range(px, px + int(player.width))
+                )
+            if in_liq:
+                player.body.vx += current_vx * dt * 3.0

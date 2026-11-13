@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from src import materials as mat
+from src.behaviour import Ability, BehaviourContext, tick_abilities
 from src.body import ENEMY_TEAM, Body
-from src.materials import AIR
+from src.factions import are_hostile
+from src.materials import AIR, KIND, LIQUID
 from src.player import GRAVITY, MAX_FALL_SPEED
 from src.projectiles import ProjectileSystem
 from src.spells import CATALOG
@@ -64,6 +66,7 @@ class CreatureSpec:
     resist_material: str = ""
     drops_sample: str = ""
     sample_chance: float = 0.35
+    group_size: tuple[int, int] = (1, 1)
     is_mid_boss: bool = False
     is_boss: bool = False
 
@@ -178,13 +181,499 @@ SPORE_SAC = CreatureSpec(
     "sporensack", "Sporensack", width=8, height=9, hp=2, flying=False, speed=0, sight=0,
     gore="spores", burst=12, prop=True, pearls=0,
 )  # fmt: skip
+# ---------------------------------------------------------------------------
+# Fleischwelt (Card C01): fleischmade, blutegel, saeurespucker, zottenwurm
+# ---------------------------------------------------------------------------
+
+FLEISCHMADE = CreatureSpec(
+    "fleischmade", "Fleischmade", width=16, height=10, hp=25, flying=False, speed=50, sight=450,
+    melee_damage=8, melee_cooldown=0.8, jump_speed=180, stance="hostile", faction="parasiten",
+    abilities=(Ability("melee"), Ability("hunt")), windup_time=0.4, recover_time=0.2,
+    weak_material="fire", drops_sample="probe_gallenstein", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+BLUTEGEL = CreatureSpec(
+    "blutegel", "Blutegel", width=12, height=6, hp=15, flying=False, speed=40, sight=380,
+    melee_damage=4, melee_cooldown=0.5, hangs=True, stance="hostile", faction="parasiten",
+    abilities=(Ability("melee"), Ability("hunt")), windup_time=0.25, recover_time=0.2,
+    weak_material="fire", drops_sample="probe_wucherung", sample_chance=0.35, pearls=6,
+)  # fmt: skip
+
+SAEURESPUCKER = CreatureSpec(
+    "saeurespucker", "Säurespucker", width=11, height=9, hp=32, flying=False, speed=35, sight=420,
+    patterns=(("sekret_saeure", "klumpen"),), ranged_cooldown=2.0, ranged_range=320,
+    stance="hostile", faction="parasiten", abilities=(Ability("ranged", "acid"),),
+    windup_time=0.45, recover_time=0.2, weak_material="fire", resist_material="acid",
+    drops_sample="probe_gallenstein", sample_chance=0.35, acid_immune=True, pearls=16,
+)  # fmt: skip
+
+ZOTTENWURM = CreatureSpec(
+    "zottenwurm", "Zottenwurm", width=20, height=8, hp=38, flying=False, speed=45, sight=380,
+    melee_damage=8, melee_cooldown=1.0, stance="neutral", faction="parasiten",
+    abilities=(Ability("graze", "flesh"), Ability("burrow", "flesh"), Ability("melee")),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_wucherung", sample_chance=0.35, pearls=14,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Aktenhalde (Card C02): aktenfresser, stempler, paragraphenreiter, kaffeegolem
+# ---------------------------------------------------------------------------
+
+AKTENFRESSER = CreatureSpec(
+    "aktenfresser", "Aktenfresser", width=20, height=17, hp=40, flying=False, speed=35, sight=380,
+    melee_damage=10, melee_cooldown=0.9, stance="neutral", faction="akten",
+    abilities=(Ability("dig", "papier"), Ability("melee"), Ability("pack")),
+    windup_time=0.5, recover_time=0.2, weak_material="fire", drops_sample="probe_stempelkissen",
+    sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+STEMPLER = CreatureSpec(
+    "stempler", "Stempler", width=12, height=18, hp=30, flying=False, speed=30, sight=360,
+    melee_damage=5, melee_cooldown=0.8, stance="neutral", faction="akten",
+    abilities=(Ability("melee"), Ability("summon", "agent_streife", 1.0), Ability("aura", "stamp_tax", 32.0)),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_formular", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+PARAGRAPHENREITER = CreatureSpec(
+    "paragraphenreiter", "Paragraphenreiter", width=16, height=20, hp=36, flying=True, speed=55,
+    sight=440, stance="hostile", faction="akten",
+    abilities=(Ability("ranged", "paragraph"), Ability("summon", "stempler", 1.0)),
+    windup_time=0.45, recover_time=0.2, drops_sample="probe_formular", sample_chance=0.35, pearls=12,
+)  # fmt: skip
+
+KAFFEEGOLEM = CreatureSpec(
+    "kaffeegolem", "Kaffeegolem", width=18, height=22, hp=55, flying=False, speed=32, sight=380,
+    melee_damage=8, melee_cooldown=1.0, stance="neutral", faction="akten",
+    abilities=(Ability("melee"), Ability("ranged", "steam"), Ability("morph", "enraged", 0.5)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_stempelkissen", sample_chance=0.35, pearls=14,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Glibbria (Card C03): huepfling, glibberteiler, zuckerwatte_wolke, konfetti_kanone
+# ---------------------------------------------------------------------------
+
+HUEPFLING = CreatureSpec(
+    "huepfling", "Hüpfling", width=10, height=10, hp=12, flying=False, speed=40, sight=300,
+    jump_speed=200, stance="passive", faction="gelee", group_size=(3, 6),
+    abilities=(Ability("flee"), Ability("graze", "zuckerguss")),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_brauseperle", sample_chance=0.35, pearls=3,
+)  # fmt: skip
+
+GLIBBERKUH = CreatureSpec(
+    "glibberkuh", "Glibberkuh", width=16, height=12, hp=30, flying=False, speed=38, sight=200,
+    stance="passive", faction="gelee", abilities=(Ability("graze", "zuckerguss"),),
+    drops_sample="probe_glibberkern", sample_chance=0.0, pearls=0,
+)  # fmt: skip
+
+GLIBBERTEILER = CreatureSpec(
+    "glibberteiler", "Glibberteiler", width=18, height=14, hp=40, flying=False, speed=40, sight=380,
+    melee_damage=9, melee_cooldown=0.8, jump_speed=150, stance="hostile", faction="gelee",
+    abilities=(Ability("melee"), Ability("hunt"), Ability("split", "glibberteiler"), Ability("armor")),
+    windup_time=0.5, recover_time=0.2, weak_material="fire", drops_sample="probe_glibberkern",
+    sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+ZUCKERWATTE_WOLKE = CreatureSpec(
+    "zuckerwatte_wolke", "Zuckerwattewolke", width=18, height=14, hp=24, flying=True, speed=45,
+    sight=360, stance="passive", faction="gelee",
+    abilities=(Ability("flee"), Ability("aura", "slow", 40.0)),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_brauseperle", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+KONFETTI_KANONE = CreatureSpec(
+    "konfetti_kanone", "Konfettikanone", width=16, height=16, hp=38, flying=False, speed=28, sight=400,
+    patterns=(), ranged_cooldown=2.0, ranged_range=300, stance="hostile", faction="gelee",
+    abilities=(Ability("ranged", "confetti"), Ability("reflect", "bounce")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glibberkern", sample_chance=0.35, pearls=12,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Krümelreich (Card C04): ameisenkrieger, blattlaus, arbeiterameise, harzspucker
+# ---------------------------------------------------------------------------
+
+AMEISENKRIEGER = CreatureSpec(
+    "ameisenkrieger", "Ameisenkrieger", width=18, height=12, hp=22, flying=False, speed=70, sight=420,
+    melee_damage=7, melee_cooldown=0.7, jump_speed=140, stance="hostile", faction="insekten",
+    group_size=(4, 8), abilities=(Ability("melee"), Ability("dig", "kruemel"), Ability("hunt")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_zuckerkristall", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+BLATTLAUS = CreatureSpec(
+    "blattlaus", "Blattlaus", width=12, height=10, hp=10, flying=False, speed=25, sight=200,
+    stance="passive", faction="insekten", abilities=(Ability("graze", "zucker"),),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_ameisenduft", sample_chance=0.35, pearls=4,
+)  # fmt: skip
+
+ARBEITERAMEISE = CreatureSpec(
+    "arbeiterameise", "Arbeiterameise", width=14, height=10, hp=18, flying=False, speed=65, sight=380,
+    melee_damage=5, melee_cooldown=0.8, jump_speed=120, stance="neutral", faction="insekten",
+    abilities=(Ability("steal", "pickup"), Ability("dig", "kruemel"), Ability("pack")),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_zuckerkristall", sample_chance=0.35, pearls=6,
+)  # fmt: skip
+
+HARZSPUCKER = CreatureSpec(
+    "harzspucker", "Harzspucker", width=16, height=14, hp=34, flying=False, speed=40, sight=400,
+    patterns=(), ranged_cooldown=2.0, ranged_range=300, stance="hostile", faction="insekten",
+    abilities=(Ability("ranged", "resin"), Ability("aura", "slow", 36.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_ameisenduft", sample_chance=0.35, pearls=12,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Sporenklub (Card C05): tuersteherpilz, sporenschnorrer, sporenwerfer, leuchtmotte
+# ---------------------------------------------------------------------------
+
+TUERSTEHERPILZ = CreatureSpec(
+    "tuersteherpilz", "Türsteherpilz", width=18, height=24, hp=80, flying=False, speed=0, sight=300,
+    melee_damage=15, melee_cooldown=1.2, stationary=True, stance="neutral", faction="pilze",
+    abilities=(Ability("stationary"), Ability("shield", "front"), Ability("melee")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_leuchtspore", sample_chance=0.35, pearls=15,
+)  # fmt: skip
+
+SPORENSCHNORRER = CreatureSpec(
+    "sporenschnorrer", "Sporenschnorrer", width=10, height=14, hp=18, flying=False, speed=110, sight=400,
+    stance="hostile", faction="pilze",
+    abilities=(Ability("steal", "flask"), Ability("flee"), Ability("split", "spore")),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_plattennadel", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+SPORENWERFER = CreatureSpec(
+    "sporenwerfer", "Sporenwerfer", width=14, height=18, hp=32, flying=False, speed=35, sight=380,
+    patterns=(), ranged_cooldown=2.0, ranged_range=320, stance="hostile", faction="pilze",
+    abilities=(Ability("ranged", "spore"), Ability("aura", "poison", 36.0)),
+    windup_time=0.45, recover_time=0.2, weak_material="fire", drops_sample="probe_leuchtspore",
+    sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+LEUCHTMOTTE = CreatureSpec(
+    "leuchtmotte", "Leuchtmotte", width=12, height=12, hp=16, flying=True, speed=60, sight=360,
+    stance="passive", faction="pilze",
+    abilities=(Ability("flee"), Ability("aura", "heal_allies", 44.0)),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_plattennadel", sample_chance=0.35, pearls=6,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Versunkene Abtei (Card C06): moenchsfisch, orgelaal, glockenqualle, korallenwaechter
+# ---------------------------------------------------------------------------
+
+MOENCHSFISCH = CreatureSpec(
+    "moenchsfisch", "Mönchsfisch", width=14, height=16, hp=28, flying=True, speed=40, sight=380,
+    stance="neutral", faction="tiefsee",
+    abilities=(Ability("pack"), Ability("ranged", "bubble")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glockensplitter", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+ORGELAAL = CreatureSpec(
+    "orgelaal", "Orgelaal", width=28, height=6, hp=35, flying=True, speed=50, sight=420,
+    stance="hostile", faction="tiefsee",
+    abilities=(Ability("hunt"), Ability("ranged", "shock"), Ability("burrow", "sand")),
+    windup_time=0.7, recover_time=0.2, drops_sample="probe_kerzenstumpf", sample_chance=0.35, pearls=10,
+)  # fmt: skip
+
+GLOCKENQUALLE = CreatureSpec(
+    "glockenqualle", "Glockenqualle", width=14, height=18, hp=26, flying=True, speed=30, sight=300,
+    stance="passive", faction="tiefsee",
+    abilities=(Ability("aura", "shock", 36.0),),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_glockensplitter", sample_chance=0.35, pearls=8,
+)  # fmt: skip
+
+KORALLENWAECHTER = CreatureSpec(
+    "korallenwaechter", "Korallenwächter", width=16, height=20, hp=50, flying=False, speed=28, sight=340,
+    melee_damage=11, melee_cooldown=1.0, stance="neutral", faction="tiefsee",
+    abilities=(Ability("shield", "front"), Ability("reflect", "shell"), Ability("melee")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kerzenstumpf", sample_chance=0.35, pearls=14,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Großkreaturen (Card C09): trampolinwal, kirchenkrake
+# ---------------------------------------------------------------------------
+
+TRAMPOLINWAL = CreatureSpec(
+    "trampolinwal", "Trampolinwal", width=56, height=32, hp=300, flying=False, speed=10, sight=200,
+    stance="passive", faction="gelee",
+    abilities=(Ability("reflect", "bounce"),),
+    windup_time=0.25, recover_time=0.2, drops_sample="probe_glibberkern", sample_chance=0.35, pearls=40,
+)  # fmt: skip
+
+KIRCHENKRAKE = CreatureSpec(
+    "kirchenkrake", "Kirchenkrake", width=48, height=40, hp=350, flying=True, speed=25, sight=400,
+    stance="hostile", faction="tiefsee",
+    abilities=(Ability("grab_pull", "tentacle"),),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_glockensplitter", sample_chance=0.35, pearls=40,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Zwischenbosse Teil 1 (Card C10): pfuetzenwurm, aktenwolf, manege_clown, harzgeneral, sporenherz
+# ---------------------------------------------------------------------------
+
+PFUETZENWURM = CreatureSpec(
+    "pfuetzenwurm", "Pfützenwurm", width=24, height=14, hp=160, flying=False, speed=40, sight=450,
+    stance="hostile", faction="parasiten", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("burrow", "flesh"), Ability("ranged", "acid")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_blutklumpen", pearls=25,
+)  # fmt: skip
+
+AKTENWOLF = CreatureSpec(
+    "aktenwolf", "Aktenwolf", width=22, height=16, hp=180, flying=False, speed=65, sight=500,
+    stance="hostile", faction="akten", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("morph", "alpha", 0.5), Ability("aura", "stamp_tax", 42.0)),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_stempelkissen", pearls=30,
+)  # fmt: skip
+
+MANEGE_CLOWN = CreatureSpec(
+    "manege_clown", "Manege-Clown", width=18, height=22, hp=150, flying=False, speed=48, sight=440,
+    stance="hostile", faction="gelee", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("split", "clown"), Ability("ranged", "bomb")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glibberkern", pearls=25,
+)  # fmt: skip
+
+HARZGENERAL = CreatureSpec(
+    "harzgeneral", "Harzgeneral", width=24, height=20, hp=190, flying=False, speed=35, sight=460,
+    stance="hostile", faction="insekten", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "ameisenkrieger", 2.0), Ability("ranged", "resin")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_zuckerkristall", pearls=30,
+)  # fmt: skip
+
+SPORENHERZ = CreatureSpec(
+    "sporenherz", "Sporenherz", width=26, height=26, hp=170, flying=True, speed=20, sight=450,
+    stance="hostile", faction="pilze", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "sporenwerfer", 2.0), Ability("aura", "poison", 48.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_plattennadel", pearls=28,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Zwischenbosse Teil 2 (Card C11): glockenwaechter
+# ---------------------------------------------------------------------------
+
+GLOCKENWAECHTER = CreatureSpec(
+    "glockenwaechter", "Glockenwächter", width=24, height=28, hp=180, flying=True, speed=35, sight=450,
+    stance="hostile", faction="tiefsee", is_mid_boss=True, sample_chance=1.0,
+    abilities=(Ability("aura", "shock", 50.0),),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_glockensplitter", pearls=30,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Endbosse der 6 Universen (Card C12): weltenherz, oberstempler, mutter_glibber,
+# ameisenkoenigin, dj_myzel, abt_kieme
+# ---------------------------------------------------------------------------
+
+WELTENHERZ = CreatureSpec(
+    "weltenherz", "Weltenherz", width=40, height=40, hp=450, flying=False, speed=0, sight=500,
+    stance="hostile", faction="parasiten", is_boss=True, stationary=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "zottenwurm", 3.0), Ability("aura", "heartbeat", 60.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+OBERSTEMPLER = CreatureSpec(
+    "oberstempler", "Oberstempler", width=30, height=36, hp=400, flying=False, speed=40, sight=500,
+    stance="hostile", faction="akten", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("ranged", "stamp_death"), Ability("summon", "stempler", 3.0)),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+MUTTER_GLIBBER = CreatureSpec(
+    "mutter_glibber", "Mutter Glibber", width=36, height=36, hp=380, flying=False, speed=32, sight=500,
+    stance="hostile", faction="gelee", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("split", "pudding"), Ability("ranged", "candy_burst")),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+AMEISENKOENIGIN = CreatureSpec(
+    "ameisenkoenigin", "Ameisenkönigin", width=42, height=30, hp=420, flying=False, speed=25, sight=500,
+    stance="hostile", faction="insekten", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("summon", "ameisenkrieger", 2.5), Ability("ranged", "acid_cone")),
+    windup_time=0.6, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+DJ_MYZEL = CreatureSpec(
+    "dj_myzel", "DJ Myzel", width=32, height=32, hp=390, flying=True, speed=45, sight=500,
+    stance="hostile", faction="pilze", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("aura", "beat_pulse", 70.0), Ability("summon", "sporenblase", 3.0)),
+    windup_time=0.4, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+ABT_KIEME = CreatureSpec(
+    "abt_kieme", "Abt Kieme", width=34, height=34, hp=360, flying=True, speed=38, sight=500,
+    stance="hostile", faction="tiefsee", is_boss=True, boss=True, sample_chance=1.0,
+    abilities=(Ability("ranged", "soundwave"), Ability("aura", "shock", 55.0)),
+    windup_time=0.5, recover_time=0.2, drops_sample="probe_kern", pearls=80,
+)  # fmt: skip
+
+# ---------------------------------------------------------------------------
+# Behörden-Agenten, böse Ichs & Ober-Cloita (Card C14)
+# ---------------------------------------------------------------------------
+
+AGENT_STREIFE = CreatureSpec(
+    "agent_streife", "Streifen-Agent", width=14, height=18, hp=45, flying=False, speed=45, sight=450,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("hunt"), Ability("ranged", "stamp")),
+    windup_time=0.4, recover_time=0.2, pearls=15,
+)  # fmt: skip
+
+AGENT_DROHNE = CreatureSpec(
+    "agent_drohne", "Agenten-Drohne", width=12, height=12, hp=15, flying=True, speed=60, sight=420,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("flee"), Ability("ranged", "taser")),
+    windup_time=0.3, recover_time=0.2, pearls=10,
+)  # fmt: skip
+
+AGENT_VOLLSTRECKER = CreatureSpec(
+    "agent_vollstrecker", "Vollstrecker-Agent", width=18, height=22, hp=120, flying=False, speed=40, sight=480,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("shield", "front"), Ability("melee")),
+    windup_time=0.5, recover_time=0.2, pearls=25,
+)  # fmt: skip
+
+AGENT_ABTEILUNGSLEITER = CreatureSpec(
+    "agent_abteilungsleiter", "Abteilungsleiter", width=20, height=24, hp=160, flying=True, speed=35, sight=500,
+    stance="hostile", faction="behoerde", is_mid_boss=True,
+    abilities=(Ability("summon", "agent_streife", 3.0), Ability("ranged", "stamp_tax")),
+    windup_time=0.5, recover_time=0.2, pearls=40,
+)  # fmt: skip
+
+BOESE_KAISERIN = CreatureSpec(
+    "boese_kaiserin", "Böse Kaiserin", width=28, height=36, hp=3500, flying=False, speed=45, sight=600,
+    stance="hostile", faction="boese_ichs", is_boss=True, boss=True,
+    abilities=(Ability("ranged", "beam"), Ability("summon", "agent_streife", 4.0)),
+    windup_time=0.5, recover_time=0.2, pearls=200,
+)  # fmt: skip
+
+BOESE_GUTE = CreatureSpec(
+    "boese_gute", "Böse Gute", width=26, height=34, hp=3200, flying=True, speed=50, sight=600,
+    stance="hostile", faction="boese_ichs", is_boss=True, boss=True,
+    abilities=(Ability("aura", "heal_allies", 60.0), Ability("ranged", "holy_burst")),
+    windup_time=0.5, recover_time=0.2, pearls=200,
+)  # fmt: skip
+
+BOESE_OMEGA = CreatureSpec(
+    "boese_omega", "Böse Omega", width=32, height=40, hp=3800, flying=True, speed=40, sight=600,
+    stance="hostile", faction="boese_ichs", is_boss=True, boss=True,
+    abilities=(Ability("split", "omega"), Ability("ranged", "void_blast")),
+    windup_time=0.5, recover_time=0.2, pearls=200,
+)  # fmt: skip
+
+RATSMITGLIED = CreatureSpec(
+    "ratsmitglied", "Ratsmitglied", width=18, height=24, hp=90, flying=False, speed=35, sight=450,
+    stance="hostile", faction="behoerde",
+    abilities=(Ability("aura", "stamp_tax", 40.0),),
+    windup_time=0.5, recover_time=0.2, pearls=30,
+)  # fmt: skip
+
+OBER_CLOITA = CreatureSpec(
+    "ober_cloita", "Ober-Cloita", width=48, height=56, hp=6000, flying=True, speed=30, sight=700,
+    stance="hostile", faction="behoerde", is_boss=True, boss=True,
+    abilities=(Ability("summon", "ratsmitglied", 5.0), Ability("ranged", "multiverse_beam")),
+    windup_time=0.6, recover_time=0.2, pearls=500,
+)  # fmt: skip
+
 PROPS = ("talgsack", "saeuresack", "sporensack")
+
+# Playtest: the natives of the six universes felt harmless. Their "ranged" abilities were
+# only labels: no species had attack patterns, so nothing ever fired, and mid-bosses and
+# bosses without melee could not hurt anyone. RANGED_ARMS turns the label into the wand
+# patterns the attack code really uses: (patterns, cooldown s, range px, radial).
+RANGED_ARMS: dict[str, tuple[tuple[tuple[str, ...], ...], float, float, int]] = {
+    "acid": ((("klumpen",), ("doppel", "klumpen", "klumpen")), 2.0, 340, 0),
+    "paragraph": ((("beschleunigung", "nadel"), ("doppel", "nadel", "nadel")), 1.6, 380, 0),
+    "steam": ((("funke",), ("doppel", "funke", "funke")), 2.2, 280, 0),
+    "confetti": ((("knochensplitter",), ("nadelregen",)), 1.9, 300, 0),
+    "resin": ((("klumpen",), ("faecher", "klumpen", "klumpen", "klumpen", "klumpen", "klumpen")),
+              2.2, 330, 0),
+    "spore": ((("blutkugel",), ("doppel", "blutkugel", "blutkugel")), 2.2, 320, 0),
+    "bubble": ((("tempo_1", "funke"),), 2.4, 300, 0),
+    "shock": ((("nervenstrom",),), 2.2, 320, 0),
+    "bomb": ((("gallenblase",), ("dreifach", "funke", "funke", "funke")), 1.7, 420, 0),
+    "stamp_death": ((("flux_rakete",), ("dreifach", "nadel", "nadel", "nadel")), 1.5, 520, 0),
+    "candy_burst": ((("nadelregen",), ("gallenblase",), ("funke",)), 1.5, 480, 0),
+    "acid_cone": ((("faecher", "klumpen", "klumpen", "klumpen", "klumpen", "klumpen"),
+                   ("beschleunigung", "nadel")), 1.6, 460, 0),
+    "soundwave": ((("blutwelle",), ("dreifach", "funke", "funke", "funke")), 1.5, 500, 0),
+    # the evil selves and the Ober-Cloita
+    "beam": ((("beschleunigung", "sprengkraft", "nadelregen"), ("dreifach", "nadel", "nadel", "nadel")),
+             1.2, 560, 0),
+    "holy_burst": ((("zielsuche", "leuchtkugel"), ("kettenfunke",)), 1.3, 560, 0),
+    "void_blast": ((("dreifach", "funke", "funke", "funke"), ("zielsuche", "feuerball")), 1.4, 600, 0),
+    "multiverse_beam": ((("flux_rakete",), ("faecher", "nadel", "nadel", "nadel", "nadel", "nadel"),
+                         ("zielsuche", "feuerball")), 1.1, 640, 0),
+}  # fmt: skip
+# Extra teeth per species: fields that replace the declared ones.
+SPECIES_ARMS: dict[str, dict[str, Any]] = {
+    # natives that only fought back are hunters now
+    "aktenfresser": {"stance": "hostile", "jump_speed": 150},
+    "kaffeegolem": {"stance": "hostile", "jump_speed": 130},
+    "korallenwaechter": {"stance": "hostile", "jump_speed": 130},
+    "moenchsfisch": {"stance": "hostile"},
+    "fleischmade": {"jump_speed": 170, "windup_time": 0.25},
+    "blutegel": {"speed": 70, "jump_speed": 160},
+    # mid-bosses and bosses without any attack of their own
+    "aktenwolf": {"melee_damage": 14, "melee_cooldown": 0.7, "jump_speed": 210},
+    "glockenwaechter": {
+        "melee_damage": 12, "patterns": (("blutwelle",), ("funke",)), "ranged_cooldown": 2.0,
+        "ranged_range": 420, "radial": 6,
+    },
+    "sporenherz": {
+        "patterns": (("blutkugel",),), "ranged_cooldown": 2.6, "ranged_range": 400, "radial": 6,
+    },
+    "weltenherz": {
+        "melee_damage": 16, "patterns": (("blutkugel",), ("blutwelle",)), "ranged_cooldown": 2.2,
+        "ranged_range": 520, "radial": 8,
+    },
+    "dj_myzel": {
+        "melee_damage": 12, "patterns": (("funke",), ("nadel",)), "ranged_cooldown": 1.2,
+        "ranged_range": 480, "radial": 8,
+    },
+    "pfuetzenwurm": {"melee_damage": 12, "melee_cooldown": 0.9},
+    "manege_clown": {"melee_damage": 10, "jump_speed": 180},
+    "harzgeneral": {"melee_damage": 14},
+    "oberstempler": {"melee_damage": 16},
+    "mutter_glibber": {"melee_damage": 16},
+    "ameisenkoenigin": {"melee_damage": 18},
+    "abt_kieme": {"melee_damage": 14},
+    "ratsmitglied": {
+        "patterns": (("nadel",), ("doppel", "nadel", "nadel")), "ranged_cooldown": 2.0,
+        "ranged_range": 440,
+    },
+    "boese_kaiserin": {"melee_damage": 18},
+    "boese_gute": {"melee_damage": 16},
+    "boese_omega": {"melee_damage": 20},
+    "ober_cloita": {"melee_damage": 22},
+    "trampolinwal": {"melee_damage": 10, "melee_cooldown": 1.2},
+    "kirchenkrake": {"melee_damage": 12, "melee_cooldown": 1.0},
+}  # fmt: skip
+
+
+def _armed(spec: CreatureSpec) -> CreatureSpec:
+    """The spec with working attacks (see RANGED_ARMS / SPECIES_ARMS)."""
+    fields: dict[str, Any] = {}
+    if not spec.patterns:
+        for ability in spec.abilities:
+            arm = RANGED_ARMS.get(ability.param) if ability.kind == "ranged" else None
+            if arm:
+                patterns, cooldown, reach, radial = arm
+                fields.update(
+                    patterns=patterns, ranged_cooldown=cooldown, ranged_range=reach, radial=radial
+                )
+    fields.update(SPECIES_ARMS.get(spec.key, {}))
+    return replace(spec, **fields) if fields else spec
+
+
 SPECIES: dict[str, CreatureSpec] = {
-    spec.key: spec
+    spec.key: _armed(spec)
     for spec in (
         MAGGOT, SWARMER, BONE_SPITTER, SPORE_BLOAT, STOMACH_WORM, BROOD_MOTHER, HEART,
         EMBER_MAGGOT, ACID_SPITTER, LEECH, EYE_BLOAT, MUCUS_CRAWLER, NERVE_KNOT,
         TALLOW_SAC, ACID_SAC, SPORE_SAC, BONE_EATER, BREATH, SHAPESHIFTER,
+        FLEISCHMADE, BLUTEGEL, SAEURESPUCKER, ZOTTENWURM,
+        AKTENFRESSER, STEMPLER, PARAGRAPHENREITER, KAFFEEGOLEM,
+        HUEPFLING, GLIBBERKUH, GLIBBERTEILER, ZUCKERWATTE_WOLKE, KONFETTI_KANONE,
+        AMEISENKRIEGER, BLATTLAUS, ARBEITERAMEISE, HARZSPUCKER,
+        TUERSTEHERPILZ, SPORENSCHNORRER, SPORENWERFER, LEUCHTMOTTE,
+        MOENCHSFISCH, ORGELAAL, GLOCKENQUALLE, KORALLENWAECHTER,
+        TRAMPOLINWAL, KIRCHENKRAKE,
+        PFUETZENWURM, AKTENWOLF, MANEGE_CLOWN, HARZGENERAL, SPORENHERZ,
+        GLOCKENWAECHTER,
+        WELTENHERZ, OBERSTEMPLER, MUTTER_GLIBBER, AMEISENKOENIGIN, DJ_MYZEL, ABT_KIEME,
+        AGENT_STREIFE, AGENT_DROHNE, AGENT_VOLLSTRECKER, AGENT_ABTEILUNGSLEITER,
+        BOESE_KAISERIN, BOESE_GUTE, BOESE_OMEGA,
+        RATSMITGLIED, OBER_CLOITA,
     )
 }  # fmt: skip
 for _alias, _target_spec in (
@@ -193,9 +682,21 @@ for _alias, _target_spec in (
     ("imp", EMBER_MAGGOT),
     ("leech", LEECH),
     ("golem", MUCUS_CRAWLER),
+    ("agent_sachbearbeiter", AGENT_STREIFE),
 ):
     SPECIES.setdefault(_alias, _target_spec)
 
+STANCE_ALIASES = {
+    "fearful": "shy",
+    "curious": "territorial",
+    "neutral": "territorial",
+    "passive": "peaceful",
+}
+GROUP_AGGRO_RADIUS = 140.0
+SHY_FLEE_DISTANCE = 90.0
+AGGRO_RADIUS = 130.0
+
+MIN_WINDUP = 0.40  # seconds every ranged attack is telegraphed
 MELEE_REACH = 2  # px around the body that counts as touching
 WANDER_PAUSE = 0.35  # chance that a new wander leg is a pause
 HURT_FLASH = 0.08  # seconds a creature flashes after taking damage
@@ -231,6 +732,7 @@ class Creature(Body):
         self.summons: list[str] = []  # creature keys the manager should spawn
         self.breath = 0.0  # position in the breathing cycle (inhaling bosses)
         self.power = 1.0  # damage factor (New Game+)
+        self.speed_scale = 1.0  # boss phases speed a creature up (Contract V16)
         self.flash_cooldown = 0.0
         self.stagger = 0.0  # seconds it tumbles helplessly after a kick or blast
         self.inhaling = False
@@ -245,7 +747,13 @@ class Creature(Body):
         self.carrying: str = ""
         self.morphed: bool = False
         self.bribed: bool = False
+        self.faction: str = spec.faction  # a summoned helper takes its summoner's side
+        self.helpers: list[Creature] = []  # helpers it called (capped, see behaviour)
+        self.summoned: bool = False  # it was called by another creature
+        self.calmed: float = 0.0  # F15: Klonita's hug, seconds left of not minding the player
+        self.dodge_charges: int = 0  # F17: her warning, shots that will miss
         self.giver: bool = False
+        self.noise_level: float = 0.0
         self.ability_cooldowns: dict[str, float] = {}
         self.path_cache: Any = None
         self.anim_state: str = "idle"
@@ -282,7 +790,16 @@ class Creature(Body):
         self.flash_cooldown = max(0.0, self.flash_cooldown - dt)
         self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
         self.ranged_cooldown = max(0.0, self.ranged_cooldown - dt)
+        self.calmed = max(0.0, self.calmed - dt)
         self.unstick(world)
+        if self.state == "windup":
+            shot = poll_attack_ready(self, dt)
+            if shot is not None:
+                self._fire(shot, projectiles)
+        elif self.state == "recover":
+            self.state_timer -= dt
+            if self.state_timer <= 0:
+                self.state = "idle"
 
         px, py = player.center
         if self.spec.burrows:  # it eats its way through and feels the player through bone
@@ -340,10 +857,10 @@ class Creature(Body):
         px, _ = self.last_seen
         if hunting:
             direction = 0 if abs(px - cx) < 2 else (1 if px > cx else -1)
-            speed = self.spec.speed
+            speed = self.spec.speed * self.speed_scale
         else:
             direction = self._wander(dt)
-            speed = self.spec.speed * 0.5
+            speed = self.spec.speed * self.speed_scale * 0.5
         if direction:
             self.facing = direction
         self.vx += (direction * speed - self.vx) * min(1.0, 8.0 * dt)
@@ -364,14 +881,14 @@ class Creature(Body):
             distance = math.hypot(dx, dy) or 1.0
             if distance < 12:
                 dx = dy = 0.0
-            wanted_vx = dx / distance * self.spec.speed
-            wanted_vy = dy / distance * self.spec.speed
+            wanted_vx = dx / distance * self.spec.speed * self.speed_scale
+            wanted_vy = dy / distance * self.spec.speed * self.speed_scale
             self.facing = 1 if px > cx else -1
         else:
             direction = self._wander(dt)
             if direction:
                 self.facing = direction
-            wanted_vx = direction * self.spec.speed * 0.5
+            wanted_vx = direction * self.spec.speed * self.speed_scale * 0.5
             wanted_vy = 0.0
         wanted_vy += math.sin(self.age * 5) * 18  # buzzing bob
         follow = min(1.0, 3.0 * dt)
@@ -388,23 +905,29 @@ class Creature(Body):
             if spec.pop_on_touch:
                 self.hp = 0.0
                 return
-        if self.attacks and self.ranged_cooldown <= 0:
+        if self.attacks and self.ranged_cooldown <= 0 and self.state not in ("windup", "recover"):
             cx, cy = self.center
             px, py = player.center
             if math.hypot(px - cx, py - cy) <= spec.ranged_range:
-                wand = self.attacks[self.pattern % len(self.attacks)]
-                self.pattern += 1
-                wand.cooldown = wand.recharge_left = 0.0
-                shots = wand.cast()
-                if spec.radial:
-                    turn = self.rng.uniform(0, math.tau)
-                    for k in range(spec.radial):
-                        angle = turn + math.tau * k / spec.radial
-                        projectiles.spawn(shots, cx, cy, angle, self.team)
-                else:
-                    angle = math.atan2(py - cy, px - cx) - 0.25  # lob slightly upwards
-                    projectiles.spawn(shots, cx, cy, angle, self.team)
-                self.ranged_cooldown = spec.ranged_cooldown * self.rng.uniform(0.8, 1.2)
+                begin_attack(self, (px, py))  # telegraph first, fire in _fire
+
+    def _fire(self, target_xy: tuple[float, float], projectiles: ProjectileSystem) -> None:
+        spec = self.spec
+        cx, cy = self.center
+        px, py = target_xy
+        wand = self.attacks[self.pattern % len(self.attacks)]
+        self.pattern += 1
+        wand.cooldown = wand.recharge_left = 0.0
+        shots = wand.cast()
+        if spec.radial:
+            turn = self.rng.uniform(0, math.tau)
+            for k in range(spec.radial):
+                angle = turn + math.tau * k / spec.radial
+                projectiles.spawn(shots, cx, cy, angle, self.team)
+        else:
+            angle = math.atan2(py - cy, px - cx) - 0.25  # lob slightly upwards
+            projectiles.spawn(shots, cx, cy, angle, self.team)
+        self.ranged_cooldown = spec.ranged_cooldown * self.rng.uniform(0.8, 1.2)
 
     def _breathe(
         self, world: World, dt: float, player: Body, projectiles: ProjectileSystem
@@ -453,8 +976,27 @@ class EnemyManager:
         spec = SPECIES.get(species, MAGGOT)
         c = Creature(spec, round(x), round(y), random.Random())
         c.species = species
+        if species == "blattlaus":
+            c.giver = True
         self.creatures.append(c)
         return c
+
+    def on_noise(
+        self,
+        x: float,
+        y: float,
+        radius: float,
+        out_events: list[tuple[str, dict[str, object]]],
+    ) -> None:
+        """Card C09: alert dormant / sensitive creatures within radius of a noise source."""
+        for c in self.creatures:
+            if c.dead or c.species != "kirchenkrake":
+                continue
+            cx, cy = c.center
+            if math.hypot(cx - x, cy - y) <= radius:
+                c.noise_level += 40.0
+                if c.noise_level >= 100.0:
+                    out_events.append(("creature_woke", {"species": "kirchenkrake"}))
 
     def update(
         self,
@@ -479,9 +1021,16 @@ class EnemyManager:
         """Update creatures inside ``area``; returns the ones that died this update."""
         x0, y0, x1, y1 = area
         for creature in self.creatures:
+            if creature.noise_level > 0.0:
+                creature.noise_level = max(0.0, creature.noise_level - 10.0 * dt)
             cx, cy = creature.center
             if x0 <= cx < x1 and y0 <= cy < y1:
-                creature.update(world, dt, player, projectiles)
+                target = self._pick_target(creature, player, grudges)
+                creature.update(world, dt, target, projectiles)
+                if creature.spec.abilities:
+                    self._tick_abilities(
+                        creature, world, dt, player, projectiles, on_beat, grudges, out_events
+                    )
         self._spawn_summons(world)
         died = [c for c in self.creatures if c.dead]
         for creature in died:
@@ -496,6 +1045,47 @@ class EnemyManager:
                         world.ignite(x, y)
         self.creatures = [c for c in self.creatures if not c.dead]
         return died
+
+    def _pick_target(
+        self, creature: Creature, player: Body, grudges: set[tuple[str, str]] | None
+    ) -> Body:
+        """The nearest hostile actor in sight: the player or a creature of an enemy faction."""
+        cx, cy = creature.center
+        best: Body = player
+        px, py = player.center
+        best_distance = math.hypot(px - cx, py - cy)
+        for other in self.creatures:
+            if other is creature or other.dead or other.spec.prop:
+                continue
+            if other.spec.stance == "trader" or not are_hostile(
+                creature.faction, other.faction, grudges
+            ):
+                continue
+            ox, oy = other.center
+            distance = math.hypot(ox - cx, oy - cy)
+            if distance <= creature.spec.sight and distance < best_distance:
+                best, best_distance = other, distance
+        return best
+
+    def _tick_abilities(
+        self,
+        creature: Creature,
+        world: World,
+        dt: float,
+        player: Body,
+        projectiles: ProjectileSystem | list[Any],
+        on_beat: bool,
+        grudges: set[tuple[str, str]] | None,
+        out_events: list[tuple[str, dict[str, Any]]] | None,
+    ) -> None:
+        items = projectiles.items if isinstance(projectiles, ProjectileSystem) else projectiles
+        ctx = BehaviourContext(
+            dt, world, player, self.creatures, items,  # type: ignore[arg-type]
+            grudges=grudges or set(), on_beat=on_beat, rng=creature.rng,
+        )  # fmt: skip
+        tick_abilities(creature, ctx)
+        if out_events is not None:
+            out_events.extend(ctx.out_events)
 
     def _spawn_summons(self, world: World) -> None:
         for parent in list(self.creatures):
@@ -540,10 +1130,13 @@ def populate(
     bloats: int = 0,
     safe_radius: float = 170,
     extra: tuple[tuple[str, int], ...] = (),
+    spread: bool = False,
 ) -> list[Creature]:
     """Place creatures in open cave space, away from ``avoid`` (the spawn).
 
-    ``extra`` adds further species as (creature key, count).
+    ``extra`` adds further species as (creature key, count). With ``spread`` every
+    species is dealt round the six sectors of the map (3 x 2) instead of landing where
+    the caves happen to be widest.
     """
     creatures: list[Creature] = []
     wanted = (
@@ -557,7 +1150,14 @@ def populate(
                 break
             x = rng.randint(20, world.width - 20)
             y = rng.randint(20, world.height - 20)
-            if world.get(x, y) != AIR or math.hypot(x - avoid[0], y - avoid[1]) < safe_radius:
+            if spread and _attempt < count * 60:  # later attempts may land anywhere
+                sector = placed + _attempt // 12
+                col, row = sector % 3, (sector // 3) % 2
+                x = rng.randint(max(20, col * world.width // 3), (col + 1) * world.width // 3 - 20)
+                y = rng.randint(max(20, row * world.height // 2), (row + 1) * world.height // 2 - 20)
+            cell = world.get(x, y)
+            swims = spec.flying and KIND[cell] == LIQUID  # fish & co. in flooded universes
+            if (cell != AIR and not swims) or math.hypot(x - avoid[0], y - avoid[1]) < safe_radius:
                 continue
             if spec.hangs:
                 while world.get(x, y - 1) == AIR and y > 3:
@@ -574,6 +1174,8 @@ def populate(
             else:
                 top = y
             left = x - spec.width // 2
+            if math.hypot(x - avoid[0], top + spec.height / 2 - avoid[1]) < safe_radius:
+                continue  # it fell (or climbed) into the start zone
             clearance = 6 if spec.flying and not spec.hangs else 0
             if world.rect_blocked(
                 left - clearance, top - clearance,
@@ -593,14 +1195,60 @@ def evaluate_stance(
     stance_override: str | None = None,
 ) -> bool:
     """Evaluate whether ``creature`` should attack ``player`` under its stance (Card A14)."""
-    raise NotImplementedError("Card A14")
+    stance = stance_override or creature.stance or creature.spec.stance
+    stance = STANCE_ALIASES.get(stance, stance)
+    if creature.bribed:
+        return False
+    px, py = player.center
+    cx, cy = creature.center
+    distance = math.hypot(px - cx, py - cy)
+    if creature.alerted and not creature.aggro:  # hurt: the whole nearby group turns hostile
+        creature.aggro = True
+        for other in all_creatures:
+            if other is creature or other.dead or other.group_id != creature.group_id:
+                continue
+            ox, oy = other.center
+            if math.hypot(ox - cx, oy - cy) <= GROUP_AGGRO_RADIUS:
+                other.aggro = True
+    if stance == "shy":
+        if creature.aggro:
+            return True
+        if distance < SHY_FLEE_DISTANCE:
+            creature.state = "flee"
+        return False
+    if stance == "peaceful":
+        return creature.aggro
+    if stance == "territorial":
+        if creature.aggro:
+            return True
+        if creature.calmed > 0:  # F15: calmed by Klonita, closeness alone does not provoke
+            return False
+        if distance <= AGGRO_RADIUS * 0.6:
+            creature.aggro = True
+            return True
+        return False
+    if distance <= max(AGGRO_RADIUS, creature.spec.sight):  # "hostile"
+        creature.aggro = True
+        return True
+    return creature.aggro
 
 
 def begin_attack(creature: Creature, target_xy: tuple[float, float]) -> None:
     """Enter windup state before firing at ``target_xy`` (Card A15)."""
-    raise NotImplementedError("Card A15")
+    creature.state = "windup"
+    creature.state_timer = max(MIN_WINDUP, creature.spec.windup_time)
+    creature.pending_shot = target_xy
 
 
 def poll_attack_ready(creature: Creature, dt: float) -> tuple[float, float] | None:
     """Advance attack telegraph timer; return target_xy when ready to fire (Card A15)."""
-    raise NotImplementedError("Card A15")
+    if creature.state != "windup" or creature.pending_shot is None:
+        return None
+    creature.state_timer -= dt
+    if creature.state_timer > 0:
+        return None
+    target = creature.pending_shot
+    creature.pending_shot = None
+    creature.state = "recover"  # the shot itself is fired by the caller
+    creature.state_timer = creature.spec.recover_time
+    return target

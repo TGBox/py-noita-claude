@@ -1,0 +1,61 @@
+{
+  "frame_size": [
+    18,
+    22
+  ],
+  "anchor": [
+    9,
+    20
+  ],
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 4,
+      "fps": 5.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "fly": {
+      "row": 1,
+      "frames": 4,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "assist": {
+      "row": 2,
+      "frames": 3,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "quirk": {
+      "row": 3,
+      "frames": 3,
+      "fps": 6.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "knocked": {
+      "row": 4,
+      "frames": 2,
+      "fps": 6.0,
+      "loop": true,
+      "next_anim": "idle"
+    }
+  },
+  "glow": [
+    {
+      "offset": [
+        14,
+        13
+      ],
+      "color": [
+        200,
+        100,
+        255
+      ],
+      "radius": 14
+    }
+  ]
+}

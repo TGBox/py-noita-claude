@@ -1,6 +1,6 @@
-﻿FFFFFFFF..FFFFFFFFFFFF.FFFFFFFFFFFFFF.FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 44%]
-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 89%]
-FFFFFFFFFFFFFFFFF                                                        [100%]
+﻿FFFFFFFF..FFFFFFFFFFFF.FFFFFFFFFFFFFF.FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 43%]
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 87%]
+FFFFFFFFFFFFFFFFFFFF                                                     [100%]
 ================================== FAILURES ===================================
 E   AssertionError: assert ['schlund', '...n', 'pfuetze'] == ['schlund', '...'knochenmark']
       
@@ -21,70 +21,70 @@ C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\
 E   KeyError: ''
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\loot.py:136: KeyError: ''
 E   NotImplementedError: Card A07
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1493: NotImplementedError: Card A07
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1495: NotImplementedError: Card A07
 E   AttributeError: 'Player' object has no attribute 'refresh_time'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:228: AttributeError: 'Player' object has no attribute 'refresh_time'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:229: AttributeError: 'Player' object has no attribute 'refresh_time'
 E   AttributeError: 'Player' object has no attribute 'fizzy_time'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: AttributeError: 'Player' object has no attribute 'fizzy_time'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: AttributeError: 'Player' object has no attribute 'fizzy_time'
 E   assert 0.0 == 20.0 ▒ 2.0e-05
       
       comparison failed
       Obtained: 0.0
       Expected: 20.0 ▒ 2.0e-05
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: assert 0.0 == 20.0 ▒ 2.0e-05
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: assert 0.0 == 20.0 ▒ 2.0e-05
 E   assert 10.0 == 100.0 ▒ 1.0e-04
       
       comparison failed
       Obtained: 10.0
       Expected: 100.0 ▒ 1.0e-04
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:287: assert 10.0 == 100.0 ▒ 1.0e-04
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:288: assert 10.0 == 100.0 ▒ 1.0e-04
 E   assert 50.0 == 40.0 ▒ 4.0e-05
       
       comparison failed
       Obtained: 50.0
       Expected: 40.0 ▒ 4.0e-05
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:285: assert 50.0 == 40.0 ▒ 4.0e-05
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:286: assert 50.0 == 40.0 ▒ 4.0e-05
 E   assert 0.0 == 5.0 ▒ 5.0e-06
       
       comparison failed
       Obtained: 0.0
       Expected: 5.0 ▒ 5.0e-06
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: assert 0.0 == 5.0 ▒ 5.0e-06
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: assert 0.0 == 5.0 ▒ 5.0e-06
 E   AttributeError: 'Player' object has no attribute 'haste_time'. Did you mean: 'marked_time'?
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: AttributeError: 'Player' object has no attribute 'haste_time'. Did you mean: 'marked_time'?
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: AttributeError: 'Player' object has no attribute 'haste_time'. Did you mean: 'marked_time'?
 E   AttributeError: 'Player' object has no attribute 'lubed_time'. Did you mean: 'marked_time'?
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: AttributeError: 'Player' object has no attribute 'lubed_time'. Did you mean: 'marked_time'?
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: AttributeError: 'Player' object has no attribute 'lubed_time'. Did you mean: 'marked_time'?
 E   assert 45.0 == 35.0 ▒ 3.5e-05
       
       comparison failed
       Obtained: 45.0
       Expected: 35.0 ▒ 3.5e-05
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:285: assert 45.0 == 35.0 ▒ 3.5e-05
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:286: assert 45.0 == 35.0 ▒ 3.5e-05
 E   assert 0.0 == 15.0 ▒ 1.5e-05
       
       comparison failed
       Obtained: 0.0
       Expected: 15.0 ▒ 1.5e-05
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: assert 0.0 == 15.0 ▒ 1.5e-05
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: assert 0.0 == 15.0 ▒ 1.5e-05
 E   AttributeError: 'Player' object has no attribute 'lubed_time'. Did you mean: 'marked_time'?
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: AttributeError: 'Player' object has no attribute 'lubed_time'. Did you mean: 'marked_time'?
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: AttributeError: 'Player' object has no attribute 'lubed_time'. Did you mean: 'marked_time'?
 E   AttributeError: 'Player' object has no attribute 'ink_sight'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: AttributeError: 'Player' object has no attribute 'ink_sight'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: AttributeError: 'Player' object has no attribute 'ink_sight'
 E   AttributeError: 'Player' object has no attribute 'refresh_time'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:289: AttributeError: 'Player' object has no attribute 'refresh_time'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:290: AttributeError: 'Player' object has no attribute 'refresh_time'
 E   NotImplementedError: Card A10
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\pathfind.py:49: NotImplementedError: Card A10
 E   AssertionError: assert set() == {'akten', 'be...nsekten', ...}
       
       Extra items in the right set:
-      'spieler'
-      'gelee'
-      'pilze'
       'akten'
-      'parasiten'...
+      'wildnis'
+      'behoerde'
+      'gelee'
+      'insekten'...
       
       ...Full output truncated, use '-vv' to show
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:356: AssertionError: assert set() == {'akten', 'be...nsekten', ...}
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:357: AssertionError: assert set() == {'akten', 'be...nsekten', ...}
 E   NotImplementedError: Card A12
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\behaviour.py:60: NotImplementedError: Card A12
 E   NotImplementedError: Card A13
@@ -94,9 +94,9 @@ C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\enemies
 E   NotImplementedError: Card A15
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\enemies.py:601: NotImplementedError: Card A15
 E   assert 12.0 == 20
-     +  where 12.0 = <src.enemies.Creature object at 0x0000017444D5CAD0>.hp
-     +    where <src.enemies.Creature object at 0x0000017444D5CAD0> = <src.enemies.Creature object at 0x0000017444D5CAD0>.body
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:542: assert 12.0 == 20
+     +  where 12.0 = <src.enemies.Creature object at 0x000001E864D6C980>.hp
+     +    where <src.enemies.Creature object at 0x000001E864D6C980> = <src.enemies.Creature object at 0x000001E864D6C980>.body
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:543: assert 12.0 == 20
 E   NotImplementedError: Card A17
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\sprites.py:35: NotImplementedError: Card A17
 E   NotImplementedError: Card A18
@@ -117,10 +117,10 @@ E   NotImplementedError: Card A26
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\rules.py:233: NotImplementedError: Card A26
 E   KeyError: 'fuellung_wasser'
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\spells.py:623: KeyError: 'fuellung_wasser'
-E   ImportError: cannot import name 'FLASK_PAYLOAD_CELLS' from 'src.spells' (C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\spells.py)
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:828: ImportError: cannot import name 'FLASK_PAYLOAD_CELLS' from 'src.spells' (C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\spells.py)
+E   KeyError: 'fuellung_kolben'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\spells.py:623: KeyError: 'fuellung_kolben'
 E   AttributeError: 'Block' object has no attribute 'retired'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:882: AttributeError: 'Block' object has no attribute 'retired'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_a.py:883: AttributeError: 'Block' object has no attribute 'retired'
 E   NotImplementedError: Card B01
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tools\sprites_chars.py:12: NotImplementedError: Card B01
 E   NotImplementedError: Card B02
@@ -178,8 +178,8 @@ C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tools\sprit
 E   NotImplementedError: Card B31
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tools\sprites_env.py:17: NotImplementedError: Card B31
 E   AssertionError: assert (False)
-     +  where False = hasattr(<src.rendering.Renderer object at 0x0000017444D5C590>, 'sheet_cache')
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_b.py:339: AssertionError: assert (False)
+     +  where False = hasattr(<src.rendering.Renderer object at 0x000001E864ED7CB0>, 'sheet_cache')
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_b.py:340: AssertionError: assert (False)
 E   NotImplementedError: Card B32
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\rendering.py:1035: NotImplementedError: Card B32
 E   NotImplementedError: Card B32
@@ -221,15 +221,15 @@ C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\
 E   AssertionError: assert 'weltenherz' in {'made': CreatureSpec(key='made', name_de='Fleischmade', width=10, height=6, hp=20, flying=False, speed=45, sight=450,...0.2, weak_material='', resist_material='', drops_sample='', sample_chance=0.35, is_mid_boss=False, is_boss=False), ...}
      +  where 'weltenherz' = Universe(key='fleischwelt', name_de='Fleischwelt', pitch_de='Ein Universum, das nur aus einem einzigen, sehr gro▀en un...boden, der nachwõchst', klonita_de=('H÷rst du das? Ich glaube, die Welt hat Hunger.',), ready=True, size_override=None).boss
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_c.py:113: AssertionError: assert 'weltenherz' in {'made': CreatureSpec(key='made', name_de='Fleischmade', width=10, height=6, hp=20, flying=False, speed=45, sight=450,...0.2, weak_material='', resist_material='', drops_sample='', sample_chance=0.35, is_mid_boss=False, is_boss=False), ...}
-E   AssertionError: assert 'agent_streife' in {'made': CreatureSpec(key='made', name_de='Fleischmade', width=10, height=6, hp=20, flying=False, speed=45, sight=450,...0.2, weak_material='', resist_material='', drops_sample='', sample_chance=0.35, is_mid_boss=False, is_boss=False), ...}
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_c.py:133: AssertionError: assert 'agent_streife' in {'made': CreatureSpec(key='made', name_de='Fleischmade', width=10, height=6, hp=20, flying=False, speed=45, sight=450,...0.2, weak_material='', resist_material='', drops_sample='', sample_chance=0.35, is_mid_boss=False, is_boss=False), ...}
+E   KeyError: 'agent_streife'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_c.py:134: KeyError: 'agent_streife'
 E   NotImplementedError: Card C15
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\projectiles.py:406: NotImplementedError: Card C15
 E   assert False
-     +  where False = any(<generator object test_c16_creature_death_drops_and_split_in_run.<locals>.<genexpr> at 0x0000017446337370>)
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_c.py:176: assert False
+     +  where False = any(<generator object test_c16_creature_death_drops_and_split_in_run.<locals>.<genexpr> at 0x000001E864CE5080>)
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_c.py:178: assert False
 E   KeyError: 'sporenwerfer'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_c.py:185: KeyError: 'sporenwerfer'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_c.py:187: KeyError: 'sporenwerfer'
 E   AssertionError: assert 'fleischwelt' in {}
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_d.py:19: AssertionError: assert 'fleischwelt' in {}
 E   AssertionError: assert 'aktenhalde' in {}
@@ -253,22 +253,22 @@ C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\
 E   AssertionError: assert set() == {'bass_drop',..., 'verdauung'}
       
       Extra items in the right set:
-      'glockenschlag'
-      'verdauung'
-      'pruefung'
       'riesenschritt'
-      'bass_drop'
+      'verdauung'
       'brauseregen'
+      'bass_drop'
+      'pruefung'
+      'glockenschlag'
       Use -v to get more diff
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_d.py:106: AssertionError: assert set() == {'bass_drop',..., 'verdauung'}
 E   AssertionError: assert set() == {'dry_feet', ..., 'speed_run'}
       
       Extra items in the right set:
       'no_gold'
-      'kill_streak'
       'dry_feet'
-      'no_damage'
+      'kill_streak'
       'pacifist'
+      'no_damage'
       'speed_run'
       Use -v to get more diff
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_d.py:130: AssertionError: assert set() == {'dry_feet', ..., 'speed_run'}
@@ -306,10 +306,10 @@ C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\
 E   AssertionError: assert set() == {'challenge_a...e_sporenklub'}
       
       Extra items in the right set:
-      'challenge_aktenhalde'
-      'challenge_glibbria'
-      'challenge_kruemelreich'
       'challenge_sporenklub'
+      'challenge_kruemelreich'
+      'challenge_glibbria'
+      'challenge_aktenhalde'
       'challenge_abtei'
       'challenge_fleischwelt'
       Use -v to get more diff
@@ -328,43 +328,55 @@ E   AttributeError: 'Run' object has no attribute 'quest'
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_d.py:399: AttributeError: 'Run' object has no attribute 'quest'
 E   AttributeError: 'Run' object has no attribute 'quest'
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_d.py:415: AttributeError: 'Run' object has no attribute 'quest'
-E   assert 0 >= 10
-     +  where 0 = len({})
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:18: assert 0 >= 10
+E   AssertionError: assert set() == {'ws_archiv',...s_liege', ...}
+      
+      Extra items in the right set:
+      'ws_portal'
+      'ws_shredder'
+      'ws_couch'
+      'ws_well'
+      'ws_werkbank'...
+      
+      ...Full output truncated, use '-vv' to show
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:34: AssertionError: assert set() == {'ws_archiv',...s_liege', ...}
 E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\economy.py:10: NotImplementedError: Card E02
-E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\economy.py:25: NotImplementedError: Card E02
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\economy.py:18: NotImplementedError: Card E02
+E   assert False
+     +  where False = any(<generator object test_e03_gold_drops_for_veins_and_bosses.<locals>.<genexpr> at 0x000001E864D33440>)
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:88: assert False
 E   assert 0 == 6
      +  where 0 = len({})
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:67: assert 0 == 6
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:104: assert 0 == 6
 E   KeyError: 'npc_sachbearbeiterin'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:86: KeyError: 'npc_sachbearbeiterin'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:142: KeyError: 'npc_sachbearbeiterin'
 E   NotImplementedError: Card E06
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\fabricator.py:24: NotImplementedError: Card E06
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\fabricator.py:28: NotImplementedError: Card E06
 E   NotImplementedError: Cards E07, E08
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\minigames\physik_o_mat.py:21: NotImplementedError: Cards E07, E08
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\minigames\physik_o_mat.py:20: NotImplementedError: Cards E07, E08
 E   NotImplementedError: Cards E07, E08
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\minigames\physik_o_mat.py:21: NotImplementedError: Cards E07, E08
-E   assert (None is not None)
-     +  where None = <src.minigames.schiessstand.SchiessstandMinigame object at 0x0000017446355BE0>.result
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:143: assert (None is not None)
-E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1507: NotImplementedError: Card E02
-E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1507: NotImplementedError: Card E02
-E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1507: NotImplementedError: Card E02
-E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1507: NotImplementedError: Card E02
-E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1507: NotImplementedError: Card E02
-E   NotImplementedError: Card E02
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1507: NotImplementedError: Card E02
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\minigames\physik_o_mat.py:20: NotImplementedError: Cards E07, E08
+E   AssertionError: assert (0 == 24)
+     +  where 0 = <built-in method count of list object at 0x000001E864DDDBC0>('agent')
+     +    where <built-in method count of list object at 0x000001E864DDDBC0> = [].count
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_e.py:234: AssertionError: assert (0 == 24)
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
 E   NotImplementedError: Card F01
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:44: NotImplementedError: Card F01
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:58: NotImplementedError: Card F01
 E   NotImplementedError: Card F01
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:40: NotImplementedError: Card F01
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:54: NotImplementedError: Card F01
 E   NotImplementedError: Cards F03..F06
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\__init__.py:74: NotImplementedError: Cards F03..F06
 E   NotImplementedError: Cards F03..F06
@@ -374,46 +386,50 @@ C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\
 E   NotImplementedError: Cards F03..F06
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\__init__.py:74: NotImplementedError: Cards F03..F06
 E   NotImplementedError: Card F07
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\evil_selves.py:20: NotImplementedError: Card F07
-E   NotImplementedError: Card F07
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\evil_selves.py:30: NotImplementedError: Card F07
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\evil_selves.py:24: NotImplementedError: Card F07
+E   AttributeError: 'Run' object has no attribute 'resolve_empress_bargain'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_f.py:129: AttributeError: 'Run' object has no attribute 'resolve_empress_bargain'
 E   NotImplementedError: Card F09
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\headquarters.py:20: NotImplementedError: Card F09
-E   NotImplementedError: Card F08
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1515: NotImplementedError: Card F08
-E   AssertionError: assert 'enter_fleischwelt' in {}
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_f.py:138: AssertionError: assert 'enter_fleischwelt' in {}
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bosses\headquarters.py:22: NotImplementedError: Card F09
+E   NotImplementedError: Card F10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1517: NotImplementedError: Card F10
+E   ImportError: cannot import name 'LINE_COUNTS' from 'src.klonita_lines' (C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\klonita_lines.py)
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_f.py:168: ImportError: cannot import name 'LINE_COUNTS' from 'src.klonita_lines' (C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\klonita_lines.py)
 E   NotImplementedError: Card F12
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\klonita.py:70: NotImplementedError: Card F12
 E   NotImplementedError: Card A04
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\inventory.py:44: NotImplementedError: Card A04
 E   NotImplementedError: Card F14
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1519: NotImplementedError: Card F14
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1529: NotImplementedError: Card F14
 E   AttributeError: 'Creature' object has no attribute 'calmed'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_f.py:210: AttributeError: 'Creature' object has no attribute 'calmed'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_f.py:249: AttributeError: 'Creature' object has no attribute 'calmed'
 E   NotImplementedError: Card F16
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\klonita.py:86: NotImplementedError: Card F16
-E   NotImplementedError: Cards F13, F17
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\klonita.py:82: NotImplementedError: Cards F13, F17
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
+E   KeyError: 'boese_kaiserin'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_f.py:338: KeyError: 'boese_kaiserin'
+E   NotImplementedError: Card E10
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1509: NotImplementedError: Card E10
 E   NotImplementedError: Card F01
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:40: NotImplementedError: Card F01
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:54: NotImplementedError: Card F01
 E   NotImplementedError: Card G02
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\hud.py:414: NotImplementedError: Card G02
 E   KeyError: ''
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\loot.py:136: KeyError: ''
 E   AssertionError: assert 'nadel' in []
-     +  where [] = Records(runs=0, wins=0, kills=0, pearls=0, best_depth=0, best_time=0.0, true_wins=0, best_eyes=0, best_ng=0, blocks=['..., 'dienstmarke': 1, 'fleischmade': 1}, blueprints=[], universes=[], evil_selves=[], badges=0, best_rank='Praktikantin').blueprints
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:79: AssertionError: assert 'nadel' in []
-E   ImportError: cannot import name 'draw_archive_menu' from 'src.menus' (C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\menus.py)
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:100: ImportError: cannot import name 'draw_archive_menu' from 'src.menus' (C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\menus.py)
+     +  where [] = Records(runs=0, wins=0, kills=0, pearls=0, best_depth=0, best_time=0.0, true_wins=0, best_eyes=0, best_ng=0, blocks=['...is': 1, 'boese': 1, 'fleischmade': 1}, blueprints=[], universes=[], evil_selves=[], badges=0, best_rank='Praktikantin').blueprints
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:80: AssertionError: assert 'nadel' in []
+E   NotImplementedError: Card G05
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\menus.py:362: NotImplementedError: Card G05
 E   AttributeError: 'Run' object has no attribute 'final_score'
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:118: AttributeError: 'Run' object has no attribute 'final_score'
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:120: AttributeError: 'Run' object has no attribute 'final_score'
 E   NotImplementedError: Card A04
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\inventory.py:44: NotImplementedError: Card A04
 E   NotImplementedError: Card F01
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:40: NotImplementedError: Card F01
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\authority.py:54: NotImplementedError: Card F01
 E   NotImplementedError: Card G09
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1527: NotImplementedError: Card G09
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\run.py:1537: NotImplementedError: Card G09
 E   NotImplementedError: Card D15
 C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\src\bot.py:29: NotImplementedError: Card D15
 E   AssertionError: funke
@@ -421,19 +437,19 @@ E   AssertionError: funke
       
       - Flux-Funke
       + Funke
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:250: AssertionError: funke
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:252: AssertionError: funke
 E   AssertionError: beschleunigung
     assert 'Beschleunigung' == 'Turbo'
       
       - Turbo
       + Beschleunigung
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:250: AssertionError: beschleunigung
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:252: AssertionError: beschleunigung
 E   AssertionError: nerv_aufprall
     assert 'Aufprall-Nerv' == 'Aufschlagz³nder'
       
       - Aufschlagz³nder
       + Aufprall-Nerv
-C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:250: AssertionError: nerv_aufprall
+C:\Users\DaniBani\Documents\VisualStudioCodeProjects\py-noita-claude\tests\spec\test_phase_g.py:252: AssertionError: nerv_aufprall
 =================================== PASSES ====================================
 =========================== short test summary info ===========================
 PASSED tests/spec/test_phase_a.py::test_a09_flask_drink_effects[acid]
@@ -477,7 +493,7 @@ FAILED tests/spec/test_phase_a.py::test_a23_weapon_parts_layout - NotImplemen...
 FAILED tests/spec/test_phase_a.py::test_a25_gen_common_topologies - NotImplem...
 FAILED tests/spec/test_phase_a.py::test_a26_region_lookup_and_current_vx - No...
 FAILED tests/spec/test_phase_a.py::test_a27_new_payload_blocks - KeyError: 'f...
-FAILED tests/spec/test_phase_a.py::test_a28_special_payloads - ImportError: c...
+FAILED tests/spec/test_phase_a.py::test_a28_special_payloads - KeyError: 'fue...
 FAILED tests/spec/test_phase_a.py::test_a29_retired_organic_payloads - Attrib...
 FAILED tests/spec/test_phase_b.py::test_b01_player_sheet - NotImplementedErro...
 FAILED tests/spec/test_phase_b.py::test_b02_klonita_sheet - NotImplementedErr...
@@ -554,19 +570,20 @@ FAILED tests/spec/test_phase_d.py::test_d28_quest_sporenklub_dance - Attribut...
 FAILED tests/spec/test_phase_d.py::test_d29_quest_abtei_bell - AttributeError...
 FAILED tests/spec/test_phase_e.py::test_e01_workshop_generator_and_stations
 FAILED tests/spec/test_phase_e.py::test_e02_economy_formulas - NotImplemented...
-FAILED tests/spec/test_phase_e.py::test_e03_gold_drops_for_veins_and_mid_bosses
+FAILED tests/spec/test_phase_e.py::test_e03_gold_drops_for_veins_and_bosses
 FAILED tests/spec/test_phase_e.py::test_e04_all_6_traders_and_offer_generation
 FAILED tests/spec/test_phase_e.py::test_e05_trader_buy_and_quirks - KeyError:...
 FAILED tests/spec/test_phase_e.py::test_e06_fabricator_recipes_and_limits - N...
 FAILED tests/spec/test_phase_e.py::test_e07_physik_o_mat_part1 - NotImplement...
 FAILED tests/spec/test_phase_e.py::test_e08_physik_o_mat_part2 - NotImplement...
-FAILED tests/spec/test_phase_e.py::test_e09_schiessstand_minigame - assert (N...
+FAILED tests/spec/test_phase_e.py::test_e09_schiessstand_minigame - Assertion...
 FAILED tests/spec/test_phase_e.py::test_e10_workshop_mode_and_direct_stations
 FAILED tests/spec/test_phase_e.py::test_e11_portal_select_menu_and_choose_next_universe
 FAILED tests/spec/test_phase_e.py::test_e12_fabricator_menu_and_craft_in_run
-FAILED tests/spec/test_phase_e.py::test_e13_trader_menu_and_reroll_in_run - N...
+FAILED tests/spec/test_phase_e.py::test_e13_trader_menu_and_purchase_in_run
 FAILED tests/spec/test_phase_e.py::test_e14_minigame_integration_in_run - Not...
 FAILED tests/spec/test_phase_e.py::test_e15_workshop_target_dummy - NotImplem...
+FAILED tests/spec/test_phase_e.py::test_e16_experiment_couch_offers_and_reroll
 FAILED tests/spec/test_phase_f.py::test_f01_authority_wanted_and_agent_species
 FAILED tests/spec/test_phase_f.py::test_f02_authority_crimes_and_agent_spawns_in_run
 FAILED tests/spec/test_phase_f.py::test_f03_boss_script_framework - NotImplem...
@@ -574,21 +591,23 @@ FAILED tests/spec/test_phase_f.py::test_f04_boss_scripts_pack1 - NotImplement...
 FAILED tests/spec/test_phase_f.py::test_f05_boss_scripts_pack2 - NotImplement...
 FAILED tests/spec/test_phase_f.py::test_f06_boss_scripts_pack3_and_all_mvp_bosses
 FAILED tests/spec/test_phase_f.py::test_f07_evil_selves_and_signature_wands
-FAILED tests/spec/test_phase_f.py::test_f08_empress_bargain_in_run - NotImple...
+FAILED tests/spec/test_phase_f.py::test_f08_empress_bargain_in_run - Attribut...
 FAILED tests/spec/test_phase_f.py::test_f09_headquarters_controller_and_ober_cloita
 FAILED tests/spec/test_phase_f.py::test_f10_enter_headquarters_in_run - NotIm...
-FAILED tests/spec/test_phase_f.py::test_f11_klonita_lines_database - Assertio...
+FAILED tests/spec/test_phase_f.py::test_f11_klonita_lines_database - ImportEr...
 FAILED tests/spec/test_phase_f.py::test_f12_klonita_fsm_and_auto_triggers - N...
 FAILED tests/spec/test_phase_f.py::test_f13_klonita_assists_and_quirks - NotI...
 FAILED tests/spec/test_phase_f.py::test_f14_klonita_and_speech_bubbles_in_run
 FAILED tests/spec/test_phase_f.py::test_f15_calmed_creatures_and_dodge_charges
 FAILED tests/spec/test_phase_f.py::test_f16_klonita_point_carry_hug - NotImpl...
 FAILED tests/spec/test_phase_f.py::test_f17_klonita_tip_feed_warn - NotImplem...
+FAILED tests/spec/test_phase_f.py::test_f18_evil_home_worlds - KeyError: 'boe...
+FAILED tests/spec/test_phase_f.py::test_f19_final_fight_in_run - NotImplement...
 FAILED tests/spec/test_phase_g.py::test_g01_hud_gold_stars_samples_and_banners
 FAILED tests/spec/test_phase_g.py::test_g02_hud_speech_bubbles_and_boss_banner
 FAILED tests/spec/test_phase_g.py::test_g03_hover_inspection_for_samples_stations_and_stances
 FAILED tests/spec/test_phase_g.py::test_g04_records_discover_and_ranks - Asse...
-FAILED tests/spec/test_phase_g.py::test_g05_archive_menu_5_tabs - ImportError...
+FAILED tests/spec/test_phase_g.py::test_g05_archive_menu_5_tabs - NotImplemen...
 FAILED tests/spec/test_phase_g.py::test_g06_victory_and_game_over_score_summary
 FAILED tests/spec/test_phase_g.py::test_g07_save_load_run_and_level_fields - ...
 FAILED tests/spec/test_phase_g.py::test_g08_save_load_wanted_klonita_and_status_timers
@@ -597,4 +616,4 @@ FAILED tests/spec/test_phase_g.py::test_g10_full_acceptance_bot_across_all_6_mvp
 FAILED tests/spec/test_phase_g.py::test_g11_form_names - AssertionError: funke
 FAILED tests/spec/test_phase_g.py::test_g12_modifier_names - AssertionError: ...
 FAILED tests/spec/test_phase_g.py::test_g13_trigger_and_payload_names - Asser...
-157 failed, 4 passed in 8.59s
+160 failed, 4 passed in 10.89s

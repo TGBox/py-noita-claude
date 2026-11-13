@@ -1,0 +1,16 @@
+# Aider model settings for the unattended card run (tools/kartenlauf.py).
+# num_ctx: context window in tokens. The script skips cards that need more than 85 % of it.
+# qwen3.5:9b fits completely into 12 GB VRAM even with 64k context.
+- name: ollama_chat/qwen3.5:9b
+  edit_format: diff
+  use_repo_map: false
+  extra_params:
+    num_ctx: 65536
+
+# qwen3-coder:30b (MoE, about 3B active) is partly offloaded to RAM. 48k so that cards
+# with src/run.py (77 KB) as target fit; smaller cards stay as fast as before.
+- name: ollama_chat/qwen3-coder:30b
+  edit_format: diff
+  use_repo_map: false
+  extra_params:
+    num_ctx: 49152

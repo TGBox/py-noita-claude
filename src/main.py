@@ -154,6 +154,9 @@ class Game:
         self.renderer = WorldRenderer(self.run.world, VIEW_WIDTH, VIEW_HEIGHT)
         self.sprite_right, self.sprite_left = build_player_sprites()
         self.creature_sprites = build_creature_sprites()
+        from src.sprite_render import SheetCache
+
+        self.sheet_cache = SheetCache()  # sprite sheets of the universe creatures (B34)
         self.camera = [0.0, 0.0]
         self.shake = 0.0
         self.sandbox = False
@@ -187,7 +190,9 @@ class Game:
 
     def _apply_options(self) -> None:
         options = self.options
-        self.audio.set_volumes(options.effects / settings_store.STEPS, options.music / settings_store.STEPS)
+        self.audio.set_volumes(
+            options.effects / settings_store.STEPS, options.music / settings_store.STEPS
+        )
         self.lighting = options.lighting
         if options.fullscreen != self.is_fullscreen:
             self.toggle_fullscreen()
@@ -231,7 +236,8 @@ class Game:
                     self._menu_step(-event.y)
             elif self.editor.open:
                 if event.type == pygame.KEYDOWN and (
-                    event.key == pygame.K_ESCAPE or "inventory" in self.bindings.actions_for(event.key)
+                    event.key == pygame.K_ESCAPE
+                    or "inventory" in self.bindings.actions_for(event.key)
                 ):
                     self.editor.toggle()
                 else:
@@ -239,8 +245,11 @@ class Game:
             elif event.type == pygame.KEYDOWN:
                 self._on_key(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 2, 3):
-                for action in self.bindings.actions_for(f"maus{event.button}"):
-                    self._on_action(action)
+                if self.run.menu_mode == "minigame" and self.run.active_minigame is not None:
+                    self._click_minigame(event.pos)
+                else:
+                    for action in self.bindings.actions_for(f"maus{event.button}"):
+                        self._on_action(action)
             elif event.type == pygame.MOUSEWHEEL:
                 if self.sandbox:  # the wheel picks the paint material
                     self.paint_index = (self.paint_index - event.y) % len(PAINT_MATERIALS)
@@ -316,7 +325,12 @@ class Game:
             self._menu_step(-1)
         elif key in (pygame.K_DOWN, pygame.K_s):
             self._menu_step(1)
-        elif self.state == "options" and key in (pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d):
+        elif self.state == "options" and key in (
+            pygame.K_LEFT,
+            pygame.K_a,
+            pygame.K_RIGHT,
+            pygame.K_d,
+        ):
             self._change_option(-1 if key in (pygame.K_LEFT, pygame.K_a) else 1)
         elif key in (pygame.K_RETURN, pygame.K_SPACE):
             if self.state == "options":
@@ -327,7 +341,9 @@ class Game:
             action = controls_rows()[self.menu_index][0]
             if action in ACTION_BY_KEY:
                 self.bindings.reset(action)
-                self._save_bindings(f"{ACTION_BY_KEY[action].label_de}: Standard wiederhergestellt.")
+                self._save_bindings(
+                    f"{ACTION_BY_KEY[action].label_de}: Standard wiederhergestellt."
+                )
         elif key == pygame.K_ESCAPE:
             self._menu_back()
 
@@ -438,7 +454,10 @@ class Game:
             self.saved_run = None
         self.run.favoured_blocks, self.run.start_pearls = self.records.unlocks()
         self.run.log.clear()  # entries from before the run started (title screen)
-        self.run.new_run()
+        if sandbox:
+            self.run.new_run()
+        else:
+            self.run.start_multiverse_run()
         self._begin(fortgesetzt=False, sandbox=sandbox)
 
     def _continue_run(self) -> None:
@@ -468,8 +487,12 @@ class Game:
         self.run.god_mode = False
         self.run.known_blocks = set(self.records.blocks)
         self.run.known_blocks.update(k for w in self.run.inventory.wands for k in w.slots if k)
-        known = set(self.records.blocks) | {k for w in self.run.inventory.wands for k in w.slots if k}
-        self.editor.palette = [block.key for block in BLOCKS if block.key in known] if sandbox else []
+        known = set(self.records.blocks) | {
+            k for w in self.run.inventory.wands for k in w.slots if k
+        }
+        self.editor.palette = (
+            [block.key for block in BLOCKS if block.key in known] if sandbox else []
+        )
         self.editor.palette_mode = sandbox
         self.editor.page = 0
         self.run_recorded = False
@@ -551,7 +574,28 @@ class Game:
 
     # ------------------------------------------------------------------ input
 
+    def _click_minigame(self, pos: tuple[int, int]) -> None:
+        """A click on the minigame field: shoot (Schießstand) or use the chosen tool."""
+        from src.menus import minigame_view
+
+        view, zoom = minigame_view(self.screen)
+        if not view.collidepoint(pos):
+            return
+        cell = ((pos[0] - view.x) // zoom, (pos[1] - view.y) // zoom)
+        mg = self.run.active_minigame
+        action = "shoot" if hasattr(mg, "targets") else getattr(self.run, "minigame_tool", "blast")
+        self.run.step_minigame(0.0, action=action, cursor=cell)
+
     def _on_key(self, key: int) -> None:
+        if self.run.menu_mode:
+            was_in_workshop = self.run.in_workshop
+            handled = self.run.handle_menu_input(key)
+            if not handled and key == pygame.K_ESCAPE:
+                self.run.menu_mode = ""
+            if self.run.in_workshop != was_in_workshop:
+                self._snap_camera()
+            return
+
         if key == pygame.K_ESCAPE:
             self._go("paused")
             return
@@ -609,7 +653,7 @@ class Game:
     def _on_action(self, action: str) -> None:
         """A press of an action's key, mouse button or gamepad button."""
         run = self.run
-        if action in ("jump", "pickup", "drink", "throw", "kick"):
+        if action in ("jump", "pickup", "drink", "throw", "kick", "klonita"):
             self.queued.add(action)
         elif action == "next_wand":
             run.inventory.cycle(1)
@@ -694,7 +738,9 @@ class Game:
             my += round(pad.move[1] * PAD_CURSOR_SPEED * dt)
             pygame.mouse.set_pos((mx, my))
         if "x" in pad.pressed:  # like a right click: between the wand in hand and the bag
-            self.editor.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(mx, my)), self.run)
+            self.editor.handle_event(
+                pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(mx, my)), self.run
+            )
         if "y" in pad.pressed:
             self.editor.sort_mode = (self.editor.sort_mode + 1) % len(SORT_MODES)
             self.run.inventory.sort_bag(SORT_MODES[self.editor.sort_mode][0])
@@ -738,9 +784,17 @@ class Game:
         in_menu_music = self.state in ("title", "codex") or (
             self.state in ("options", "controls") and self.menu_return == "title"
         )
-        self.audio.play_music("sanktum" if in_menu_music or self.run.in_sanctum else self.run.depth.key)
-        if self.editor.open or self.state != "playing":
+        self.audio.play_music(
+            "sanktum" if in_menu_music or self.run.in_sanctum else self.run.depth.key
+        )
+        if getattr(self.run, "inventory_open", False):
+            self.run.inventory_open = False
+            self.editor.open = True
+            self.editor.page = 0
+        if self.editor.open or self.state != "playing" or bool(self.run.menu_mode):
             self.hover = None
+            if self.run.menu_mode == "minigame":
+                self.run.step_minigame(dt)
             return  # menus and the inventory pause the game
         self.log.frame(dt)
         keys = pygame.key.get_pressed()
@@ -766,6 +820,7 @@ class Game:
             drink="drink" in queued,
             throw="throw" in queued,
             kick="kick" in queued,
+            klonita="klonita" in queued,
         )
         if self.sandbox and mouse[2]:
             self.run.world.paint(*target, self.brush, mat.id_of(PAINT_MATERIALS[self.paint_index]))
@@ -806,6 +861,16 @@ class Game:
         self._save_checkpoint()
         self._record_run()
         self.notice_time = max(0.0, self.notice_time - dt)
+        if self.run.in_workshop and self.run.workshop_layout is not None:
+            from src.workshop import station_at
+
+            st = station_at(
+                self.run.workshop_layout, int(self.run.player.x), int(self.run.player.y), radius=16
+            )
+            if st is not None:
+                btn = self._key_name("pickup")
+                self.notice = f"[{btn}] {st.name}"
+                self.notice_time = 0.1
         if self.run.depth_index != depth_before or self.run.in_sanctum != sanctum_before:
             self.log.flush_frames(self._place)
             self._place = self._where()
@@ -849,19 +914,27 @@ class Game:
         cam_x = int(min(max(self.camera[0] + jitter_x, 0), world.width - VIEW_WIDTH))
         cam_y = int(min(max(self.camera[1] + jitter_y, 0), world.height - VIEW_HEIGHT))
         if self.lighting:
-            ambient = min(1.0, self.run.depth.ambient * self.run.darkness * self.run.rule.light_factor())
+            ambient = min(
+                1.0, self.run.depth.ambient * self.run.darkness * self.run.rule.light_factor()
+            )
             self.renderer.refresh(self.run.world, cam_x, cam_y, self._lights(), ambient)
         else:
             self.renderer.refresh(self.run.world, cam_x, cam_y)
         self.canvas.blit(self.renderer.surface, (0, 0))
+        if self.run.in_workshop:
+            self._draw_station_sprites(cam_x, cam_y)  # world art: before the canvas is scaled
         self._draw_entities(cam_x, cam_y)
         self.last_cam = (cam_x, cam_y)
 
         self.screen = pygame.display.get_surface()
         self.viewport.resize(*self.screen.get_size())
         self.screen.fill(COLOR_BACKGROUND)
-        scaled = pygame.transform.scale(self.canvas, (self.viewport.target_width, self.viewport.target_height))
+        scaled = pygame.transform.scale(
+            self.canvas, (self.viewport.target_width, self.viewport.target_height)
+        )
         self.screen.blit(scaled, (self.viewport.offset_x, self.viewport.offset_y))
+        if self.state == "playing" and self.run.in_workshop:
+            self._draw_station_placeholders(cam_x, cam_y)
         if self.fade > 0:
             veil = pygame.Surface(scaled.get_size())
             veil.set_alpha(int(255 * self.fade))
@@ -885,13 +958,125 @@ class Game:
         else:
             if self.state == "playing":  # the pause menu covers the whole screen
                 if self.options.damage_numbers:
-                    self.hud.draw_floaters(self.screen, self.viewport, self.floaters.items, self.last_cam)
+                    self.hud.draw_floaters(
+                        self.screen, self.viewport, self.floaters.items, self.last_cam
+                    )
                 self.hud.draw(self.screen, self.viewport, self._hud_state())
+                from src.hud import draw_boss_banner, draw_speech_bubbles
+
+                s = ui.scale_of(self.screen)
+                draw_speech_bubbles(
+                    self.screen, ui.font(round(14 * s)), self.run.bubbles, *self.last_cam,
+                    scale=self.viewport.scale,
+                    offset=(self.viewport.offset_x, self.viewport.offset_y),
+                )  # fmt: skip
+                draw_boss_banner(self.screen, ui.font(round(22 * s), bold=True), self.run.boss_banner)
+                if self.run.menu_mode:
+                    if self.run.menu_mode == "empress_bargain":
+                        from src.menus import draw_empress_bargain_menu
+
+                        draw_empress_bargain_menu(
+                            self.screen, ui.font(20), ui.font(14), self.run.menu_index
+                        )
+                    elif self.run.menu_mode == "portal_select":
+                        from src.menus import draw_portal_select_menu
+
+                        offers = self.run.plan.offers() if self.run.plan else []
+                        draw_portal_select_menu(
+                            self.screen, ui.font(20), ui.font(14), offers, self.run.portal_index
+                        )
+                        if not offers and self.run.plan and self.run.plan.finished:
+                            # after the sixth universe only the evil self's home is left (F19)
+                            from src.enemies import SPECIES
+
+                            w, h = self.screen.get_size()
+                            evil = SPECIES[self.run.plan.evil_self].name_de
+                            ui.text(
+                                self.screen,
+                                "Alle sechs Universen bereist. Der Portalrahmen zeigt nur noch:",
+                                (w / 2, h / 2 - 40), 18, ui.DIM, anchor="center",
+                            )  # fmt: skip
+                            ui.text(
+                                self.screen, self.run.final_home_name_de(), (w / 2, h / 2),
+                                28, ui.GOLD, heading=True, anchor="center",
+                            )  # fmt: skip
+                            ui.text(
+                                self.screen, f"Dort wartet: {evil}", (w / 2, h / 2 + 36), 18,
+                                (235, 110, 100), bold=True, anchor="center",
+                            )  # fmt: skip
+                            ui.text(
+                                self.screen, "[Enter] Durchschreiten   [Esc] Zurück",
+                                (w / 2, h / 2 + 70), 16, ui.DIM, anchor="center",
+                            )  # fmt: skip
+                    elif self.run.menu_mode == "trader":
+                        from src.menus import draw_trader_menu
+
+                        t_key = self.run.active_trader_key or self.run.selected_trader_key
+                        draw_trader_menu(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                            t_key,
+                            self.run.menu_index,
+                        )
+                    elif self.run.menu_mode == "experiment":
+                        from src.menus import draw_experiment_menu
+
+                        draw_experiment_menu(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                            self.run.menu_index,
+                        )
+                    elif self.run.menu_mode == "fabricator":
+                        from src.menus import draw_fabricator_menu
+
+                        draw_fabricator_menu(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                            self.run.menu_index,
+                        )
+                    elif self.run.menu_mode == "archive":
+                        from src.menus import draw_archive_menu
+
+                        draw_archive_menu(
+                            self.screen, ui.font(20), ui.font(14), self.run.records,
+                            self.run.menu_index,
+                        )  # fmt: skip
+                    elif self.run.menu_mode == "minigame":
+                        from src.menus import draw_minigame_overlay
+
+                        draw_minigame_overlay(
+                            self.screen,
+                            ui.font(20),
+                            ui.font(14),
+                            self.run,
+                        )
+                    else:
+                        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+                        overlay.fill((0, 0, 0, 180))
+                        self.screen.blit(overlay, (0, 0))
+                        msg = ui.font(24).render(
+                            "Noch nicht verfügbar – [Esc]", True, (240, 200, 100)
+                        )
+                        self.screen.blit(
+                            msg,
+                            (
+                                self.screen.get_width() // 2 - msg.get_width() // 2,
+                                self.screen.get_height() // 2 - msg.get_height() // 2,
+                            ),
+                        )
             if self.editor.open:
                 self.editor.draw(self.screen, self.run)
             if self.state == "paused":
                 controls = help_lines(self.bindings, self.gamepad.state.connected)
-                self.menu_rects = menus.draw_pause(self.screen, self._run_summary(), self.menu_index, controls)
+                self.menu_rects = menus.draw_pause(
+                    self.screen, self._run_summary(), self.menu_index, controls
+                )
         pygame.display.flip()
 
     def _lights(self) -> list[tuple[float, float, float, float]]:
@@ -902,7 +1087,9 @@ class Game:
             lights.append((*run.player.center, PLAYER_LIGHT_RADIUS, 1.0))
         for projectile in run.projectiles.items:
             radius = projectile.form.light or 26.0
-            lights.append((projectile.x, projectile.y, radius, 0.8 if projectile.form.light else 0.45))
+            lights.append(
+                (projectile.x, projectile.y, radius, 0.8 if projectile.form.light else 0.45)
+            )
         if not run.depth.final:
             strength = 0.7 if run.exit_open else 0.25
             lights.append((*run.level.exit, 48.0, strength))
@@ -921,9 +1108,111 @@ class Game:
                 lights.append((item.x, item.y - 3, 18.0, 0.35))
         return lights
 
+    def _draw_station_sprites(self, cam_x: int, cam_y: int) -> None:
+        """Station sheets (umgebung/<sprite_key>) onto the world canvas, standing on the
+        station's floor line; "use" plays while the player stands at the station."""
+        layout = self.run.workshop_layout
+        if layout is None:
+            return
+        from src.sprite_render import ASSET_ROOT, blit_frame
+        from src.sprites import Animator
+        from src.workshop import station_at
+
+        px, py = self.run.player.center
+        near = station_at(layout, int(px), int(py), radius=16)
+        for station in layout.stations.values():
+            key = getattr(station, "sprite_key", station.key)
+            if not (ASSET_ROOT / "umgebung" / f"{key}.png").is_file():
+                continue
+            sheet, meta = self.sheet_cache.get("umgebung", key)
+            using = near is not None and near.key == station.key and "use" in meta.anims
+            anim = Animator(meta, "use" if using else "idle")
+            anim.update(self.clock_time % 60.0)
+            x0, _, x1, y1 = station.rect
+            fh = meta.frame_size[1]
+            blit_frame(
+                self.canvas, sheet, meta, anim, (x0 + x1) / 2.0, y1 - fh + meta.anchor[1],
+                cam_x, cam_y,
+            )  # fmt: skip
+
+    def _draw_station_placeholders(self, cam_x: int, cam_y: int) -> None:
+        """Draw station sheets or fallback boxes for workshop stations (B28/B29/G23)."""
+        layout = self.run.workshop_layout
+        if layout is None:
+            return
+        vp = self.viewport
+        size = max(10, round(12 * ui.scale_of(self.screen)))
+        from src.sprite_render import ASSET_ROOT, blit_frame
+        from src.sprites import Animator
+
+        near_st = None
+        if self.run.player is not None:
+            from src.workshop import station_at
+
+            near_st = station_at(layout, int(self.run.player.x), int(self.run.player.y), radius=16)
+
+        for station in layout.stations.values():
+            x0, y0, x1, y1 = station.rect
+            sprite_key = getattr(station, "sprite_key", station.key)
+            sheet_exists = (ASSET_ROOT / "umgebung" / f"{sprite_key}.png").exists() and (
+                ASSET_ROOT / "umgebung" / f"{sprite_key}.json"
+            ).exists()
+
+            is_player_here = near_st is not None and near_st.key == station.key
+
+            if sheet_exists:
+                sheet, meta = self.sheet_cache.get("umgebung", sprite_key)
+                anim = Animator(meta)
+                if is_player_here and "use" in meta.anims:
+                    anim.play("use")
+                else:
+                    anim.play("idle")
+                # the sprite itself is drawn by _draw_station_sprites onto the canvas
+
+                if is_player_here:
+                    left = vp.offset_x + (x0 - cam_x) * vp.scale
+                    top = vp.offset_y + (y0 - cam_y) * vp.scale
+                    rect = pygame.Rect(
+                        round(left),
+                        round(top),
+                        round((x1 - x0) * vp.scale),
+                        round((y1 - y0) * vp.scale),
+                    )
+                    ui.text(
+                        self.screen,
+                        station.name,
+                        (rect.centerx, rect.top - size),
+                        size,
+                        ui.GOLD,
+                        anchor="center",
+                    )
+            else:
+                left = vp.offset_x + (x0 - cam_x) * vp.scale
+                top = vp.offset_y + (y0 - cam_y) * vp.scale
+                rect = pygame.Rect(
+                    round(left),
+                    round(top),
+                    round((x1 - x0) * vp.scale),
+                    round((y1 - y0) * vp.scale),
+                )
+                pygame.draw.rect(self.screen, ui.GOLD, rect, max(1, round(vp.scale / 2)))
+                ui.text(
+                    self.screen,
+                    station.name,
+                    (rect.centerx, rect.top - size),
+                    size,
+                    ui.GOLD,
+                    anchor="center",
+                )
+
     def _hud_state(self) -> HudState:
         run = self.run
-        banner = run.depth.name_de if run.time_in_depth < BANNER_TIME else ""
+        depth_name, caption = run.depth.name_de, ""
+        if run.in_workshop:
+            depth_name, caption = "Werkstatt", "Zwischen den Welten"
+        elif run.multiverse:
+            caption = f"Universum {run.plan.slot}/6 · Rang {run.rank}"
+        banner = depth_name if run.time_in_depth < BANNER_TIME and not run.in_workshop else ""
         if banner and run.ng:
             banner = f"{banner} (Neues Spiel+ {run.ng})"
         if banner and run.parallel:
@@ -936,13 +1225,21 @@ class Game:
             if item.perk is not None:
                 prompt = f"{key}: Wählen – {item.label_de}"
             elif item.price and not run.can_afford(item):
-                prompt = f"{item.label_de} – {run.price_of(item)} Blutperlen (zu wenig)"
+                prompt = f"{item.label_de} – {run.price_of(item)} Gold (zu wenig)"
             elif item.price:
-                prompt = f"{key}: Kaufen – {item.label_de} – {run.price_of(item)} Blutperlen"
+                prompt = f"{key}: Kaufen – {item.label_de} – {run.price_of(item)} Gold"
             else:
                 prompt = f"{key}: Aufheben – {item.label_de}"
         elif run.near_exit() and not run.exit_open and run.depth.boss:
             prompt = "Der Durchgang ist verschlossen. Besiege den Wächter."
+        elif run.multiverse and not run.in_workshop and run.near_exit():
+            prompt = (
+                f"{key}: Durch den Ankerpunkt zurück in die Werkstatt"
+                if run.exit_open
+                else "Der Ankerpunkt ist versiegelt. Besiege den Zwischengegner."
+            )
+        elif not run.in_workshop and run.exit_open and run.near_exit():
+            prompt = f"{key}: Weiter hinab"
         elif run.near_secret():
             prompt = "Hinter der Wand pulsiert etwas."
         outcome = "true_victory" if run.true_ending else run.outcome
@@ -954,9 +1251,10 @@ class Game:
         return HudState(
             player=run.player,
             inventory=run.inventory,
-            depth_name=run.depth.name_de,
+            depth_name=depth_name,
             depth_number=run.next_depth_number,
             depth_total=len(DEPTHS),
+            depth_caption=caption,
             fps=self.clock.get_fps(),
             sandbox=self.sandbox,
             banner=banner,
@@ -980,7 +1278,7 @@ class Game:
             cursor=self._cursor_on_screen(target),
             outcome_keys=outcome_keys,
             log_path=str(self.log.path) if self.log.path else "",
-            eyes=run.eyes,
+            eyes=0 if run.multiverse else run.eyes,  # Uraugen: classic descent only
             rule_line=describe_rule(run.rule) if run.rule.key else "",
             breath=(
                 run.rule.breath / run.rule.max_breath
@@ -1006,7 +1304,7 @@ class Game:
             f"Tiefe {run.next_depth_number}/{len(DEPTHS)}: {run.depth.name_de}",
             self._stats_text(),
             f"Perks: {perks}",
-            f"Uraugen: {run.eyes}/{len(DEPTHS)}   Blutperlen: {run.pearls}",
+            f"Uraugen: {run.eyes}/{len(DEPTHS)}   Gold: {run.pearls}",
         ]
         if self.cheated:
             lines.append("Sandbox: zählt nicht für Statistik, Kodex und Spielstand.")
@@ -1019,7 +1317,7 @@ class Game:
         minutes, seconds = divmod(int(stats["time"]), 60)
         return (
             f"Tiefe {self.run.next_depth_number} | Getötet: {stats['kills']} | "
-            f"Blutperlen gesammelt: {stats['pearls']} | Zeit: {minutes}:{seconds:02d}"
+            f"Gold gesammelt: {stats['pearls']} | Zeit: {minutes}:{seconds:02d}"
         )
 
     def _draw_entities(self, cam_x: int, cam_y: int) -> None:
@@ -1036,24 +1334,42 @@ class Game:
             if player.polymorphed > 0:  # a maggot instead of you
                 frame = int(self.clock_time * 6) % 2
                 sprite = self.creature_sprites[("made", frame, facing_right, False)]
-                self.canvas.blit(sprite, (player.x - cam_x - 1, player.y + player.height - 6 - cam_y))
+                self.canvas.blit(
+                    sprite, (player.x - cam_x - 1, player.y + player.height - 6 - cam_y)
+                )
             else:
                 sprite = self.sprite_right if facing_right else self.sprite_left
                 self.canvas.blit(sprite, (player.x - cam_x, player.y - cam_y))
                 sx, sy = run.shoulder((float(target[0]), float(target[1])))
                 angle = math.atan2(target[1] - sy, target[0] - sx)
                 draw_augmentation(self.canvas, (sx - cam_x, sy - cam_y), angle, run.inventory.wand)
-        draw_creatures(self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y)
+        draw_creatures(
+            self.canvas, self.creature_sprites, run.enemies.creatures, cam_x, cam_y,
+            sheet_cache=self.sheet_cache,
+        )  # fmt: skip
+        if run.multiverse:  # the companion lives in multiverse runs only (Card F14)
+            from src.rendering import draw_klonita
+
+            self.klonita_animator = draw_klonita(
+                self.canvas, self.sheet_cache, run.klonita,
+                getattr(self, "klonita_animator", None), cam_x, cam_y, self.clock_time,
+            )  # fmt: skip
         draw_droplets(self.canvas, run.droplets, cam_x, cam_y)
         for body in (player, *run.enemies.creatures):
             if not body.dead:
                 draw_status(self.canvas, body, cam_x, cam_y, self.effects_rng)
         draw_projectiles(self.canvas, run.projectiles.items, cam_x, cam_y)
         if self.sandbox:
-            pygame.draw.circle(self.canvas, (230, 220, 200), (target[0] - cam_x, target[1] - cam_y), self.brush, 1)
+            pygame.draw.circle(
+                self.canvas, (230, 220, 200), (target[0] - cam_x, target[1] - cam_y), self.brush, 1
+            )
         elif self.state == "playing" and not self.editor.open:
             x, y = target[0] - cam_x, target[1] - cam_y
-            color = (255, 210, 120) if self.hover is not None and self.hover.kind == "creature" else (230, 220, 200)
+            color = (
+                (255, 210, 120)
+                if self.hover is not None and self.hover.kind == "creature"
+                else (230, 220, 200)
+            )
             for dx, dy in ((-3, 0), (3, 0), (0, -3), (0, 3)):
                 self.canvas.fill(color, (x + dx, y + dy, 1, 1))
 
