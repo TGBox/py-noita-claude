@@ -1258,7 +1258,12 @@ class Run:
         for drop in self.droplets:
             drop.update(self.world, dt, self.player)
         self.droplets = [d for d in self.droplets if d.alive]
-        blasts = self.projectiles.update(self.world, dt, controls.aim, bodies) + self._prop_blasts
+        blasts = (
+            self.projectiles.update(
+                self.world, dt, controls.aim, bodies, caster_pos=self.player.center
+            )
+            + self._prop_blasts
+        )
         self._ring_bells(blasts, dt)
         if self.projectiles.teleports:
             tx, ty = self.projectiles.teleports[-1]
@@ -1393,7 +1398,12 @@ class Run:
     def _cast(self, aim: tuple[float, float]) -> None:
         wand = self.inventory.wand
         wand.unlimited = "unerschoepflich" in self.perks
-        shots = wand.cast()
+        other_wands = [w for w in self.inventory.wands if w is not wand]
+        shots = wand.cast(other_wands=other_wands)
+        if wand.last_cutoff:
+            sx, sy = self.shoulder(aim)
+            self.world.splash(int(sx), int(sy), 3, mat.SMOKE)
+            self.events.append("cutoff_hiss")
         if not shots:
             return
         shots = self._cast_specials(shots)

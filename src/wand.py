@@ -12,11 +12,15 @@ forever.
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 from src.spells import CATALOG, Block, Category
 
 MULTICAST_SPREAD = 0.14  # radians between the shots of one multicast
+SPLIT_SPREAD = 0.06  # radians between cloned shots of a splitter
+MAX_RECURSION_DEPTH = 8
+MAX_SHOTS_PER_CAST = 24
 
 
 @dataclass(frozen=True)
@@ -49,6 +53,7 @@ class Shot:
     modifiers: tuple[Block, ...] = ()
     children: list[Shot] = field(default_factory=list)
     angle_offset: float = 0.0
+    damage_scale: float = 1.0
 
 
 PRESETS: tuple[WandSpec, ...] = (
@@ -85,6 +90,8 @@ class _Draw:
         start: int,
         mana: float,
         charges: list[int] | None = None,
+        other_wands: Sequence[Wand] = (),
+        rng: random.Random | None = None,
     ) -> None:
         self.blocks = blocks
         self.charges = charges or [0] * len(blocks)
@@ -93,23 +100,31 @@ class _Draw:
         self.index = start
         self.available = mana
         self.drawn = 0
+        self.draw_count = 0
         self.mana = 0.0
         self.delay = 0.0
         self.recharge = 0.0  # recharge time added by blocks (negative = faster)
         self.wrapped = False
         self.unlimited = False  # perk: limited blocks never run out
         self.free_charge = False  # an "endless" block waits for the next limited form
+        self.other_wands = other_wands
+        self.rng = rng or random.Random()
+        self.recursion_depth = 0
+        self.cutoff_triggered = False
 
     def next(self) -> Block | None:
         """Draw the next affordable block; unaffordable ones are skipped."""
         while self.drawn < len(self.blocks):
             if self.index >= len(self.blocks):
+                if self.wrapped:
+                    return None
                 self.wrapped = True
                 self.index = 0
             position = self.order[self.index]
             block = self.blocks[position]
             self.index += 1
             self.drawn += 1
+            self.draw_count += 1
             if self.mana + block.mana > self.available:
                 continue
             if block.uses and not self.unlimited:
@@ -128,14 +143,25 @@ class _Draw:
             return block
         return None
 
-    def group(self, inherited: tuple[Block, ...] = ()) -> list[Shot]:
+    def group(self, inherited: tuple[Block, ...] = (), depth: int = 0) -> list[Shot]:
         """Draw until a form completes a group; returns its shot(s)."""
+        if depth > MAX_RECURSION_DEPTH:
+            self.cutoff_triggered = True
+            return []
+        self.recursion_depth = max(self.recursion_depth, depth)
         modifiers = list(inherited)
         while (block := self.next()) is not None:
             if block.category is Category.FORM:
                 has_trigger = any(m.category is Category.TRIGGER for m in modifiers)
-                children = self.group() if has_trigger else []
+                children = self.group(depth=depth) if has_trigger else []
                 return [Shot(block, tuple(modifiers), children)]
+            if block.copy_protocol:
+                if block.copy_protocol == "mu":
+                    modifiers.extend(self._gather_mu_modifiers())
+                    continue
+                return self._apply_protocol(block, modifiers, depth)
+            if block.split_count > 0:
+                return self._apply_split(block, modifiers, depth)
             if block.multicast:
                 shots: list[Shot] = []
                 spread = block.formation or MULTICAST_SPREAD
@@ -146,7 +172,11 @@ class _Draw:
                 for index in range(block.multicast):
                     shift = (block.multicast - 1) / 2 if centred else 0.0
                     offset = (index - shift) * spread
-                    drawn = [] if block.divide and pattern else self.group(tuple(modifiers))
+                    drawn = (
+                        []
+                        if block.divide and pattern
+                        else self.group(tuple(modifiers), depth=depth)
+                    )
                     if not drawn and pattern:
                         # nothing else to draw (one strong spell with many mutations): a
                         # multicast then fires that group again, for its mana once more
@@ -156,9 +186,144 @@ class _Draw:
                     for shot in drawn:
                         shot.angle_offset += offset
                         shots.append(shot)
-                return shots
+                return shots[:MAX_SHOTS_PER_CAST]
             modifiers.append(block)
         return []
+
+    def _gather_mu_modifiers(self) -> list[Block]:
+        """Collect all plain modifiers/payloads in the wand for Protocol Mu."""
+        return [
+            b
+            for b in self.blocks
+            if b.category in (Category.MODIFIER, Category.PAYLOAD)
+            and not b.copy_protocol
+            and not b.split_count
+            and not b.multicast
+        ]
+
+    def _eval_block_free(
+        self, block: Block, modifiers: list[Block], depth: int
+    ) -> list[Shot]:
+        """Evaluate a copied block at depth without consuming target charges."""
+        if depth > MAX_RECURSION_DEPTH:
+            self.cutoff_triggered = True
+            return []
+        self.recursion_depth = max(self.recursion_depth, depth)
+        if block.category is Category.FORM:
+            return [Shot(block, tuple(modifiers), [])]
+        if block.copy_protocol:
+            if block.copy_protocol == "mu":
+                return []
+            return self._apply_protocol(block, modifiers, depth)
+        if block.split_count > 0:
+            limit = min(MAX_RECURSION_DEPTH, block.split_max_depth or MAX_RECURSION_DEPTH)
+            if depth + 1 > limit:
+                self.cutoff_triggered = True
+                return []
+        return []
+
+    def _apply_protocol(
+        self, block: Block, modifiers: list[Block], depth: int
+    ) -> list[Shot]:
+        """Execute Copy Protocols Alpha, Gamma, Tau, Omega, Zeta (H02)."""
+        next_depth = depth + 1
+        if next_depth > MAX_RECURSION_DEPTH:
+            self.cutoff_triggered = True
+            return []
+        self.recursion_depth = max(self.recursion_depth, next_depth)
+        proto = block.copy_protocol
+        if not self.blocks:
+            return []
+
+        if proto == "alpha":
+            target = self.blocks[self.order[0]]
+            return self._eval_block_free(target, modifiers, next_depth)
+
+        if proto == "gamma":
+            target = self.blocks[self.order[-1]]
+            return self._eval_block_free(target, modifiers, next_depth)
+
+        if proto == "tau":
+            n = len(self.blocks)
+            count = min(2, n)
+            shots: list[Shot] = []
+            local_mods = list(modifiers)
+            for step in range(count):
+                pos = self.order[(self.index + step) % n]
+                cand = self.blocks[pos]
+                if cand.category is Category.FORM or cand.copy_protocol:
+                    shots.extend(self._eval_block_free(cand, local_mods, next_depth))
+                    local_mods = list(modifiers)
+                else:
+                    local_mods.append(cand)
+            if len(shots) > 1:
+                for idx, shot in enumerate(shots):
+                    shot.angle_offset += (idx - (len(shots) - 1) / 2) * MULTICAST_SPREAD
+            return shots[:MAX_SHOTS_PER_CAST]
+
+        if proto == "omega":
+            shots = []
+            seq_mods = list(modifiers)
+            for pos in self.order:
+                cand = self.blocks[pos]
+                if cand.copy_protocol == "omega":
+                    continue
+                if cand.category is Category.FORM:
+                    shots.append(Shot(cand, tuple(seq_mods), []))
+                    seq_mods = list(modifiers)
+                elif cand.copy_protocol:
+                    shots.extend(self._eval_block_free(cand, seq_mods, next_depth))
+                else:
+                    seq_mods.append(cand)
+                if len(shots) >= MAX_SHOTS_PER_CAST:
+                    break
+            self.drawn = len(self.blocks)
+            self.index = len(self.blocks)
+            return shots[:MAX_SHOTS_PER_CAST]
+
+        if proto == "zeta":
+            foreign_forms = [
+                blk
+                for other in self.other_wands
+                for blk in other.blocks
+                if blk.category is Category.FORM
+            ]
+            if not foreign_forms:
+                return []
+            chosen = self.rng.choice(foreign_forms)
+            return [Shot(chosen, tuple(modifiers), [])]
+
+        return []
+
+    def _apply_split(
+        self, block: Block, modifiers: list[Block], depth: int
+    ) -> list[Shot]:
+        """Execute Clone Splitters (Divide By 2/3/4/10) with depth limit (H03)."""
+        next_depth = depth + 1
+        limit = min(MAX_RECURSION_DEPTH, block.split_max_depth or MAX_RECURSION_DEPTH)
+        if next_depth > limit:
+            self.cutoff_triggered = True
+            return []
+        self.recursion_depth = max(self.recursion_depth, next_depth)
+        inner = self.group(tuple(modifiers), depth=next_depth)
+        if not inner:
+            return []
+        count = max(1, block.split_count)
+        scale = max(0.05, 1.0 - block.split_damage_penalty)
+        out: list[Shot] = []
+        for idx in range(count):
+            offset = (idx - (count - 1) / 2) * SPLIT_SPREAD
+            for shot in inner:
+                if len(out) >= MAX_SHOTS_PER_CAST:
+                    return out
+                out.append(
+                    replace(
+                        shot,
+                        angle_offset=shot.angle_offset + offset,
+                        damage_scale=shot.damage_scale * scale,
+                    )
+                )
+        return out
 
     def _repeat(self, pattern: list[Shot]) -> list[Shot]:
         """Copies of an already drawn group, if the mana for its forms is there."""
@@ -193,6 +358,10 @@ class Wand:
         self.recharge_left = 0.0
         self._recharge_bonus = 0.0
         self.unlimited = False  # set by the run while the perk "Unerschöpflich" is active
+        self.last_wrapped = False
+        self.last_cutoff = False
+        self.last_recursion_depth = 0
+        self.last_draw_count = 0
         self.set_slots(self.slots)
 
     def refill_charges(self) -> None:
@@ -242,15 +411,28 @@ class Wand:
         self.recharge_left = max(0.0, self.recharge_left - dt)
         self.mana = min(self.spec.mana_max, self.mana + self.spec.mana_regen * dt)
 
-    def cast(self) -> list[Shot]:
+    def cast(self, other_wands: Sequence[Wand] = ()) -> list[Shot]:
         """Draw the next group. Returns no shots if the wand is busy or lacks mana."""
         if not self.ready or not self.blocks:
             return []
-        draw = _Draw(self.blocks, self.order, self.index, self.mana, list(self.charges))
+        draw = _Draw(
+            self.blocks,
+            self.order,
+            self.index,
+            self.mana,
+            list(self.charges),
+            other_wands=other_wands,
+            rng=self.rng,
+        )
         draw.unlimited = self.unlimited
         shots: list[Shot] = []
         for _ in range(max(1, self.spec.casts)):
             shots += draw.group()
+        shots = shots[:MAX_SHOTS_PER_CAST]
+        self.last_wrapped = draw.wrapped
+        self.last_cutoff = draw.cutoff_triggered
+        self.last_recursion_depth = draw.recursion_depth
+        self.last_draw_count = draw.draw_count
         if not shots:  # nothing castable (or affordable) left in the deck
             self._start_recharge()
             return []

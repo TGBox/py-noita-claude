@@ -95,6 +95,18 @@ class Block:
     divide: bool = False  # multicast that fires the next group ``multicast`` times
     absorb: bool = False  # Mutation: swallows your flying shots and adds their damage
     convert: str = ""  # Drüse: turns all your flying shots into this form (fires nothing)
+    # Phase H expansion fields (Protocols, Splitters, Orbit/Larpa, Experimental Triggers)
+    copy_protocol: str = ""
+    split_count: int = 0
+    split_damage_penalty: float = 0.0
+    split_max_depth: int = 0
+    orbit_satellites: int = 0
+    larpa_chaos: bool = False
+    larpa_impact: bool = False
+    boomerang_shield: bool = False
+    matter_eater: int = 0
+    trigger_bounces: int = 0
+    contagion_delay: float = 0.0
 
 
 BLOCKS: tuple[Block, ...] = (
@@ -800,7 +812,9 @@ NOITA_BLOCKS: tuple[Block, ...] = (
         convert="atombombe", rarity=0.15,
     ),
 )  # fmt: skip
-BLOCKS = BLOCKS + NOITA_BLOCKS
+from src.weapon_parts_expansion import EXPANSION_BLOCK_KEYS, build_expansion_blocks
+
+BLOCKS = BLOCKS + NOITA_BLOCKS + build_expansion_blocks(Block, Category, Trigger)
 
 TIER3_BLOCKS: frozenset[str] = frozenset(
     {
@@ -815,6 +829,7 @@ TIER3_BLOCKS: frozenset[str] = frozenset(
         "kettenfunke",
         "schwerelos",
         "blutpreis",
+        *EXPANSION_BLOCK_KEYS,
     }
 )
 

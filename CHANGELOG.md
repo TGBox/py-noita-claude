@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.12.0
+
+- 2026-11-25 (310a30f): feat(wand): implement Phase H module mathematics and deck evaluation (H01-H05)
+
 ## SemVer v1.11.0
 
-- 2026-11-25 (a1fed75): feat(sprites): rework character, creature, and boss sprites (B01-B19)
+- 2026-11-25 (741e8cf): feat(sprites): rework character, creature, and boss sprites (B01-B19)
 
 ## SemVer v1.10.1
 
