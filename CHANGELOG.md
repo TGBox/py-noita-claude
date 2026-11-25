@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.10.1
+
+- 2026-11-25 (1539e28): fix: fix minigames
+
 ## SemVer v1.10.0
 
-- 2026-11-25 (7d62559): feat: finish card run phase 1
+- 2026-11-25 (f51b690): feat: finish card run phase 1
 
 ## SemVer v1.9.1
 

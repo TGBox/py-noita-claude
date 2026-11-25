@@ -158,6 +158,7 @@ class Game:
 
         self.sheet_cache = SheetCache()  # sprite sheets of the universe creatures (B34)
         self.camera = [0.0, 0.0]
+        self._minigame_drag_timer = 0.0
         self.shake = 0.0
         self.sandbox = False
         self.paint_index = 0
@@ -794,6 +795,19 @@ class Game:
         if self.editor.open or self.state != "playing" or bool(self.run.menu_mode):
             self.hover = None
             if self.run.menu_mode == "minigame":
+                mg = self.run.active_minigame
+                if (
+                    pygame.mouse.get_pressed()[0]
+                    and mg is not None
+                    and not hasattr(mg, "targets")
+                    and getattr(self.run, "minigame_tool", "") in ("pour", "dig")
+                ):
+                    self._minigame_drag_timer += dt
+                    if self._minigame_drag_timer >= 0.07:
+                        self._minigame_drag_timer = 0.0
+                        self._click_minigame(pygame.mouse.get_pos())
+                else:
+                    self._minigame_drag_timer = 0.0
                 self.run.step_minigame(dt)
             return  # menus and the inventory pause the game
         self.log.frame(dt)

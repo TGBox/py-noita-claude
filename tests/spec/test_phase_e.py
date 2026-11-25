@@ -192,8 +192,11 @@ def _solve(puzzle_key: str):
 
     mg = make_physik_puzzle(puzzle_key, seed=1)
     for action, cursor in solve_actions(puzzle_key):
-        mg.step(0.1, action=action, cursor=cursor)
-    for _ in range(150):
+        dt = 0.5 if action == "wait" else 0.15
+        mg.step(dt, action=action, cursor=cursor)
+        if mg.result is not None:
+            break
+    for _ in range(200):
         if mg.step(0.1) is not None:
             break
     return mg
@@ -205,16 +208,25 @@ def test_e07_physik_o_mat_part1() -> None:
     for key in ("glas_fuellen", "vase_retten", "kerze_zuenden", "ameisenstrasse"):
         mg = _solve(key)
         assert mg.result is not None and mg.result.won is True, key
-    idle = make_physik_puzzle("glas_fuellen", seed=1)
-    for _ in range(400):
-        if idle.step(0.1) is not None:
-            break
-    assert idle.result is not None and idle.result.won is False
+        idle = make_physik_puzzle(key, seed=1)
+        for _ in range(250):
+            if idle.step(0.1) is not None:
+                break
+        assert idle.result is not None and idle.result.won is False, f"{key} must not win idle"
+
+    # Anti-cheat checks: cannot ignite candle directly inside blocked zone, cannot blast vase
+    candle = make_physik_puzzle("kerze_zuenden", seed=1)
+    candle.step(0.1, action="ignite", cursor=(130, 74))
+    assert candle.result is None and "Sperrzone" in candle.feedback_de
+
+    vase = make_physik_puzzle("vase_retten", seed=1)
+    vase.step(0.1, action="blast", cursor=(111, 89))
+    assert vase.result is None and "Sperrzone" in vase.feedback_de
 
 
 def test_e08_physik_o_mat_part2() -> None:
     from src.minigames import NEXT_BOOST_KEYS
-    from src.minigames.physik_o_mat import PUZZLE_KEYS
+    from src.minigames.physik_o_mat import PUZZLE_KEYS, make_physik_puzzle
 
     assert len(PUZZLE_KEYS) == 7 and "electricity_water" not in PUZZLE_KEYS
     for key in PUZZLE_KEYS:
@@ -222,6 +234,11 @@ def test_e08_physik_o_mat_part2() -> None:
         res = mg.result
         assert res is not None and res.won is True, key
         assert res.reward_gold == 60 or res.reward_sample or res.next_boost in NEXT_BOOST_KEYS
+        idle = make_physik_puzzle(key, seed=1)
+        for _ in range(250):
+            if idle.step(0.1) is not None:
+                break
+        assert idle.result is not None and idle.result.won is False, f"{key} must not win idle"
 
 
 def test_e09_schiessstand_minigame() -> None:
@@ -232,15 +249,20 @@ def test_e09_schiessstand_minigame() -> None:
     assert smg.stake == 20 and smg.time_limit == 30.0
     kinds = [t.kind for t in smg.targets]
     assert kinds.count("agent") == 24 and kinds.count("klonita") == 6
-    for t in smg.targets:
-        if t.kind == "agent":
-            smg.step(0.0, action="shoot", cursor=(int(t.x), int(t.y)))
-    while smg.step(0.5) is None:
-        pass
-    assert smg.result is not None and smg.result.next_boost in NEXT_BOOST_KEYS
+    # Staggered pop-up: at t=0.0 not all 30 targets are active simultaneously
+    assert sum(1 for t in smg.targets if t.is_visible(0.0)) < 5
+    while smg.result is None:
+        for t in smg.targets:
+            if t.kind == "agent" and t.is_visible(smg._elapsed):
+                smg.step(0.0, action="shoot", cursor=(int(t.x), int(t.y)))
+        smg.step(0.1)
+    assert smg.result is not None and smg.result.won is True
+    assert smg.result.next_boost in NEXT_BOOST_KEYS
 
     bad = SchiessstandMinigame(seed=1)
     klonita = next(t for t in bad.targets if t.kind == "klonita")
+    while not klonita.is_visible(bad._elapsed):
+        bad.step(0.1)
     bad.step(0.0, action="shoot", cursor=(int(klonita.x), int(klonita.y)))
     assert bad.score == -3
 
@@ -331,11 +353,11 @@ def test_e14_minigame_integration_in_run() -> None:
     run.player.x, run.player.y = (x0 + x1) / 2, (y0 + y1) / 2
     run.interact_station()
     assert run.menu_mode == "minigame" and run.gold == 80
-    for t in run.active_minigame.targets:
-        if t.kind == "agent":
-            run.step_minigame(0.0, action="shoot", cursor=(int(t.x), int(t.y)))
     while run.active_minigame is not None and run.active_minigame.result is None:
-        run.step_minigame(0.5)
+        for t in run.active_minigame.targets:
+            if t.kind == "agent" and t.is_visible(run.active_minigame._elapsed):
+                run.step_minigame(0.0, action="shoot", cursor=(int(t.x), int(t.y)))
+        run.step_minigame(0.1)
     assert run.next_boost != ""
     gold = run.gold
     run.menu_mode = ""

@@ -1000,9 +1000,12 @@ def draw_experiment_menu(
     )
 
 
-MINIGAME_TOOLS: tuple[tuple[str, str], ...] = (
-    ("blast", "Sprengen"), ("dig", "Graben"), ("ignite", "Zünden"), ("pour", "Gießen"),
-)  # fmt: skip
+MINIGAME_TOOL_NAMES: dict[str, str] = {
+    "blast": "Sprengen",
+    "dig": "Graben",
+    "ignite": "Zünden",
+    "pour": "Gießen",
+}
 _minigame_sheets: dict[str, Any] = {}
 
 
@@ -1017,12 +1020,13 @@ def minigame_view(surface: pygame.Surface) -> tuple[pygame.Rect, int]:
     return rect, zoom
 
 
-def _minigame_world_surface(world: Any) -> pygame.Surface:
-    """The minigame world, one pixel per cell, in the active material colours."""
+def _minigame_world_surface(mg: Any) -> pygame.Surface:
+    """The minigame world, one pixel per cell, using the puzzle's own material palette."""
     from src import materials as mat
 
+    world = mg.world
     image = pygame.image.frombuffer(bytes(world.grid), (world.width, world.height), "P")
-    colors = [m.color for m in mat.MATERIALS]
+    colors = getattr(mg, "palette", None) or [m.color for m in mat.MATERIALS]
     image.set_palette(colors + [(255, 0, 255)] * (256 - len(colors)))
     return image
 
@@ -1055,8 +1059,7 @@ def draw_minigame_overlay(
     small_font: pygame.font.Font,
     run: Any,
 ) -> None:
-    """Draw the active minigame: its field, the targets or the puzzle world, the tools
-    and the result (Contract V20 §2, Card E14; made visible after the playtest)."""
+    """Draw the active minigame: its field, timed targets or physics puzzle, tools and result."""
     mg = getattr(run, "active_minigame", None)
     if mg is None:
         return
@@ -1066,45 +1069,102 @@ def draw_minigame_overlay(
     view, zoom = minigame_view(surface)
     ui.panel(surface, view.inflate(round(40 * s), round(150 * s)), alpha=240)
     title = getattr(mg, "title_de", "") or "Minispiel"
-    ui.text(surface, title, (sw / 2, view.top - 62 * s), round(24 * s), ui.GOLD, heading=True,
+    ui.text(surface, title, (sw / 2, view.top - 66 * s), round(22 * s), ui.GOLD, heading=True,
             anchor="center")  # fmt: skip
+    goal = getattr(mg, "goal_de", "")
+    if goal:
+        ui.text(surface, goal, (sw / 2, view.top - 42 * s), round(13 * s), ui.TEXT, anchor="center")
     elapsed = getattr(mg, "_elapsed", None)
     elapsed = getattr(mg, "elapsed", 0.0) if elapsed is None else elapsed
     left = max(0.0, getattr(mg, "time_limit", 15.0) - elapsed)
-    ui.text(surface, f"Zeit: {left:4.1f} s", (view.left, view.top - 30 * s), round(15 * s))
+    ui.text(surface, f"Zeit: {left:4.1f} s", (view.left, view.top - 24 * s), round(14 * s))
     if hasattr(mg, "score"):
-        ui.text(surface, f"Punkte: {mg.score}", (view.right, view.top - 30 * s), round(15 * s),
-                ui.GOLD, anchor="topright")  # fmt: skip
+        ui.text(
+            surface,
+            f"Punkte: {mg.score}  (Ziel: 8 | Bonus: 14)",
+            (view.right, view.top - 24 * s),
+            round(14 * s),
+            ui.GOLD,
+            anchor="topright",
+        )
 
-    if hasattr(mg, "targets"):  # Schießstand: a plain range with the targets
-        pygame.draw.rect(surface, (52, 40, 44), view)
-        size = max(12, 14 * zoom)
+    if hasattr(mg, "targets"):  # Schießstand: 3 wooden lanes with timed pop-up targets
+        from src.minigames.schiessstand import LANE_YS
+
+        pygame.draw.rect(surface, (42, 32, 36), view)
+        for ly in LANE_YS:
+            sy = view.y + int((ly + 7) * zoom)
+            pygame.draw.rect(surface, (92, 62, 42), (view.x, sy, view.width, max(3, zoom * 2)))
+            pygame.draw.line(surface, (130, 92, 62), (view.x, sy), (view.right, sy), 1)
+        size = max(12, 16 * zoom)
         for target in mg.targets:
-            if target.hit:
+            if not target.is_visible(elapsed):
                 continue
-            cx, cy = view.x + int(target.x * zoom), view.y + int(target.y * zoom)
+            prog = target.pop_progress(elapsed)
+            cx = view.x + int(target.x * zoom)
+            cy = view.y + int(target.y * zoom + (1.0 - prog) * size * 0.45)
             sprite = _target_sprite(target.kind, size)
             if sprite is not None:
                 surface.blit(sprite, sprite.get_rect(center=(cx, cy)))
             else:
                 color = (235, 110, 100) if target.kind == "agent" else (180, 140, 240)
                 pygame.draw.circle(surface, color, (cx, cy), size // 2)
-        hint = "Klick: schießen  |  Agent +1, Klonita −3"
+            rem = max(0.0, 1.0 - (elapsed - target.spawn_time) / max(0.1, target.visible_time))
+            bar_w = max(8, size)
+            bar_x = cx - bar_w // 2
+            bar_y = cy + size // 2 + 2
+            pygame.draw.rect(surface, (28, 22, 26), (bar_x, bar_y, bar_w, 3))
+            bar_col = (110, 220, 130) if target.kind == "agent" else (195, 140, 240)
+            pygame.draw.rect(surface, bar_col, (bar_x, bar_y, int(bar_w * rem), 3))
+        for p in getattr(mg, "popups", ()):
+            px = view.x + int(p["x"] * zoom)
+            py = view.y + int(p["y"] * zoom)
+            ui.text(surface, p["text"], (px, py), round(14 * s), p["color"], bold=True, anchor="center")
+        mx, my = pygame.mouse.get_pos()
+        if view.collidepoint((mx, my)):
+            pygame.draw.circle(surface, ui.GOLD, (mx, my), max(6, round(8 * s)), 1)
+            pygame.draw.line(surface, ui.GOLD, (mx - 4, my), (mx + 4, my), 1)
+            pygame.draw.line(surface, ui.GOLD, (mx, my - 4), (mx, my + 4), 1)
+        hint = "Klick auf aktive Ziele: Agent +1, Klonita −3"
     else:  # Physik-o-Mat: the puzzle world itself
-        field = _minigame_world_surface(mg.world)
+        field = _minigame_world_surface(mg)
         surface.blit(pygame.transform.scale(field, view.size), view.topleft)
-        for ax in getattr(mg, "custom_state", {}).get("ants", []):
-            ay = mg.custom_state.get("ants_y", 90.0)
-            ant = (view.x + int(ax * zoom), view.y + int(ay * zoom))
-            pygame.draw.circle(surface, (30, 20, 20), ant, max(2, zoom))
+        for bx0, by0, bx1, by1 in getattr(mg, "blocked_zones", ()):
+            brect = pygame.Rect(
+                view.x + bx0 * zoom, view.y + by0 * zoom, (bx1 - bx0) * zoom, (by1 - by0) * zoom
+            )
+            pygame.draw.rect(surface, (210, 80, 80), brect, 1)
+        for label, lx, ly in getattr(mg, "zone_labels", ()):
+            ui.text(
+                surface,
+                label,
+                (view.x + lx * zoom, view.y + ly * zoom),
+                round(11 * s),
+                ui.TEXT,
+                anchor="center",
+            )
+        for ant in getattr(mg, "custom_state", {}).get("ants", []):
+            if isinstance(ant, (list, tuple)):
+                ax, ay = ant[0], ant[1]
+            else:
+                ax, ay = ant, mg.custom_state.get("ants_y", 90.0)
+            pos = (view.x + int(ax * zoom), view.y + int(ay * zoom))
+            pygame.draw.circle(surface, (215, 70, 50), pos, max(2, zoom))
         tool = getattr(run, "minigame_tool", "blast")
+        allowed = getattr(mg, "allowed_tools", ("blast", "dig", "ignite", "pour"))
+        charges = getattr(mg, "tool_charges", {})
         x = view.left
-        for i, (key, label) in enumerate(MINIGAME_TOOLS):
-            text = f"[{i + 1}] {label}"
-            rect = ui.text(surface, text, (x, view.bottom + 12 * s), round(15 * s),
+        for i, key in enumerate(allowed):
+            label = MINIGAME_TOOL_NAMES.get(key, key)
+            cnt = f" ({charges[key]})" if key in charges else ""
+            text = f"[{i + 1}] {label}{cnt}"
+            rect = ui.text(surface, text, (x, view.bottom + 12 * s), round(14 * s),
                            ui.GOLD if key == tool else ui.DIM, bold=key == tool)  # fmt: skip
-            x = rect.right + round(22 * s)
-        hint = "Werkzeug wählen, dann ins Bild klicken"
+            x = rect.right + round(20 * s)
+        fb = getattr(mg, "feedback_de", "")
+        if fb:
+            ui.text(surface, fb, (sw / 2, view.bottom - 14 * s), round(13 * s), ui.BAD, anchor="center")
+        hint = "Werkzeug wählen [1-4], dann ins Bild klicken (gedrückt halten zum Gießen)"
     pygame.draw.rect(surface, ui.GOLD, view, 1)
 
     if mg.result is not None:

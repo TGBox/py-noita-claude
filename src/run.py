@@ -2258,6 +2258,7 @@ class Run:
                 self.minigames_played.add("ws_automat")
                 mg_seed = self.seed + len(self.minigames_played)
                 self.active_minigame = make_physik_puzzle(None, seed=mg_seed)
+                self.minigame_tool = getattr(self.active_minigame, "allowed_tools", ("blast",))[0]
                 self.menu_mode = "minigame"
             elif "ws_automat" in self.minigames_played:
                 self.messages.append("Für diesen Besuch bereits gespielt.")
@@ -3181,7 +3182,12 @@ class Run:
                 pygame.K_1: "blast", pygame.K_2: "dig", pygame.K_3: "ignite", pygame.K_4: "pour",
             }  # fmt: skip
             if key in tools:  # Physik-o-Mat: the tool a click applies (see main._click_minigame)
-                self.minigame_tool = tools[key]
+                allowed = getattr(
+                    self.active_minigame, "allowed_tools", ("blast", "dig", "ignite", "pour")
+                )
+                idx = (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4).index(key)
+                if idx < len(allowed):
+                    self.minigame_tool = allowed[idx]
                 return True
             if key == pygame.K_ESCAPE:
                 from src.minigames import MinigameResult
@@ -3475,7 +3481,7 @@ NEW_PICKUP_KINDS = frozenset(
 )
 # Playtest 2026-11-08: Physik-o-Mat and Schießstand were not fun; switched off until they are
 # redesigned together with the user (code and tests of E07-E09/E14 stay in place).
-MINIGAMES_ENABLED = False
+MINIGAMES_ENABLED = True
 AUTO_PICKUP_KINDS = frozenset({"gold", "sample", "blueprint_shard", "memory_shard", "badge"})
 BLUEPRINT_SHARDS_NEEDED = 3
 MILK_COOLDOWN = 8.0  # seconds before a giver can be milked again

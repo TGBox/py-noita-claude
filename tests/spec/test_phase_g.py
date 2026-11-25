@@ -584,10 +584,16 @@ def test_g23_game_draws_workshop_menus(monkeypatch) -> None:
         game._on_key(pygame.K_ESCAPE)
         assert run.menu_mode == "" and game.state == "playing"
 
-    for key in ("ws_automat", "ws_schiessstand"):  # switched off after the playtest
+    for key in ("ws_automat", "ws_schiessstand"):
         _stand_at(run, key)
         run.interact_station()
-        assert run.menu_mode == "" and any("Außer Betrieb" in m for m in run.messages)
+        assert run.menu_mode == "minigame", key
+        shown.clear()
+        game.update(0.016)
+        game.draw()
+        assert not any("Noch nicht verfügbar" in s for s in shown), f"{key} minigame is not drawn"
+        game._on_key(pygame.K_ESCAPE)
+        assert run.menu_mode == "" and game.state == "playing"
 
     _stand_at(run, "ws_werkbank")
     run.interact_station()

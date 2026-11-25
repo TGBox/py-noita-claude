@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from ..world import World
 
 MINIGAME_WORLD_SIZE: tuple[int, int] = (160, 120)
+SIM_DT: float = 1.0 / 60.0
+MAX_SIM_STEPS: int = 12
 
 # Boosts for the next universe (bible 07): flux charge +20 %, damage +10 %, speed +10 %.
 NEXT_BOOST_KEYS: tuple[str, ...] = ("flux", "damage", "speed")
@@ -33,7 +35,8 @@ class Minigame:
         self.elapsed: float = 0.0
         self.finished: bool = False
         self.result: MinigameResult | None = None
-        self.world: World = World(*MINIGAME_WORLD_SIZE)
+        self.world: World = World(*MINIGAME_WORLD_SIZE, seed=seed)
+        self._sim_accum: float = 0.0
 
     def step(
         self,
@@ -45,15 +48,21 @@ class Minigame:
         if self.finished:
             return self.result
 
-        self.elapsed += dt
         if action is not None:
             self.on_action(action, cursor)
 
-        # Step physics world
-        self.world.step()
-        self.tick(dt)
+        if dt > 0.0:
+            self.elapsed += dt
+            self._sim_accum += dt
+            steps = 0
+            while self._sim_accum >= SIM_DT and steps < MAX_SIM_STEPS:
+                self.world.step()
+                self._sim_accum -= SIM_DT
+                steps += 1
+            if steps >= MAX_SIM_STEPS:
+                self._sim_accum = 0.0
+            self.tick(dt)
 
-        # Check win/loss
         if not self.finished:
             if self.check_win():
                 self.finish(won=True)

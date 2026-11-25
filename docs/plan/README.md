@@ -101,7 +101,6 @@ Die Sheets erfüllen `V8` (eigene Silhouette, echte Bewegung), sind aber nur **M
 
 Vorgehen später: eigene Karten je Gruppe, mit Vorschaubildern (alle Frames vergrößert nebeneinander) zur Abnahme durch den Nutzer.
 
-### Minispiele (`E07`–`E09`, `E14`, Stand 2026-11-08)
+### Minispiele (`E07`–`E09`, `E14`, Stand 2026-11-25)
 
-Physik-o-Mat und Schießstand sind nach dem Playtest **stillgelegt** (`MINIGAMES_ENABLED = False` in `src/run.py`; die Stationen melden „Außer Betrieb“). Die Rätsel waren keine echten Rätsel (Kerze direkt anklicken, Ameisen laufen von selbst), der Schießstand zeigte alle 30 Ziele gleichzeitig. Code und Tests bleiben; neu gestaltet wird gemeinsam mit dem Nutzer, wenn der Kern-Loop sitzt.
-
+Physik-o-Mat und Schießstand wurden überarbeitet und reaktiviert (`MINIGAMES_ENABLED = True` in `src/run.py`): Der Physik-o-Mat nutzt einen eigenen isolierten Materialsatz (`PHYSIK_SET`), feste Werkzeuge mit Ladungen, Sperrzonen und echte physikalische Kausalketten in allen 7 Rätseln; der Schießstand staffelt alle 30 Ziele zeitlich über 3 Bahnen mit Hochklapp-Animation, Restzeit-Anzeige und Treffer-Popups.
