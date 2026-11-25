@@ -110,3 +110,30 @@ def layout_for(wand: Wand) -> list[WeaponPartPlacement]:
         placements.append(WeaponPartPlacement(key, x, PART_OFFSET_Y.get(key.split("_")[0], 0)))
         x += PART_WIDTH.get(key, 6)
     return placements
+
+
+PHASE3_WEAPON_ALIASES: dict[str, str] = {
+    "waffe_titan_koffer": "waffe_patent_koffer",
+}
+
+PHASE3_WEAPONS: dict[str, dict[str, object]] = {
+    "waffe_patent_koffer": {
+        "name_de": "Titan-Aktenkoffer-Blaster",
+        "alias_de": "Revolver-Patentkoffer",
+        "damage": 48.0,
+        "spread": 0.04,
+        "cast_delay": 0.22,
+        "mana_cost": 18,
+        "casts": 3,
+        "special": "klingende_akten_salve",
+        "quote_de": "Abgelehnte Anträge fliegen mit Mach 2.",
+    },
+}
+
+
+def get_phase3_weapon(key: str) -> dict[str, object]:
+    """Resolve a Phase 3 reward weapon definition by key or alias."""
+    resolved = PHASE3_WEAPON_ALIASES.get(key, key)
+    if resolved not in PHASE3_WEAPONS:
+        raise KeyError(f"Unbekannte Phase-3-Waffe: {key}")
+    return dict(PHASE3_WEAPONS[resolved])

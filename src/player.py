@@ -52,6 +52,12 @@ class Player(Body):
         self.energy_max = MAX_ENERGY
         self.mana: float = 100.0
         self.max_mana: float = 100.0
+        self.active_gadget: str | None = None
+        self.stealth_timer: float = 0.0
+        self.ambush_crit_ready: bool = False
+        self.is_cockroach: bool = False
+        self.cockroach_timer: float = 0.0
+        self.tv_buff: dict[str, object] | None = None
         super().__init__(int(x), int(y), PLAYER_WIDTH, PLAYER_HEIGHT, MAX_HP)
         self.step_up = STEP_UP
         self._bounce_buffer = 0.0  # seconds left in which a jump press boosts a bounce
@@ -144,6 +150,13 @@ class Player(Body):
         if self.polymorphed > 0:  # a maggot crawls
             speed *= POLYMORPH_SPEED
             self.polymorphed = max(0.0, self.polymorphed - dt)
+        if self.stealth_timer > 0:
+            self.stealth_timer = max(0.0, self.stealth_timer - dt)
+        if self.cockroach_timer > 0:
+            speed *= 1.65
+            self.cockroach_timer = max(0.0, self.cockroach_timer - dt)
+            if self.cockroach_timer == 0.0:
+                self.is_cockroach = False
 
         target = move_dir * speed * (LIQUID_RUN_FACTOR if in_liquid else 1.0)
         # Apply drunk effect to movement

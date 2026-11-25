@@ -29,6 +29,18 @@ SPRAY_GRAVITY = 420.0
 SPRAY_LIFETIME = 3.0
 THROW_GRAVITY = 420.0
 SHATTER_RADIUS_PER_CELL = 0.06  # splash radius grows with the content
+PRESSURE_THRESHOLD = 50.0
+PRESSURE_BLAST_RADIUS = 60
+
+REACTIVE_FLASK_PAIRS: frozenset[frozenset[str]] = frozenset(
+    {
+        frozenset({"acid", "brausesirup"}),
+        frozenset({"magma", "water"}),
+        frozenset({"acid", "karamell"}),
+        frozenset({"oil", "fire"}),
+        frozenset({"magma", "brausesirup"}),
+    }
+)
 
 # What a sip does: (heal, damage) per sip and a German description, by material key.
 DRINK_EFFECTS: dict[str, tuple[float, float, str]] = {
@@ -70,6 +82,27 @@ class Flask:
         self.capacity: float = float(capacity)
         self.material = liquid if liquid is not None else material
         self.amount = int(amount)
+        self.pressure: float = 0.0
+        self.reagents: list[str] = [self.key] if self.key is not None else []
+
+    @property
+    def is_pressurized(self) -> bool:
+        """True when reactive reagents have built up enough pressure to burst on throw."""
+        return self.pressure >= PRESSURE_THRESHOLD
+
+    def mix(self, material_key: str, amount: int = 30) -> float:
+        """Add reagent into the flask; incompatible liquids build explosive pressure (I03)."""
+        if amount <= 0:
+            return self.pressure
+        if self.key is None:
+            self.material = material_key
+        if material_key not in self.reagents:
+            for existing in self.reagents:
+                if frozenset({existing, material_key}) in REACTIVE_FLASK_PAIRS:
+                    self.pressure += min(100.0, float(amount) * 2.0)
+            self.reagents.append(material_key)
+        self.amount = min(int(self.capacity), self.amount + int(amount))
+        return self.pressure
 
     @property
     def material(self) -> int | None:
@@ -296,15 +329,25 @@ class ThrownFlask:
             nx, ny = self.x + self.vx * dt / steps, self.y + self.vy * dt / steps
             hit_body = any(not b.dead and b.contains(nx, ny) for b in bodies)
             if hit_body or STOPS_PROJECTILE[world.get(int(nx), int(ny))]:
-                self.shatter(world)
+                self.shatter(world, bodies)
                 return True
             self.x, self.y = nx, ny
         return False
 
-    def shatter(self, world: World) -> None:
+    def shatter(self, world: World, bodies: list[Body] | None = None) -> None:
         self.alive = False
         flask = self.flask
-        if not flask.empty:
+        if flask.is_pressurized:
+            cx, cy = int(self.x), int(self.y)
+            world.explode(cx, cy, max(4, PRESSURE_BLAST_RADIUS // 4))
+            if not flask.empty:
+                world.splash(cx, cy, min(20, PRESSURE_BLAST_RADIUS // 3), flask.material)
+            for body in bodies or ():
+                if not body.dead and math.hypot(body.center[0] - cx, body.center[1] - cy) <= PRESSURE_BLAST_RADIUS:
+                    body.hurt(18.0, "Überdruck-Phiole")
+        elif not flask.empty:
             radius = max(2, round(math.sqrt(flask.amount) * SHATTER_RADIUS_PER_CELL * 10))
             world.splash(int(self.x), int(self.y), radius, flask.material)
         flask.material, flask.amount = None, 0
+        flask.pressure = 0.0
+        flask.reagents.clear()

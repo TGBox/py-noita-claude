@@ -71,6 +71,142 @@ EVENTS: dict[str, EventSpec] = {
     ),
 }
 
+EXPANSION_EVENTS: dict[str, EventSpec] = {
+    # 6 Expansion Universe Main Events (Phase J01-J06)
+    "magnetsturm": EventSpec(
+        "magnetsturm",
+        "Magnetsturm",
+        "Metallpartikel fegen 15 Sekunden lang quer über die Halde.",
+        duration=15.0,
+        interval=90.0,
+        preferred_universes=("schrott",),
+    ),
+    "karamell_ausbruch": EventSpec(
+        "karamell_ausbruch",
+        "Karamell-Geysir",
+        "Heiße Karamell-Fontänen schießen aus dem Biskuitboden empor.",
+        duration=15.0,
+        interval=80.0,
+        preferred_universes=("kuchen",),
+    ),
+    "kurzschluss": EventSpec(
+        "kurzschluss",
+        "Kurzschluss",
+        "Blitz-Kaskaden zucken quer durch die blanken Kupferleitungen.",
+        duration=12.0,
+        interval=70.0,
+        preferred_universes=("spule",),
+    ),
+    "zeitsprung": EventSpec(
+        "zeitsprung",
+        "Zeitsprung",
+        "Alle Projektile gefrieren zwei Sekunden lang im Ticktakt.",
+        duration=10.0,
+        interval=90.0,
+        preferred_universes=("uhrwerkwueste",),
+    ),
+    "wallendes_kochen": EventSpec(
+        "wallendes_kochen",
+        "Wallendes Kochen",
+        "Aufsteigende Dampfblasen reißen alles in der Brühe nach oben.",
+        duration=15.0,
+        interval=75.0,
+        preferred_universes=("suppenmeer",),
+    ),
+    "freie_fahrt": EventSpec(
+        "freie_fahrt",
+        "Freie Fahrt",
+        "Sirenen heulen auf und leere Achterbahn-Loren rasen los.",
+        duration=15.0,
+        interval=90.0,
+        preferred_universes=("freizeitpark",),
+    ),
+    # 8 Cross-Universe Secondary Events (Phase J07)
+    "lieferung": EventSpec(
+        "lieferung",
+        "Kurier-Lieferung",
+        "Eine Behörden-Drohne wirft eine Notkiste mit Vorräten ab.",
+        duration=10.0,
+        interval=120.0,
+    ),
+    "pilz_schwarm": EventSpec(
+        "pilz_schwarm",
+        "Pilzschwarm",
+        "Harmlose Leuchtsporen treiben in bunten Schwaden vorbei.",
+        duration=15.0,
+        interval=110.0,
+    ),
+    "gold_regen": EventSpec(
+        "gold_regen",
+        "Goldregen",
+        "Winzige Goldsplitter regnen aus einem dimensionsweiten Riss.",
+        duration=12.0,
+        interval=130.0,
+    ),
+    "stromausfall": EventSpec(
+        "stromausfall",
+        "Stromausfall",
+        "Die Beleuchtung flackert für kurze Zeit auf Minimalwert.",
+        duration=14.0,
+        interval=120.0,
+    ),
+    "flutwelle": EventSpec(
+        "flutwelle",
+        "Flutwelle",
+        "Eine Welle frischer Flüssigkeit schwappt durch die unteren Gänge.",
+        duration=12.0,
+        interval=115.0,
+    ),
+    "zucker_rausch": EventSpec(
+        "zucker_rausch",
+        "Zuckerrausch",
+        "Temporär erhöhtes Bewegungstempo für alle Wesen im Sektor.",
+        duration=15.0,
+        interval=105.0,
+    ),
+    "wanderzirkus": EventSpec(
+        "wanderzirkus",
+        "Wanderzirkus",
+        "Konfetti-Geschosse prallen verspielt durch die Höhle.",
+        duration=15.0,
+        interval=125.0,
+    ),
+    "ameisen_karawane": EventSpec(
+        "ameisen_karawane",
+        "Ameisen-Karawane",
+        "Friedliche Arbeiterameisen ziehen mit Krümeln vorbei.",
+        duration=18.0,
+        interval=120.0,
+    ),
+}
+
+SECONDARY_EVENT_KEYS: tuple[str, ...] = (
+    "lieferung",
+    "pilz_schwarm",
+    "gold_regen",
+    "stromausfall",
+    "flutwelle",
+    "zucker_rausch",
+    "wanderzirkus",
+    "ameisen_karawane",
+)
+PHASE3_EVENTS: dict[str, EventSpec] = {
+    "verdauungsschub": EventSpec("verdauungsschub", "Verdauungsschub", "Magenwellen schieben alle Körper sanft zur Seite.", 20.0, 90.0),
+    "konfetti_hagel": EventSpec("konfetti_hagel", "Konfetti-Hagel", "Klebriger Pastell-Regen füllt Zuckerschilde auf.", 22.0, 95.0),
+    "gruppen_telefonat": EventSpec("gruppen_telefonat", "Klon-Telefonkonferenz", "Alle Klonenbergs diskutieren gleichzeitig ihren Urlaub.", 25.0, 100.0),
+    "talent_scouting": EventSpec("talent_scouting", "Talent-Casting", "Ein Scheinwerfer sucht den kreativsten Treffer.", 18.0, 85.0),
+    "mahnungswelle": EventSpec("mahnungswelle", "Mahnungs-Welle", "Rote Durchschläge regnen von der Decke.", 20.0, 90.0),
+    "meeting_marathons": EventSpec("meeting_marathons", "Pflicht-Meeting", "Alle Gegner schauen nervös auf imaginäre Uhren.", 24.0, 100.0),
+    "wasserrohr_wunder": EventSpec("wasserrohr_wunder", "Heilquell-Flutung", "Glänzendes Quellwasser sprudelt aus den Keramikfugen.", 20.0, 95.0),
+    "speicherleck": EventSpec("speicherleck", "Speicherleck", "Texturen flimmern und spalten lose Voxel ab.", 18.0, 90.0),
+    "rundschreiben_alarm": EventSpec("rundschreiben_alarm", "Rundschreiben Eil-A", "Der gesamte Schwarm sortiert gleichzeitig Eilanträge.", 22.0, 100.0),
+    "happy_hour": EventSpec("happy_hour", "Resort Happy-Hour", "Schirmchendrinks verzögern jede Konsequenz.", 25.0, 110.0),
+    "messproblem": EventSpec("messproblem", "Beobachtungs-Kollaps", "Wahrscheinlichkeitswellen kippen kurzzeitig um.", 16.0, 85.0),
+    "stille_stunde": EventSpec("stille_stunde", "Konterbrause-Stunde", "Gedämpftes Licht lindert den kosmischen Brumm-Schädel.", 22.0, 95.0),
+    "event_falsche_freunde": EventSpec("event_falsche_freunde", "Falsche Freunde im Labor", "Ein formloser Gestaltwandler imitiert einen alten Bekannten.", 45.0, 140.0),
+}
+ALL_EVENTS: dict[str, EventSpec] = {**EVENTS, **EXPANSION_EVENTS, **PHASE3_EVENTS}
+
 
 @dataclass
 class Event:
@@ -113,7 +249,7 @@ class Event:
         if not data:
             return None
         key = str(data.get("key", ""))
-        spec = EVENTS.get(key)
+        spec = ALL_EVENTS.get(key)
         if spec is None:
             return None
         remaining = float(data.get("remaining", spec.duration))

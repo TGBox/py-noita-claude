@@ -319,3 +319,11 @@ def wand_bars(
         text(screen, shown, (x + label_width + bar_width + 6, y), 14, color)
         y += row
     return y
+
+
+def format_klonita_backpack_hud(backpack: object) -> list[str]:
+    """Return quick-slot HUD labels for Klonita's Packesel backpack (Phase K02)."""
+    labels_fn = getattr(backpack, "quick_slot_labels", None)
+    if callable(labels_fn):
+        return list(labels_fn())
+    return []

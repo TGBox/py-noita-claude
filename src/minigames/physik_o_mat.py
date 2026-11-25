@@ -25,6 +25,8 @@ PUZZLE_KEYS: tuple[str, ...] = (
     "acid_gold",
     "oil_fire",
 )
+EXPANSION_PUZZLE_KEYS: tuple[str, ...] = ("electricity_water",)
+ALL_PUZZLE_KEYS: tuple[str, ...] = (*PUZZLE_KEYS, *EXPANSION_PUZZLE_KEYS)
 
 PHYSIK_SET = mat.MaterialSet(
     "physik_o_mat",
@@ -311,6 +313,22 @@ class PhysikPuzzle(Minigame):
             self.blocked_zones = []
             self.zone_labels = [("1", 36, 71), ("2", 80, 71), ("3", 124, 71)]
 
+        elif self.key == "electricity_water":
+            self.title_de = "Stromkreis"
+            self.goal_de = "Schließe die Wasserbrücke zwischen beiden Elektroden!"
+            self.allowed_tools = ("pour",)
+            self.tool_charges = {"pour": 24}
+            self.custom_state["pour_mat"] = water
+            self.custom_state["pour_radius"] = 5
+            # Left copper-style electrode + right sensor electrode separated by a dry basin
+            w.fill_rect(26, 86, 134, 92, enamel)
+            w.fill_rect(26, 72, 30, 86, bedrock)
+            w.fill_rect(130, 72, 134, 86, bedrock)
+            w.fill_rect(30, 76, 46, 86, gold)
+            w.fill_rect(114, 76, 130, 86, gold)
+            self.blocked_zones = []
+            self.zone_labels = [("Pol +", 38, 66), ("Pol -", 122, 66)]
+
         w.wake_all()
 
     def _tick_ants(self, dt: float) -> None:
@@ -433,6 +451,15 @@ class PhysikPuzzle(Minigame):
         if self.key == "oil_fire":
             return len(self.custom_state.get("lit_wicks", set())) >= 3
 
+        if self.key == "electricity_water":
+            water = self.mat_ids["water"]
+            bridged_cols = sum(
+                1
+                for x in range(46, 114)
+                if any(w.get(x, y) == water for y in range(74, 86))
+            )
+            return bridged_cols >= 58
+
         return False
 
 
@@ -477,5 +504,9 @@ def solve_actions(puzzle_key: str) -> list[tuple[str, tuple[int, int]]]:
     if puzzle_key == "oil_fire":
         actions = [("pour", (x, 86)) for x in range(39, 124, 5)]
         actions.append(("ignite", (36, 86)))
+        return actions
+    if puzzle_key == "electricity_water":
+        actions = [("pour", (x, 82)) for x in range(48, 114, 4)]
+        actions.extend([("pour", (x, 82)) for x in range(50, 112, 6)])
         return actions
     return []

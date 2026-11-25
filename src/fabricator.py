@@ -88,6 +88,13 @@ def build_cost(block_key: str, stage: int = 1) -> Recipe:
     )
 
 
+def discounted_gold(base_gold: int, run: Run | object | None = None) -> int:
+    """Apply an active TV promo discount (e.g. RABATT-42-GLIBBER) if present."""
+    discount = float(getattr(run, "tv_promo_discount", 0.0) or 0.0) if run is not None else 0.0
+    discount = max(0.0, min(0.9, discount))
+    return max(0, round(base_gold * (1.0 - discount)))
+
+
 class Fabricator:
     def __init__(self) -> None:
         self.builds_this_visit: int = 0
@@ -105,10 +112,11 @@ class Fabricator:
             return False, "Bauplan noch nicht freigeschaltet."
 
         recipe = build_cost(block_key, getattr(getattr(run, "plan", None), "slot", 0) + 1)
+        gold_needed = discounted_gold(recipe.gold, run)
 
         # Gold check
-        if run.gold < recipe.gold:
-            return False, f"Zu wenig Gold (benötigt: {recipe.gold})."
+        if run.gold < gold_needed:
+            return False, f"Zu wenig Gold (benötigt: {gold_needed})."
 
         # Blueprint shards check
         if recipe.blueprint_shards > 0:
@@ -150,10 +158,11 @@ class Fabricator:
             return False, "Bauplan noch nicht freigeschaltet."
 
         recipe = build_cost(block_key, getattr(getattr(run, "plan", None), "slot", 0) + 1)
+        gold_needed = discounted_gold(recipe.gold, run)
 
         # Gold check
-        if run.gold < recipe.gold:
-            return False, f"Zu wenig Gold (benötigt: {recipe.gold})."
+        if run.gold < gold_needed:
+            return False, f"Zu wenig Gold (benötigt: {gold_needed})."
 
         # Blueprint shards check
         if recipe.blueprint_shards > 0:
@@ -232,7 +241,10 @@ class Fabricator:
             return False, "Fehler beim Abziehen der Proben."
 
         # Deduct gold & shards
-        run.gold -= recipe.gold
+        gold_needed = discounted_gold(recipe.gold, run)
+        run.gold -= gold_needed
+        if getattr(run, "tv_promo_discount", 0.0) and getattr(run, "tv_promo_single_use", True):
+            run.tv_promo_discount = 0.0
         if recipe.blueprint_shards > 0:
             run.blueprint_shards -= recipe.blueprint_shards
 
@@ -280,7 +292,10 @@ class Fabricator:
             return False, "Fehler beim Abziehen der Proben."
 
         # Deduct gold & shards
-        run.gold -= recipe.gold
+        gold_needed = discounted_gold(recipe.gold, run)
+        run.gold -= gold_needed
+        if getattr(run, "tv_promo_discount", 0.0) and getattr(run, "tv_promo_single_use", True):
+            run.tv_promo_discount = 0.0
         if recipe.blueprint_shards > 0:
             run.blueprint_shards -= recipe.blueprint_shards
 

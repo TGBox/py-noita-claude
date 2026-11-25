@@ -118,6 +118,33 @@ STATION_ALIASES: dict[str, str] = {
     "ws_archive": "ws_archiv",
 }
 
+EXPANSION_STATIONS: dict[str, Station] = {
+    "ws_kessel": Station(
+        "ws_kessel",
+        "Destillierkessel",
+        (20, 182, 36, 210),
+        "[E] Destillierkessel benutzen",
+    ),
+}
+
+PHASE3_STATIONS: dict[str, Station] = {
+    "ws_tv": Station(
+        "ws_tv",
+        "Interdimensionaler Flimmerkasten",
+        (46, 182, 62, 206),
+        "[E] Interdimensionalen Fernseher einschalten",
+    ),
+    "ws_statistik_wand": Station(
+        "ws_statistik_wand",
+        "Zynische Statistik-Tafel",
+        (170, 178, 192, 208),
+        "[E] Statistik-Tafel ablesen",
+    ),
+}
+
+ALL_STATIONS: dict[str, Station] = {**STATIONS, **EXPANSION_STATIONS, **PHASE3_STATIONS}
+LIEGE_TABS: tuple[str, str] = ("Selbstexperimente", "Assistentinnen-Ausrüstung")
+
 
 def generate_workshop(world: World) -> WorkshopLayout:
     """Build the 640x360 workshop in world and return its layout."""

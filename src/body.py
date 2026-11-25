@@ -66,6 +66,7 @@ class Body:
         self.fizzy_time = max(0.0, self.fizzy_time - dt)
         self.haste_time = max(0.0, self.haste_time - dt)
         self.ink_sight = max(0.0, self.ink_sight - dt)
+        self.flux_boost_time = max(0.0, self.flux_boost_time - dt)
 
     def take_damage(self, amount: float, cause: str = "") -> None:
         """Apply damage taking status multipliers (e.g. stamped_bad) into account (Card A08)."""
@@ -99,6 +100,8 @@ class Body:
         self.fizzy_time = 0.0  # fizzy (Contract V4b, Card A08)
         self.haste_time = 0.0  # hasted (Contract V4b, Card A08)
         self.ink_sight = 0.0  # ink sight (Contract V4b, Card A08)
+        self.shield_hp = 0.0  # temporary energy shield (Phase I01 schutztonikum)
+        self.flux_boost_time = 0.0  # doubled flux regen duration (Phase I01)
         self._flame_timer = 0.0
         self._ignite_grace = 0.0
         self._rx = 0.0
@@ -119,6 +122,10 @@ class Body:
         return self.x <= px < self.x + self.width and self.y <= py < self.y + self.height
 
     def hurt(self, amount: float, cause: str = "") -> None:
+        if amount > 0 and self.shield_hp > 0:
+            absorbed = min(self.shield_hp, amount)
+            self.shield_hp -= absorbed
+            amount -= absorbed
         self.hp = max(0.0, self.hp - amount)
         self.damage_taken += amount  # read and reset by the game for damage numbers
         if amount > 0 and cause:

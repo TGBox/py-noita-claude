@@ -45,13 +45,33 @@ class Wanted:
     crimes: list[str] = field(default_factory=list)
     cells_destroyed_total: int = 0
     _cells_carry: int = 0
+    alibi_active: bool = False
+    alibi_timer: float = 0.0
+    alibi_form: str | None = None
 
     @property
     def stars(self) -> int:
         return max(0, min(5, int(self.level)))
 
+    def apply_patent_alibi(self, form_code: str = "C-404", duration: float = 60.0) -> bool:
+        """Apply bureaucratic Patent-Alibi C-404: cut current wanted by 2.0 and halve gains."""
+        self.alibi_active = True
+        self.alibi_timer = max(self.alibi_timer, float(duration))
+        self.alibi_form = form_code
+        self.add(-2.0, f"Patent-Alibi {form_code}")
+        return True
+
+    def step_alibi(self, dt: float) -> None:
+        if self.alibi_active and dt > 0.0:
+            self.alibi_timer = max(0.0, self.alibi_timer - dt)
+            if self.alibi_timer == 0.0:
+                self.alibi_active = False
+                self.alibi_form = None
+
     def add(self, delta: float, reason: str) -> bool:
         """Adjust wanted level by delta (clamped 0..5) and record reason."""
+        if delta > 0 and self.alibi_active:
+            delta *= 0.5
         old_level = self.level
         new_level = max(0.0, min(WANTED_MAX, old_level + delta))
         if delta > 0 and reason:

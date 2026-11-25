@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v2.0.0
+
+- 2026-11-25 (2fc9760): feat: Erweiterung (Phasen Iâ€“M) und Phase 3 Multiversums-Satire (Phasen Nâ€“U) abgeschlossen
+
 ## SemVer v1.12.0
 
-- 2026-11-25 (310a30f): feat(wand): implement Phase H module mathematics and deck evaluation (H01-H05)
+- 2026-11-25 (36a9d9a): feat(wand): implement Phase H module mathematics and deck evaluation (H01-H05)
 
 ## SemVer v1.11.0
 
