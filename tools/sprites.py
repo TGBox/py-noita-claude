@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -182,4 +183,43 @@ def save_sheet(
 
 def build_all(out_dir: Path = ASSET_ROOT) -> list[Path]:
     """Generate all procedural sprite sheets and JSON metadata files."""
-    raise NotImplementedError("Card B36")
+    if not pygame.get_init():
+        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+        pygame.init()
+
+    from tools.sprites_bosses import build_end_boss_sheets, build_mid_boss_sheets
+    from tools.sprites_chars import (
+        build_agent_sheets,
+        build_evil_and_hq_sheets,
+        build_klonita_sheet,
+        build_player_sheet,
+        build_trader_sheets,
+    )
+    from tools.sprites_creatures import build_creature_sheets
+    from tools.sprites_env import build_env_prop_sheets, build_particle_sheets
+    from tools.sprites_items import (
+        build_item_icon_sheets,
+        build_spell_icon_sheets,
+        build_weapon_part_sheets,
+    )
+
+    written: list[Path] = []
+    written.extend(build_player_sheet(out_dir))
+    written.extend(build_klonita_sheet(out_dir))
+    written.extend(build_agent_sheets(out_dir))
+    written.extend(build_evil_and_hq_sheets(out_dir))
+    written.extend(build_trader_sheets(out_dir))
+    written.extend(build_creature_sheets(out_dir))
+    written.extend(build_mid_boss_sheets(out_dir))
+    written.extend(build_end_boss_sheets(out_dir))
+    written.extend(build_weapon_part_sheets(out_dir))
+    written.extend(build_spell_icon_sheets(out_dir))
+    written.extend(build_item_icon_sheets(out_dir))
+    written.extend(build_env_prop_sheets(out_dir))
+    written.extend(build_particle_sheets(out_dir))
+    return written
+
+
+if __name__ == "__main__":
+    paths = build_all()
+    print(f"Generated {len(paths)} sprite files.")

@@ -74,7 +74,7 @@ def _id(key: str) -> int:
 def _pillars(world: World, hall: Rect, material: int, xs: tuple[int, ...], width: int,
              gap_y: int) -> None:
     """Pillars from floor to ceiling with a gap to pass at mid height."""
-    x0, y0, x1, y1 = hall
+    _x0, y0, _x1, y1 = hall
     for px in xs:
         world.fill_rect(px, y0, px + width, gap_y - 30, material)
         world.fill_rect(px, gap_y + 30, px + width, y1, material)
@@ -83,7 +83,7 @@ def _pillars(world: World, hall: Rect, material: int, xs: tuple[int, ...], width
 def _ledges(world: World, hall: Rect, material: int, rng: random.Random, count: int,
             avoid: tuple[tuple[int, int], ...] = ()) -> None:
     """A few ledges to jump on, never over the spawn, the centre or an ``avoid`` column."""
-    x0, y0, x1, y1 = hall
+    x0, _y0, x1, y1 = hall
     for i in range(count):
         w = rng.randint(40, 80)
         x = x0 + 160 + (i * (x1 - x0 - 320)) // max(1, count - 1) - w // 2
@@ -179,7 +179,7 @@ def generate_evil_home(world: World, species: str, seed: int) -> Level:
         mat.activate_key(species)
     rng = random.Random(seed * 7 + len(species))
     level = _BUILDERS[species](world, rng)
-    x0, y0, x1, y1 = _hall(world)
+    x0, _y0, _x1, y1 = _hall(world)
     assert BORDER < x0 and y1 < world.height - BORDER
     world.wake_all()
     return level

@@ -1061,7 +1061,7 @@ def draw_minigame_overlay(
     if mg is None:
         return
     ui.shade(surface, 215)
-    sw, sh = surface.get_size()
+    sw, _sh = surface.get_size()
     s = ui.scale_of(surface)
     view, zoom = minigame_view(surface)
     ui.panel(surface, view.inflate(round(40 * s), round(150 * s)), alpha=240)

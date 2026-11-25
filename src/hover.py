@@ -421,11 +421,14 @@ def _inspect(
     run: object | None = None,
 ) -> HoverInfo:
     x, y = int(wx), int(wy)
-    if klonita is not None and getattr(klonita, "state", "dismissed") != "dismissed":
-        if math.hypot(klonita.x - wx, klonita.y - wy) <= KLONITA_HOVER:
-            state = KLONITA_STATE_DE.get(klonita.state, "")
-            return HoverInfo("Klonita", [state, "Deine Begleiterin. [K]: rufen / wegschicken"],
-                             (200, 160, 240), "creature")  # fmt: skip
+    if (
+        klonita is not None
+        and getattr(klonita, "state", "dismissed") != "dismissed"
+        and math.hypot(klonita.x - wx, klonita.y - wy) <= KLONITA_HOVER
+    ):
+        state = KLONITA_STATE_DE.get(klonita.state, "")
+        return HoverInfo("Klonita", [state, "Deine Begleiterin. [K]: rufen / wegschicken"],
+                         (200, 160, 240), "creature")  # fmt: skip
     if workshop_layout is not None:
         slots = getattr(workshop_layout, "trader_slots", ())
         for trader, slot in zip(traders, slots):

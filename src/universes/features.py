@@ -1052,6 +1052,17 @@ def _close_air_gaps(
     grid, gw = AIR_GRID, c.w // AIR_GRID
     _open_thin_walls(c, line, state["dry"])
     given_up: list[tuple[int, int]] = []
+    hall = state.get("mid_arena")
+
+    def clashes(x: int, y: int, rx: int, ry: int) -> bool:
+        """Too close to the nave or another air dome: it would break that dome's shell."""
+        if hall and hall[0] - rx - 8 <= x <= hall[2] + rx + 8 and hall[1] - 90 <= y <= hall[3] + 8:
+            return True
+        return any(
+            abs(x - dx) <= drx + rx + 8 and dy - dry_ - ry - 8 <= y <= dy + ry + 8
+            for dx, dy, drx, dry_ in state["dry"]
+        )
+
     for _ in range(48):
         dist = _air_distance(c, line, state["dry"])
         far, spot = 0, None
@@ -1065,14 +1076,6 @@ def _close_air_gaps(
             (q for q in ceilings if math.dist(q, spot) < 80), key=lambda q: math.dist(q, spot)
         )
         placed = False
-        hall = state.get("mid_arena")
-
-        def clashes(x: int, y: int, rx: int, ry: int) -> bool:
-            """Too close to the nave or another air dome: it would break that dome's shell."""
-            if hall and hall[0] - rx - 8 <= x <= hall[2] + rx + 8 and hall[1] - 90 <= y <= hall[3] + 8:
-                return True
-            return any(abs(x - dx) <= drx + rx + 8 and dy - dry_ - ry - 8 <= y <= dy + ry + 8
-                       for dx, dy, drx, dry_ in state["dry"])  # fmt: skip
 
         for x, y in near[:60]:  # a small natural dome ...
             rx, ry = rng.randint(10, 12), rng.randint(9, 10)
@@ -1282,6 +1285,6 @@ def paper_skin(world: Any, paper: int, core: int, depth: int = SKIN) -> int:
         if deep:
             value = int.from_bytes(row, "little") - deep * paper + deep * core
             g[y * w : (y + 1) * w] = value.to_bytes(w, "little")
-            changed += bin(deep).count("1")
+            changed += deep.bit_count()
     return changed
 

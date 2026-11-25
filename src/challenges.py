@@ -142,9 +142,12 @@ class Challenge:
         if not self.active or self.failed or self.completed:
             return
         self.elapsed += dt
-        if self.spec.key == "speed_run" and self.spec.time_limit > 0.0:
-            if self.elapsed > self.spec.time_limit:
-                self.failed = True
+        if (
+            self.spec.key == "speed_run"
+            and self.spec.time_limit > 0.0
+            and self.elapsed > self.spec.time_limit
+        ):
+            self.failed = True
 
     def pay_reward(self, run: Run) -> None:
         """Grant reward_gold, reward_samples, and optional perk once upon completion."""
@@ -294,7 +297,7 @@ class Quest:
         cow, target = self._cow, getattr(run.level, "quest_target", None)
         if cow is None or cow.dead or self.done:
             return
-        cx, cy = cow.center
+        cx, _cy = cow.center
         px, _py = run.player.center
         if 20 < abs(px - cx) and math.dist(run.player.center, cow.center) < COW_FOLLOW_RANGE:
             cow.facing = 1 if px > cx else -1

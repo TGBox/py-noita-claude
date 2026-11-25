@@ -15,7 +15,7 @@ from typing import Any
 
 from src import materials as mat
 from src import native
-from src.authority import Wanted
+from src.authority import AGENT_GOLD, BADGE_CHANCE, FORBIDDEN_BLOCKS, Wanted, spawn_agents
 from src.body import ENEMY_TEAM, PLAYER_TEAM, Body
 from src.bosses import BossScript, make_boss_script
 from src.bosses.evil_selves import (
@@ -30,7 +30,6 @@ from src.bosses.headquarters import (
     can_enter_headquarters,
     generate_headquarters_arena,
 )
-from src.authority import AGENT_GOLD, BADGE_CHANCE, FORBIDDEN_BLOCKS, spawn_agents
 from src.challenges import QUESTS, Challenge, Quest, quest_for
 from src.chunks import CORPSE_HEIGHT, RIGID, FallingChunks
 from src.depths import DEPTHS, Depth, choose_route, depth_by_key

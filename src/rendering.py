@@ -1308,8 +1308,8 @@ class Renderer:
             pass
 
         # 7. Speech bubbles and the boss banner (Card G02)
-        from src.hud import draw_boss_banner, draw_speech_bubbles
         from src import ui
+        from src.hud import draw_boss_banner, draw_speech_bubbles
 
         draw_speech_bubbles(screen, ui.font(12), getattr(run, "bubbles", []), cam_x, cam_y)
         draw_boss_banner(screen, ui.font(18, bold=True), getattr(run, "boss_banner", None))

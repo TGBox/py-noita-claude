@@ -162,7 +162,7 @@ class TestDeleteSwitch(unittest.TestCase):
 
         current = layout(1280, 720, run.inventory)
         editor._layout = lambda _run: current  # type: ignore[method-assign]
-        ref, rect = next(
+        _ref, rect = next(
             (slot, r) for slot, r in current.slots if slot.kind == "bag" and run.inventory.get(slot)
         )
         event = type("E", (), {"type": pygame.MOUSEBUTTONDOWN, "button": 3,

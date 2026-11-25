@@ -183,10 +183,14 @@ def test_d02_generator_aktenhalde() -> None:
             x0, x1, y0, y1 = min(x0, gx), max(x1, gx), min(y0, gy), max(y1, gy)
             for nx, ny in ((gx + 1, gy), (gx - 1, gy), (gx, gy + 1), (gx, gy - 1)):
                 j = ny * gw + nx
-                if 0 <= nx < gw and 0 <= ny < gh and not seen[j]:
-                    if w.get(nx * step, ny * step) == paper:
-                        seen[j] = 1
-                        stack.append(j)
+                if (
+                    0 <= nx < gw
+                    and 0 <= ny < gh
+                    and not seen[j]
+                    and w.get(nx * step, ny * step) == paper
+                ):
+                    seen[j] = 1
+                    stack.append(j)
         width, height = (x1 - x0 + 1) * step, (y1 - y0 + 1) * step
         assert width <= 640 and height <= 360, f"paper area {width}x{height} has no firebreak"
 

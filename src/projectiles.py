@@ -452,9 +452,9 @@ def update_projectiles(
 
     aim = (0.0, 0.0)
     if hasattr(player, "aim"):
-        aim = getattr(player, "aim")
+        aim = player.aim
     elif hasattr(player, "center"):
-        aim = getattr(player, "center")
+        aim = player.center
 
     system.update(world, dt, aim, bodies)
 

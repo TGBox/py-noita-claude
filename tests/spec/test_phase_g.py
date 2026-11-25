@@ -468,10 +468,14 @@ def test_g20_aktenhalde_firebreaks() -> None:
             x0, x1, y0, y1 = min(x0, gx), max(x1, gx), min(y0, gy), max(y1, gy)
             for nx, ny in ((gx + 1, gy), (gx - 1, gy), (gx, gy + 1), (gx, gy - 1)):
                 j = ny * gw + nx
-                if 0 <= nx < gw and 0 <= ny < gh and not seen[j]:
-                    if w.get(nx * step, ny * step) == paper:
-                        seen[j] = 1
-                        stack.append(j)
+                if (
+                    0 <= nx < gw
+                    and 0 <= ny < gh
+                    and not seen[j]
+                    and w.get(nx * step, ny * step) == paper
+                ):
+                    seen[j] = 1
+                    stack.append(j)
         width, height = (x1 - x0 + 1) * step, (y1 - y0 + 1) * step
         assert width <= FIREBREAK_CELL[0] + step and height <= FIREBREAK_CELL[1] + step, (
             f"paper section {width}x{height} has no firebreak"
@@ -482,7 +486,7 @@ def test_g21_hit_flash_keeps_sprites_and_gold_is_auto_collected() -> None:
     from src.loot import Pickup
     from src.run import Controls, Run
     from src.sprite_render import blit_frame
-    from src.sprites import AnimSpec, Animator, SheetMeta
+    from src.sprites import Animator, AnimSpec, SheetMeta
 
     sheet = pygame.Surface((8, 8), pygame.SRCALPHA)
     sheet.fill((0, 0, 0, 0))
@@ -763,11 +767,11 @@ def test_g29_glibbria_islands_bowl_and_bounce() -> None:
         assert sky.count(mat.AIR) > len(sky) * 0.7, "open sky"
         assert level.exit[1] < line - 40, "anchor point above the sea"
         assert ensure_path(w, level.spawn, level.exit) == 0, "reachable without digging"
-        x0, y0, x1, y1 = level.mid_boss_arena
+        x0, _y0, x1, y1 = level.mid_boss_arena
         assert y1 < line and w.get((x0 + x1) // 2, y1 + 2) == jelly, "bowl floor"
         assert w.get(x0 - 6, y1 - 12) == jelly and w.get(x1 + 5, y1 - 12) == jelly, "rims"
         if boss_slot:
-            bx0, by0, bx1, by1 = level.boss_arena
+            bx0, _by0, bx1, by1 = level.boss_arena
             assert by1 < line and bx0 <= level.exit[0] <= bx1, "boss bowl holds the anchor"
         assert sum(p.kind == "gold" for p in run.pickups) >= 2, "gum caves hold loot"
         run.enter_workshop()
@@ -811,7 +815,7 @@ def test_g30_sporenklub_stage_cellar_mushrooms_and_back_rooms() -> None:
         w = run.world
         cap = mat.MAT_ID["pilzhut"]
         cx, floor = w.width // 2, w.height // 2 + int(w.height * 0.13) // 2
-        x0, y0, x1, y1 = run.level.mid_boss_arena
+        x0, _y0, x1, y1 = run.level.mid_boss_arena
         assert x0 < cx < x1 and y1 <= floor, "the main stage is the arena"
         assert w.get(cx, floor - 2) == cap, "DJ booth"
         for half in (range(8, cx - 40), range(cx + 40, w.width - 8)):

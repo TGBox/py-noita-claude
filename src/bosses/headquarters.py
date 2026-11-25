@@ -77,7 +77,7 @@ class HeadquartersController:
         from src.bosses import make_boss_script
 
         self._spawned = True
-        x0, _y0, x1, y1 = _hall(run.world)
+        _x0, _y0, x1, y1 = _hall(run.world)
         desk_top = y1 - DESK_SIZE[1]
         stage = self.stage
         if stage == "anhoerung":

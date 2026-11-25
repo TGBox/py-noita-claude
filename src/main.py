@@ -1142,7 +1142,7 @@ class Game:
             return
         vp = self.viewport
         size = max(10, round(12 * ui.scale_of(self.screen)))
-        from src.sprite_render import ASSET_ROOT, blit_frame
+        from src.sprite_render import ASSET_ROOT
         from src.sprites import Animator
 
         near_st = None
@@ -1161,7 +1161,7 @@ class Game:
             is_player_here = near_st is not None and near_st.key == station.key
 
             if sheet_exists:
-                sheet, meta = self.sheet_cache.get("umgebung", sprite_key)
+                _sheet, meta = self.sheet_cache.get("umgebung", sprite_key)
                 anim = Animator(meta)
                 if is_player_here and "use" in meta.anims:
                     anim.play("use")

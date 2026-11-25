@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 from src import materials as mat
 from src.depths import DEPTHS, Depth

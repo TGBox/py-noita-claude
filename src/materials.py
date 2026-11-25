@@ -20,10 +20,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-import typing
-
-if typing.TYPE_CHECKING:
-    from src.reactions import Reaction
 
 AIR = 0
 BEDROCK = 1
@@ -1189,12 +1185,20 @@ def _init_set_reactions() -> None:
         ),
         # the organism generator's materials, re-dressed as jelly (cave walls, ribs, pools)
         aliases=(
-            ("flesh", "glibber"), ("growth", "glibber"), ("sinew", "glibber_rot"),
-            ("bone", "zuckerguss"), ("enamel", "zuckerguss"), ("spent", "zuckerguss"),
-            ("crust", "kaugummi"), ("blood", "brausesirup"), ("pus", "brausesirup"),
-            ("acid", "brausesirup"), ("mucus", "brausesirup"), ("spores", "schaum"),
+            ("flesh", "glibber"),
+            ("growth", "glibber"),
+            ("sinew", "glibber_rot"),
+            ("bone", "zuckerguss"),
+            ("enamel", "zuckerguss"),
+            ("spent", "zuckerguss"),
+            ("crust", "kaugummi"),
+            ("blood", "brausesirup"),
+            ("pus", "brausesirup"),
+            ("acid", "brausesirup"),
+            ("mucus", "brausesirup"),
+            ("spores", "schaum"),
             ("fume", "schaum"),
-        ),  # fmt: skip
+        ),
         reactions=(
             Reaction("fire", "glibber_rot", "fire", "smoke", 0.05),
             Reaction("fire", "brausesirup", "fire", "smoke", 0.05),
@@ -1214,11 +1218,19 @@ def _init_set_reactions() -> None:
             "staubfluse",
         ),
         aliases=(
-            ("flesh", "kruemel"), ("growth", "kruemel"), ("sinew", "kruemel"),
-            ("bone", "fliese"), ("enamel", "fliese"), ("spent", "fliese"), ("crust", "fliese"),
-            ("bone_dust", "brosel"), ("blood", "honig"), ("pus", "karamell"),
-            ("acid", "karamell"), ("mucus", "honig"),
-        ),  # fmt: skip
+            ("flesh", "kruemel"),
+            ("growth", "kruemel"),
+            ("sinew", "kruemel"),
+            ("bone", "fliese"),
+            ("enamel", "fliese"),
+            ("spent", "fliese"),
+            ("crust", "fliese"),
+            ("bone_dust", "brosel"),
+            ("blood", "honig"),
+            ("pus", "karamell"),
+            ("acid", "karamell"),
+            ("mucus", "honig"),
+        ),
         reactions=(
             Reaction("fire", "zucker", "fire", "karamell", 0.05),
         ),
@@ -1234,12 +1246,21 @@ def _init_set_reactions() -> None:
             "nebel",
         ),
         aliases=(
-            ("flesh", "pilzfleisch"), ("growth", "pilzfleisch"), ("sinew", "pilzhut"),
-            ("bone", "pilzhut"), ("enamel", "pilzhut"), ("spent", "pilzhut"),
-            ("crust", "pilzhut"), ("bone_dust", "leuchtsporen"), ("blood", "neonsaft"),
-            ("pus", "neonsaft"), ("acid", "neonsaft"), ("mucus", "neonsaft"),
-            ("spores", "nebel"), ("fume", "nebel"),
-        ),  # fmt: skip
+            ("flesh", "pilzfleisch"),
+            ("growth", "pilzfleisch"),
+            ("sinew", "pilzhut"),
+            ("bone", "pilzhut"),
+            ("enamel", "pilzhut"),
+            ("spent", "pilzhut"),
+            ("crust", "pilzhut"),
+            ("bone_dust", "leuchtsporen"),
+            ("blood", "neonsaft"),
+            ("pus", "neonsaft"),
+            ("acid", "neonsaft"),
+            ("mucus", "neonsaft"),
+            ("spores", "nebel"),
+            ("fume", "nebel"),
+        ),
     )
     ABTEI = MaterialSet(
         "abtei",
@@ -1253,12 +1274,21 @@ def _init_set_reactions() -> None:
             "weihrauch",
         ),
         aliases=(
-            ("flesh", "mauerwerk"), ("bone", "mauerwerk"), ("spent", "mauerwerk"),
-            ("crust", "mauerwerk"), ("enamel", "glockenbronze"), ("growth", "algen"),
-            ("sinew", "algen"), ("blood", "water"), ("pus", "water"), ("acid", "water"),
-            ("mucus", "water"), ("tallow", "kerzenwachs"), ("spores", "weihrauch"),
+            ("flesh", "mauerwerk"),
+            ("bone", "mauerwerk"),
+            ("spent", "mauerwerk"),
+            ("crust", "mauerwerk"),
+            ("enamel", "glockenbronze"),
+            ("growth", "algen"),
+            ("sinew", "algen"),
+            ("blood", "water"),
+            ("pus", "water"),
+            ("acid", "water"),
+            ("mucus", "water"),
+            ("tallow", "kerzenwachs"),
+            ("spores", "weihrauch"),
             ("fume", "weihrauch"),
-        ),  # fmt: skip
+        ),
         reactions=(
             Reaction("fire", "kerzenwachs", "fire", "smoke", 0.05),
             # no "algae grow into water": that overgrew every flooded passage within minutes
