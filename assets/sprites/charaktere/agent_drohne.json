@@ -1,11 +1,11 @@
 {
   "frame_size": [
-    18,
-    18
+    20,
+    16
   ],
   "anchor": [
-    9,
-    14
+    10,
+    13
   ],
   "anims": {
     "idle": {
@@ -18,7 +18,7 @@
     "walk": {
       "row": 1,
       "frames": 4,
-      "fps": 8.0,
+      "fps": 10.0,
       "loop": true,
       "next_anim": "idle"
     },
@@ -54,13 +54,13 @@
   "glow": [
     {
       "offset": [
-        9,
+        10,
         8
       ],
       "color": [
         255,
-        50,
-        50
+        55,
+        55
       ],
       "radius": 12
     }

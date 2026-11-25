@@ -90,16 +90,12 @@ flowchart TD
 
 ## 5. Bekannte Nachbesserungen nach dem MVP
 
-### Figuren-Grafik (`B01`–`B19`, Stand 2026-11-07)
+### Figuren-Grafik (`B01`–`B19`, Stand 2026-11-25)
 
-Die Sheets erfüllen `V8` (eigene Silhouette, echte Bewegung), sind aber nur **MVP-Platzhalter** und deutlich schwächer als gewünscht. Vor einem Release werden sie überarbeitet; Grundlage ist eine Sichtprüfung durch den Nutzer, nicht nur die Tests.
+Alle drei Figuren-Gruppen ([`tools/sprites_chars.py`](../../tools/sprites_chars.py), [`tools/sprites_creatures.py`](../../tools/sprites_creatures.py) und [`tools/sprites_bosses.py`](../../tools/sprites_bosses.py)) wurden gemäß Bibel 04/05 überarbeitet, über [`tools/preview.py`](../../tools/preview.py) in 4×-Vorschaubildern (`tasks/kartenlauf/vorschau-charaktere.png`, `vorschau-kreaturen.png`, `vorschau-bosse.png`) geprüft und vom Nutzer abgenommen:
 
-- **Bewegung umgeht die Regel:** Statt Beine, Flügel oder Tentakel zu bewegen, wird oft ein Frame gestaucht und der letzte geschrumpft (z. B. `weltenherz`, `sporenherz`, `boese_gute`, `mutter_glibber`, `glibberteiler`, `ober_cloita`).
-- **Noch Klötze mit Augen:** `aktenfresser`, `glibberteiler`, `harzspucker`, `agent_drohne`, `npc_glibberhaendler`, `npc_ameisenhehler`.
-- **Wenig Binnendetail:** Gesichter, Muster und Materialwirkung fehlen weitgehend; eine Palette pro Universum lässt die Kreaturen einer Welt farblich verschwimmen.
-- **Gut gelungen, als Maßstab:** `aktenwolf`, `kirchenkrake`, `glockenqualle`, `orgelaal`, `blutegel`, `abt_kieme`, `oberstempler`, `trampolinwal`, `npc_kuester`.
-
-Vorgehen später: eigene Karten je Gruppe, mit Vorschaubildern (alle Frames vergrößert nebeneinander) zur Abnahme durch den Nutzer.
+- **Echte Bewegung ohne Stauch-/Schrumpf-Tricks:** Animierte Gliedmaßen, Flügel, Tentakel, Aorten, Kiemen, Räder und Klöppel in allen Lauf-/Aktionszyklen (inkl. `weltenherz`, `sporenherz`, `mutter_glibber`, `glibberteiler`, `boese_gute`).
+- **Ausdifferenzierte Material-Paletten & Bibel-Details:** Eigene `make_ramp`-Farbverläufe statt universumsweiter Monochrom-Paletten (inkl. bunter Glibbria-Glibber-/Zuckerfarben statt Braun) sowie erkennbare Details (z. B. Fahrrad, Schuh und Sirup-Fontäne im `trampolinwal`, Kerzen und Gesangbücher bei der `kirchenkrake`, Plattenteller beim `dj_myzel`, Aktenordner-Zähne beim `aktenfresser`, Harztank beim `harzspucker`).
 
 ### Minispiele (`E07`–`E09`, `E14`, Stand 2026-11-25)
 

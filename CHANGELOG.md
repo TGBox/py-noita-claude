@@ -1,8 +1,12 @@
 # Changelog
 
+## SemVer v1.11.0
+
+- 2026-11-25 (a1fed75): feat(sprites): rework character, creature, and boss sprites (B01-B19)
+
 ## SemVer v1.10.1
 
-- 2026-11-25 (1539e28): fix: fix minigames
+- 2026-11-25 (674d4d2): fix: fix minigames
 
 ## SemVer v1.10.0
 

@@ -1,11 +1,11 @@
 {
   "frame_size": [
     24,
-    14
+    18
   ],
   "anchor": [
     12,
-    12
+    16
   ],
   "anims": {
     "idle": {
