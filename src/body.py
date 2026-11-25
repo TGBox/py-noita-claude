@@ -53,7 +53,20 @@ class Body:
 
     def step_timers(self, dt: float, world: World) -> None:
         """Advance all status effect timers on this Body by dt seconds (Card A08)."""
-        raise NotImplementedError("Card A08")
+        self.drunk = max(0.0, self.drunk - dt)
+        self.sticky = max(0.0, self.sticky - dt)
+        self.stamped_good = max(0.0, self.stamped_good - dt)
+        self.stamped_bad = max(0.0, self.stamped_bad - dt)
+        self.marked_time = max(0.0, self.marked_time - dt)
+        self.frozen = max(0.0, self.frozen - dt)
+        self.charged = max(0.0, self.charged - dt)
+        self.befogged = max(0.0, self.befogged - dt)
+        self.refresh_time = max(0.0, self.refresh_time - dt)
+        self.lubed_time = max(0.0, self.lubed_time - dt)
+        self.fizzy_time = max(0.0, self.fizzy_time - dt)
+        self.haste_time = max(0.0, self.haste_time - dt)
+        self.ink_sight = max(0.0, self.ink_sight - dt)
+        self.flux_boost_time = max(0.0, self.flux_boost_time - dt)
 
     def take_damage(self, amount: float, cause: str = "") -> None:
         """Apply damage taking status multipliers (e.g. stamped_bad) into account (Card A08)."""
@@ -82,6 +95,13 @@ class Body:
         self.frozen = 0.0  # immobilized (Contract V4b, Card A08)
         self.charged = 0.0  # electric discharge in liquid (Contract V4b, Card A08)
         self.befogged = 0.0  # reduced sight radius (Contract V4b, Card A08)
+        self.refresh_time = 0.0  # refreshed (Contract V4b, Card A08)
+        self.lubed_time = 0.0  # lubed (Contract V4b, Card A08)
+        self.fizzy_time = 0.0  # fizzy (Contract V4b, Card A08)
+        self.haste_time = 0.0  # hasted (Contract V4b, Card A08)
+        self.ink_sight = 0.0  # ink sight (Contract V4b, Card A08)
+        self.shield_hp = 0.0  # temporary energy shield (Phase I01 schutztonikum)
+        self.flux_boost_time = 0.0  # doubled flux regen duration (Phase I01)
         self._flame_timer = 0.0
         self._ignite_grace = 0.0
         self._rx = 0.0
@@ -102,6 +122,10 @@ class Body:
         return self.x <= px < self.x + self.width and self.y <= py < self.y + self.height
 
     def hurt(self, amount: float, cause: str = "") -> None:
+        if amount > 0 and self.shield_hp > 0:
+            absorbed = min(self.shield_hp, amount)
+            self.shield_hp -= absorbed
+            amount -= absorbed
         self.hp = max(0.0, self.hp - amount)
         self.damage_taken += amount  # read and reset by the game for damage numbers
         if amount > 0 and cause:
@@ -284,3 +308,11 @@ class Body:
             if BLOCKS_BODY[world.get(int(cx + dx * t), int(cy + dy * t))]:
                 return False
         return True
+
+    def damage_factor(self) -> float:
+        """Return the factor for damage dealt (1.0 = normal, 1.2 = stamped_good, 0.8 = stamped_bad)."""
+        if self.stamped_good > 0:
+            return 1.2
+        if self.stamped_bad > 0:
+            return 0.8
+        return 1.0

@@ -66,7 +66,18 @@ def test_a02_spells_rarity_tiers_and_aliases() -> None:
     t3 = set(blocks_of_tier(3))
     assert t1 and t2 and t3
     assert t1.isdisjoint(t2) and t1.isdisjoint(t3) and t2.isdisjoint(t3)
-    assert (t1 | t2 | t3) == set(BLOCKS.keys())
+    active = {k for k, b in BLOCKS.items() if not getattr(b, "retired", False)}
+    assert (t1 | t2 | t3) == active
+
+    from src.spells import FAMILY_RARITY, TIER3_BLOCKS
+
+    assert BLOCKS["funke"].rarity_tier == 1
+    assert all(BLOCKS[k].rarity_tier == 3 for k in TIER3_BLOCKS)
+    assert all(
+        b.rarity_tier == 2
+        for b in BLOCKS.values()
+        if b.rarity == FAMILY_RARITY and b.key not in TIER3_BLOCKS
+    )
 
     assert MODULE_ALIASES["flux_funke"] == "funke"
     assert MODULE_ALIASES["nadelschuss"] == "nadel"
@@ -148,11 +159,12 @@ def test_a05_unified_pickup_and_sprite_keys() -> None:
     p_sample = Pickup(0.0, 0.0, kind="sample", item_key="probe_gallenstein", amount=3)
     assert pickup_sprite_key(p_sample) == "probe_gallenstein"
 
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=5)) == "gold_klein"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=15)) == "gold_mittel"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=40)) == "gold_gross"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="badge", amount=1)) == "dienstmarke"
-    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="crate", amount=1)) == "beutekiste"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=5)) == "gold_muenze"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=15)) == "gold_haufen_s"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=40)) == "gold_haufen_m"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="gold", amount=80)) == "gold_haufen_l"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="badge", amount=1)) == "dienstausweis"
+    assert pickup_sprite_key(Pickup(0.0, 0.0, kind="crate", amount=1)) == "fundkiste"
 
 
 # ---------------------------------------------------------------------------
@@ -313,8 +325,9 @@ def test_a10_pathfind_walk_fly_swim() -> None:
     from src.world import World
 
     w = World(48, 32)
-    # Wall with gap at top for flyer
-    w.fill_rect(20, 6, 22, 31, MAT_ID["stone"])
+    # Wall with a wide gap at the top for the flyer. The search runs on 4x4-cell nodes
+    # (V3), so the gap must span several nodes.
+    w.fill_rect(20, 14, 22, 31, MAT_ID["stone"])
     fly_path = find_path(w, (10, 15), (30, 15), "fly")
     assert len(fly_path) >= 2
     assert fly_path[-1] == (30, 15)
@@ -882,9 +895,39 @@ def test_a29_retired_organic_payloads() -> None:
         assert BLOCKS[key].retired is True
     for key, name in KEPT_PAYLOADS.items():
         assert BLOCKS[key].retired is False and BLOCKS[key].name_de == name
-    tiered = {b.key for tier in (1, 2, 3) for b in blocks_of_tier(tier)}
+    tiered = {key for tier in (1, 2, 3) for key in blocks_of_tier(tier)}
     assert not tiered & set(RETIRED_PAYLOADS)
     rng = random.Random(29)
     drawn = {random_block(rng, Category.PAYLOAD) for _ in range(2000)}
     assert not drawn & set(RETIRED_PAYLOADS)
     assert set(KEPT_PAYLOADS) <= drawn
+
+
+def test_a30_special_payloads_reach_the_shot() -> None:
+    from src import materials as mat
+    from src.flask import Flask
+    from src.run import Run
+    from src.spells import CATALOG, FLASK_PAYLOAD_CELLS
+    from src.wand import Shot
+
+    run = Run(seed=30)
+    x, y = run.player.x, run.player.y - 20
+    kolben = Shot(CATALOG["funke"], (CATALOG["fuellung_kolben"],))
+
+    run.flask = Flask(liquid="oil", amount=50.0, capacity=100.0)
+    run.projectiles.spawn([kolben], x, y, 0.0)
+    assert run.projectiles._pending[-1].material == mat.MAT_ID["oil"]
+    assert run.flask.amount == 50 - FLASK_PAYLOAD_CELLS
+
+    run.projectiles.spawn([kolben], x, y, 0.0, team="enemy")
+    assert run.flask.amount == 50 - FLASK_PAYLOAD_CELLS  # creatures never drain the flask
+
+    run.flask = None
+    run.projectiles.spawn([kolben], x, y, 0.0)
+    assert run.projectiles._pending[-1].material == mat.MAT_ID["water"]
+
+    lokal = Shot(CATALOG["funke"], (CATALOG["fuellung_lokal"],))
+    local_keys = set(mat.KEYS) - set(mat.BASE_KEYS)
+    run.projectiles.spawn([lokal], x, y, 0.0)
+    got = mat.KEYS[run.projectiles._pending[-1].material]
+    assert got in local_keys if local_keys else got == "water"

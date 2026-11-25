@@ -28,6 +28,7 @@ class Layout:
     wand_titles: list[tuple[int, tuple[int, int]]] = field(default_factory=list)
     flasks: list[tuple[int, Rect]] = field(default_factory=list)
     drop: Rect = (0, 0, 0, 0)
+    delete_toggle: Rect = (0, 0, 0, 0)  # switch: may a right click delete? (playtest)
     bag_title: tuple[int, int] = (0, 0)
     flask_title: tuple[int, int] = (0, 0)
     sort: Rect = (0, 0, 0, 0)  # the "Sortieren" button above the bag
@@ -89,7 +90,9 @@ def _layout(width: int, inventory: Inventory, s: float) -> Layout:
     for index in range(MAX_FLASKS):
         result.flasks.append((index, (left + index * (flask_w + 2 * gap), y, flask_w, flask_h)))
     drop_x = left + MAX_FLASKS * (flask_w + 2 * gap) + round(30 * s)
-    result.drop = (drop_x, y, round(280 * s), flask_h)
+    toggle_w = round(96 * s)
+    result.drop = (drop_x, y, round(280 * s) - toggle_w - round(8 * s), flask_h)
+    result.delete_toggle = (drop_x + round(280 * s) - toggle_w, y, toggle_w, flask_h)
     bottom = y + flask_h + round(44 * s)
     result.panel = (panel_x, panel_y, content_w + round(32 * s), bottom - panel_y)
     return result
@@ -129,6 +132,8 @@ def hit_any(result: Layout, x: int, y: int) -> tuple[str, object] | None:
             return "flask", index
     if _inside(result.drop, x, y):
         return "drop", None
+    if _inside(result.delete_toggle, x, y):
+        return "delete_toggle", None
     if not _inside(result.panel, x, y):
         return "outside", None
     return None

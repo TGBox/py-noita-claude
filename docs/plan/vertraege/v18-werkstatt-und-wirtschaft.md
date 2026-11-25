@@ -1,238 +1,203 @@
-# Verträge V18–V20: Werkstatt-Hub, Wirtschaft, Händler, Fabrikator & Minispiele
+# Verträge V18–V20: Werkstatt, Wirtschaft, Händler, Fabrikator & Minispiele
 
-> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quelle: [docs/bibel/07-gegenstaende-und-werkstatt.md](../../bibel/07-gegenstaende-und-werkstatt.md).
+> Teil des Vertrags-Index [vertraege.md](../vertraege.md). Kanonische Quellen: [Bibel 07](../../bibel/07-gegenstaende-und-werkstatt.md) (Werkstatt, Minispiele), [Bibel 02](../../bibel/02-systeme.md) („Wirtschaft“, „Fabrikator“), [Bibel 04](../../bibel/04-figuren.md) („Händler“). Überarbeitet am 2026-11-04 nach der Prüfung gegen die Bibel.
 
 ---
 
 ## V18 — Die Werkstatt (`src/workshop.py`)
 
 ```python
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .world import World
-
 WORKSHOP_SIZE: tuple[int, int] = (640, 360)  # Zellen (Breite, Höhe)
 
 @dataclass(frozen=True)
 class Station:
-    key: str             # "ws_portal", "ws_fabrikator", ...
-    name: str            # Deutscher Anzeigename
-    rect: tuple[int, int, int, int]  # (x0, y0, x1, y1) in Welt-Zellen
-    prompt_de: str       # Interaktionshinweis für Hover/HUD, z. B. "[E] Fabrikator öffnen"
-    sprite_key: str      # Schlüssel in umgebung/ ("portal_stein", "fabrikator", ...)
+    key: str             # Bibel-Schlüssel, z. B. "ws_portal"; dient auch als Sprite-Schlüssel in umgebung/
+    name: str            # Deutscher Anzeigename aus Bibel 07
+    rect: tuple[int, int, int, int]  # (x0, y0, x1, y1) in Welt-Zellen, Größe laut Bibel 07
+    prompt_de: str       # Hinweis für Hover/HUD, z. B. "[E] Fabrikator benutzen"
+
+    @property
+    def sprite_key(self) -> str:
+        return self.key
 
 @dataclass(frozen=True)
 class WorkshopLayout:
     width: int
     height: int
-    spawn: tuple[int, int]                  # Spieler-Spawn in Zellen
-    klonita_pos: tuple[int, int]            # Klonita-Stammplatz nahe der Couch
-    trader_pos: tuple[int, int]             # Position des gastierenden Händlers
-    target_dummy_pos: tuple[int, int]       # Position der Trainings-Attrappe
-    stations: dict[str, Station]            # key -> Station
+    spawn: tuple[int, int]                         # Spieler-Spawn in Zellen
+    klonita_pos: tuple[int, int]                   # auf der Couch
+    trader_slots: tuple[tuple[int, int], tuple[int, int]]  # Mitte der beiden 32×32-Händlerplätze
+    target_dummy_pos: tuple[int, int]              # rechtes Ende der Schießstand-Bahn
+    stations: dict[str, Station]                   # key -> Station
 ```
 
-### Alle 12 kanonischen Werkstatt-Stationen (`STATIONS`) + `STATION_ALIASES`
+### Die 12 Stationen (`STATIONS`, Bibel 07 „Stationen“)
 
-Alle Koordinaten liegen auf der Hauptplattform (`y = 210` Bodenoberkante, Innenraum `x = 40..600`, `y = 140..210` Luft):
+Alle Stationen stehen auf der Hauptplattform (Bodenoberkante `y = 210`, Innenraum `x = 40..600`), von links nach rechts mit 10 Zellen Abstand. Breite × Höhe stammen aus Bibel 07.
 
-| Kanonischer Bibel-`key` | Englischer Alias (`STATION_ALIASES`) | `name` | `rect` `(x0, y0, x1, y1)` | `sprite_key` | Funktion bei `[E]` |
-| --- | --- | --- | --- | --- | --- |
-| `"ws_portal"` | — | `"Reise-Portal"` | `(548, 186, 572, 210)` | `"portal_stein"` | Öffnet die Portal-Auswahl (`2` Universums-Angebote aus `RunPlan.offers_for`) |
-| `"ws_werkbank"` | `"ws_workbench"` | `"Zauberstab-Werkbank"` | `(176, 192, 196, 210)` | `"werkbank"` | Erlaubt freies Umsortieren von Zauberstab-Modulen + Reroll |
-| `"ws_fabrikator"` | `"ws_fabricator"` | `"Fabrikator"` | `(140, 190, 160, 210)` | `"fabrikator"` | Öffnet das Fabrikator-Menü (max. `3` Bauten pro Besuch) |
-| `"ws_liege"` | — | `"Experimentier-Liege"` | `(118, 194, 136, 210)` | `"experimentier_liege"` | Öffnet die Experiment-Auswahl (`1` aus `3` Perks pro Besuch) |
-| `"ws_haendler"` | `"ws_trader"` | `"Händler-Stand"` | `(210, 186, 238, 210)` | `"haendler_stand"` | Öffnet das Kauf-/Tauschmenü des aktuellen Händlers |
-| `"ws_zapfhahn"` | — | `"Flüssigkeits-Zapfhahn"` | `(246, 190, 266, 210)` | `"zapfhahn"` | Füllt die Phiole mit einer wählbaren bekannten Flüssigkeit |
-| `"ws_automat"` | `"ws_physik_o_mat"` | `"Physik-o-Mat"` | `(280, 186, 300, 210)` | `"physik_o_mat"` | Startet ein Material-Rätsel-Minispiel (`1×` pro Besuch) |
-| `"ws_schiessstand"` | — | `"Schießstand"` | `(340, 190, 360, 210)` | `"schiessstand"` | Startet das Zielscheiben-Minispiel (`1×` pro Besuch) |
-| `"ws_archiv"` | `"ws_archive"` | `"Archiv-Pult"` | `(400, 192, 416, 210)` | `"archiv_pult"` | Öffnet das Entdeckungs-Archiv (5 Reiter) |
-| `"ws_couch"` | — | `"Klonitas Sofa"` | `(86, 194, 114, 210)` | `"klonita_sofa"` | Heilt `+35 %` `max_hp` (`1×` pro Besuch) und triggert ein Klonita-Gespräch |
-| `"ws_shredder"` | — | `"Akten-Schredder"` | `(456, 190, 472, 210)` | `"akten_schredder"` | Senkt `Wanted` um `-1.0` gegen `Wanted.bribe_cost()` Gold |
-| `"ws_well"` | — | `"Flaschen-Brunnen"` | `(500, 192, 516, 210)` | `"flaschen_brunnen"` | Füllt die gehaltene Flasche kostenlos mit `"water"` auf |
+| `key` | `name` | Größe | `rect` | Funktion bei `[E]` (`Run.interact_station`) |
+| --- | --- | --- | --- | --- |
+| `"ws_couch"` | `"Klonitas Couch"` | 40×18 | `(40, 192, 80, 210)` | Klonita sitzt hier. `[E]`: Spruch aus `LINES["couch"]` und einmal je Besuch `+35 %` `max_hp` Heilung |
+| `"ws_liege"` | `"Experimentierliege"` | 48×24 | `(90, 186, 138, 210)` | Öffnet die Experiment-Auswahl (`menu_mode = "experiment"`): 3 Selbstexperimente zur Wahl, 1 je Besuch; neu würfeln gegen `experiment_reroll_price` |
+| `"ws_fabrikator"` | `"Fabrikator"` | 40×40 | `(148, 170, 188, 210)` | Öffnet das Fabrikator-Menü (`menu_mode = "fabricator"`, höchstens 3 Bauten je Besuch) |
+| `"ws_werkbank"` | `"Werkbank"` | 48×28 | `(198, 182, 246, 210)` | Öffnet den Rucksack im Umbau-Modus (`inventory_open = True`) |
+| `"ws_haendler"` | `"Händlerplatz"` | 72×32 | `(256, 178, 328, 210)` | Zwei Händlerplätze (je 32×32); `[E]` am nächsten Händler öffnet sein Kaufmenü (`menu_mode = "trader"`) |
+| `"ws_zapfhahn"` | `"Schnapszapfanlage"` | 16×24 | `(338, 186, 354, 210)` | Füllt den gehaltenen Kolben für `10` Gold mit `"fluxschnaps"` (voll) |
+| `"ws_well"` | `"Flaschen-Brunnen"` | 16×18 | `(364, 192, 380, 210)` | Füllt den gehaltenen Kolben kostenlos mit `"water"` (voll) |
+| `"ws_automat"` | `"Physik-o-Mat"` | 24×36 | `(390, 174, 414, 210)` | Startet ein Physik-Rätsel (Einsatz `30` Gold, 1 Versuch je Besuch) |
+| `"ws_schiessstand"` | `"Schießstand"` | 64×24 | `(424, 186, 488, 210)` | Startet das Zielschießen (Einsatz `20` Gold, 1 Versuch je Besuch) |
+| `"ws_archiv"` | `"Archivschrank"` | 24×32 | `(498, 178, 522, 210)` | Öffnet das Archiv (`menu_mode = "archive"`, 5 Reiter) |
+| `"ws_shredder"` | `"Akten-Schredder"` | 16×20 | `(532, 190, 548, 210)` | Senkt `Wanted` um `1.0` gegen `Wanted.bribe_cost()` = `40 + 25 × Sterne` Gold |
+| `"ws_portal"` | `"Portalrahmen"` | 40×48 | `(558, 162, 598, 210)` | Öffnet die Portal-Auswahl (`menu_mode = "portal_select"`, Vorschläge aus `run.plan.offers()`) |
 
-- Sowohl `STATIONS` als auch `layout.stations` unterstützen den Zugriff über die 12 kanonischen Bibel-Schlüssel **und** über die 5 englischen Aliase (`"ws_fabricator"`, `"ws_trader"`, `"ws_physik_o_mat"`, `"ws_archive"`, `"ws_workbench"` über `STATION_ALIASES`).
-
-### Öffentliche Funktionen in `src/workshop.py`
+- `spawn = (300, 200)`, `klonita_pos = (64, 190)`, `trader_slots = ((276, 194), (316, 194))`, `target_dummy_pos = (484, 196)`.
+- `STATION_ALIASES` (`"ws_fabricator"`, `"ws_trader"`, `"ws_physik_o_mat"`, `"ws_archive"`, `"ws_workbench"` → Bibel-Schlüssel) bleibt für alte Spielstände; `layout.stations` nimmt beide Schlüssel an.
+- **Betreten (`Run.enter_workshop`, Bibel 07 „sicherer Ort“):** volle Heilung, `wanted.on_workshop()`, `fabricator.reset_visit()`, `couch_used = False`, `minigames_played = set()`, `experiment_picked = False`, Händler neu besetzen (V19 §2), danach `save_state()`.
 
 ```python
-STATION_ALIASES: dict[str, str] = {
-    "ws_fabricator": "ws_fabrikator",
-    "ws_trader": "ws_haendler",
-    "ws_physik_o_mat": "ws_automat",
-    "ws_archive": "ws_archiv",
-    "ws_workbench": "ws_werkbank",
-}
-
 def generate_workshop(world: World) -> WorkshopLayout:
-    """Baut die 640×360-Werkstatt deterministisch in world auf (Stein-/Ziegel-Halle,
-    Becken am Flaschen-Brunnen, Schießstand-Nische) und gibt das WorkshopLayout zurück."""
+    """Baut die 640×360-Werkstatt deterministisch in world (Ziegel-Halle aus "rock",
+    Boden ab y = 210, Becken mit "water" unter ws_well) und gibt das Layout zurück."""
 
 def station_at(layout: WorkshopLayout, cell_x: int, cell_y: int, radius: int = 10) -> Station | None:
-    """Gibt die nächstgelegene Station zurück, deren rect maximal radius Zellen von
-    (cell_x, cell_y) entfernt ist, sonst None."""
+    """Nächstgelegene Station, deren rect höchstens radius Zellen von (cell_x, cell_y) entfernt ist."""
 ```
 
 ---
 
-## V19 — Wirtschaft (`src/economy.py`) & 6 Händler (`src/traders.py`)
+## V19 — Wirtschaft (`src/economy.py`) & Händler (`src/traders.py`)
 
-### 1. Preis- und Beuteformeln (`src/economy.py`)
+### 1. Gold- und Preisformeln (Bibel 02 „Wirtschaft (Gold)“)
+
+`rank` ist der Rang des Universums (`1..3`), `stage` die Beutestufe (`1..6` = Nummer des Universums im Lauf, `run.plan.slot + 1`, in der Werkstatt die des nächsten Universums). Alle Funktionen sind rein.
 
 ```python
-from __future__ import annotations
+CREATURE_GOLD: dict[int, tuple[int, int]] = {1: (5, 10), 2: (10, 18), 3: (18, 30)}
+BIG_CREATURE_GOLD: dict[int, int] = {1: 40, 2: 70, 3: 110}   # große Kreaturen und Unter-Zwischenbosse
+BOSS_GOLD: dict[int, int] = {1: 200, 2: 350, 3: 500}         # Zwischengegner
+PILES_PER_UNIVERSE: tuple[int, int] = (6, 8)
+MODULE_BASE: dict[int, int] = {1: 50, 2: 85, 3: 120}         # nach Block.rarity_tier
+PHYSIK_STAKE = 30
+SCHIESS_STAKE = 20
+ZAPF_PRICE = 10
 
-import random
+def creature_gold(rank: int, rng: random.Random, *, big: bool = False) -> int:
+    """big: BIG_CREATURE_GOLD[rank]; sonst rng.randint(*CREATURE_GOLD[rank])."""
 
-def creature_gold(max_hp: float, depth: int, rng: random.Random) -> int:
-    """Gold-Drop einer Kreatur:
-    base = max(1, int(round(max_hp / 12.0)))
-    scale = 1.0 + 0.18 * max(0, depth - 1)
-    return max(1, int(round(base * scale * rng.uniform(0.85, 1.15))))"""
+def mid_boss_gold(rank: int) -> int:
+    """Unter-Zwischenboss (spec.is_mid_boss): BIG_CREATURE_GOLD[rank]."""
 
-def pile_gold(depth: int, rng: random.Random) -> int:
-    """Goldhaufen in der Welt: round((8 + 4 * depth) * rng.uniform(0.8, 1.25))."""
+def boss_gold(rank: int) -> int:
+    """Zwischengegner: BOSS_GOLD[rank]."""
 
-def crate_gold(depth: int, rng: random.Random) -> int:
-    """Beutekiste: round((18 + 7 * depth) * rng.uniform(0.85, 1.2))."""
+def pile_gold(rank: int, rng: random.Random) -> int:
+    """Goldhaufen: rng.randint(10, 40) * rank."""
 
-def mid_boss_gold(depth: int) -> int:
-    """Zwischenboss-Fixbetrag: 45 + 15 * depth."""
+def crate_gold(rank: int, rng: random.Random) -> int:
+    """Fundkiste: rng.randint(20, 60) * rank (dazu 1–3 Gegenstände, siehe loot.py)."""
 
-def module_price(rarity_tier: int, depth: int, price_factor: float = 1.0) -> int:
-    """Basispreis nach Tier (1 -> 25, 2 -> 55, 3 -> 110),
-    skaliert mit (1.0 + 0.12 * max(0, depth - 1)) * price_factor, mindestens 5."""
+def module_price(rarity_tier: int, stage: int, price_factor: float = 1.0) -> int:
+    """round(MODULE_BASE[rarity_tier] * (1 + 0.25 * stage) * price_factor)."""
 
-def weapon_price(wand_tier: int, depth: int, price_factor: float = 1.0) -> int:
-    """Basispreis nach Tier (1 -> 65, 2 -> 125, 3 -> 210),
-    skaliert mit (1.0 + 0.15 * max(0, depth - 1)) * price_factor, mindestens 15."""
+def weapon_price(stage: int, price_factor: float = 1.0) -> int:
+    """round((160 + 70 * (stage - 1)) * price_factor)."""
 
-def reroll_price(reroll_index: int, price_factor: float = 1.0) -> int:
-    """Kosten für Angebots-Erneuerung: int(round((20 * (2 ** max(0, reroll_index))) * price_factor))."""
+def fabricator_gold(rarity_tier: int, stage: int) -> int:
+    """round(module_price(rarity_tier, stage) * 0.7)."""
+
+def experiment_reroll_price(reroll_index: int) -> int:
+    """100 * 2 ** reroll_index (100, 200, 400, …; Zähler gilt für den ganzen Lauf)."""
 ```
 
-### 2. Die 6 Händler-Spezifikationen (`src/traders.py`, Bibel Kap. 07)
+`price_factor` fasst Rabatte zusammen: Selbstexperiment `feilscher` (Bibel: `feilscherin`) × `2/3`. Weitere Faktoren gibt es im MVP nicht.
+
+### 2. Die 6 Händler (Bibel 04 „Händler“)
+
+Händler stehen **nur in der Werkstatt**. Jedes besuchte Universum bringt seinen Heimat-Händler mit; es stehen höchstens 2 gleichzeitig da, nämlich die Händler der beiden zuletzt besuchten Universen (`traders_for_workshop`). Vor dem ersten Universum ist der Händlerplatz leer.
 
 ```python
 @dataclass(frozen=True)
 class TraderOffer:
-    kind: str            # "block", "wand", "flask", "heart", "sample"
-    key: str             # Block-Key, Sample-Key oder Leerstring bei wand/heart
-    gold_cost: int       # Goldpreis (inkl. Händler-Eigenheit)
-    sample_cost: tuple[tuple[str, int], ...] = ()  # Optionaler Proben-Tauschpreis (für Krümel-Karl)
-    blessed: bool = False  # Küster-Segen auf Zauberstäben
+    kind: str            # "block" oder "wand"
+    key: str             # Block-Schlüssel; "" bei "wand"
+    gold_cost: int       # Goldpreis inkl. Sonderregel
+    sample_cost: tuple[tuple[str, int], ...] = ()  # Proben-Tausch (nur Krümel-Karl)
+    blessing: str = ""   # Küster-Segen: "mana_max", "recharge" oder "capacity"
 
 @dataclass(frozen=True)
 class TraderSpec:
-    key: str             # "npc_magenhaendler", ...
-    name: str            # "Herr Pansen", "Frau Abheft", ...
-    home_universe: str   # "fleischwelt", "aktenhalde", "glibbria", "kruemelreich", "sporenklub", "abtei"
+    key: str
+    name: str
+    home_universe: str
     greeting_de: str
-    quirk_de: str        # Deutsche Kurzbeschreibung der Sonderregel für UI/Hover
+    quirk_de: str
+    category: str        # "PAYLOAD", "TRIGGER", "MODIFIER", "ANY", "FORM" oder "WAND"
     price_multiplier: float = 1.0
     flat_fee: int = 0
 ```
 
-#### Kanonische Tabelle der 6 Händler (`TRADERS: dict[str, TraderSpec]`)
-
-| `key` | `name` (Bibel Kap. 07) | `home_universe` | Verbindliche Sonderregel (`generate_offers` & `buy_offer`) |
-| --- | --- | --- | --- |
-| `"npc_magenhaendler"` | `"Herr Pansen"` | `"fleischwelt"` | Verkauft Füllungen (`Category.PAYLOAD`), deren Material zur Fleischwelt gehört (`block.material` im Satz `"fleischwelt"`). |
-| `"npc_sachbearbeiterin"` | `"Frau Abheft"` | `"aktenhalde"` | Erhebt auf **jedes** Angebot pauschal `+10` Gold Bearbeitungsgebühr (`flat_fee = 10`). Verkauft Zünder (`Category.TRIGGER`). |
-| `"npc_glibberhaendler"` | `"Wobbel"` | `"glibbria"` | Verkauft Aufsätze (`Category.MODIFIER`). |
-| `"npc_ameisenhehler"` | `"Krümel-Karl"` | `"kruemelreich"` | `price_multiplier = 0.75` (`25 %` Rabatt auf Goldpreise). Verkauft Module aller Kategorien („billige gestohlene Module“). Zusätzlich kann jedes Modul alternativ ohne Gold gegen **`2` Proben des aktuellen Universums** (`sample_cost`) eingetauscht werden! |
-| `"npc_dj"` | `"DJ Lamelle"` | `"sporenklub"` | Verkauft Geschosse (`Category.FORM`). **Takt-Pflicht:** Ein Kauf in einem Universum mit aktivem Beat (`rule.beat_interval > 0`) ist nur während `rule.on_beat == True` möglich (sonst Rückgabe `False` + Sprechblase *"Nicht im Takt!"*); in der Werkstatt pulsiert ein eigener `0.75 s`-Takt (`int(run.time / 0.75) % 2 == 0`). |
-| `"npc_kuester"` | `"Bruder Flosse"` | `"abtei"` | Verkauft Waffen (`WandSpec`). Jede bei ihm gekaufte Waffe ist **gesegnet** (`blessed = True`: `mana_max` wird um `+10 %` erhöht und `recharge` um `-10 %` gesenkt). |
+| `key` | `name` | `home_universe` | `category` | Sonderregel |
+| --- | --- | --- | --- | --- |
+| `"npc_magenhaendler"` | `"Herr Pansen"` | `"fleischwelt"` | `"PAYLOAD"` | nur Füllungen mit einem eigenen Material des Satzes `"fleischwelt"` (nicht in `BASE_KEYS`): Blut-, Säure-, Glutfüllung |
+| `"npc_sachbearbeiterin"` | `"Frau Abheft"` | `"aktenhalde"` | `"TRIGGER"` | `flat_fee = 10` („Bearbeitungsgebühr“) auf jedes Angebot |
+| `"npc_glibberhaendler"` | `"Wobbel"` | `"glibbria"` | `"MODIFIER"` | keine |
+| `"npc_ameisenhehler"` | `"Krümel-Karl"` | `"kruemelreich"` | `"ANY"` | `price_multiplier = 0.75`; jedes Angebot alternativ gegen `2` × `"probe_zuckerkristall"` (`sample_cost`) |
+| `"npc_dj"` | `"DJ Lamelle"` | `"sporenklub"` | `"FORM"` | Kauf nur auf dem Beat: in der Werkstatt `int(run.time / 0.75) % 2 == 0`, sonst `(False, "Nicht im Takt!")` |
+| `"npc_kuester"` | `"Bruder Flosse"` | `"abtei"` | `"WAND"` | jede Waffe gesegnet: zufällig `"mana_max"` (+10 %), `"recharge"` (−10 %) oder `"capacity"` (+1 Platz) |
 
 ```python
-def pick_trader_for_universe(universe_key: str, rng: random.Random) -> TraderSpec:
-    """Wählt mit 60 % Wahrscheinlichkeit den Heimat-Händler des Universums (falls vorhanden),
-    sonst gleichverteilt einen der 6 Händler."""
+def traders_for_workshop(visited: list[str]) -> list[TraderSpec]:
+    """Heimat-Händler der (höchstens) zwei zuletzt besuchten Universen, neuestes zuerst."""
 
-def generate_offers(
-    trader: TraderSpec,
-    depth: int,
-    rng: random.Random,
-    *,
-    price_factor: float = 1.0,
-    universe_sample_key: str = "probe_gallenstein",
-) -> list[TraderOffer]:
-    """Erzeugt deterministisch 4 Angebote passend zur Händler-Sonderregel."""
+def generate_offers(trader: TraderSpec, stage: int, rng: random.Random, *,
+                    price_factor: float = 1.0) -> list[TraderOffer]:
+    """4 Angebote aus trader.category (retired-Blöcke ausgenommen), Preise nach §1."""
 
-def buy_offer(
-    run: Run,
-    trader: TraderSpec,
-    offer: TraderOffer,
-    *,
-    use_samples: bool = False,
-) -> tuple[bool, str]:
-    """Führt den Kauf von offer bei trader auf run aus und gibt (ok, msg_de) zurück."""
+def buy_offer(run: Run, trader: TraderSpec, offer: TraderOffer, *,
+              use_samples: bool = False) -> tuple[bool, str]:
+    """Kauf ausführen; (ok, deutscher Text). Zu wenig Gold: (False, "Zu wenig Gold.")."""
 ```
 
 ---
 
-## V20 — Fabrikator (`src/fabricator.py`) & Minispiele (`src/minigames/__init__.py`)
+## V20 — Fabrikator (`src/fabricator.py`) & Minispiele (`src/minigames/`)
 
-### 1. Fabrikator (`src/fabricator.py`)
+### 1. Fabrikator (Bibel 02 „Fabrikator (Handwerk)“)
+
+- **Bauplan:** Jedes Modul, das Cloita je besessen hat, steht in `records.blueprints`. Ohne Bauplan kein Bau.
+- **Proben je Kategorie:** Geschoss 1, Aufsatz 1, Zünder 2, Füllung 1. Füllungen mit Universumsmaterial brauchen die Probe genau dieses Universums (`SAMPLES` mit passendem `universe_key`); bei allen anderen zählt jede der 12 Universums-Proben.
+- **Höhere Seltenheit** (Bibel 07 „Allgemeine Proben“): `rarity_tier == 2` zusätzlich 1 Probe aus `("probe_knochen", "probe_aether", "probe_schatten")`; `rarity_tier == 3` zusätzlich 1 Probe aus `("probe_gold", "probe_kern")` **und** 1 Bauplan-Splitter (`run.blueprint_shards`).
+- **Gold:** `fabricator_gold(rarity_tier, stage)`.
+- **Grenze:** `MAX_BUILDS_PER_VISIT = 3`.
 
 ```python
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .run import Run
-
-MAX_BUILDS_PER_VISIT: int = 3
-
 @dataclass(frozen=True)
 class Recipe:
     block_key: str
     rarity_tier: int
-    samples: tuple[tuple[str, int], ...]  # ((sample_key, count), ...)
+    universe_samples: int                 # Anzahl Universums-Proben
+    universe: str | None                  # nur bei Füllungen mit Universumsmaterial, sonst None
+    special_samples: tuple[str, ...]      # erlaubte Zusatzproben (eine davon nötig), () bei Stufe 1
+    blueprint_shards: int                 # 1 bei Stufe 3, sonst 0
     gold: int
 
-def build_cost(block_key: str) -> Recipe:
-    """Deterministisches Rezept für jeden Zauberblock in src/spells.py (BLOCKS):
-    - Tier 1: 2× Universums-Probe (aus den 12 kanonischen MVP-Proben) + 15 Gold
-    - Tier 2: 3× Universums-Probe + 1× Tier-2-Probe ('probe_knochen'/'probe_aether'/'probe_schatten') + 35 Gold
-    - Tier 3: 4× Universums-Probe + 1× Tier-3-Probe ('probe_gold'/'probe_kern') + 75 Gold"""
+def build_cost(block_key: str, stage: int = 1) -> Recipe: ...
 
 class Fabricator:
-    def __init__(self) -> None:
-        self.builds_this_visit: int = 0
-
-    def reset_visit(self) -> None:
-        self.builds_this_visit = 0
-
-    def can_build(
-        self,
-        block_key: str,
-        *,
-        unlocked_blueprints: set[str],
-        gold: int,
-        sample_counts: dict[str, int],
-    ) -> tuple[bool, str]: ...
-
-    def craft(self, run: Run, block_key: str) -> tuple[bool, str]: ...
+    builds_this_visit: int
+    def reset_visit(self) -> None: ...
+    def can_build(self, run: Run, block_key: str) -> tuple[bool, str]: ...
+    def craft(self, run: Run, block_key: str) -> tuple[bool, str]:
+        """Zieht Gold, Proben (die meistvorhandenen zuerst) und ggf. 1 Splitter ab, legt das Modul in den Rucksack."""
 ```
 
-### 2. Werkstatt-Minispiele (`src/minigames/__init__.py`, `physik_o_mat.py`, `schiessstand.py`)
+### 2. Minispiele (Bibel 07 „Minispiele“)
+
+Beide nutzen die echte Physik in einer eigenen `160×120`-Welt. Je Minispiel höchstens ein Versuch pro Werkstatt-Besuch; der Einsatz wird beim Start abgezogen.
 
 ```python
-MINIGAME_WORLD_SIZE: tuple[int, int] = (160, 120)
-
-NEXT_BOOST_KEYS: tuple[str, ...] = (
-    "mana_regen",   # +25 % Mana-Regeneration im nächsten Universum
-    "max_hp",       # +20 temporäre Max-HP im nächsten Universum
-    "gold_magnet",  # +25 % mehr Gold aus allen Quellen im nächsten Universum
-    "discount",     # -20 % Händlerpreise im nächsten Universum
-)
+MINIGAME_WORLD_SIZE = (160, 120)
+NEXT_BOOST_KEYS = ("flux", "damage", "speed")   # Flux-Aufladung +20 %, Schaden +10 %, Lauftempo +10 %, je für das nächste Universum
 
 @dataclass
 class MinigameResult:
@@ -244,38 +209,49 @@ class MinigameResult:
     message_de: str = ""
 
 class Minigame:
-    key: str = ""
-    title_de: str = ""
-    time_limit: float = 20.0
-
-    def __init__(self, seed: int = 0) -> None: ...
-    def step(self, dt: float, action: str | None = None, cursor: tuple[int, int] = (80, 60)) -> MinigameResult | None: ...
+    key: str
+    title_de: str
+    stake: int
+    time_limit: float
+    result: MinigameResult | None
+    def step(self, dt: float, action: str | None = None,
+             cursor: tuple[int, int] = (80, 60)) -> MinigameResult | None: ...
 ```
 
-#### Die 8 Physik-o-Mat-Rätsel (`PUZZLE_KEYS` in `src/minigames/physik_o_mat.py`, Bibel Kap. 07)
+**Physik-o-Mat** (`src/minigames/physik_o_mat.py`, Einsatz `PHYSIK_STAKE`): Ein Rätsel im Rahmen, 15 s Zeit. Aktionen am `cursor`: `"blast"` (Explosion Radius 6), `"dig"` (Loch Radius 3), `"ignite"` (Feuer), `"pour"` (das Rätsel-Material des Werkzeugs). Eigener Materialsatz `"physik_o_mat"` = Grundmaterialien + `"magma"`, `"acid"`, `"papier"`, `"zucker"`, `"tallow"` (Docht/Kerze), `"enamel"` (Vase/Glas). Sieg: rng wählt `PHYSIK_STAKE * 2` Gold, eine zufällige Universums-Probe oder einen Schub.
 
-`PUZZLE_KEYS` umfasst die 4 klassischen Bibel-Rätsel und die 4 Elementar-Rätsel:
+| `key` | Bibel-Rätsel | Aufbau & Siegbedingung |
+| --- | --- | --- |
+| `"glas_fuellen"` | Füll das Glas | Wasserbecken oben, Glas aus `"enamel"` unten; nur `"blast"`/`"dig"`. Sieg: `>= 40` Wasserzellen im Glas |
+| `"vase_retten"` | Rette die Vase | Turm aus `"rock"` neben einer Vase (Prop mit 1 Leben); Sieg: Turm `<= 20 %` seiner Zellen, Vase heil (keine Explosion näher als 10 Zellen an der Vase) |
+| `"kerze_zuenden"` | Zünde die Kerze | Öl, Papier und Wasser zwischen Startfeuer-Punkt und Kerze aus `"tallow"`; Sieg: Kerze brennt |
+| `"ameisenstrasse"` | Ameisenstraße | 5 Ameisen laufen zum nächsten `"zucker"`; Sieg: `>= 3` Ameisen im Ziel |
+| `"lava_water"` | Lava-Brücke | Magma-Becken, Wasser hinter einem Riegel; Sieg: `>= 24` `"rock"`-Zellen in der Brückenzone |
+| `"acid_gold"` | Säure-Tresor | Säure hinter einem Riegel, Kammer hinter `"dirt"`; Sieg: Kammer offen (Luftweg) |
+| `"oil_fire"` | Docht-Kette | Öl ausgießen, 3 Dochte aus `"tallow"`; Sieg: alle 3 brennen |
 
-1. `"lava_water"`: Lava mit Wasser zu einer Steinbrücke (`>= 24` `"stone"`-Zellen) erstarren lassen.
-2. `"acid_gold"`: Säure durch Kalkstein ätzen lassen, um die Goldkammer freizulegen.
-3. `"oil_fire"`: Ölspur legen und alle `3` Docht-Ziele entzünden.
-4. `"electricity_water"`: Salzwasser-Leitung zwischen zwei Elektroden schließen (`"spark"`).
-5. `"glas_fuellen"`: Becher über Rinnen bis zur Markierung mit Flüssigkeit füllen.
-6. `"vase_retten"`: Fallende Säure umlenken, bevor sie die Porzellanvase verätzt.
-7. `"kerze_zuenden"`: Über Zündschnur und Öltropfen den Kerzendocht entflammen.
-8. `"ameisenstrasse"`: Zuckerbrücke schütten, damit der Weg zum Ziel verbunden ist.
+Das achte Bibel-Rätsel „Stromkreis“ (`electricity_water`) kommt mit `rule_electric` in Phase J (`tasks/todo_erweiterung.md`).
 
 ```python
-PUZZLE_KEYS: tuple[str, ...] = (
-    "lava_water",
-    "acid_gold",
-    "oil_fire",
-    "electricity_water",
-    "glas_fuellen",
-    "vase_retten",
-    "kerze_zuenden",
-    "ameisenstrasse",
-)
-
+PUZZLE_KEYS = ("glas_fuellen", "vase_retten", "kerze_zuenden", "ameisenstrasse",
+               "lava_water", "acid_gold", "oil_fire")
 def make_physik_puzzle(puzzle_key: str | None = None, seed: int = 0) -> Minigame: ...
+def solve_actions(puzzle_key: str) -> list[tuple[str, tuple[int, int]]]:
+    """Feste Lösungsfolge für Tests und den Playtest-Bot."""
+```
+
+**Schießstand** (`src/minigames/schiessstand.py`, Einsatz `SCHIESS_STAKE`): 30 s. Pappfiguren tauchen auf: Agenten (`kind = "agent"`, `+1` Punkt) und Klonita (`kind = "klonita"`, `−3` Punkte, nicht treffen!). Schuss = `action == "shoot"` am `cursor`, trifft im Radius 8. Belohnung: ab `8` Punkten ein zufälliger Schub aus `NEXT_BOOST_KEYS`, ab `14` Punkten zusätzlich `SCHIESS_STAKE * 2` Gold.
+
+```python
+@dataclass
+class ShootingTarget:
+    x: float
+    y: float
+    kind: str            # "agent" oder "klonita"
+    visible_time: float
+    hit: bool = False
+
+class SchiessstandMinigame(Minigame):
+    targets: list[ShootingTarget]   # feste Folge aus dem Seed (24 Agenten, 6 Klonitas)
+    score: int
 ```

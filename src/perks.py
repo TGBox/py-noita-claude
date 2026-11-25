@@ -25,20 +25,36 @@ PERKS: tuple[Perk, ...] = (
     Perk("zweiter_puls", "Zweiter Puls", "Einmal pro Lauf stehst du nach dem Tod wieder auf.", (232, 196, 70)),
     Perk("flinke_haende", "Flinke Hände", "Du kannst Augmentationen überall umbauen, nicht nur im Sanktum.", (214, 190, 170)),
     Perk("wutdruesen", "Wutdrüsen", "Deine Geschosse richten 30 % mehr Schaden an.", (220, 60, 40)),
-    Perk("perlenmagnet", "Perlenmagnet", "Blutperlen fliegen dir aus großer Entfernung zu.", (190, 20, 36)),
+    Perk("perlenmagnet", "Goldmagnet", "Gold fliegt dir aus großer Entfernung zu.", (190, 20, 36)),
     Perk("dauerflug", "Ausdauernde Flughäute", "Deine Schwebekraft lädt sich auch in der Luft schnell auf.", (170, 200, 220)),
     Perk("gaslunge", "Gaslunge", "Sporen und Ätzdampf schaden dir nicht.", (164, 128, 160)),
     Perk("schleimlaeufer", "Schleimläufer", "Schleim bremst dich nicht mehr.", (176, 172, 120)),
     Perk("blutsauger", "Blutsauger", "Blut aus der Phiole heilt dich (6 pro Schluck).", (150, 12, 24)),
+    Perk("unerschoepflich", "Unerschöpfliche Drüsen", "Zauber mit Ladungen gehen dir nie mehr aus.", (120, 200, 255)),
     Perk("feilscher", "Feilscher", "Im Laden zahlst du ein Drittel weniger.", (232, 180, 90)),
 )  # fmt: skip
 
 PERK_BY_KEY: dict[str, Perk] = {perk.key: perk for perk in PERKS}
 
-PERK_ALIASES: dict[str, str] = {}
+PERK_ALIASES: dict[str, str] = {
+    "asbesthaut": "feuerfest",
+    "saeurefest": "saeurehaut",
+    "zweites_herz": "zaehes_fleisch",
+    "jetpacksohlen": "leichte_knochen",
+    "airbag": "panzerplatten",
+    "vampirismus_light": "blutdurst",
+    "uebertaktet": "schnelle_druesen",
+    "saeurespucker": "saeureblut",
+    "backup_bewusstsein": "zweiter_puls",
+    "dritter_arm": "flinke_haende",
+    "wutchip": "wutdruesen",
+    "goldmagnet": "perlenmagnet",
+    "filterlunge": "gaslunge",
+    "rutschfest": "schleimlaeufer",
+    "feilscherin": "feilscher",
+}
 
 
 def resolve_perk_key(key: str) -> str:
     """Resolve alias to canonical perk key (Contract V23, Card G04)."""
     return PERK_ALIASES.get(key, key)
-

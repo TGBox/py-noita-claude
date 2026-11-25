@@ -124,6 +124,12 @@ Master-Plan: [`tasks/plan_erweiterung.md`](plan_erweiterung.md) · Bibel: [`docs
 - **Herkunft:** Am 2026-11-04 aus dem MVP (alte Karte D12) nach Phase 2 verschoben.
 - **Files touched:** `src/events.py`, `docs/bibel/03-universen.md`
 
+### Task J08: Physik-o-Mat-Rätsel „Stromkreis“
+
+- **Description:** Ergänzt `PUZZLE_KEYS` in `src/minigames/physik_o_mat.py` um `"electricity_water"` (Bibel 07): Salzwasser-Leitung zwischen zwei Elektroden schließen. Braucht Strom im Wasser aus `rule_electric` (Universum `spule`, J03).
+- **Herkunft:** Am 2026-11-04 aus dem MVP (Karte E08) nach Phase 2 verschoben.
+- **Files touched:** `src/minigames/physik_o_mat.py`
+
 ---
 
 ## Phase K: Klonita-Laborassistenz

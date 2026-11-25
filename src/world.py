@@ -65,11 +65,15 @@ class World:
 
     def take_destroyed_cells(self) -> int:
         """Return and reset count of destroyed solid cells since last call (Card A03)."""
-        raise NotImplementedError("Card A03")
+        cells = self._destroyed_cells
+        self._destroyed_cells = 0
+        return cells
 
     def take_destroyed_gold_vein_cells(self) -> int:
         """Return and reset count of destroyed gold_vein cells since last call (Card A03)."""
-        raise NotImplementedError("Card A03")
+        gold = self._destroyed_gold_vein_cells
+        self._destroyed_gold_vein_cells = 0
+        return gold
 
     def reload(self, width: int | None = None, height: int | None = None) -> None:
         """New buffers (optionally another size) and a core for the active material set.
@@ -269,7 +273,12 @@ class World:
             elif KIND[current] in (SOLID, POWDER):
                 if dist2 <= (limit * 0.7) ** 2 or rnd() < 0.6:
                     debris, chance = DEBRIS[current]
+                    old_mat = self.grid[y * self.width + x]
                     self.set_cell(x, y, debris if rnd() < chance else AIR)
+                    if KIND[old_mat] in (SOLID, POWDER) and old_mat != BEDROCK:
+                        self._destroyed_cells += 1
+                        if old_mat == mat.MAT_ID["gold_vein"]:
+                            self._destroyed_gold_vein_cells += 1
                     destroyed += 1
             elif current == AIR and dist2 > outer and rnd() < 0.12:
                 self.set_cell(x, y, mat.FIRE)
@@ -307,7 +316,12 @@ class World:
                 limit = radius - HARDNESS_SHRINK[HARDNESS[current]]
                 if limit < 0 or dx * dx + dy * dy > limit * limit:
                     continue
+            old_mat = self.grid[y * self.width + x]
             self.set_cell(x, y, AIR)
+            if KIND[old_mat] in (SOLID, POWDER) and old_mat != BEDROCK:
+                self._destroyed_cells += 1
+                if old_mat == mat.MAT_ID["gold_vein"]:
+                    self._destroyed_gold_vein_cells += 1
             dug += 1
         return dug
 

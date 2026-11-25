@@ -1,23 +1,20 @@
-# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (13 atomare S-Karten: `G01`–`G13`)
+# Phase G — UI, Entdeckungs-Archiv, Speichern/Laden & Vollabnahme (18 atomare S-Karten: `G01`–`G16`, `G22`, `G23`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_g.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Karten folgen `V22`–`V23` aus [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md) und `V14` aus [v09-universen-und-ereignisse.md](vertraege/v09-universen-und-ereignisse.md).
 
 ---
 
-## G01 — HUD-Erweiterung: Gold, Fahndungssterne, Proben-Beutel & Event-/Challenge-Banner (`src/hud.py`) (`V22`)
+## G01 — HUD nach Bibel 08: Flux, Gold, Siegel, Universum & Rang, Takt, Atem, Proben, Ereignis (`src/hud.py`) (`V22` §2)
 
 - **Größe:** S
-- **Abhängigkeiten:** `D14`, `F02`, `F14`, `B32`
+- **Abhängigkeiten:** `D14`, `D23`, `F02`, `F14`, `B32`
 - **Ziel-Dateien:** `src/hud.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`), `src/hud.py`, `tests/spec/test_phase_g.py` (`-k g01`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22` §2), `docs/bibel/08-ui-und-texte.md` („Oberfläche umbenennen“), `src/hud.py`, `tests/spec/test_phase_g.py` (`-k g01`)
 - **Aufgabe:**
-  1. Erweitere `draw_hud` in `src/hud.py` (mit optionalen Keyword-Parametern bzw. Zugriff auf `run`-Attribute, sodass alte Aufrufe kompatibel bleiben) um:
-     - Gold-Zähler (`Gold: <run.gold>`) und `0..5` Fahndungssterne (`run.wanted.stars`) oben rechts,
-     - Proben-Beutel-Anzeige (`Proben: <belegt>/12`),
-     - kompakte Statuszeile für aktives Sekundärereignis (`run.event`) und aktive Prüfung (`run.challenge`).
+  1. Erweitere `draw_hud` in `src/hud.py` um alle Anzeigen aus `V22` §2 (alte Aufrufe bleiben gültig): Flux-Leiste, Gold mit Siegeln, „Universum x/6“ mit Rang-Sternen, Takt-Punkt, Atem-Leiste unter Wasser, Proben-Zähler sowie eine Zeile für Ereignis und Herausforderung.
 - **Akzeptanzkriterien:**
-  - `draw_hud` rendert sowohl mit den bisherigen Positions-Argumenten als auch mit aktivem `gold`, `wanted`, `event` und `challenge` fehlerfrei auf ein Offscreen-Surface.
+  - `Renderer(surface).draw(run)` zeichnet mit Gold, 3 Sternen, aktivem Ereignis und angenommener Herausforderung fehlerfrei; ohne diese Werte ebenfalls.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g01 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -60,7 +57,7 @@
 - **Ziel-Dateien:** `src/records.py`, `src/perks.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/records.py`, `src/perks.py`, `tests/spec/test_phase_g.py` (`-k g04`)
 - **Aufgabe:**
-  1. Erweitere `Records` in `src/records.py` um `blueprints: list[str]`, `universes: list[str]`, `evil_selves: list[str]`, `badges: int = 0`, `best_rank: str = "Praktikantin"` und aktualisiere `discover(self, kind: str, key: str)` für `"block"`, `"blueprint"`, `"universe"`, `"evil_self"`, `"badge"` und `"creature"` exakt nach `V23`.
+  1. Erweitere `Records` in `src/records.py` um `blueprints: list[str]`, `universes: list[str]`, `evil_selves: list[str]`, `badges: int = 0`, `best_rank: str = "Praktikantin"`, `endings: list[str]` und aktualisiere `discover(self, kind: str, key: str)` für `"block"`, `"blueprint"`, `"universe"`, `"evil_self"`, `"badge"`, `"ending"` und `"creature"` exakt nach `V23`.
   2. Implementiere `RANKS`, `compute_score(...)` und `rank_for_score(score)` in `src/records.py` sowie `PERK_ALIASES` und `resolve_perk_key(key)` in `src/perks.py`.
 - **Akzeptanzkriterien:**
   - `records.discover("universe", "sporenklub")` trägt `"sporenklub"` in `records.universes` ein, ohne `records.creatures` oder `total_kills` zu verändern.
@@ -86,12 +83,12 @@
 ## G06 — Sieges-/Todes-Endbildschirm mit Punktestand & Rang-Abrechnung (`src/menus.py`, `src/run.py`) (`V23`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `G04`
+- **Abhängigkeiten:** `G04`, `F07`
 - **Ziel-Dateien:** `src/menus.py`, `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/menus.py`, `src/run.py`, `tests/spec/test_phase_g.py` (`-k g06`)
 - **Aufgabe:**
   1. Berechne auf `Run` (`src/run.py`) über `final_score(self) -> int` und `final_rank(self) -> str` den Endpunktestand mittels `compute_score` (`depth`, `kills`, `gold`, gesammelte Proben, gewonnene Challenges, besiegte Bosse, `victory`, `true_ending`) und aktualisiere bei Run-Ende `self.records.best_rank`.
-  2. Zeige im Game-Over- und Victory-Overlay (`src/menus.py`) die Aufschlüsselung von `final_score()`, den erreichten Rang (`final_rank()`) und bei `true_ending == True` den Sondertitel `"Wahres Ende: Realitäts-Rebellin"` an.
+  2. Zeige im Game-Over- und Victory-Overlay (`src/menus.py`) die Aufschlüsselung von `final_score()`, den erreichten Rang (`final_rank()`) bei `true_ending == True` den Sondertitel `"Wahres Ende: Realitäts-Rebellin"` und bei `run.ending == "boese"` den Titel `"Böses Ende: Die Hälfte des Multiversums"` an; trage das Ende mit `records.discover("ending", …)` ein (`"normal"`, `"wahr"` oder `"boese"`).
 - **Akzeptanzkriterien:**
   - Ein gewonnener Run mit `true_ending=True` erreicht mindestens den Rang `"Erz-Klonologin"` bzw. `"Realitäts-Rebellin"` und aktualisiert `records.best_rank`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g06 -q && uv run pytest --ignore=tests/spec -q`
@@ -129,11 +126,11 @@
 ## G09 — Tastatur- & Maus-Steuerung für alle neuen Werkstatt- und Begegnungs-Menüs in `src/game.py` / `src/run.py` (`V22`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `E14`, `F08`, `G05`
+- **Abhängigkeiten:** `E14`, `F08`, `G05`, `G14`
 - **Ziel-Dateien:** `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`), `src/run.py`, `src/menus.py`, `tests/spec/test_phase_g.py` (`-k g09`)
 - **Aufgabe:**
-  1. Bündele die Menü-Eingabeverarbeitung in `Run.handle_menu_input(self, key: int) -> bool` (`src/run.py`) für alle 5 `menu_mode`-Zustände (`"portal_select"`, `"fabricator"`, `"trader"`, `"empress_bargain"`, `"archive"`): Navigation mit Pfeiltasten / `W`/`S`/`A`/`D`, Bestätigen mit `Enter`/`E`/`1`–`4`, Proben-Tausch mit `T`, Reroll mit `R`, Schließen mit `Escape`.
+  1. Erweitere das in `G14` angelegte `Run.handle_menu_input(self, key: int) -> bool` (`src/run.py`; `"portal_select"` gibt es schon) auf alle 5 `menu_mode`-Zustände (`"portal_select"`, `"fabricator"`, `"trader"`, `"empress_bargain"`, `"archive"`): Navigation mit Pfeiltasten / `W`/`S`/`A`/`D`, Bestätigen mit `Enter`/`E`/`1`–`4`, Proben-Tausch mit `T`, Reroll mit `R`, Schließen mit `Escape`.
 - **Akzeptanzkriterien:**
   - Jeder der 5 `menu_mode`-Zustände lässt sich im Test komplett per Tastendruck (`handle_menu_input`) bedienen und mit `pygame.K_ESCAPE` sauber auf `menu_mode == ""` schließen.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g09 -q && uv run pytest --ignore=tests/spec -q`
@@ -195,3 +192,91 @@
 - **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g13 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
+
+## G14 — Neuer Lauf beginnt in der Werkstatt; Stationen per [E] und Portal-Menü per Tastatur (`src/run.py`) (`V18`, `V22`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `E11`
+- **Ziel-Dateien:** `src/run.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (Stationen-Tabelle, „Betreten“), `src/run.py` nur `Controls`, `Run.new_run`, `Run._reset`, `Run.update` (Stelle mit `controls.pickup`), `Run.enter_workshop`, `Run.interact_station`, `Run.choose_next_universe` – die Datei ist sehr groß, gezielt suchen; `src/universes/plan.py`, `tests/spec/test_phase_g.py` (`-k g14`)
+- **Aufgabe:**
+  1. Neue Methode `Run.start_multiverse_run()`: `self._reset()`, `self.plan = RunPlan(self.seed)`, `self.portal_index = 0`, dann `self.enter_workshop()`. `new_run()` bleibt unverändert (Sandbox und alte Tests nutzen es).
+  2. In `Run.update`: Ist `self.in_workshop` und `self.menu_mode == ""` und `controls.pickup` gesetzt, ruft `update` `self.interact_station()` auf (statt etwas aufzuheben).
+  3. Neue Methode `Run.handle_menu_input(self, key: int) -> bool` – vorerst nur für `menu_mode == "portal_select"`: `K_UP`/`K_w` bzw. `K_DOWN`/`K_s` verschieben `self.portal_index` innerhalb von `self.plan.offers()` (umlaufend), `K_RETURN`/`K_e` ruft `self.choose_next_universe(self.portal_index)` auf und setzt `menu_mode = ""` und `portal_index = 0`, `K_ESCAPE` setzt nur `menu_mode = ""`. Rückgabe `True`, wenn die Taste verbraucht wurde; in jedem anderen `menu_mode` `False` (`G09` ergänzt die übrigen Menüs).
+- **Akzeptanzkriterien:**
+  - Nach `start_multiverse_run()` steht die Spielerin in der Werkstatt, `plan.slot == 0` und das Portal bietet 2 Universen an.
+  - [E] am Portalrahmen öffnet `"portal_select"`; Escape schließt es; Pfeil runter + Enter reist in das zweite Angebot.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g14 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## G15 — Spielschleife verdrahten: Lauf startet in der Werkstatt, Portal-Menü sichtbar und bedienbar (`src/main.py`) (`V22`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `G14`
+- **Ziel-Dateien:** `src/main.py`
+- **Zu lesender Kontext:** `src/main.py` nur `Game.__init__`, `_start_run`, `_on_key`, `update`, `draw` und `_key_name`; `src/menus.py` (`draw_portal_select_menu`), `src/ui.py` (`font`), `src/workshop.py` (`station_at`, `STATIONS`), `tests/spec/test_phase_g.py` (`-k g15`)
+- **Aufgabe:**
+  1. `_start_run`: Ohne Sandbox startet `self.run.start_multiverse_run()` statt `self.run.new_run()`; die Sandbox bleibt beim alten Ablauf.
+  2. `_on_key`: Ist `self.run.menu_mode` gesetzt, geht die Taste zuerst an `self.run.handle_menu_input(key)`. Wurde sie nicht verbraucht und ist es `K_ESCAPE`, wird `menu_mode = ""` gesetzt. In beiden Fällen öffnet Escape **nicht** das Pausemenü. Danach `self._snap_camera()`, falls sich `self.run.in_workshop` geändert hat.
+  3. `update`: Solange `self.run.menu_mode` gesetzt ist, läuft `self.run.update` nicht (das Spiel pausiert hinter dem Menü).
+  4. `draw`: Bei `menu_mode == "portal_select"` `draw_portal_select_menu(self.screen, ui.font(...), ui.font(...), self.run.plan.offers(), self.run.portal_index)` über dem Spielbild. Bei einem anderen, noch nicht gebauten `menu_mode` einen Hinweis „Noch nicht verfügbar – [Esc]“.
+  5. In der Werkstatt: Steht die Spielerin an einer Station (`station_at(self.run.workshop_layout, x, y)`), zeigt `self.notice` „[<Taste für pickup>] <name_de der Station>“.
+- **Akzeptanzkriterien:**
+  - Ein neuer Lauf aus dem Titelmenü beginnt in der Werkstatt; das Portal-Menü lässt sich im laufenden Spiel öffnen, mit Escape schließen und mit Enter bestätigen; danach steht die Spielerin im gewählten Universum.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k g15 -q && uv run pytest --ignore=tests/spec -q`, danach einmal von Hand: `uv run python -m src.main`, „Neues Spiel“, zum Portalrahmen laufen, [E], Universum wählen.
+
+---
+
+## G16 — Universums-Einstieg Ende-zu-Ende: Materialsatz im Kern, Einheimische, HUD, Werkstatt-Platzhalter (`V9`, `V18`)
+
+*(Plan-Korrektur nach dem ersten Playtest 2026-11-08, direkt umgesetzt: Universen liefen über das alte Tiefen-System – Rust-Kern mit falschem Materialsatz, keine Einheimischen, HUD „Tiefe 1/7“, unsichtbare Stationen.)*
+
+- **Größe:** S
+- **Abhängigkeiten:** `G15`
+- **Ziel-Dateien:** `src/run.py`, `src/main.py` (dazu `src/hud.py`: Feld `HudState.depth_caption`)
+- **Aufgabe:**
+  1. `Run.enter_universe(universe, *, boss_slot=False)`: ersetzt die aktuelle Tiefe durch `_universe_depth(universe)` (Materialsatz, Regel, Licht, Name und je Art `NATIVES_PER_SPECIES` Einheimische + Großkreatur) und ruft `enter_depth`; `choose_next_universe` nutzt sie. Nach dem Generator wird der Satz, den der Rust-Kern simuliert (`_world_set`), in Python wieder aktiviert.
+  2. Mit `RunPlan` (`run.plan is not None`) nutzt auch die Fleischwelt ihren Universums-Generator; `new_run()` setzt `plan = None`; `rank` kommt aus `plan.current.rank`.
+  3. `enter_workshop` lädt die vorhandene Welt neu (`world.reload`) statt eine zweite `World` anzulegen.
+  4. HUD: „Universum n/6 · Rang r“ bzw. „Werkstatt“, Hinweis am Ankerpunkt; Werkstatt-Stationen als gerahmte Platzhalter mit Namen, bis `B28`/`B29` Sprites liefern.
+- **Akzeptanzkriterien:**
+  - Für Aktenhalde, Fleischwelt und Abtei: Python und Rust-Kern nutzen denselben Materialsatz, Einheimische und Unter-Zwischenboss sind da, eine Sekunde Spiel und der Weg zurück in die Werkstatt laufen ohne Fehler; Feuer verbrennt Papier in der Aktenhalde.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k "g14 or g15 or g16" -q && uv run pytest --ignore=tests/spec -q`, dann Playtest.
+
+---
+
+## G22 — Werkstatt-Menüs per Tastatur bedienen: Händler, Fabrikator, Liege, Minispiel (`src/run.py`) (`V18`, `V22`)
+
+*(Plan-Korrektur nach Playtest 2026-11-08: Die Menü-Karten E12–E16 bauen Logik und Zeichenfunktionen, aber keine Karte verbindet Tasten damit; `G09` hängt an `F08`/`G05` und kommt erst viel später.)*
+
+- **Größe:** S
+- **Abhängigkeiten:** `E12`, `E13`, `E14`, `E16`
+- **Ziel-Dateien:** `src/run.py`
+- **Zu lesender Kontext:** `src/run.py` nur `handle_menu_input`, `interact_station`, `craft_selected_recipe`, `buy_trader_offer`, `pick_experiment`, `reroll_experiments`, `step_minigame` (gezielt suchen); `tests/spec/test_phase_g.py` (`-k g22`)
+- **Aufgabe:**
+  1. Erweitere `Run.handle_menu_input(key)` um `"fabricator"`, `"trader"`, `"experiment"` und `"minigame"`: Pfeiltasten bzw. `W`/`S` bewegen `self.menu_index` (umlaufend über die Einträge des Menüs), `Enter`/`E` bestätigen (Bauen, Kaufen, Experiment wählen), `R` würfelt Händler-Angebote bzw. Experimente neu, `T` kauft beim Händler mit Proben (`use_samples=True`), `Escape` schließt (`menu_mode = ""`, `menu_index = 0`; ein laufendes Minispiel gilt als verloren). Rückgabe `True`, wenn die Taste verbraucht wurde.
+  2. `"trader"` bedient den Händler, dessen Platz (`layout.trader_slots`) der Spielerin am nächsten ist (`self.active_trader_key`, gesetzt in `interact_station`).
+  3. `"portal_select"` bleibt wie in `G14`.
+- **Akzeptanzkriterien:**
+  - Am Händlerplatz: [E], Enter kauft das erste Angebot (Gold sinkt); an der Liege: [E], Enter wählt ein Experiment; am Fabrikator: [E], Enter baut ein Modul, wenn Gold und Proben reichen; Escape schließt jedes dieser Menüs.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k "g14 or g22" -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## G23 — Werkstatt im Spiel: Menüs zeichnen, Werkbank, Minispiel-Maus, Stations-Grafiken (`src/main.py`) (`V18`, `V22`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `G22`, `B29`
+- **Ziel-Dateien:** `src/main.py`
+- **Zu lesender Kontext:** `src/main.py` nur `draw`, `_on_key`, `handle_events`, `_draw_station_placeholders`; `src/menus.py` (`draw_fabricator_menu`, `draw_trader_menu`, `draw_experiment_menu` bzw. die Namen aus `E12`/`E13`/`E16`, `draw_minigame_overlay`), `src/sprite_render.py` (`SheetCache`, `blit_frame`), `tests/spec/test_phase_g.py` (`-k g23`)
+- **Aufgabe:**
+  1. `draw`: Für `"fabricator"`, `"trader"`, `"experiment"` und `"minigame"` die zugehörige Zeichenfunktion aus `src/menus.py` aufrufen (mit `self.run.menu_index`). Der Hinweis „Noch nicht verfügbar“ erscheint nur noch für Menüs, deren Karte fehlt (`"archive"`).
+  2. Werkbank: Setzt `run.inventory_open`, öffnet `main.py` den Rucksack-Editor (`self.editor`) und setzt das Feld zurück.
+  3. Minispiel: Mausklick im Menü `"minigame"` ruft `run.step_minigame(dt, action="shoot", cursor=…)` mit der Position im Minispiel-Fenster auf; jedes Bild läuft `step_minigame(dt)`.
+  4. Stations-Grafiken: `_draw_station_placeholders` zeichnet für jede Station ihr Sheet `umgebung/<sprite_key>` (`self.sheet_cache`, `blit_frame`), sobald es existiert; Rahmen und Name nur noch, wenn das Sheet fehlt. Der Name erscheint zusätzlich, wenn die Spielerin an der Station steht.
+  5. Alle Werkstatt-Menüs im Stil der Spielmenüs (`ui.shade`, `ui.panel`, `ui.text`) wie `draw_portal_select_menu`.
+- **Akzeptanzkriterien:**
+  - Im echten `Game` zeichnet jedes der vier Menüs ohne Fehler und ohne „Noch nicht verfügbar“; die Werkbank öffnet den Rucksack.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_g.py -k "g15 or g23" -q && uv run pytest --ignore=tests/spec -q`, dann Playtest in der Werkstatt.
+

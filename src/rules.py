@@ -65,6 +65,100 @@ RANK_PARAMS: dict[str, tuple[dict[str, Any], ...]] = {
 }
 RULE_KEYS: tuple[str, ...] = tuple(RANK_PARAMS)
 
+EXPANSION_NAMES_DE: dict[str, str] = {
+    "rule_magnet": "Magnetfeld",
+    "rule_hot": "Dauerhitze",
+    "rule_electric": "Hochspannung",
+    "rule_slowtime": "Zeitpuls",
+    "rule_flooded_soup": "Siedende Brühe",
+    "rule_momentum": "Achterbahn-Drall",
+}
+EXPANSION_DESCRIPTIONS_DE: dict[str, str] = {
+    "rule_magnet": "Metall zieht Geschosse an; Roststaub zündet explosionsartig.",
+    "rule_hot": "Weiche Stoffe schmelzen; Zucker karamellisiert.",
+    "rule_electric": "Ströme leiten doppelt so weit und springen durch die Luft.",
+    "rule_slowtime": "Zeit pulsiert im Takt und verzögert Geschosse.",
+    "rule_flooded_soup": "Hoher Auftrieb in Brühe; Fett brennt oben.",
+    "rule_momentum": "Rutschige Schienen beschleunigen; Geschosse prallen mehrfach ab.",
+}
+EXPANSION_RANK_PARAMS: dict[str, tuple[dict[str, Any], ...]] = {
+    "rule_magnet": (
+        {"magnet_radius": 15.0, "pull_weapons": False},
+        {"magnet_radius": 30.0, "pull_weapons": False},
+        {"magnet_radius": 45.0, "pull_weapons": True},
+    ),
+    "rule_hot": (
+        {"ignite_chance": 0.01, "sugar_blast": 1.0},
+        {"ignite_chance": 0.03, "sugar_blast": 1.5},
+        {"ignite_chance": 0.05, "sugar_blast": 2.0},
+    ),
+    "rule_electric": (
+        {"conduct_bonus": 1.5, "air_arc": False},
+        {"conduct_bonus": 2.0, "air_arc": False},
+        {"conduct_bonus": 2.5, "air_arc": True},
+    ),
+    "rule_slowtime": (
+        {"min_scale": 0.80, "freeze_projectiles": False},
+        {"min_scale": 0.60, "freeze_projectiles": False},
+        {"min_scale": 0.40, "freeze_projectiles": True},
+    ),
+    "rule_flooded_soup": (
+        {"breath": 16.0, "boil_updraft": False},
+        {"breath": 12.0, "boil_updraft": False},
+        {"breath": 9.0, "boil_updraft": True},
+    ),
+    "rule_momentum": (
+        {"bounces": 2, "rail_boost": 1.4},
+        {"bounces": 3, "rail_boost": 1.6},
+        {"bounces": 4, "rail_boost": 1.8},
+    ),
+}
+EXPANSION_RULE_KEYS: tuple[str, ...] = tuple(EXPANSION_RANK_PARAMS)
+
+PHASE3_NAMES_DE: dict[str, str] = {
+    "rule_peristaltik": "Peristaltik-Schub",
+    "rule_ueberzuckerung": "Niedlichkeits-Overdose",
+    "rule_klon_synchro": "Klon-Synchronität",
+    "rule_bewertung": "Jury-Druck",
+    "rule_buerokratie": "Antragsstau",
+    "rule_deadline": "Quartalsdruck",
+    "rule_zen_keramik": "Stiller Thron-Frieden",
+    "rule_rekursion": "Simulations-Tiefe",
+    "rule_schwarmbewusstsein": "Kollektiv-Protokoll",
+    "rule_all_inclusive": "All-Inclusive-Schutz",
+    "rule_superposition": "Unbeobachtet",
+    "rule_brummschaedel": "Kater-Takt",
+}
+PHASE3_DESCRIPTIONS_DE: dict[str, str] = {
+    "rule_peristaltik": "Rhythmische Organwellen verschieben Körper und Säurepfützen.",
+    "rule_ueberzuckerung": "Pastellglitzer verstärkt Sprungkraft; Erdbeernektar füllt Schilde.",
+    "rule_klon_synchro": "Alle Klonenberg-Einheiten handeln im exakten Gleichschritt.",
+    "rule_bewertung": "Das kosmische Publikum bewertet Treffer im Takt.",
+    "rule_buerokratie": "Bearbeitungsfristen verlangsamen feindliche Nachladungen.",
+    "rule_deadline": "Zeitdruck erhöht Tempo und Projektildynamik.",
+    "rule_zen_keramik": "Ruhige Zonen dämpfen Feindseligkeit und füllen Energie auf.",
+    "rule_rekursion": "Verschachtelte Ebenen spalten gefallene Konstrukte.",
+    "rule_schwarmbewusstsein": "Alarme verbreiten sich über das gesamte Schwarmbüro.",
+    "rule_all_inclusive": "Eingehender Schaden wird zunächst in verzögerte Raten gestückelt.",
+    "rule_superposition": "Zufällige Phasensprünge verleihen Ausweich- und Krit-Chancen.",
+    "rule_brummschaedel": "Tiefe Bassimpulse erzeugen Rückstoß auf Projektile.",
+}
+PHASE3_RANK_PARAMS: dict[str, tuple[dict[str, Any], ...]] = {
+    "rule_peristaltik": ({"pulse_force": 18.0}, {"pulse_force": 28.0}, {"pulse_force": 40.0}),
+    "rule_ueberzuckerung": ({"bounce_bonus": 0.15}, {"bounce_bonus": 0.25}, {"bounce_bonus": 0.35}),
+    "rule_klon_synchro": ({"sync_window": 0.20}, {"sync_window": 0.35}, {"sync_window": 0.50}),
+    "rule_bewertung": ({"period": 0.6, "bonus": 0.20}, {"period": 0.5, "bonus": 0.30}, {"period": 0.4, "bonus": 0.40}),
+    "rule_buerokratie": ({"delay_mult": 1.15}, {"delay_mult": 1.30}, {"delay_mult": 1.45}),
+    "rule_deadline": ({"speed_bonus": 1.15}, {"speed_bonus": 1.25}, {"speed_bonus": 1.35}),
+    "rule_zen_keramik": ({"calm_radius": 32.0}, {"calm_radius": 48.0}, {"calm_radius": 64.0}),
+    "rule_rekursion": ({"nest_depth": 1}, {"nest_depth": 2}, {"nest_depth": 3}),
+    "rule_schwarmbewusstsein": ({"alert_radius": 80.0}, {"alert_radius": 120.0}, {"alert_radius": 180.0}),
+    "rule_all_inclusive": ({"damping": 0.85}, {"damping": 0.75}, {"damping": 0.65}),
+    "rule_superposition": ({"dodge_chance": 0.10}, {"dodge_chance": 0.18}, {"dodge_chance": 0.25}),
+    "rule_brummschaedel": ({"thump_scale": 1.1}, {"thump_scale": 1.25}, {"thump_scale": 1.4}),
+}
+PHASE3_RULE_KEYS: tuple[str, ...] = tuple(PHASE3_RANK_PARAMS)
+
 BEAT_WINDOW = 0.08  # seconds before/after a beat that still count as "on the beat"
 REGROW_PER_EDGE = 1 / 100  # living walls: cells per second per edge cell (rank 1)
 REGROW_KEEP_OUT = 14  # no regrowth this close to the player (never wall them in)
@@ -88,16 +182,21 @@ class Rule:
     def make(cls, key: str, rank: int = 1) -> Rule:
         if not key:
             return cls()
-        if key not in RANK_PARAMS:
+        all_params = {**RANK_PARAMS, **EXPANSION_RANK_PARAMS, **PHASE3_RANK_PARAMS}
+        if key not in all_params:
             raise ValueError(f"unknown rule {key}")
         rank = max(1, min(3, rank))
-        rule = cls(key, rank, dict(RANK_PARAMS[key][rank - 1]))
+        rule = cls(key, rank, dict(all_params[key][rank - 1]))
         rule.breath = rule.max_breath
         return rule
 
     @property
     def name_de(self) -> str:
-        return NAMES_DE.get(self.key, "Keine Regel")
+        return (
+            NAMES_DE.get(self.key)
+            or EXPANSION_NAMES_DE.get(self.key)
+            or PHASE3_NAMES_DE.get(self.key, "Keine Regel")
+        )
 
     # ------------------------------------------------------------ world building
 
@@ -230,4 +329,17 @@ def apply_player_rules(
     region: Any = None,
 ) -> None:
     """Apply universe/region rules such as current_vx to the player (Card A26)."""
-    raise NotImplementedError("Card A26")
+    if region is not None:
+        current_vx = region.param("current_vx", 0.0) if hasattr(region, "param") else 0.0
+        if current_vx != 0.0:
+            in_liq = player.in_liquid(world)
+            if not in_liq:
+                # Also check any cell within player bounding box
+                px, py = int(player.x), int(player.y)
+                in_liq = any(
+                    KIND[world.get(x, y)] == LIQUID
+                    for y in range(py, py + int(player.height))
+                    for x in range(px, px + int(player.width))
+                )
+            if in_liq:
+                player.body.vx += current_vx * dt * 3.0

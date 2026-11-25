@@ -329,3 +329,18 @@ def run_full(
     """Run deterministic bot across a 6-universe sequence (RunPlan) and return reports."""
     ...
 ```
+
+### Inhalts-Abnahme der Generatoren (Plan-Korrektur 2026-11-07)
+
+Jeder MVP-Generator (`D01`–`D06`) muss in `World(320, 200)` mit `depth=1, seed=42` folgende Mindestwerte erreichen (Anteil der Zellen einer Region, Stichprobe jede 2. Zelle). Die Werte stehen als `GENERATOR_CONTENT` in `tests/spec/test_phase_d.py`; die Karten-Beschreibung bleibt der eigentliche Auftrag, die Werte sind nur die Untergrenze.
+
+| Universum | Topologie | Region: Material ≥ Anteil | sonst |
+| --- | --- | --- | --- |
+| `fleischwelt` | `vertical` | schlund: `enamel` 0,5 %; magen: `acid` 1 %, `tallow` 0,5 %; knochenmark: `bone` 15 %, `enamel` 0,3 % | `flesh` ≥ 20 % der Welt; `Level.secret` gesetzt |
+| `aktenhalde` | `horizontal` | registratur: `aktendeckel` 2 %, `papier` 5 %; grossraumbuero: `air` 25 %; archivkeller: `tinte` 2 % | in `World(1280, 720)` keine zusammenhängende `papier`-Fläche größer als 640×360 (Trennwände ≥ 2 px dick) |
+| `glibbria` | `islands` | gelee_huegel: `glibber`+`glibber_rot` 10 %, `zuckerguss` 0,3 %; kaugummi_hoehlen: `kaugummi` 1 %; sirupkueste: `brausesirup` 5 % | unterste 10 % der Welt ≥ 30 % `brausesirup`; `Level.quest_target` gesetzt |
+| `kruemelreich` | `top_split` | fliesenwueste: `fliese` 5 %, `kruemel` 0,5 %, `zucker` 0,3 %; unter_kuehlschrank: `staubfluse` 1 %; ameisenbau: `brosel`+`kruemel` 15 % | – |
+| `sporenklub` | `vertical` | lautsprechertuerme: `pilzhut` 5 %; tanzflaeche: `leuchtsporen` 0,3 %, `air` 30 %; hinterzimmer: `pilzfleisch` 15 % | – |
+| `abtei` | `vertical` | glockenturm: `glockenbronze` 0,3 %, `water` ≤ 1 %; kirchenschiff: `mauerwerk` 5 %, `buntglas` 0,3 %, `water` 20 %; krypta: `algen` 0,3 % | `kerzenwachs` ≥ 0,05 % der Welt |
+
+Für alle gilt außerdem: `[r[1] for r in level.regions] == region_bands(width, height, <Topologie>)`, alle Props der Karte stehen in `Level.destructible_props`, und `Level.quest_giver` ist eine Luftzelle mit festem Boden höchstens 12 px darunter.

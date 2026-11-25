@@ -1,4 +1,4 @@
-# Phase F — Behörde, Mehrphasige Bosse, Böse Ichs, Hauptquartier & Klonita (17 atomare S-Karten: `F01`–`F17`)
+# Phase F — Behörde, Mehrphasige Bosse, Böse Ichs, Hauptquartier & Klonita (19 atomare S-Karten: `F01`–`F19`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_f.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md). Alle Module folgen `V15`–`V17` aus [v15-behoerde-und-bosse.md](vertraege/v15-behoerde-und-bosse.md) und `V21`–`V22` aus [v21-klonita-ui-und-speichern.md](vertraege/v21-klonita-ui-und-speichern.md).
@@ -10,31 +10,28 @@
 - **Größe:** S
 - **Abhängigkeiten:** `C14`
 - **Ziel-Dateien:** `src/authority.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`), `src/enemies.py`, `tests/spec/test_phase_f.py` (`-k f01`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`), `docs/bibel/02-systeme.md` („Fahndungsstufe“), `src/enemies.py`, `tests/spec/test_phase_f.py` (`-k f01`)
 - **Aufgabe:**
-  1. Erstelle `src/authority.py` mit `WANTED_MAX = 5.0`, `AGENT_TYPES`, `AGENT_ALIASES`, `Wanted` (`stars`, `add`, `on_cells_destroyed`, `on_workshop`, `bribe_cost`, `agent_count`, `to_data`, `from_data`), `agent_species_for_stars(stars)` und `spawn_agents(run, count=None)` exakt nach `V15`.
+  1. Implementiere `Wanted` (`stars`, `add`, `on_cells_destroyed`, `on_workshop`, `bribe_cost`, `agent_count`, `to_data`, `from_data`), `agent_species_for_stars(stars)` und `spawn_agents(run, count=None)` exakt nach `V15`.
 - **Akzeptanzkriterien:**
-  - `Wanted.on_cells_destroyed(1000)` erhöht `level` um `+0.5` (`"Sachbeschädigung"`).
-  - `Wanted.on_workshop()` senkt `level` um `-0.5` (geklemmt auf `>= 0.0`).
-  - `agent_species_for_stars(1..5)` liefert genau `1, 2, 3, 4, 6` Agenten-Spezies gemäß `V15`.
+  - `on_cells_destroyed(1000)` erhöht `level` um `0.5`; `on_workshop()` senkt um `0.5`, nie unter `0`.
+  - `agent_species_for_stars` liefert für 1–5 Sterne die Listen aus `V15` (Vollstrecker erst ab 3, Abteilungsleiter erst ab 4).
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f01 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F02 — Fahndungs-Vergehen, Agenten-Spawns & Akten-Schredder (`ws_shredder`) in `Run` (`V15`, `V18`)
+## F02 — Fahndungs-Vergehen, Agenten-Spawns & Akten-Schredder in `Run` (`V15`, `V18`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `E10`, `F01`
+- **Abhängigkeiten:** `E10`, `F01`, `C16`
 - **Ziel-Dateien:** `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V15`), `docs/plan/vertraege/v18-werkstatt-und-wirtschaft.md` (`V18`), `src/authority.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f02`)
 - **Aufgabe:**
-  1. Binde `self.wanted = Wanted()` in `Run` (`src/run.py`) ein:
-     - Verknüpfe die Events `"cells_destroyed"`, `"trader_hurt"` (`+1.5`), `"trader_killed"` (`+3.0`), `"steal"` (`+1.0`) sowie das Wirken verbotener Zauberblöcke (`"nuke"`, `"black_hole"`, `"omega"` → `+0.5` `"Verbotene Magie"`) mit `self.wanted` und feuere bei Änderung `self.emit("wanted_change", level=self.wanted.level, stars=self.wanted.stars, reason=...)`.
-     - Spawne beim Eintritt in ein Universum `spawn_agents(self)` (außer wenn `player.body.stamped_good > 0`).
-     - In `enter_workshop()` wird `self.wanted.on_workshop()` aufgerufen; an der Station `"ws_shredder"` senkt `interact_station` gegen `self.wanted.bribe_cost()` Gold das Fahndungslevel um `-1.0`.
+  1. Binde `self.wanted = Wanted()` in `Run` ein und verknüpfe alle Auslöser aus der Tabelle in `V15` (zerstörte Zellen, getötete neutrale/passive Kreatur `+0.25`, Händler verletzt/getötet, Diebstahl, `FORBIDDEN_BLOCKS`). Jede Änderung feuert `self.emit("wanted_change", level=…, stars=…, reason=…)`.
+  2. Spawne beim Betreten eines Universums `spawn_agents(self)`. Getötete Agenten lassen `AGENT_GOLD` fallen und mit `BADGE_CHANCE` einen Dienstausweis (`kind="badge"`). Am `"ws_shredder"` senkt `interact_station` gegen `bribe_cost()` Gold das Level um `1.0`.
 - **Akzeptanzkriterien:**
-  - Zerstören von 2000 Zellen erhöht `run.wanted.stars` auf `1`; Betreten des nächsten Universums spawnt `1` Behörden-Agenten (`"agent_sachbearbeiter"` / `"agent_streife"`).
-  - Bezahlen am `"ws_shredder"` zieht `bribe_cost()` Gold ab und senkt `wanted.level` um `1.0`.
+  - 2000 zerstörte Zellen ergeben 1 Stern; das nächste Universum spawnt 1 `"agent_streife"`.
+  - Eine getötete passive Kreatur erhöht `wanted.level` um `0.25`; der Schredder zieht `bribe_cost()` Gold ab.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f02 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -97,77 +94,79 @@
 
 ---
 
-## F07 — Die 3 Bösen Ichs & Kaiserin-Handel (`src/bosses/evil_selves.py`) (`V17`)
+## F07 — Böse Ichs: Endgegner, Echos, Waffen & Kaiserin-Angebot (`src/bosses/evil_selves.py`) (`V16`, `V17` §1)
 
 - **Größe:** S
 - **Abhängigkeiten:** `F06`
 - **Ziel-Dateien:** `src/bosses/evil_selves.py`, `src/bosses/__init__.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17`), `src/spells.py`, `tests/spec/test_phase_f.py` (`-k f07`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`, `V17` §1), `docs/bibel/05-gegner.md` („Böse Ichs“), `src/wand.py`, `src/universes/plan.py`, `tests/spec/test_phase_f.py` (`-k f07`)
 - **Aufgabe:**
-  1. Erstelle `src/bosses/evil_selves.py` mit `EVIL_SELVES = ("boese_kaiserin", "boese_gute", "boese_omega")`, `evil_self_for_depth(depth)`, `signature_wand_for_evil_self(species)`, `apply_empress_bargain(run, accepted)` und dem 3-Phasen-`EvilSelfBossScript` (inkl. Drop von Signatur-Stab, `"badge"` und `"memory_shard"` in `on_death` sowie `run.records.discover("evil_self", species)`) gemäß `V17`.
+  1. Implementiere `final_evil_self`, `echo_for_depth`, `signature_wand_for_evil_self` und `apply_empress_bargain` nach `V17` §1.
+  2. Ergänze in `src/bosses/__init__.py` das `EvilSelfBossScript` mit 4 Phasen (Endkampf) bzw. 2 Phasen (`echo=True` oder Hauptquartier), registriere es in `make_boss_script` und setze die Beute aus `V17` §1 in `on_death` um. Die Kaiserin ruft beim Eintritt in Phase 2 (Index 1) `run.menu_mode = "empress_bargain"` auf.
 - **Akzeptanzkriterien:**
-  - `evil_self_for_depth` liefert für `depth` `2, 3, 4` die 3 Bösen Ichs.
-  - `apply_empress_bargain(run, True)` spawnt das `"Kaiserliches Zepter"`, gibt `+100` Gold, erhöht `wanted` um `+2.0` und reduziert `player.body.max_hp` um `20 %`.
-  - Tod eines Bösen Ichs dropt den Signatur-Stab, `1` `"badge"` und `1` `"memory_shard"`.
+  - Echos erscheinen auf `depth` 3 und 5 und sind genau die beiden bösen Ichs, die nicht Endgegner sind.
+  - `apply_empress_bargain(run, True)` beendet den Lauf mit `run.ending == "boese"`.
+  - Das Skript hat im Endkampf 4 Phasen und als Echo 2 Phasen; ein Echo lässt `100` Gold und einen Dienstausweis fallen.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f07 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F08 — Böse-Ichs-Begegnung im Geheimraum & Kaiserin-Handel-Menü (`"empress_bargain"`) (`V17`, `V22`)
+## F08 — Echos im Geheimraum & Kaiserin-Angebot-Menü (`"empress_bargain"`) (`V17` §1, `V22`)
 
 - **Größe:** S
-- **Abhängigkeiten:** `F07`
+- **Abhängigkeiten:** `F07`, `G04`
 - **Ziel-Dateien:** `src/run.py`, `src/menus.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17`), `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`), `src/bosses/evil_selves.py`, `src/run.py`, `src/menus.py`, `tests/spec/test_phase_f.py` (`-k f08`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17` §1), `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V22`), `src/bosses/evil_selves.py`, `src/run.py`, `src/menus.py`, `tests/spec/test_phase_f.py` (`-k f08`)
 - **Aufgabe:**
-  1. Spawne in `Run._populate` (`src/run.py`) auf `depth in (2, 3, 4)` das jeweilige Böse Ich (`evil_self_for_depth(self.depth)`) im `level.secret`-Raum (`stance="territorial"` für `"boese_kaiserin"`, bis der Handel entschieden ist).
-  2. Öffne bei Annäherung (`< 48 px`) oder `[E]` an eine noch nicht feindliche `"boese_kaiserin"` `self.menu_mode = "empress_bargain"` und ergänze `draw_empress_bargain_menu` in `src/menus.py` sowie `resolve_empress_bargain(self, accepted: bool)` auf `Run`.
+  1. Spawne in `Run._populate` das Echo `echo_for_depth(self, depth)` im `level.secret`-Raum (Leben `EVIL_HP × ECHO_HP_FACTOR`, Skript mit `echo=True`).
+  2. Ergänze `draw_empress_bargain_menu(surface, font, small_font, selected_index)` („Die Hälfte des Multiversums“ / „Nein danke“) und `Run.resolve_empress_bargain(accepted)`, das `apply_empress_bargain` aufruft und `menu_mode` zurücksetzt. Ergänze dafür `Run.ending: str = ""` (`"normal"`, `"wahr"` oder `"boese"` am Laufende).
 - **Akzeptanzkriterien:**
-  - Auf `depth == 2` steht `"boese_kaiserin"` im Geheimraum; `resolve_empress_bargain(False)` macht sie feindlich, `resolve_empress_bargain(True)` entfernt sie friedlich gegen den Pakt aus `V17`.
+  - Auf `depth == 3` steht das erste Echo im Geheimraum; `resolve_empress_bargain(True)` beendet den Lauf mit dem bösen Ende, `False` setzt den Kampf fort.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f08 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F09 — Hauptquartier der Behörde & 4-Phasen-Boss `"ober_cloita"` (`src/bosses/headquarters.py`) (`V17`)
+## F09 — Hauptquartier: Rat, böse Ichs & Ober-Cloita (`src/bosses/headquarters.py`) (`V16`, `V17` §3)
 
 - **Größe:** S
-- **Abhängigkeiten:** `F07`
+- **Abhängigkeiten:** `F07`, `C14`
 - **Ziel-Dateien:** `src/bosses/headquarters.py`, `src/bosses/__init__.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17`), `src/bosses/__init__.py`, `tests/spec/test_phase_f.py` (`-k f09`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V16`, `V17` §3), `docs/bibel/05-gegner.md` („Wahres Ende“), `src/bosses/__init__.py`, `tests/spec/test_phase_f.py` (`-k f09`)
 - **Aufgabe:**
-  1. Erstelle `src/bosses/headquarters.py` mit `HQ_STAGES = ("anhoerung", "boese_ichs", "ober_cloita")`, `can_enter_headquarters(run: Run) -> bool` (`run.memory_shards >= 6 or run.badges >= 3 or run.wanted.stars >= 4`), `generate_headquarters_arena(world: World) -> tuple[int, int]`, `OberCloitaBossScript` (4 Phasen bei `1.0`, `0.75`, `0.50`, `0.25` gemäß `V16`/`V17`) und der Stufen-Steuerung `HeadquartersController` (`stage_index`, `spawn_stage`, `update`).
+  1. Implementiere `can_enter_headquarters`, `generate_headquarters_arena` und `HeadquartersController` mit den 3 Stufen aus `V17` §3 (5 Räte mit Agentenwellen und Demaskierungs-Zeilen; die zwei übrigen bösen Ichs mit 2 Phasen; Ober-Cloita).
+  2. Ergänze `OberCloitaBossScript` (3 Phasen, `OBER_CLOITA_HP`, Kopf-Splitter je 10 % Leben mit `+50` Flux, Klonitas 3-s-Umarmung zu Beginn von Phase 3) und registriere es in `make_boss_script`.
 - **Akzeptanzkriterien:**
-  - `can_enter_headquarters` ist `True` ab `6` Erinnerungssplittern, `3` Dienstmarken oder `4` Fahndungssternen.
-  - `HeadquartersController` schaltet nach dem Besiegen aller Gegner einer Stufe automatisch von `"anhoerung"` auf `"boese_ichs"` und schließlich auf `"ober_cloita"` weiter; Tod von `"ober_cloita"` setzt `run.victory = True` und `run.true_ending = True`.
+  - `can_enter_headquarters` ist `True` ab 6 Splittern, 3 Dienstausweisen oder 4 Sternen.
+  - Stufe 1 hat 5 `"ratsmitglied"`; Stufe 2 die beiden bösen Ichs außer dem Endgegner; der Tod der Ober-Cloita setzt `run.true_ending = True`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f09 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F10 — Hauptquartier-Portal & Wahres Ende in `src/run.py` (`V17`)
+## F10 — Hauptquartier-Portal & wahres Ende in `src/run.py` (`V17` §2–3)
 
 - **Größe:** S
-- **Abhängigkeiten:** `F09`, `F08`
+- **Abhängigkeiten:** `F09`, `F19`
 - **Ziel-Dateien:** `src/run.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17`), `src/bosses/headquarters.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f10`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17` §2–3), `src/bosses/headquarters.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f10`)
 - **Aufgabe:**
-  1. Ergänze auf `Run` (`src/run.py`) `self.in_headquarters: bool = False`, `self.true_ending: bool = False`, `self.hq_controller: HeadquartersController | None = None` und `enter_headquarters(self) -> None`.
-  2. Wenn auf der letzten Universumsstufe der Endboss stirbt und `can_enter_headquarters(self)` erfüllt ist, spawne neben dem normalen Ausgang ein zweites Pickup/Portal (`kind="portal"`, `item_key="headquarters"`), dessen Betreten `self.enter_headquarters()` auslöst.
+  1. Ergänze auf `Run` `in_headquarters`, `true_ending`, `hq_controller` und `enter_headquarters()` (volle Heilung, kein Werkstatt-Besuch, Arena aus `generate_headquarters_arena`, Stufe `"anhoerung"`).
+  2. Nach dem Sieg im Endkampf (`F19`) spawnt bei erfüllter Bedingung das Portal `kind="portal"`, `item_key="headquarters"`; Betreten ruft `enter_headquarters()`.
 - **Akzeptanzkriterien:**
-  - `run.enter_headquarters()` startet Stufe `"anhoerung"`; das Durchspielen aller 3 Stufen endet mit `run.victory == True` und `run.true_ending == True`.
+  - `enter_headquarters()` heilt voll und startet Stufe `"anhoerung"`; der Sieg über alle 3 Stufen setzt `victory` und `true_ending`.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f10 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
 
-## F11 — Klonita-Kommentar-Datenbank (`src/klonita_lines.py`) (`V21`)
+## F11 — Klonita-Spruch-Datenbank (`src/klonita_lines.py`) (`V21` §4)
 
 - **Größe:** S
 - **Abhängigkeiten:** keine
 - **Ziel-Dateien:** `src/klonita_lines.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21`), `docs/bibel/04-figuren.md`, `tests/spec/test_phase_f.py` (`-k f11`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21` §4), `docs/bibel/08-ui-und-texte.md` („Textmengen“, „Tonfall“), `tests/spec/test_phase_f.py` (`-k f11`)
 - **Aufgabe:**
-  1. Erstelle `src/klonita_lines.py` mit `LINES: dict[str, tuple[str, ...]]` (mindestens je 4 trockene, deutsche Sätze für die 6 MVP-Universums-Eintritte `"enter_fleischwelt"`, `"enter_aktenhalde"`, `"enter_glibbria"`, `"enter_kruemelreich"`, `"enter_sporenklub"`, `"enter_abtei"` sowie `"player_low_hp"`, `"boss_spawn"`, `"wanted_high"`, `"event_start"`, `"couch"`, `"memory_shard"`, `"assist_shield"`, `"assist_snack"`, `"quirk"`, `"default"`) und `line_for(topic: str, rng: random.Random) -> str`.
+  1. Erstelle `src/klonita_lines.py` mit `LINES` für alle Themen aus `V21` §4 in der Anzahl aus Bibel 08 („Textmengen“) und `line_for(topic, rng)`; jeder Spruch höchstens 60 Zeichen, Ton nach Bibel 08.
 - **Akzeptanzkriterien:**
-  - Alle Pflicht-Themen aus `V21` sind in `LINES` mit mindestens 4 nicht-leeren deutschen Strings vertreten; `line_for` fällt bei unbekanntem Thema deterministisch auf `"default"` zurück.
+  - Jedes Thema aus `V21` §4 hat mindestens die Anzahl Sprüche aus Bibel 08; kein Spruch ist länger als 60 Zeichen; unbekannte Themen fallen auf `"default"` zurück.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f11 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -215,7 +214,7 @@
 - **Ziel-Dateien:** `src/hud.py`, `src/run.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21`, `V22`), `src/hud.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f14`)
 - **Aufgabe:**
-  1. Definiere `SpeechBubble` in `src/hud.py` gemäß `V22` und ergänze auf `Run` (`src/run.py`) `self.klonita = Klonita()`, `self.bubbles: list[SpeechBubble] = []`, `self.boss_banner: tuple[str, float] | None = None`, `say(self, speaker, text, x, y, ttl=3.2, color=(235, 225, 255))` und `boss_line(self, text_de)`.
+  1. Definiere `SpeechBubble` in `src/hud.py` gemäß `V22` und ergänze auf `Run` (`src/run.py`) `self.klonita = Klonita()`, `self.bubbles: list[SpeechBubble] = []`, `self.boss_banner: tuple[str, float] | None = None`, `say(self, speaker, text, x, y, ttl=3.0, color=(235, 225, 255))` (60 Zeichen, je Sprecher höchstens alle 8 s, `V22` §1) und `boss_line(self, text_de)`.
   2. Verknüpfe `self.klonita.update(dt, self)`, die Taste `[K]` (`klonita.toggle()`) und die 5 Auto-Trigger (`enter_universe`, `hurt_player` bei HP `< 25 %`, `boss_phase` bei `phase == 0`, `wanted_change` bei `stars >= 3`, `event_start`) in `Run` mit `self.say("Klonita", ...)`.
 - **Akzeptanzkriterien:**
   - `run.say(...)` begrenzt `run.bubbles` auf maximal `3` gleichzeitige Blasen und baut deren `ttl` in `Run.update` ab.
@@ -256,7 +255,7 @@
 ## F17 — Klonitas Bibel-Macken Trinkgeld, Füttern, Warnung (`src/klonita.py` Teil 4) (`V21` 3)
 
 - **Größe:** S
-- **Abhängigkeiten:** `F16`
+- **Abhängigkeiten:** `F16`, `E13`
 - **Ziel-Dateien:** `src/klonita.py`, `src/projectiles.py`
 - **Zu lesender Kontext:** `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V21` Abschnitte 2b und 3), `src/klonita.py`, `src/projectiles.py` (Treffer auf Kreaturen), `tests/spec/test_phase_f.py` (`-k f17`)
 - **Aufgabe:**
@@ -264,5 +263,35 @@
 - **Akzeptanzkriterien:**
   - Jede der 3 Macken wirkt wie in Tabelle 3; alle 6 Macken zusammen lösen höchstens einmal je Universum aus.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f17 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## F18 — Heimatwelten der bösen Ichs (`src/universes/gen/evil_homes.py`, `src/materials.py`) (`V17` §2)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A25`, `D17`
+- **Ziel-Dateien:** `src/universes/gen/evil_homes.py`, `src/materials.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17` §2), `docs/bibel/05-gegner.md` („Böse Ichs“), `src/universes/gen/common.py`, `src/materials.py`, `tests/spec/test_phase_f.py` (`-k f18`)
+- **Aufgabe:**
+  1. Lege die Materialsätze `"boese_kaiserin"` (`"goldboden"`), `"boese_gute"` (`"lichtstein"`, `"heiliges_licht"`) und `"boese_omega"` (`"foerderband"`, `"stahl"`) mit den Eigenschaften aus `V17` §2 an.
+  2. Implementiere `generate_evil_home(world, species, seed)`: `1280×720`-Arena je böses Ich (Thronsaal, Kathedrale, Fabrikhalle mit 4 Pressen-Positionen in `level.destructible_props`), `level.universe_key = species`.
+- **Akzeptanzkriterien:**
+  - Jede Heimatwelt ist `1280×720`, nutzt ihren eigenen Materialsatz und hat Luft am Spawn und in der Arena-Mitte.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f18 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## F19 — Endkampf in `Run`: Portal zur Heimatwelt, Arena-Mechaniken & Sieg (`V17` §2)
+
+- **Größe:** S
+- **Abhängigkeiten:** `F07`, `F18`, `E11`, `D10`
+- **Ziel-Dateien:** `src/run.py`, `src/bosses/evil_selves.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v15-behoerde-und-bosse.md` (`V17` §2), `src/universes/plan.py`, `src/run.py`, `tests/spec/test_phase_f.py` (`-k f19`)
+- **Aufgabe:**
+  1. Ergänze `Run.enter_final()`: Materialsatz aktivieren, `generate_evil_home`, Endgegner `final_evil_self(self)` mit `EVIL_HP` und 4-Phasen-Skript spawnen. Ist `self.plan.finished`, bietet `choose_next_universe` nur noch diesen Weg.
+  2. Setze die Arena-Mechaniken aus `V17` §2 in `Run.update` um (Rutschen auf `"goldboden"`, Schaden durch `"heiliges_licht"`, Förderbänder, Pressen, Thron-Kanone) und beende den Kampf mit `victory = True` (Hauptquartier-Portal siehe `F10`).
+- **Akzeptanzkriterien:**
+  - Nach 6 Universen führt `choose_next_universe(0)` in die Heimatwelt von `run.plan.evil_self`; der Tod des bösen Ichs setzt `run.victory = True`.
+- **Verifikation:** `uv run pytest tests/spec/test_phase_f.py -k f19 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

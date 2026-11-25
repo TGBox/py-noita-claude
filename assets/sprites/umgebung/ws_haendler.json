@@ -1,0 +1,27 @@
+{
+  "frame_size": [
+    72,
+    32
+  ],
+  "anchor": [
+    36,
+    16
+  ],
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 2,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    },
+    "use": {
+      "row": 1,
+      "frames": 3,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    }
+  },
+  "glow": []
+}

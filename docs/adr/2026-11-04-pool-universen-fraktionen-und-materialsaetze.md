@@ -35,4 +35,7 @@ Dazu kamen Reste der früher erfundenen 9er-Welt: andere Einheimische in `catalo
 - Die 6 Universums-Herausforderungen aus Bibel 07 sind MVP (`D22`–`D29`, `V13b`).
 - Zwischengegner nur auf dem Bossplatz, Unter-Zwischenboss in jedem Universum.
 - Die 8 sekundären Zufallsereignisse wandern nach Phase 2 (`J07`).
-- Neuer Kartenstand: 147 S-Karten.
+- Prüfung E–G gegen die Bibel (2026-11-04): Werkstatt, Wirtschaft, Händler, Fabrikator und Minispiele folgen jetzt Bibel 02/04/07 (V18–V20 neu geschrieben, neue Karte `E16` Experimentierliege). Böse Ichs mit 4 Phasen, Endkampf in eigener Heimatwelt (`F18`, `F19`), Echos ab Rang 2, Hauptquartier nach Bibel 05 (V15–V17 überarbeitet).
+- Nutzerentscheidungen dazu: Zugang zum Hauptquartier nach Bibel 02 (Splitter, Ausweise oder Fahndung 4+); das Angebot der Kaiserin führt zum bösen Ende; Rätsel „Stromkreis“ nach Phase J (`J08`); Echos als kurzer Kampf.
+- Standardwahl ohne Bibel-Vorgabe (vom Nutzer zu bestätigen): Modulpreis-Basis 50/85/120 nach Seltenheit, Stufe = Nummer des Universums; Unter-Zwischenboss zahlt wie eine große Kreatur; Physik-o-Mat-Gewinn 60 Gold, Probe oder Schub; Schießstand-Schub ab 8 Punkten; verbotene Großzauber = Atomkern und Kraterbombe; Heimatwelt-Materialien und -Mechaniken laut V17 §2.
+- Neuer Kartenstand: 150 S-Karten.

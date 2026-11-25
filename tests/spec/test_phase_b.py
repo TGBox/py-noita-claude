@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import os
 from pathlib import Path
 
@@ -36,11 +37,67 @@ def _assert_sheet_quality(out_dir: Path, category: str, name: str) -> None:
     assert len(colors) >= 5, f"{category}/{name} has fewer than 5 colors ({len(colors)})"
 
 
+def _normalised_mask(pts: list[tuple[int, int]], n: int = 16) -> set[tuple[int, int]]:
+    assert pts, "empty frame"
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    x0, y0 = min(xs), min(ys)
+    w, h = max(xs) - x0 + 1, max(ys) - y0 + 1
+    cells = set(pts)
+    return {
+        (i, j) for j in range(n) for i in range(n) if (x0 + i * w // n, y0 + j * h // n) in cells
+    }
+
+
+def _frame_masks(
+    out_dir: Path, category: str, name: str, anim: str | None
+) -> list[set[tuple[int, int]]]:
+    from src.sprites import AnimSpec, load_sheet_meta
+
+    meta = load_sheet_meta(out_dir / category / f"{name}.json")
+    surf = pygame.image.load(str(out_dir / category / f"{name}.png"))
+    if anim is None:
+        spec = meta.anims.get("idle", AnimSpec(0, 1))
+    else:
+        assert anim in meta.anims, f"{category}/{name} has no '{anim}' animation"
+        spec = meta.anims[anim]
+    fw, fh = meta.frame_size
+    masks = []
+    for i in range(spec.frames):
+        ox, oy = i * fw, spec.row * fh
+        pts = [(x, y) for y in range(fh) for x in range(fw) if surf.get_at((ox + x, oy + y))[3] > 0]
+        masks.append(_normalised_mask(pts))
+    return masks
+
+
+def _iou(a: set[tuple[int, int]], b: set[tuple[int, int]]) -> float:
+    return len(a & b) / len(a | b)
+
+
+def _assert_distinct_silhouettes(
+    out_dir: Path, category: str, names: list[str] | tuple[str, ...], max_iou: float = 0.85
+) -> None:
+    """V8.3: every kind in a group has its own silhouette (first idle frame, normalised)."""
+    masks = {n: _frame_masks(out_dir, category, n, None)[0] for n in names}
+    for a, b in itertools.combinations(names, 2):
+        overlap = _iou(masks[a], masks[b])
+        assert overlap <= max_iou, f"{category}/{a} and {b} share a silhouette (IoU {overlap:.2f})"
+
+
+def _assert_animated(out_dir: Path, category: str, name: str, anim: str = "walk") -> None:
+    """V8.3: a motion animation changes the shape, it does not only shift or stretch one pose."""
+    masks = _frame_masks(out_dir, category, name, anim)
+    assert len(masks) >= 2, f"{category}/{name} '{anim}' needs at least 2 frames"
+    worst = min(_iou(masks[0], m) for m in masks[1:])
+    assert worst <= 0.92, f"{category}/{name} '{anim}' just shifts one pose (IoU {worst:.2f})"
+
+
 def test_b01_player_sheet(tmp_path: Path) -> None:
     from tools.sprites_chars import build_player_sheet
 
     build_player_sheet(tmp_path)
     _assert_sheet_quality(tmp_path, "charaktere", "spielerin")
+    _assert_animated(tmp_path, "charaktere", "spielerin", "walk")
 
 
 def test_b02_klonita_sheet(tmp_path: Path) -> None:
@@ -48,37 +105,47 @@ def test_b02_klonita_sheet(tmp_path: Path) -> None:
 
     build_klonita_sheet(tmp_path)
     _assert_sheet_quality(tmp_path, "charaktere", "klonita")
+    _assert_animated(tmp_path, "charaktere", "klonita", "fly")
 
 
 def test_b03_agent_sheets(tmp_path: Path) -> None:
     from tools.sprites_chars import build_agent_sheets
 
     build_agent_sheets(tmp_path)
-    for k in ("agent_sachbearbeiter", "agent_vollstrecker", "agent_abteilungsleiter"):
+    agents = ("agent_streife", "agent_drohne", "agent_vollstrecker", "agent_abteilungsleiter")
+    for k in ("agent_sachbearbeiter", *agents):
         _assert_sheet_quality(tmp_path, "charaktere", k)
+    for k in agents:
+        _assert_animated(tmp_path, "charaktere", k, "walk")
+    _assert_distinct_silhouettes(tmp_path, "charaktere", agents, max_iou=0.9)
 
 
 def test_b04_evil_and_hq_sheets(tmp_path: Path) -> None:
     from tools.sprites_chars import build_evil_and_hq_sheets
 
     build_evil_and_hq_sheets(tmp_path)
-    for k in ("boese_kaiserin", "boese_gute", "boese_omega", "ober_cloita"):
+    evil = ("boese_kaiserin", "boese_gute", "boese_omega", "ober_cloita")
+    for k in evil:
         _assert_sheet_quality(tmp_path, "charaktere", k)
+        _assert_animated(tmp_path, "charaktere", k, "walk")
+    _assert_distinct_silhouettes(tmp_path, "charaktere", evil, max_iou=0.9)
 
 
 def test_b05_trader_sheets(tmp_path: Path) -> None:
     from tools.sprites_chars import build_trader_sheets
 
     build_trader_sheets(tmp_path)
-    for k in (
+    traders = (
         "npc_magenhaendler",
         "npc_sachbearbeiterin",
         "npc_glibberhaendler",
         "npc_ameisenhehler",
         "npc_dj",
         "npc_kuester",
-    ):
+    )
+    for k in traders:
         _assert_sheet_quality(tmp_path, "charaktere", k)
+    _assert_distinct_silhouettes(tmp_path, "charaktere", traders, max_iou=0.9)
 
 
 def _check_creature_sheets_for_universe(tmp_path: Path, u_key: str) -> None:
@@ -86,8 +153,11 @@ def _check_creature_sheets_for_universe(tmp_path: Path, u_key: str) -> None:
     from tools.sprites_creatures import build_creature_sheets
 
     build_creature_sheets(tmp_path, universe_key=u_key)
-    for sp in ALL_UNIVERSES[u_key].creatures:
-        _assert_sheet_quality(tmp_path, "kreaturen", sp.species)
+    species = [sp.species for sp in ALL_UNIVERSES[u_key].creatures]
+    for k in species:
+        _assert_sheet_quality(tmp_path, "kreaturen", k)
+        _assert_animated(tmp_path, "kreaturen", k, "walk")
+    _assert_distinct_silhouettes(tmp_path, "kreaturen", species)
 
 
 def test_b07_creature_sheets_sporenklub(tmp_path: Path) -> None:
@@ -118,8 +188,11 @@ def test_b15_mid_bosses_part1(tmp_path: Path) -> None:
     from tools.sprites_bosses import build_mid_boss_sheets
 
     build_mid_boss_sheets(tmp_path)
-    for k in ("pfuetzenwurm", "aktenwolf", "manege_clown"):
+    part1 = ("pfuetzenwurm", "aktenwolf", "manege_clown")
+    for k in part1:
         _assert_sheet_quality(tmp_path, "bosse", k)
+        _assert_animated(tmp_path, "bosse", k, "walk")
+    _assert_distinct_silhouettes(tmp_path, "bosse", part1)
 
 
 def test_b16_mid_bosses_part2(tmp_path: Path) -> None:
@@ -129,8 +202,11 @@ def test_b16_mid_bosses_part2(tmp_path: Path) -> None:
     build_mid_boss_sheets(tmp_path)
     for k in ("harzgeneral", "sporenherz", "glockenwaechter", "warden"):
         _assert_sheet_quality(tmp_path, "bosse", k)
+        _assert_animated(tmp_path, "bosse", k, "walk")
     for u in UNIVERSES.values():
         _assert_sheet_quality(tmp_path, "bosse", u.mid_boss)
+    mid_bosses = [*(u.mid_boss for u in UNIVERSES.values()), "warden"]
+    _assert_distinct_silhouettes(tmp_path, "bosse", mid_bosses)
 
 
 def test_b17_end_bosses_part1(tmp_path: Path) -> None:
@@ -141,6 +217,7 @@ def test_b17_end_bosses_part1(tmp_path: Path) -> None:
     for k in ("weltenherz", "oberstempler"):
         _assert_sheet_quality(tmp_path, "bosse", k)
         assert k in RIG_LAYOUTS
+    _assert_distinct_silhouettes(tmp_path, "bosse", ("weltenherz", "oberstempler"))
 
 
 def test_b18_end_bosses_part2(tmp_path: Path) -> None:
@@ -151,6 +228,8 @@ def test_b18_end_bosses_part2(tmp_path: Path) -> None:
     for k in ("mutter_glibber", "dj_myzel"):
         _assert_sheet_quality(tmp_path, "bosse", k)
         assert k in RIG_LAYOUTS
+    end_bosses = ("weltenherz", "oberstempler", "mutter_glibber", "dj_myzel")
+    _assert_distinct_silhouettes(tmp_path, "bosse", end_bosses)
 
 
 def test_b19_end_bosses_part3(tmp_path: Path) -> None:
@@ -168,6 +247,7 @@ def test_b19_end_bosses_part3(tmp_path: Path) -> None:
     for u in UNIVERSES.values():
         _assert_sheet_quality(tmp_path, "bosse", u.boss)
         assert u.boss in RIG_LAYOUTS
+    _assert_distinct_silhouettes(tmp_path, "bosse", [u.boss for u in UNIVERSES.values()])
 
 
 def test_b20_weapon_parts(tmp_path: Path) -> None:
@@ -224,14 +304,15 @@ def test_b25_item_icons_part1(tmp_path: Path) -> None:
 
     build_item_icon_sheets(tmp_path)
     for k in (
-        "gold_klein",
-        "gold_mittel",
-        "gold_gross",
-        "stab",
+        "gold_muenze",
+        "gold_haufen_s",
+        "gold_haufen_m",
+        "gold_haufen_l",
+        "waffe",
         "modul",
-        "gabe",
-        "flasche_voll",
-        "flasche_leer",
+        "experiment",
+        "kolben_voll",
+        "kolben_leer",
         "lebenskapsel",
         "kokon",
     ):
@@ -247,10 +328,10 @@ def test_b26_item_icons_part2(tmp_path: Path) -> None:
         "wuerfel",
         "erinnerungssplitter",
         "bauplan_splitter",
-        "beutekiste",
-        "dienstmarke",
+        "fundkiste",
+        "dienstausweis",
         "formular_stempel",
-        "portal_stein",
+        "wackelportal",
     ):
         _assert_sheet_quality(tmp_path, "gegenstaende", k)
 
@@ -270,12 +351,12 @@ def test_b28_env_station_sheets_part1(tmp_path: Path) -> None:
 
     build_env_prop_sheets(tmp_path)
     for k in (
-        "portal_stein",
-        "werkbank",
-        "fabrikator",
-        "experimentier_liege",
-        "haendler_stand",
-        "zapfhahn",
+        "ws_portal",
+        "ws_werkbank",
+        "ws_fabrikator",
+        "ws_liege",
+        "ws_haendler",
+        "ws_zapfhahn",
     ):
         _assert_sheet_quality(tmp_path, "umgebung", k)
 
@@ -286,12 +367,12 @@ def test_b29_env_station_sheets_part2(tmp_path: Path) -> None:
 
     build_env_prop_sheets(tmp_path)
     for k in (
-        "physik_o_mat",
-        "schiessstand",
-        "archiv_pult",
-        "klonita_sofa",
-        "akten_schredder",
-        "flaschen_brunnen",
+        "ws_automat",
+        "ws_schiessstand",
+        "ws_archiv",
+        "ws_couch",
+        "ws_shredder",
+        "ws_well",
         "portal_headquarters",
         "trainings_attrappe",
     ):

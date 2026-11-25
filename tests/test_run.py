@@ -154,7 +154,9 @@ class TestRun(unittest.TestCase):
 
         def go_to_exit() -> None:
             run.player.place(int(run.level.exit[0]) - 4, int(run.level.exit[1]) - 9)
-            run.update(DT, Controls())
+            run.update(DT, Controls())  # standing in the way on does nothing ...
+            run.pickups = [p for p in run.pickups if p is not run.nearest_pickup()]
+            run.update(DT, Controls(pickup=True))  # ... it opens on [E]
 
         go_to_exit()
         self.assertTrue(run.in_sanctum)
@@ -954,7 +956,7 @@ class TestInventoryScreen(unittest.TestCase):
         run = Run(12)
         run.inventory.bag[3] = "nadel"
         count = len(run.pickups)
-        run.inventory_drop(("slot", SlotRef("bag", 3)), ("drop", None))
+        run.inventory_drop(("slot", SlotRef("bag", 3)), ("outside", None))
         self.assertIsNone(run.inventory.bag[3])
         self.assertTrue(any(p.block == "nadel" and p.seen for p in run.pickups[count:]))
         # a wand slot cannot be emptied outside a sanctum
@@ -965,9 +967,16 @@ class TestInventoryScreen(unittest.TestCase):
         run.inventory_drop(("wand", 1), ("outside", None))
         self.assertEqual(len(run.inventory.wands), wands - 1)
         self.assertTrue(any(p.wand is not None for p in run.pickups))
-        self.assertNotEqual(run.inventory_drop(("wand", 0), ("drop", None)), "")  # keep one
-        run.inventory_drop(("flask", 0), ("drop", None))
+        self.assertNotEqual(run.inventory_drop(("wand", 0), ("outside", None)), "")  # keep one
+        run.inventory_drop(("flask", 0), ("outside", None))
         self.assertEqual(run.flasks, [])
+        # the "Löschen" field (and right click) destroys things instead of dropping them
+        run.inventory.bag[4] = "nadel"
+        count = len(run.pickups)
+        self.assertEqual(run.inventory_drop(("slot", SlotRef("bag", 4)), ("drop", None)), "")
+        self.assertIsNone(run.inventory.bag[4])
+        self.assertEqual(len(run.pickups), count)
+        self.assertNotEqual(run.delete_item(("wand", 0)), "")  # keep one
 
     def test_reorder_wands(self) -> None:
         run = Run(13)
@@ -1114,7 +1123,7 @@ class TestBagStacks(unittest.TestCase):
         self.assertIsNone(inventory.bag[5])
         # a whole stack is dropped at once
         before = len(run.pickups)
-        run.inventory_drop(("slot", SlotRef("bag", 0)), ("drop", None))
+        run.inventory_drop(("slot", SlotRef("bag", 0)), ("outside", None))
         self.assertEqual(len(run.pickups) - before, 6)
 
     def test_quick_move_and_sort(self) -> None:

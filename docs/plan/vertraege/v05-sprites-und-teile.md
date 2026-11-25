@@ -282,6 +282,20 @@ def save_sheet(
 def build_all(out_dir: Path = ASSET_ROOT) -> list[Path]: ...
 ```
 
+### 3. Qualitätsregeln (geprüft in `tests/spec/test_phase_b.py`)
+
+Messbar (Testhelfer `_assert_sheet_quality`, `_assert_distinct_silhouettes`, `_assert_animated`):
+
+1. Jedes Sheet: `.png` + `.json`, `>= 18 %` nicht-transparente Pixel und `>= 5` Farbtöne im ersten Frame.
+2. **Eigene Silhouette:** Innerhalb einer Gruppe (eine Karte bzw. ein Universum) wird der erste Frame von `"idle"` (sonst Zeile 0) auf seine Bounding-Box zugeschnitten und auf `16×16` normiert. Zwei Arten dürfen sich darin zu höchstens `85 %` decken (IoU), Figuren in `charaktere/` zu höchstens `90 %`. Rechteck + Ellipse in anderer Größe oder Farbe ist damit **keine** eigene Art.
+3. **Echte Bewegung:** In `"walk"` (bzw. `"fly"`) muss mindestens ein Frame vom ersten Frame in der normierten Silhouette abweichen (IoU `<= 0.92`). Nur verschieben, wippen oder strecken reicht nicht – Beine, Flügel, Tentakel oder Saum bewegen sich.
+
+Nicht messbar, aber verbindlich:
+
+- Jede Art bekommt eine eigene Zeichenfunktion (oder eigene Teile-Liste) nach Bibel 04/05; eine gemeinsame Funktion, die Arten nur über Größe und Palette unterscheidet, ist nicht erlaubt.
+- Pro Art sind mindestens zwei Merkmale aus ihrer Bibel-Beschreibung im Sprite erkennbar (z. B. Hut, Schild, Laterne, Zangen).
+- Grafik-Karten dürfen bis ca. `150` geänderte Zeilen haben (Ausnahme von der S-Grenze).
+
 ---
 
 ## V8b Waffenteile & Zusammenbau (`src/weapon_parts.py`, headless)

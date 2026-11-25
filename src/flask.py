@@ -29,6 +29,18 @@ SPRAY_GRAVITY = 420.0
 SPRAY_LIFETIME = 3.0
 THROW_GRAVITY = 420.0
 SHATTER_RADIUS_PER_CELL = 0.06  # splash radius grows with the content
+PRESSURE_THRESHOLD = 50.0
+PRESSURE_BLAST_RADIUS = 60
+
+REACTIVE_FLASK_PAIRS: frozenset[frozenset[str]] = frozenset(
+    {
+        frozenset({"acid", "brausesirup"}),
+        frozenset({"magma", "water"}),
+        frozenset({"acid", "karamell"}),
+        frozenset({"oil", "fire"}),
+        frozenset({"magma", "brausesirup"}),
+    }
+)
 
 # What a sip does: (heal, damage) per sip and a German description, by material key.
 DRINK_EFFECTS: dict[str, tuple[float, float, str]] = {
@@ -42,8 +54,13 @@ DRINK_EFFECTS: dict[str, tuple[float, float, str]] = {
     "oil": (0.0, 0.0, "Öl. Du fühlst dich geschmiert."),
     "tinte": (0.0, 0.0, "Tinte. Deine Zunge ist jetzt blau."),
     "stempelfarbe": (0.0, 0.0, "Stempelfarbe. Du fühlst dich genehmigt."),
-    "siegellack": (0.0, 5.0, "Siegellack. Dein Mund ist jetzt versiegelt."),
+    "siegellack": (0.0, 15.0, "Siegellack. Dein Mund ist jetzt versiegelt."),
     "fluxschnaps": (0.0, 0.0, "Flux-Schnaps. Die Welt dreht sich ein bisschen."),
+    "brausesirup": (0.0, 0.0, "Brausesirup. Sprudelnd!"),
+    "kaugummi": (0.0, 0.0, "Kaugummi. Klebrig!"),
+    "honig": (0.0, 0.0, "Honig. Süß und warm."),
+    "karamell": (0.0, 10.0, "Karamell. Heiß und klebrig!"),
+    "neonsaft": (0.0, 0.0, "Neonsaft. Aufgedreht!"),
 }
 
 
@@ -65,6 +82,27 @@ class Flask:
         self.capacity: float = float(capacity)
         self.material = liquid if liquid is not None else material
         self.amount = int(amount)
+        self.pressure: float = 0.0
+        self.reagents: list[str] = [self.key] if self.key is not None else []
+
+    @property
+    def is_pressurized(self) -> bool:
+        """True when reactive reagents have built up enough pressure to burst on throw."""
+        return self.pressure >= PRESSURE_THRESHOLD
+
+    def mix(self, material_key: str, amount: int = 30) -> float:
+        """Add reagent into the flask; incompatible liquids build explosive pressure (I03)."""
+        if amount <= 0:
+            return self.pressure
+        if self.key is None:
+            self.material = material_key
+        if material_key not in self.reagents:
+            for existing in self.reagents:
+                if frozenset({existing, material_key}) in REACTIVE_FLASK_PAIRS:
+                    self.pressure += min(100.0, float(amount) * 2.0)
+            self.reagents.append(material_key)
+        self.amount = min(int(self.capacity), self.amount + int(amount))
+        return self.pressure
 
     @property
     def material(self) -> int | None:
@@ -177,9 +215,52 @@ class Flask:
         if key == "blood" and blood_heals:
             heal, message = BLOOD_HEAL, "Das Blut stillt deine Wunden."
         share = min(1.0, self.amount / SIP)
-        body.hp = min(body.max_hp, body.hp + heal * share)
+
+        # Apply healing or damage
+        if key == "blood" and blood_heals:
+            # Only blood heals when blood_heals=True
+            body.hp = min(body.max_hp, body.hp + heal * share)
+        elif key != "blood" and heal > 0:
+            # Regular liquids that can heal (like mucus)
+            body.hp = min(body.max_hp, body.hp + heal * share)
         if damage:
             body.hurt(damage * share, f"Getrunken: {self.name_de}")
+
+        # Apply status effects based on the liquid
+        if key == "water":
+            body.burning = 0.0
+            body.refresh_time = 15.0
+        elif key == "oil" or key == "tallow":
+            body.oily = 8.0
+            body.lubed_time = 15.0
+        elif key == "fluxschnaps":
+            body.drunk = 20.0
+        elif key == "acid":
+            # Damage already applied above, just return message
+            pass
+        elif key == "blood":
+            # Only heal if blood_heals=True - this is handled above
+            pass
+        elif key == "tinte":
+            body.ink_sight = 20.0
+        elif key == "stempelfarbe":
+            body.stamped_good = 15.0
+            body.stamped_bad = 0.0
+        elif key == "siegellack":
+            # Damage already applied above, just return message
+            pass
+        elif key == "brausesirup":
+            body.fizzy_time = 20.0
+        elif key == "kaugummi":
+            body.sticky = 5.0
+        elif key == "honig":
+            body.mana = min(body.max_mana, body.mana + 100.0)
+        elif key == "karamell":
+            body.sticky = 5.0
+            # Damage already applied above, just return message
+        elif key == "neonsaft":
+            body.haste_time = 20.0
+
         if key == "magma":
             body.burning = 3.0
         else:
@@ -248,15 +329,25 @@ class ThrownFlask:
             nx, ny = self.x + self.vx * dt / steps, self.y + self.vy * dt / steps
             hit_body = any(not b.dead and b.contains(nx, ny) for b in bodies)
             if hit_body or STOPS_PROJECTILE[world.get(int(nx), int(ny))]:
-                self.shatter(world)
+                self.shatter(world, bodies)
                 return True
             self.x, self.y = nx, ny
         return False
 
-    def shatter(self, world: World) -> None:
+    def shatter(self, world: World, bodies: list[Body] | None = None) -> None:
         self.alive = False
         flask = self.flask
-        if not flask.empty:
+        if flask.is_pressurized:
+            cx, cy = int(self.x), int(self.y)
+            world.explode(cx, cy, max(4, PRESSURE_BLAST_RADIUS // 4))
+            if not flask.empty:
+                world.splash(cx, cy, min(20, PRESSURE_BLAST_RADIUS // 3), flask.material)
+            for body in bodies or ():
+                if not body.dead and math.hypot(body.center[0] - cx, body.center[1] - cy) <= PRESSURE_BLAST_RADIUS:
+                    body.hurt(18.0, "Überdruck-Phiole")
+        elif not flask.empty:
             radius = max(2, round(math.sqrt(flask.amount) * SHATTER_RADIUS_PER_CELL * 10))
             world.splash(int(self.x), int(self.y), radius, flask.material)
         flask.material, flask.amount = None, 0
+        flask.pressure = 0.0
+        flask.reagents.clear()

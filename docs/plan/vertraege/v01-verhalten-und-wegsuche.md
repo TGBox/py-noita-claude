@@ -285,6 +285,12 @@ class PathFollower:
 
 - A* auf einem vergröberten Gitter (`4×4` Weltzellen pro Knoten), begrenzt auf `max_expansions = 160`.
 - Unterstützt die Bewegungsarten `loco in ("walk", "fly", "swim")`.
+- **Passierbarkeit eines Knotens** `(nx, ny)` entscheidet allein seine Mittelzelle `(4·nx + 2, 4·ny + 2)`:
+  - `"fly"`: Mittelzelle ist Luft oder Gas (Flüssigkeit erlaubt, kostet ×3).
+  - `"swim"`: Mittelzelle ist eine Flüssigkeit.
+  - `"walk"`: Mittelzelle ist Luft oder Gas **und** die Mittelzelle des Knotens darunter ist fest (oder der Knoten liegt in der untersten Reihe); nach oben höchstens 1 Knoten auf einmal.
+  - Der Knoten von Start und Ziel gilt immer als passierbar.
+- **Rückgabe von `find_path`:** Liste von Weltzellen `(x, y)`: der Start, dann die Mittelzellen der Zwischenknoten, zuletzt genau das Ziel. Ist das Ziel unerreichbar, endet die Liste am Knoten, der dem Ziel am nächsten kam.
 - `next_waypoint` aktualisiert `cache: PathCacheEntry` nur, wenn `now - cache.updated_at >= PATH_CACHE_TTL` oder sich das Ziel signifikant verschoben hat.
 
 ---

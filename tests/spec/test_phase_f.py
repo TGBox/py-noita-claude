@@ -20,19 +20,34 @@ def test_f01_authority_wanted_and_agent_species() -> None:
     assert w.level == pytest.approx(0.5)
     w.add(2.0, "Händler angegriffen")
     assert w.stars == 2
-    assert len(agent_species_for_stars(w.stars)) == 2
     w.on_workshop()
     assert w.level == pytest.approx(2.0)
+    assert agent_species_for_stars(0) == []
+    assert agent_species_for_stars(2) == ["agent_streife", "agent_drohne"]
+    assert "agent_vollstrecker" not in agent_species_for_stars(2)
+    assert "agent_vollstrecker" in agent_species_for_stars(3)
+    assert "agent_abteilungsleiter" not in agent_species_for_stars(3)
+    assert [len(agent_species_for_stars(n)) for n in range(1, 6)] == [1, 2, 3, 4, 6]
 
 
 def test_f02_authority_crimes_and_agent_spawns_in_run() -> None:
+    import dataclasses
+
     from src.authority import spawn_agents
     from src.run import Run
 
     run = Run(seed=2)
     run.wanted.add(2.0, "Test")
     spawned = spawn_agents(run)
-    assert len(spawned) == 2
+    assert sorted(c.species for c in spawned) == ["agent_drohne", "agent_streife"]
+
+    run.enemies.creatures.clear()
+    level = run.wanted.level
+    pet = run.enemies.spawn("made", run.player.x + 40.0, run.player.y)
+    pet.spec = dataclasses.replace(pet.spec, stance="passive")
+    pet.body.hp = 0.0
+    run.update(0.016, None)
+    assert run.wanted.level == pytest.approx(level + 0.25)
 
 
 def _check_boss_script(species: str) -> None:
@@ -83,34 +98,43 @@ def test_f06_boss_scripts_pack3_and_all_mvp_bosses() -> None:
 
 
 def test_f07_evil_selves_and_signature_wands() -> None:
+    from src.bosses import make_boss_script
     from src.bosses.evil_selves import (
         EVIL_SELVES,
-        evil_self_for_depth,
+        echo_for_depth,
+        final_evil_self,
         signature_wand_for_evil_self,
     )
+    from src.enemies import EnemyManager
+    from src.run import Run
+    from src.spells import BLOCKS
 
-    assert evil_self_for_depth(2) == "boese_kaiserin"
-    assert evil_self_for_depth(3) == "boese_gute"
-    assert evil_self_for_depth(4) == "boese_omega"
+    run = Run(seed=7)
+    final = final_evil_self(run)
+    assert final == run.plan.evil_self
+    echoes = [echo_for_depth(run, d) for d in (3, 5)]
+    assert sorted(echoes) == sorted(e for e in EVIL_SELVES if e != final)
+    assert echo_for_depth(run, 2) is None and echo_for_depth(run, 4) is None
     for sp in EVIL_SELVES:
         wand = signature_wand_for_evil_self(sp)
-        assert len(wand.blocks) >= 2
+        assert len(wand.blocks) >= 3 and all(k in BLOCKS for k in wand.blocks if k)
+        boss = EnemyManager().spawn(sp, 100.0, 100.0)
+        assert len(make_boss_script(boss).phases) == 4
 
 
 def test_f08_empress_bargain_in_run() -> None:
-    from src.bosses.evil_selves import apply_empress_bargain
     from src.run import Run
 
     run = Run(seed=8)
-    max_hp_before = run.player.body.max_hp
-    apply_empress_bargain(run, accepted=True)
-    assert run.gold >= 100
-    assert run.wanted.level >= 2.0
-    assert run.player.body.max_hp < max_hp_before
+    run.resolve_empress_bargain(False)
+    assert run.ending != "boese"
+    run.resolve_empress_bargain(True)
+    assert run.ending == "boese" and run.victory is False
+    assert "boese" in run.records.endings
 
 
 def test_f09_headquarters_controller_and_ober_cloita() -> None:
-    from src.bosses.headquarters import HQ_STAGES, can_enter_headquarters
+    from src.bosses.headquarters import HQ_STAGES, HeadquartersController, can_enter_headquarters
     from src.run import Run
 
     assert HQ_STAGES == ("anhoerung", "boese_ichs", "ober_cloita")
@@ -118,6 +142,14 @@ def test_f09_headquarters_controller_and_ober_cloita() -> None:
     assert not can_enter_headquarters(run)
     run.badges = 3
     assert can_enter_headquarters(run)
+    run.enemies.creatures.clear()
+    hq = HeadquartersController()
+    hq.spawn_stage(run)
+    assert sum(c.species == "ratsmitglied" for c in run.enemies.creatures) == 5
+    run.enemies.creatures.clear()
+    hq.update(0.1, run)
+    selves = sorted(c.species for c in run.enemies.creatures)
+    assert run.plan.evil_self not in selves and len(selves) >= 1
 
 
 def test_f10_enter_headquarters_in_run() -> None:
@@ -125,18 +157,25 @@ def test_f10_enter_headquarters_in_run() -> None:
 
     run = Run(seed=10)
     run.badges = 3
+    run.player.body.hp = 1.0
     run.enter_headquarters()
     assert run.in_headquarters is True
+    assert run.player.body.hp == run.player.body.max_hp
+    assert run.in_workshop is False
 
 
 def test_f11_klonita_lines_database() -> None:
-    from src.klonita_lines import LINES, line_for
+    from src.klonita_lines import LINE_COUNTS, LINES, line_for
     from src.universes.catalog import UNIVERSES
 
+    assert LINE_COUNTS["couch"] == 12 and LINE_COUNTS["enter_universe"] == 8
     for u in UNIVERSES.values():
-        topic = f"enter_{u.key}"
-        assert topic in LINES
-        assert isinstance(line_for(topic, random.Random(1)), str)
+        assert len(LINES[f"enter_{u.key}"]) >= 3
+        assert len(LINES[f"event_warn_{u.key}"]) >= 2
+    for topic, count in LINE_COUNTS.items():
+        assert len(LINES[topic]) >= count, topic
+        assert all(0 < len(line) <= 60 for line in LINES[topic]), topic
+    assert line_for("gibt_es_nicht", random.Random(1)) in LINES["default"]
 
 
 def test_f12_klonita_fsm_and_auto_triggers() -> None:
@@ -258,7 +297,11 @@ def test_f17_klonita_tip_feed_warn() -> None:
     run.enemies.creatures.clear()
     k = Klonita(x=run.player.x, y=run.player.y)
 
-    _with_stance(run.enemies.spawn("made", k.x + 20.0, k.y), "trader")
+    run.enter_workshop()
+    run.choose_next_universe(0)
+    run.enter_workshop()
+    slot = run.workshop_layout.trader_slots[0]
+    k.x, k.y = float(slot[0]), float(slot[1])
     run.gold = 100
     assert k.trigger_quirk("tip_trader", run) is True
     assert 85 <= run.gold <= 95
@@ -277,3 +320,39 @@ def test_f17_klonita_tip_feed_warn() -> None:
     foe = _with_stance(run.enemies.spawn("made", k.x + 60.0, k.y), "hostile")
     assert k.trigger_quirk("warn_enemy", run) is True
     assert foe.dodge_charges == 1
+
+
+def test_f18_evil_home_worlds() -> None:
+    from src.bosses.evil_selves import EVIL_SELVES
+    from src.materials import SETS
+    from src.universes.gen.evil_homes import HOME_SIZE, generate_evil_home
+    from src.world import World
+
+    assert HOME_SIZE == (1280, 720)
+    own = {
+        "boese_kaiserin": "goldboden",
+        "boese_gute": "heiliges_licht",
+        "boese_omega": "foerderband",
+    }
+    for species in EVIL_SELVES:
+        material_keys = SETS[species].keys()
+        assert own[species] in material_keys
+        level = generate_evil_home(World(*HOME_SIZE), species, 18)
+        assert level.universe_key == species
+
+
+def test_f19_final_fight_in_run() -> None:
+    from src.run import Run
+
+    run = Run(seed=19)
+    for _ in range(6):
+        run.enter_workshop()
+        run.choose_next_universe(0)
+    run.enter_workshop()
+    assert run.plan.finished
+    run.choose_next_universe(0)
+    boss = next(c for c in run.enemies.creatures if c.species == run.plan.evil_self)
+    boss.body.hp = 0.0
+    for _ in range(3):
+        run.update(0.016, None)
+    assert run.victory is True

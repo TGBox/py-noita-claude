@@ -1,4 +1,4 @@
-# Phase A — Fundament (29 atomare S-Karten: `A01`–`A29`)
+# Phase A — Fundament (30 atomare S-Karten: `A01`–`A30`)
 
 > Jede Karte hat die Größe **S** (`<= 60–80` geänderte Zeilen, `1–2` Zieldateien; schreibgeschützter Vorab-Test in `tests/spec/test_phase_a.py`, `< 15 KB` zu lesender Kontext).
 > Master-Index: [vertraege.md](vertraege.md).
@@ -28,10 +28,27 @@
 - **Größe:** S
 - **Abhängigkeiten:** keine
 - **Ziel-Dateien:** `src/spells.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0b`), `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `src/spells.py`, `tests/spec/test_phase_a.py` (`-k a02`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0b`), `docs/plan/vertraege/v21-klonita-ui-und-speichern.md` (`V23`), `docs/bibel/06-waffen-und-module.md` („Geschosse“, „Aufsätze“, „Zünder“), `src/spells.py`, `tests/spec/test_phase_a.py` (`-k a02`)
 - **Aufgabe:**
-  1. Ergänze auf `Block` in `src/spells.py` das Feld `rarity_tier: int = 1` und weise allen Blöcken in `BLOCKS` die Stufe `1`, `2` oder `3` gemäß `V0b` zu.
-  2. Implementiere `blocks_of_tier(tier: int) -> list[str]` sowie `MODULE_ALIASES: dict[str, str]` und `resolve_block_key(key: str) -> str` gemäß `V0b` und `V23`.
+  1. `Block` hat bereits das Feld `rarity_tier: int = 1`. Ändere **keinen** einzelnen `Block(...)`-Eintrag. Füge direkt unter der Zeile `BLOCKS = BLOCKS + tuple(_families())` ein (mit `import dataclasses` oben in der Datei):
+
+     ```python
+     TIER3_BLOCKS: frozenset[str] = frozenset({
+         "sprengkern", "knochenbombe", "achterkreis", "dreifach",
+         "zielsuche", "kettenfunke", "schwerelos", "blutpreis",
+     })
+
+
+     def _tier(block: Block) -> int:
+         if block.key in TIER3_BLOCKS:
+             return 3
+         return 2 if block.rarity == FAMILY_RARITY else 1
+
+
+     BLOCKS = tuple(dataclasses.replace(b, rarity_tier=_tier(b)) for b in BLOCKS)
+     ```
+
+  2. Ersetze den Platzhalter `blocks_of_tier(tier: int) -> list[str]` (Schlüssel aller Blöcke mit dieser Stufe) und fülle das vorhandene `MODULE_ALIASES` mit einer Zeile je Eintrag der Tabellen „Geschosse“, „Aufsätze“ und „Zünder“ aus Bibel 06: `"<Schlüssel>": "<Bisher>"`. `resolve_block_key` ist schon fertig.
 - **Akzeptanzkriterien:**
   - Jeder Eintrag in `BLOCKS.values()` hat `rarity_tier in (1, 2, 3)`.
   - `blocks_of_tier(1)`, `blocks_of_tier(2)` und `blocks_of_tier(3)` sind jeweils nicht leer und disjunkt; ihre Vereinigung umfasst alle `BLOCKS`-Schlüssel.
@@ -162,7 +179,7 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V3`), `src/world.py`, `tests/spec/test_phase_a.py` (`-k a10`)
 - **Aufgabe:**
   1. Erstelle `src/pathfind.py` mit `PATH_CACHE_TTL = 0.4`, `MAX_PATH_EXPANSIONS = 160`, `PathCacheEntry`, `find_path(world, start, goal, loco, max_expansions=160)` und `next_waypoint(world, start_px, goal_px, loco, cache, now)` exakt nach `V3`.
-  2. Beachte die Bewegungsregeln für `"fly"` (Luft/Gas frei, Flüssigkeiten teurer), `"swim"` (nur Flüssigkeiten) und `"walk"` (begehbare Zellen mit festem Boden darunter oder 1-Zellen-Stufe, tödliche Zellen wie Lava/Säure hohe Zusatzkosten).
+  2. Halte dich bei der Passierbarkeit der Knoten und der Rückgabe genau an die Regeln in `V3` (Mittelzelle des Knotens entscheidet; Start- und Zielknoten immer erlaubt; letzter Punkt ist genau das Ziel).
 - **Akzeptanzkriterien:**
   - `find_path` umgeht für `"fly"` eine Steinmauer mit Öffnung, findet für `"swim"` Wege durch Wasserbecken und bleibt für `"walk"` auf begehbaren Böden.
   - `find_path` terminiert bei unerreichbarem Ziel nach höchstens `max_expansions` Knoten und gibt den Pfad zum nächstgelegenen besuchten Knoten zurück.
@@ -192,10 +209,10 @@
 - **Größe:** S
 - **Abhängigkeiten:** `A05`
 - **Ziel-Dateien:** `src/behaviour.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `tests/spec/test_phase_a.py` (`-k a12`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v01-verhalten-und-wegsuche.md` (`V1`), `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0d`), `src/loot.py`, `src/enemies.py`, `tests/spec/test_phase_a.py` (`-k a12`)
 - **Aufgabe:**
   1. Erstelle `src/behaviour.py` mit `PIERCING_FORMS`, `GRAZE_MATERIAL` (inkl. `"blattlaus": "zucker"`), `SPLIT_SIZES`, `Ability` und `BehaviourContext` gemäß `V1`.
-  2. Implementiere in `src/behaviour.py` die Verhaltens-Helfer für die ersten 5 Fähigkeiten: `handle_split_on_death`, `handle_morph_check`, `handle_reflect_projectiles`, `handle_steal_pickup` und `handle_eat_material` (inkl. Honig-/Pilz-/Gold-Drop beim Grasen).
+  2. Implementiere in `src/behaviour.py` die Verhaltens-Helfer für die ersten 5 Fähigkeiten: `handle_split_on_death`, `handle_morph_check`, `handle_reflect_projectiles`, `handle_steal_pickup` und `handle_eat_material` (inkl. Honig-/Pilz-/Gold-Drop beim Grasen). Nutze nur vorhandene Attribute: `Pickup` (`src/loot.py`) und Kreaturen (`src/enemies.py`) haben `x` und `y` in Weltpixeln; Abstände mit `math.hypot` berechnen. Erfinde keine Methoden wie `distance_to`.
 - **Akzeptanzkriterien:**
   - `handle_split_on_death` erzeugt ein `"split"`-Event für `generation < 2` und keines für `generation >= 2`.
   - `handle_reflect_projectiles` kehrt feindliche Projektile (`form not in PIERCING_FORMS`) im Radius `24 px` um und setzt `from_player = True`.
@@ -433,11 +450,12 @@
 - **Größe:** S
 - **Abhängigkeiten:** `A02`
 - **Ziel-Dateien:** `src/spells.py`
-- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` („Füllungen“), `tests/spec/test_phase_a.py` (`-k a27`)
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `docs/bibel/06-waffen-und-module.md` („Füllungen“), `tests/spec/test_phase_a.py` (`-k a27`), `tests/test_spells.py` (`test_category_fields_are_consistent`)
 - **Aufgabe:**
   1. Ergänze auf `Block` die Felder `from_flask: bool = False` und `local_material: bool = False` und lege die 8 neuen Füllungen aus der Tabelle in `V0e` an (Mana und Werte wie die vorhandenen `sekret_*`-Blöcke, Beschreibung aus Bibel 06). Trage `fuellung_feuer` und `fuellung_rauch` als Aliase in `MODULE_ALIASES` ein.
 - **Akzeptanzkriterien:**
   - Alle 10 Bibel-Füllungen lassen sich über `resolve_block_key` als `Category.PAYLOAD`-Block finden; die 6 Material-Füllungen tragen das Material aus `V0e`.
+  - `fuellung_kolben` hat `material=None` und `from_flask=True`, `fuellung_lokal` hat `material=None` und `local_material=True`. Der Bestandstest `tests/test_spells.py` (`test_category_fields_are_consistent`) lässt das bereits zu – nicht ändern, nur grün halten.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a27 -q && uv run pytest --ignore=tests/spec -q`
 
 ---
@@ -450,6 +468,7 @@
 - **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`), `src/wand.py`, `src/flask.py`, `tests/spec/test_phase_a.py` (`-k a28`)
 - **Aufgabe:**
   1. Implementiere `resolve_payload_material` in `src/spells.py` laut `V0e` und rufe sie in `src/wand.py` beim Zusammenstellen eines Schusses statt `block.material` auf (Kolben in der Hand und aktiver Materialsatz werden durchgereicht).
+     *(Plan-Korrektur 2026-11-07: Das Material wird nicht in `src/wand.py`, sondern in `src/projectiles.py` gelesen. Der Einbau in den Schuss ist deshalb Karte `A30`; A28 liefert nur die Funktion.)*
 - **Akzeptanzkriterien:**
   - Kolbenfüllung liefert das Kolbenmaterial und verbraucht 10 Zellen; ohne Kolben `"water"`.
   - Lokalkolorit liefert ein Universumsmaterial des aktiven Satzes, nie ein Grundmaterial.
@@ -468,5 +487,23 @@
 - **Akzeptanzkriterien:**
   - Die 9 ausgemusterten Blöcke stehen weiter in `BLOCKS`, kommen aber in 2000 Zügen von `random_block` und in `blocks_of_tier` nie vor; die 3 behaltenen kommen weiter vor.
 - **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a29 -q && uv run pytest --ignore=tests/spec -q`
+
+---
+
+## A30 — Sonderfüllungen im echten Schuss (`ProjectileSystem.payload_resolver`) (`V0e`)
+
+- **Größe:** S
+- **Abhängigkeiten:** `A28`
+- **Ziel-Dateien:** `src/projectiles.py`, `src/run.py`
+- **Zu lesender Kontext:** `docs/plan/vertraege/v00-migration-und-schluessel.md` (`V0e`, „Sonderfüllungen“), `src/projectiles.py` (`build`, `ProjectileSystem.__init__`, `ProjectileSystem.spawn`), `src/run.py` nur `Run.__init__` (Zeile mit `self.projectiles = ProjectileSystem()`) und `Run._cast` – die Datei ist sehr groß, gezielt suchen und gezielt ändern, `tests/spec/test_phase_a.py` (`-k a30`)
+- **Aufgabe:**
+  1. `src/projectiles.py`: `build(shot, x, y, angle, team=PLAYER_TEAM, resolve=None)` bekommt den optionalen Parameter `resolve: Callable[[Block], str | None] | None`. In der Schleife über `shot.modifiers` gilt `key = resolve(block) if resolve is not None else block.material`; ist `key` nicht `None`, wird `material = mat.id_of(key)`.
+  2. `ProjectileSystem.__init__` legt `self.payload_resolver: Callable[[Block], str | None] | None = None` an. `spawn` reicht ihn nur bei `team == PLAYER_TEAM` an `build` weiter (Kreaturen leeren nie den Kolben der Spielerin).
+  3. `src/run.py`: Neue Methode `Run._resolve_payload(self, block) -> str | None`, die `resolve_payload_material(block, self.flask, tuple(mat.KEYS), mat.BASE_KEYS, self.rng)` zurückgibt. Direkt nach `self.projectiles = ProjectileSystem()` in `Run.__init__`: `self.projectiles.payload_resolver = self._resolve_payload`.
+- **Akzeptanzkriterien:**
+  - Ein Schuss der Spielerin mit Kolbenfüllung trägt das Kolbenmaterial und verbraucht `FLASK_PAYLOAD_CELLS`; ohne Kolben trägt er `"water"`.
+  - Ein Kreaturen-Schuss mit Kolbenfüllung verändert den Kolben nicht.
+  - Lokalkolorit liefert ein Material des aktiven Satzes, das kein Grundmaterial ist (gibt es keins: `"water"`).
+- **Verifikation:** `uv run pytest tests/spec/test_phase_a.py -k a30 -q && uv run pytest --ignore=tests/spec -q`
 
 ---

@@ -1,0 +1,20 @@
+{
+  "frame_size": [
+    10,
+    7
+  ],
+  "anchor": [
+    5,
+    3
+  ],
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 1,
+      "fps": 8.0,
+      "loop": true,
+      "next_anim": "idle"
+    }
+  },
+  "glow": []
+}

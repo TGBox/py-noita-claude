@@ -4,20 +4,25 @@ from __future__ import annotations
 
 import math
 import random
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 
 from src import materials as mat
-from src.body import BURN_TIME, PLAYER_TEAM, Body
+from src.body import BURN_TIME, ENEMY_TEAM, PLAYER_TEAM, Body
 from src.materials import AIR, KIND, LIQUID, STOPS_PROJECTILE
-from src.spells import TIMER_DELAY, Block, Category, Trigger
+from src.spells import CATALOG, TIMER_DELAY, Block, Category, Trigger
 from src.wand import Shot
 from src.world import World
 
 MAX_PROJECTILES = 256
 HOMING_TURN_RATE = 7.0  # radians per second
+BOOMERANG_TURN_RATE = 24.0  # radians per second for returning boomerang shields
+BOOMERANG_ORBIT_TIME = 3.0
+BOOMERANG_ORBIT_RADIUS = 20.0
+LARPA_CHAOS_INTERVAL = 0.45
 FLIPPED_GRAVITY = 300.0  # px/s^2 for forms that normally fly straight
 BOUNCE_DAMPING = 0.55
+RUBBER_MAX_BLAST = 6  # Gummiwelt: sparks with a tiny blast bounce too, bombs do not
 WALL_BOUNCE_DAMPING = 0.85  # bounces from the "Abprall" modifier keep more speed
 PELLET_SPREAD = 0.22  # radians
 CHAIN_RANGE = 90.0  # px a chain spark can leap
@@ -69,7 +74,25 @@ class Projectile:
     hit_ids: set[int] = field(default_factory=set)
     wet: bool = False  # flew through liquid (Nässe-Nerv)
     owner_species: str = ""  # creature species that fired this projectile (Contract V4, Card A11)
+    source_pos: tuple[float, float] | None = (
+        None  # position where the projectile was fired from (Card A11)
+    )
     from_player: bool = True  # compatibility flag for player vs enemy projectile origin
+    # Phase H expansion fields
+    orbit_satellites: int = 0
+    orbit_parent: Projectile | None = None
+    orbit_angle: float = 0.0
+    orbit_radius: float = 16.0
+    orbit_speed: float = 8.0
+    larpa_chaos: bool = False
+    larpa_timer: float = 0.0
+    larpa_impact: bool = False
+    boomerang_shield: bool = False
+    boomerang_orbit_time: float = 0.0
+    matter_eater: int = 0
+    trigger_bounces: int = 0
+    contagion_delay: float = 0.0
+    is_mini: bool = False
 
     @property
     def fused(self) -> bool:
@@ -77,7 +100,14 @@ class Projectile:
         return isinstance(self.form, Block) and self.form.bounces > 0
 
 
-def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM) -> Projectile:
+def build(
+    shot: Shot,
+    x: float,
+    y: float,
+    angle: float,
+    team: str = PLAYER_TEAM,
+    resolve: Callable[[Block], str | None] | None = None,
+) -> Projectile:
     """Apply a shot's modifiers to its form and launch it."""
     form = shot.form
     speed, gravity, blast = form.speed, form.gravity, form.blast
@@ -86,6 +116,13 @@ def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM)
     lifetime, bounces = form.lifetime, form.bounces + form.ricochet
     pierce, ignites = form.pierce, False
     damage, trail = form.damage, None
+    orbit_satellites = 0
+    larpa_chaos = False
+    larpa_impact = False
+    boomerang_shield = False
+    matter_eater = 0
+    trigger_bounces = 0
+    contagion_delay = 0.0
     for block in shot.modifiers:
         gravity *= block.gravity_factor
         damage += block.damage_bonus
@@ -100,11 +137,20 @@ def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM)
         if block.flip_gravity:
             gravity = -(gravity or FLIPPED_GRAVITY)
         homing = homing or block.homing
+        orbit_satellites += getattr(block, "orbit_satellites", 0)
+        larpa_chaos = larpa_chaos or getattr(block, "larpa_chaos", False)
+        larpa_impact = larpa_impact or getattr(block, "larpa_impact", False)
+        boomerang_shield = boomerang_shield or getattr(block, "boomerang_shield", False)
+        matter_eater = max(matter_eater, getattr(block, "matter_eater", 0))
+        trigger_bounces = max(trigger_bounces, getattr(block, "trigger_bounces", 0))
+        contagion_delay = max(contagion_delay, getattr(block, "contagion_delay", 0.0))
         if block.category is Category.TRIGGER:
             trigger = block.trigger
             timer = block.timer
-        if block.material is not None:
-            material = mat.id_of(block.material)
+        key = resolve(block) if resolve is not None else block.material
+        if key is not None:
+            material = mat.id_of(key)
+    damage *= getattr(shot, "damage_scale", 1.0)
     angle += shot.angle_offset
     return Projectile(
         form=form,
@@ -133,6 +179,13 @@ def build(shot: Shot, x: float, y: float, angle: float, team: str = PLAYER_TEAM)
         shock=form.shock,
         chain=form.chain,
         timer=timer or TIMER_DELAY,
+        orbit_satellites=orbit_satellites,
+        larpa_chaos=larpa_chaos,
+        larpa_impact=larpa_impact,
+        boomerang_shield=boomerang_shield,
+        matter_eater=matter_eater,
+        trigger_bounces=trigger_bounces,
+        contagion_delay=contagion_delay,
     )
 
 
@@ -143,7 +196,9 @@ class ProjectileSystem:
         self.items: list[Projectile] = []
         self._pending: list[Projectile] = []
         self._blasts: list[Blast] = []
+        self._contagions: list[list[object]] = []  # [victim, delay_left, children, team]
         self._rng = random.Random()
+        self.payload_resolver: Callable[[Block], str | None] | None = None
         self.healing = 0.0  # life stolen for the player since the last ``take_healing``
         self.teleports: list[tuple[float, float]] = []  # where player teleport bolts ended
         self.player_damage = 1.0  # factor on the player's projectile damage (perks)
@@ -156,6 +211,8 @@ class ProjectileSystem:
 
     def clear(self) -> None:
         self.items.clear()
+        self._pending.clear()
+        self._contagions.clear()
 
     def spawn(
         self,
@@ -175,15 +232,71 @@ class ProjectileSystem:
                 extra = sum(m.spread_bonus for m in shot.modifiers)
                 if extra:
                     spread += self._rng.uniform(-extra, extra)
-                projectile = build(shot, x, y, angle + spread, team)
+                resolver = self.payload_resolver if team == PLAYER_TEAM else None
+                projectile = build(shot, x, y, angle + spread, team, resolve=resolver)
                 projectile.gravity *= self.gravity_scale
-                projectile.bounces += self.bounce_bonus.get(team, 0)
+                if projectile.blast <= RUBBER_MAX_BLAST:  # real bombs still blow up on walls
+                    projectile.bounces += self.bounce_bonus.get(team, 0)
                 projectile.damage *= damage_factor
                 if pellets > 1:
                     factor = self._rng.uniform(0.8, 1.1)
                     projectile.vx *= factor
                     projectile.vy *= factor
                 self._pending.append(projectile)
+                if projectile.orbit_satellites > 0:
+                    self._spawn_satellites(projectile)
+
+    def _spawn_satellites(self, parent: Projectile) -> None:
+        """Spawn mini-sparks orbiting parent at 16 px radius (25% damage, H04)."""
+        count = parent.orbit_satellites
+        mini_form = CATALOG.get("mikrofunke", parent.form)
+        for idx in range(count):
+            if len(self.items) + len(self._pending) >= MAX_PROJECTILES:
+                return
+            sat_angle = idx * math.tau / count
+            self._pending.append(
+                Projectile(
+                    form=mini_form,
+                    x=parent.x + math.cos(sat_angle) * 16.0,
+                    y=parent.y + math.sin(sat_angle) * 16.0,
+                    lifetime=parent.lifetime,
+                    damage=max(1.0, parent.damage * 0.25),
+                    team=parent.team,
+                    orbit_parent=parent,
+                    orbit_angle=sat_angle,
+                    orbit_radius=16.0,
+                    is_mini=True,
+                )
+            )
+
+    def _spawn_mini_copy(self, parent: Projectile, x: float, y: float, angle: float) -> None:
+        """Spawn one non-recursive mini copy of parent (Entropy/Impact Larpa, H04)."""
+        if len(self.items) + len(self._pending) >= MAX_PROJECTILES:
+            return
+        speed = max(160.0, math.hypot(parent.vx, parent.vy) * 0.8)
+        mini = replace(
+            parent,
+            x=x,
+            y=y,
+            vx=math.cos(angle) * speed,
+            vy=math.sin(angle) * speed,
+            damage=max(1.0, parent.damage * 0.4),
+            lifetime=min(0.6, parent.lifetime),
+            blast=max(0, parent.blast // 2),
+            splash=max(0, parent.splash // 2),
+            children=[],
+            hit_ids=set(),
+            age=0.0,
+            alive=True,
+            released=True,
+            orbit_satellites=0,
+            orbit_parent=None,
+            larpa_chaos=False,
+            larpa_impact=False,
+            boomerang_shield=False,
+            is_mini=True,
+        )
+        self._pending.append(mini)
 
     def take_healing(self) -> float:
         """Life stolen by the player's projectiles since the last call."""
@@ -196,18 +309,34 @@ class ProjectileSystem:
         dt: float,
         target: tuple[float, float],
         bodies: Sequence[Body] = (),
+        caster_pos: tuple[float, float] | None = None,
     ) -> list[Blast]:
         """Advance every projectile; returns the explosions of this update.
 
         Projectiles hit ``bodies`` of other teams and deal their direct damage.
         """
         self._blasts = []
+        self._step_contagions(dt)
         self.items.extend(self._pending)
         self._pending = []
         for projectile in self.items:
-            self._update_one(projectile, world, dt, target, bodies)
+            self._update_one(projectile, world, dt, target, bodies, caster_pos)
         self.items = [p for p in self.items if p.alive]
         return self._blasts
+
+    def _step_contagions(self, dt: float) -> None:
+        """Advance delayed contagion payloads implanted on hit enemies (H05)."""
+        remaining: list[list[object]] = []
+        for entry in self._contagions:
+            victim = entry[0]
+            delay = float(entry[1]) - dt  # type: ignore[arg-type]
+            if delay <= 0.0:
+                vx, vy = getattr(victim, "center", (0.0, 0.0))
+                self.spawn(entry[2], vx, vy, 0.0, str(entry[3]))  # type: ignore[arg-type]
+            else:
+                entry[1] = delay
+                remaining.append(entry)
+        self._contagions = remaining
 
     # ----------------------------------------------------------------- flight
 
@@ -218,13 +347,52 @@ class ProjectileSystem:
         dt: float,
         target: tuple[float, float],
         bodies: Sequence[Body],
+        caster_pos: tuple[float, float] | None = None,
     ) -> None:
+        if p.orbit_parent is not None:
+            if not p.orbit_parent.alive:
+                p.alive = False
+                return
+            p.orbit_angle += p.orbit_speed * dt
+            p.x = p.orbit_parent.x + math.cos(p.orbit_angle) * p.orbit_radius
+            p.y = p.orbit_parent.y + math.sin(p.orbit_angle) * p.orbit_radius
+            victim = _body_at(bodies, p.team, p.x, p.y, p.hit_ids)
+            if victim is not None:
+                self._hit_body(p, victim, world, bodies)
+                p.alive = False
+            return
+
         p.age += dt
         if p.age >= p.lifetime:
             self._end(p, world, hit=False, wet=False)
             return
-        if p.homing:
+        if p.boomerang_shield:
+            home = caster_pos if caster_pos is not None else target
+            if p.boomerang_orbit_time > 0.0 or (
+                p.age >= 0.12 and math.hypot(p.x - home[0], p.y - home[1]) <= 26.0
+            ):
+                if p.boomerang_orbit_time == 0.0:
+                    p.orbit_angle = math.atan2(p.y - home[1], p.x - home[0])
+                    p.lifetime = max(p.lifetime, p.age + BOOMERANG_ORBIT_TIME)
+                p.boomerang_orbit_time += dt
+                if p.boomerang_orbit_time >= BOOMERANG_ORBIT_TIME:
+                    p.alive = False
+                    return
+                p.orbit_angle += 6.0 * dt
+                ox = home[0] + math.cos(p.orbit_angle) * BOOMERANG_ORBIT_RADIUS
+                oy = home[1] + math.sin(p.orbit_angle) * BOOMERANG_ORBIT_RADIUS
+                inv_dt = 1.0 / max(dt, 1e-4)
+                p.vx = (ox - p.x) * inv_dt
+                p.vy = (oy - p.y) * inv_dt
+            elif p.age >= 0.12:
+                _steer(p, home, dt, BOOMERANG_TURN_RATE)
+        elif p.homing:
             _steer(p, target, dt)
+        if p.larpa_chaos and not p.is_mini:
+            p.larpa_timer += dt
+            while p.larpa_timer >= LARPA_CHAOS_INTERVAL:
+                p.larpa_timer -= LARPA_CHAOS_INTERVAL
+                self._spawn_mini_copy(p, p.x, p.y, self._rng.uniform(0.0, math.tau))
         p.vy += p.gravity * dt
         if p.trigger is Trigger.TIMER and not p.released and p.age >= p.timer:
             self._release(p)
@@ -238,6 +406,10 @@ class ProjectileSystem:
             nx, ny = p.x + dx / steps, p.y + dy / steps
             if not p.fused:
                 victim = _body_at(bodies, p.team, nx, ny, p.hit_ids)
+                if victim is not None and p.team == PLAYER_TEAM and getattr(victim, "dodge_charges", 0) > 0:
+                    victim.dodge_charges -= 1  # F17: Klonita warned it, the shot flies past
+                    p.hit_ids.add(id(victim))
+                    victim = None
                 if victim is not None:
                     self._hit_body(p, victim, world, bodies)
                     if not p.pierce:
@@ -257,6 +429,9 @@ class ProjectileSystem:
                     self._end(p, world, hit=True, wet=True)
                     return
                 continue
+            if p.matter_eater > 0 and world.diggable(cell, p.matter_eater):
+                world.dig(int(nx), int(ny), p.matter_eater)
+                cell = world.get(int(nx), int(ny))
             if not STOPS_PROJECTILE[cell]:
                 if (
                     p.trail is not None
@@ -316,27 +491,52 @@ class ProjectileSystem:
             victim.burning = BURN_TIME
         if p.lifesteal and p.team == PLAYER_TEAM:
             self.healing += damage * p.lifesteal
+        if p.contagion_delay > 0 and p.children:
+            self._contagions.append([victim, p.contagion_delay, list(p.children), p.team])
+        # Card C15: Creature projectile status effects
+        if not p.from_player or p.team != PLAYER_TEAM or p.owner_species:
+            species = p.owner_species
+            target_body = getattr(victim, "body", victim)
+            if species in ("stempler", "agent_streife", "agent_sachbearbeiter", "oberstempler", "aktenwolf"):
+                target_body.stamped_bad = max(target_body.stamped_bad, 10.0)
+            elif species in ("harzspucker", "harzgeneral"):
+                target_body.sticky = max(target_body.sticky, 5.0)
+            elif species in ("orgelaal", "glockenqualle", "glockenwaechter"):
+                target_body.charged = max(target_body.charged, 4.0)
 
     def _bounce(self, p: Projectile, world: World, nx: float, ny: float) -> None:
-        if p.trigger is Trigger.IMPACT and not p.released:
-            self._release(p)
-        if p.bounces <= 0:  # out of bounces: come to rest until the fuse runs out
+        can_bounce = p.bounces > 0
+        if can_bounce:
+            p.bounces -= 1
+            damping = BOUNCE_DAMPING if p.fused else WALL_BOUNCE_DAMPING
+            blocked_x = STOPS_PROJECTILE[world.get(int(nx), int(p.y))]
+            blocked_y = STOPS_PROJECTILE[world.get(int(p.x), int(ny))]
+            if blocked_x or not blocked_y:
+                p.vx = -p.vx * damping
+            if blocked_y or not blocked_x:
+                p.vy = -p.vy * damping
+        else:
             p.vx = p.vy = 0.0
-            return
-        p.bounces -= 1
-        damping = BOUNCE_DAMPING if p.fused else WALL_BOUNCE_DAMPING
-        blocked_x = STOPS_PROJECTILE[world.get(int(nx), int(p.y))]
-        blocked_y = STOPS_PROJECTILE[world.get(int(p.x), int(ny))]
-        if blocked_x or not blocked_y:
-            p.vx = -p.vx * damping
-        if blocked_y or not blocked_x:
-            p.vy = -p.vy * damping
+        if p.trigger is Trigger.IMPACT and not p.released:
+            if p.trigger_bounces > 0:
+                p.trigger_bounces -= 1
+                self.spawn(p.children, p.x, p.y, math.atan2(p.vy, p.vx), p.team)
+                if p.trigger_bounces == 0:
+                    p.released = True
+            else:
+                self._release(p)
 
     # ---------------------------------------------------------------- effects
 
     def _end(self, p: Projectile, world: World, *, hit: bool, wet: bool) -> None:
         p.alive = False
         x, y = int(p.x), int(p.y)
+        if hit and p.larpa_impact and not p.is_mini:
+            speed = math.hypot(p.vx, p.vy) or 1.0
+            sx = p.x - p.vx / speed * 3.0
+            sy = max(2.0, p.y - p.vy / speed * 3.0 - 1.0)
+            for offset in (-0.35, 0.0, 0.35):
+                self._spawn_mini_copy(p, sx, sy, -math.pi / 2 + offset)
         if p.teleport and p.team == PLAYER_TEAM:
             # step back along the flight so the caster lands in the open, not in the wall
             speed = math.hypot(p.vx, p.vy) or 1.0
@@ -381,14 +581,19 @@ def _body_at(bodies: Sequence[Body], team: str, x: float, y: float, skip: set[in
     return None
 
 
-def _steer(p: Projectile, target: tuple[float, float], dt: float) -> None:
+def _steer(
+    p: Projectile,
+    target: tuple[float, float],
+    dt: float,
+    turn_rate: float = HOMING_TURN_RATE,
+) -> None:
     speed = math.hypot(p.vx, p.vy)
     if speed < 1e-6:
         return
     current = math.atan2(p.vy, p.vx)
     wanted = math.atan2(target[1] - p.y, target[0] - p.x)
     diff = (wanted - current + math.pi) % (2 * math.pi) - math.pi
-    turn = max(-HOMING_TURN_RATE * dt, min(HOMING_TURN_RATE * dt, diff))
+    turn = max(-turn_rate * dt, min(turn_rate * dt, diff))
     p.vx = math.cos(current + turn) * speed
     p.vy = math.sin(current + turn) * speed
 
@@ -403,4 +608,32 @@ def update_projectiles(
     out_events: list[tuple[str, dict[str, object]]] | None = None,
 ) -> None:
     """Update projectiles and apply creature projectile status effects (Card C15)."""
-    raise NotImplementedError("Card C15")
+    system = ProjectileSystem()
+    system.items = list(projectiles)
+
+    bodies: list[Body] = []
+    player_body = getattr(player, "body", player)
+    if isinstance(player_body, Body):
+        bodies.append(player_body)
+    creatures = getattr(enemies, "creatures", [])
+    for c in creatures:
+        c_body = getattr(c, "body", c)
+        if isinstance(c_body, Body):
+            bodies.append(c_body)
+
+    for p in projectiles:
+        # If projectile has no team set explicitly or matches PLAYER_TEAM but from_player is False
+        if not p.from_player and p.team == PLAYER_TEAM:
+            p.team = ENEMY_TEAM
+
+    aim = (0.0, 0.0)
+    if hasattr(player, "aim"):
+        aim = player.aim
+    elif hasattr(player, "center"):
+        aim = player.center
+
+    system.update(world, dt, aim, bodies)
+
+    # Keep projectiles list synchronized
+    projectiles.clear()
+    projectiles.extend(system.items)

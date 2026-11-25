@@ -179,22 +179,22 @@ def pickup_sprite_key(pickup: Pickup) -> str:
 
 | `kind` | `item_key` | `amount` | Gespiegeltes Legacy-Feld | Sprite-Schlüssel (`pickup_sprite_key`) |
 | --- | --- | --- | --- | --- |
-| `"wand"` | `""` | `1` | `wand: WandSpec` | `"stab"` |
+| `"wand"` | `""` | `1` | `wand: WandSpec` | `"waffe"` |
 | `"block"` | `<block_key>` | `1` | `block = item_key` | `"modul"` |
-| `"pearls"` | `""` | `<count>` | `pearls = amount` | `"gold_klein"` |
-| `"gold"` | `""` | `<gold_value>` | — | `<10`: `"gold_klein"`, `10..29`: `"gold_mittel"`, `>=30`: `"gold_gross"` |
+| `"pearls"` | `""` | `<count>` | `pearls = amount` | `"gold_muenze"` |
+| `"gold"` | `""` | `<gold_value>` | — | `<10`: `"gold_muenze"`, `10..29`: `"gold_haufen_s"`, `30..59`: `"gold_haufen_m"`, `>=60`: `"gold_haufen_l"` |
 | `"sample"` | `<sample_key>` | `<count>` (Standard `1`) | — | `<sample_key>` (z. B. `"probe_gallenstein"`) |
-| `"perk"` | `<perk_key>` | `1` | `perk = item_key` | `"gabe"` |
-| `"flask"` | `""` | `1` | `flask: Flask` | `"flasche_voll"` (oder `"flasche_leer"` wenn `flask.empty`) |
+| `"perk"` | `<perk_key>` | `1` | `perk = item_key` | `"experiment"` |
+| `"flask"` | `""` | `1` | `flask: Flask` | `"kolben_voll"` (oder `"kolben_leer"` wenn `flask.empty`) |
 | `"heart"` / `"life_capsule"` | `""` | `<hp_bonus>` (Standard `25`) | `heart = amount` | `"lebenskapsel"` |
 | `"cocoon"` | `""` | `1` | `cocoon = True` | `"kokon"` |
 | `"eye"` | `""` | `1` | `eye = True` | `"auge"` |
 | `"reroll"` | `""` | `<count>` (Standard `1`) | `reroll = amount` | `"wuerfel"` |
-| `"portal"` | `""` | `1` | `portal = True` | `"portal_stein"` |
+| `"portal"` | `""` | `1` | `portal = True` | `"wackelportal"` |
 | `"memory_shard"` | `""` | `<count>` (Standard `1`) | — | `"erinnerungssplitter"` |
 | `"blueprint_shard"` | `""` | `<count>` (Standard `1`) | — | `"bauplan_splitter"` |
-| `"crate"` | `""` | `<tier>` (`1..3`, Standard `1`) | — | `"beutekiste"` |
-| `"badge"` | `""` | `<count>` (Standard `1`) | — | `"dienstmarke"` |
+| `"crate"` | `""` | `<tier>` (`1..3`, Standard `1`) | — | `"fundkiste"` |
+| `"badge"` | `""` | `<count>` (Standard `1`) | — | `"dienstausweis"` |
 | `"formular_stempel"` | `"gut"` oder `"schlecht"` | `1` | — | `"formular_stempel"` |
 
 ---

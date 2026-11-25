@@ -455,8 +455,82 @@ def _draw_form(c: _Canvas, b: Block) -> None:
         _orb(c)
 
 
+def _proto_badge(c: _Canvas, protocol: str) -> None:
+    """Distinct geometric emblem per copy protocol (alpha..mu)."""
+    c.ring(7.5, 7.5, 4.5, c.dark)
+    if protocol == "alpha":
+        c.line(4, 11, 7.5, 4, c.light)
+        c.line(7.5, 4, 11, 11, c.light)
+        c.line(5, 8, 10, 8)
+    elif protocol == "gamma":
+        c.line(5, 4, 11, 4, c.light)
+        c.line(5, 4, 5, 11, c.light)
+    elif protocol == "tau":
+        c.line(4, 4, 11, 4, c.light)
+        c.line(7.5, 4, 7.5, 11, c.light)
+    elif protocol == "omega":
+        c.ring(7.5, 7, 3, c.light)
+        c.line(4, 11, 11, 11, c.light)
+    elif protocol == "zeta":
+        c.line(4, 4, 11, 4, c.light)
+        c.line(11, 4, 4, 11)
+        c.line(4, 11, 11, 11, c.light)
+    else:
+        c.line(4, 11, 4, 4, c.light)
+        c.line(4, 8, 10, 8)
+        c.line(10, 4, 10, 11, c.light)
+
+
+def _split_nodes(c: _Canvas, count: int) -> None:
+    """Branching node tree for Divide By 2/3/4/10 splitters."""
+    c.line(3, 8, 6, 8, c.dark)
+    branches = min(count, 5)
+    for k in range(branches):
+        y = 3 + k * (9 / max(1, branches - 1))
+        c.line(6, 8, 11, y)
+        c.dot(12, y, c.light)
+
+
+def _orbit_sat(c: _Canvas) -> None:
+    c.ring(7.5, 7.5, 4.2, c.dark)
+    c.disc(7.5, 7.5, 1.5)
+    c.dot(3, 7.5, c.light)
+    c.dot(12, 7.5, c.light)
+
+
+def _larpa_spray(c: _Canvas, upward: bool) -> None:
+    c.disc(7.5, 8.5 if upward else 7.5, 1.8)
+    dirs = ((-0.4, -1), (0.0, -1.1), (0.4, -1)) if upward else ((-1, -1), (1, -1), (-1, 1), (1, 1))
+    for dx, dy in dirs:
+        c.line(7.5, 8, 7.5 + dx * 4.5, 8 + dy * 4.5, c.light)
+
+
+def _boomerang(c: _Canvas) -> None:
+    c.line(4, 9, 8, 4, c.light)
+    c.line(8, 4, 12, 9)
+    c.line(12, 9, 9, 12, c.dark)
+
+
+def _matter_eater(c: _Canvas) -> None:
+    c.disc(7.5, 7.5, 4.2, c.light)
+    c.disc(9.5, 7.5, 2.5, BACKGROUND)
+    c.dot(5, 6, c.dark)
+
+
 def _draw_modifier(c: _Canvas, b: Block) -> None:
-    if b.multicast and b.formation >= 1.0:
+    if b.copy_protocol:
+        _proto_badge(c, b.copy_protocol)
+    elif b.split_count:
+        _split_nodes(c, b.split_count)
+    elif b.orbit_satellites:
+        _orbit_sat(c)
+    elif b.larpa_chaos or b.larpa_impact:
+        _larpa_spray(c, b.larpa_impact)
+    elif b.boomerang_shield:
+        _boomerang(c)
+    elif b.matter_eater:
+        _matter_eater(c)
+    elif b.multicast and b.formation >= 1.0:
         _ring_of(c, b.multicast)
     elif b.multicast and b.formation > 0.1:
         _fan(c, b.multicast)
